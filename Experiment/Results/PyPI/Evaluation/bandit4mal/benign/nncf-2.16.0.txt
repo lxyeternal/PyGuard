@@ -1,0 +1,230 @@
+Run started:2025-05-25 13:10:20.710881
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/__init__.py:88
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+87	    nncf_logger.error(
+88	        "Neither PyTorch, TensorFlow, ONNX or OpenVINO Python packages have been found in your Python "
+89	        "environment.\n"
+90	        "Please install one of the supported frameworks above in order to use NNCF on top of it.\n"
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/common/quantization/quantizer_propagation/visualizer.py:26
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+25	        if self.dump_dir.exists():
+26	            shutil.rmtree(str(self.dump_dir))
+27	
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/config/definitions.py:12
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+11	
+12	ONLINE_DOCS_ROOT = "https://github.com/openvinotoolkit/nncf/tree/develop/"
+13	SCHEMA_VISUALIZATION_URL = "https://openvinotoolkit.github.io/nncf/"
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/config/definitions.py:13
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+12	ONLINE_DOCS_ROOT = "https://github.com/openvinotoolkit/nncf/tree/develop/"
+13	SCHEMA_VISUALIZATION_URL = "https://openvinotoolkit.github.io/nncf/"
+14	
+15	ADAPTIVE_COMPRESSION_LEVEL_TRAINING_MODE_NAME_IN_CONFIG = "adaptive_compression_level"
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/config/schema.py:82
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+81	NNCF_CONFIG_SCHEMA = {
+82	    "$schema": "http://json-schema.org/draft-07/schema",
+83	    "title": "NNCF configuration file schema",
+84	    "description": "The NNCF configuration file follows the JSON format and is the primary way to configure "
+85	    "the result of NNCF application to a given user model. This configuration file is "
+86	    "loaded into the `NNCFConfig` object by the user at runtime, after which the `NNCFConfig` "
+87	    "is passed to the NNCF functions that perform actual compression or "
+88	    "preparations for compression-aware training. \n\n"
+89	    "The NNCF JSON configuration file is usually set up on a per-model, per-compression use case "
+90	    "basis to contain:\n"
+91	    "- a description of one or more compression algorithms to be applied to the model\n"
+92	    "- the configuration parameters for each of the chosen algorithms\n"
+93	    "- additional settings depending on the NNCF use case or integration scenario, e.g. specifying "
+94	    "parameters for accuracy-aware training, or specifying model input shape for frameworks "
+95	    "that do not have this data encapsulated in the model object in general such as PyTorch)\n"
+96	    "and other parameters, the list of which may extend with the ongoing development of NNCF.\n\n"
+97	    "This schema serves as a reference for users to write correct NNCF configuration files and each "
+98	    "loaded NNCF configuration file into an `NNCFConfig` object is validated against it.",
+99	    "type": "object",
+100	    "properties": {
+101	        "input_info": with_attributes(
+102	            make_object_or_array_of_objects_schema(SINGLE_INPUT_INFO_SCHEMA),
+103	            description="Describe the specifics of your model inputs here. "
+104	            "This information is used to build the internal graph representation "
+105	            "that is leveraged for proper compression functioning, and for "
+106	            "exporting the compressed model to an executable format.\n"
+107	            "If this field is unspecified, NNCF will try to deduce the input shapes and tensor types for the graph "
+108	            "building purposes based on dataloader objects that are passed to compression algorithms by the user.",
+109	        ),
+110	        "target_device": with_attributes(
+111	            TARGET_DEVICE_SCHEMA,
+112	            description="The target device, the specificity of which will be taken into "
+113	            "account while compressing in order to obtain the best "
+114	            "performance for this type of device. The default 'ANY' means "
+115	            "compatible quantization supported by any HW. Set "
+116	            "this value to 'TRIAL' if you are going to use a custom "
+117	            "quantization schema.",
+118	            default=TARGET_DEVICE,
+119	        ),
+120	        "compression": make_object_or_array_of_objects_schema(
+121	            {"oneOf": [{"$ref": f"#/$defs/{algo_name}"} for algo_name in REF_VS_ALGO_SCHEMA]}
+122	        ),
+123	        "accuracy_aware_training": with_attributes(
+124	            ACCURACY_AWARE_TRAINING_SCHEMA,
+125	            description="Options for the execution of the NNCF-powered "
+126	            "'Accuracy Aware' training pipeline. The 'mode' "
+127	            "property determines the mode of the accuracy-aware "
+128	            "training execution and further available parameters.",
+129	        ),
+130	        # Validation of each separate compression description schema occurs in a separate step.
+131	        # This is required for better user feedback, since holistic schema validation is uninformative
+132	        # if there is an error in one of the compression configs.
+133	        **COMPRESSION_LR_MULTIPLIER_PROPERTY,
+134	        "disable_shape_matching": with_attributes(
+135	            BOOLEAN,
+136	            description="[Deprecated] Whether to enable strict input tensor "
+137	            "shape matching when building the internal graph "
+138	            "representation of the model. Set this to false if your "
+139	            "model inputs have any variable dimension other than "
+140	            "the 0-th (batch) dimension, or if any non-batch "
+141	            "dimension of the intermediate tensors in your model "
+142	            "execution flow depends on the input dimension, "
+143	            "otherwise the compression will most likely fail.",
+144	        ),
+145	        "log_dir": with_attributes(STRING, description="Log directory for NNCF-specific logging outputs."),
+146	    },
+147	    "$defs": REF_VS_ALGO_SCHEMA,
+148	}
+149	
+
+--------------------------------------------------
+>> Issue: [B840:executor] concurrent.futures.Executor
+   Severity: High   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/quantization/algorithms/accuracy_control/ranker.py:232
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b840_executor.html
+231	        prepared_model_queue = []
+232	        executor = ThreadPoolExecutor(max_workers=self._num_workers)
+233	        nncf_logger.info("Calculating ranking scores")
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/tensorflow/helpers/model_creation.py:90
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+89	    warning_deprecated(
+90	        "The 'nncf.tensorflow.create_compressed_model' function is deprecated and will be removed in a "
+91	        "future release.\n"
+92	        "To perform post training quantization (PTQ) or quantization aware training (QAT),"
+
+--------------------------------------------------
+>> Issue: [B839:pool] multiprocessing.Pool
+   Severity: High   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/torch/extensions/__init__.py:102
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b839_pool.html
+101	                    warnings.filterwarnings("ignore", message="TORCH_CUDA_ARCH_LIST is not set")
+102	                    pool = ThreadPool(processes=1)
+103	                    async_result = pool.apply_async(self._loader.load)
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/torch/extensions/__init__.py:107
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+106	                msg = textwrap.dedent(
+107	                    f"""\
+108	                    The extension load function failed to execute within {timeout} seconds.
+109	                    This may be due to leftover lock files from the PyTorch C++ extension build process.
+110	                    If this is the case, running the following command should help:
+111	                        rm -rf {self._loader.get_build_dir()}
+112	                    For a machine with poor performance, you may try increasing the time limit by setting the environment variable:
+113	                        {EXTENSION_LOAD_TIMEOUT_ENV_VAR}=180
+114	                    Or disable timeout by set:
+115	                        {EXTENSION_LOAD_TIMEOUT_ENV_VAR}=0
+116	                    For more information, see FAQ entry at: https://github.com/openvinotoolkit/nncf/blob/develop/docs/FAQ.md#importing-anything-from-nncftorch-hangs
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/torch/initialization.py:92
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+91	        msg = (
+92	            "Could not deduce the forward arguments from the initializing dataloader output.\n"
+93	            "By default it is assumed that the data loader used for initialize "
+94	            "produces a tuple/list of (*model_input*, *ground_truth*) and that no special "
+95	            "forward arguments have to be set during init. If this is not the case, then instead "
+96	            "of your regular data loader you need to pass a specialized version of "
+97	            "PTInitializingDataLoader that returns a general (args, kwargs) tuple for your "
+98	            "model to be called with at each __next__ call.\n"
+99	            "See https://github.com/openvinotoolkit/nncf/blob/develop/docs/FAQ.md#pt_init_dataloader for "
+100	            "an example of how to do this this in your code."
+101	        )
+102	        raise NotImplementedError(msg)
+103	    return data_loader
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/torch/model_creation.py:109
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+108	    warning_deprecated(
+109	        "The 'nncf.torch.create_compressed_model' function is deprecated and will be removed in a future release.\n"
+110	        "To perform post training quantization (PTQ) or quantization aware training (QAT),"
+111	        " use the nncf.quantize() API:\n"
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/torch/quantization/debug_interface.py:56
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+55	        if self.scale_dump_dir.exists():
+56	            shutil.rmtree(str(self.scale_dump_dir))
+57	        self.scale_dump_dir.mkdir(parents=True, exist_ok=True)
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/nncf-2.16.0/nncf-2.16.0/nncf/torch/quantization/extensions.py:99
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+98	            msg = (
+99	                "CUDA is available for PyTorch, but NNCF could not compile "
+100	                "GPU quantization extensions. Make sure that you have installed CUDA development "
+101	                "tools (see https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html for "
+102	                "guidance) and that 'nvcc' is available on your system's PATH variable.\n"
+103	            )
+104	            raise nncf.InstallationError(msg) from e
+105	
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 87905
+	Total lines skipped (#nosec): 5
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 9.0
+		High: 4.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 13.0
+		High: 0.0
+Files skipped (0):

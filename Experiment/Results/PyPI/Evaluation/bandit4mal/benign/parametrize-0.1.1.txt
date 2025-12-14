@@ -1,0 +1,55 @@
+Run started:2025-05-25 13:41:56.381508
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/parametrize-0.1.1/parametrize-0.1.1/setup.py:14
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+13	    'description': 'Drop-in @pytest.mark.parametrize replacement working with unittest.TestCase',
+14	    'long_description': '[![CI](https://github.com/MrMrRobat/parametrize/workflows/CI/badge.svg?event=push)](https://github.com/MrMrRobat/parametrize/actions?query=event%3Apush+branch%3Amaster+workflow%3ACI)\n[![PyPi](https://img.shields.io/pypi/v/parametrize.svg)](https://pypi.python.org/pypi/parametrize)\n[![Python Versions](https://img.shields.io/pypi/pyversions/parametrize.svg)](https://github.com/MrMrRobat/parametrize)\n[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)\n\n## Drop-in `@pytest.mark.parametrize` replacement working with `unittest.TestCase`\n\n### Why?\nYou want to start using `@pytest.mark.parametrize`, but can\'t simply drop `unittest.TestCase` because you have tons of `self.assert`\'s, `setUp`\'s `tearDown`\'s to rewrite?\n\nWith `@parametrize` you can start parameterizing your tests now, and get rid of `unittest.TestCase` later if needed.\n\n## Usage\n### Simple example from [pytest docs](https://docs.pytest.org/en/6.2.x/parametrize.html) adapted to unittest\n```python\nimport unittest\nfrom parametrize import parametrize\n\nclass TestSomething(unittest.TestCase):\n\n    @parametrize(\'test_input,expected\', [("3+5", 8), ("2+4", 6)])\n    def test_eval(self, test_input, expected):\n        self.assertEqual(expected, eval(test_input))\n```\n```py\n$ python -m unittest test.py -v\ntest_eval[2+4-6] (test.TestSomething) ... ok\ntest_eval[3+5-8] (test.TestSomething) ... ok\ntest_eval[6*9-42] (test.TestSomething) ... FAIL\n\n======================================================================\nFAIL: test_eval[6*9-42] (test.TestSomething)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File "parametrize/parametrize.py", line 261, in parametrized_method\n    return parametrized_func(*args, **kwargs)\n  File "test.py", line 8, in test_eval\n    self.assertEqual(expected, eval(test_input))\nAssertionError: 42 != 54\n\n----------------------------------------------------------------------\nRan 3 tests in 0.001s\n\nFAILED (failures=1)\n```\n##### You don\'t need to use additional decorators, custom base classes or metaclasses.\n\n### Stacking parametrize decorators:\n```python\nimport unittest\nfrom parametrize import parametrize\n\nclass TestSomething(unittest.TestCase):\n    \n    @parametrize("x", [0, 1])\n    @parametrize("y", [2, 3])\n    def test_foo(self, x, y):\n        pass\n```\n`test_foo` will be called with: `(x=0, y=2)`, `(x=1, y=2)`, `(x=0, y=3)`, and `(x=1, y=3)`:\n```python\n$ python -m unittest test.py -v\ntest_foo[2-0] (test.TestSomething) ... ok\ntest_foo[2-1] (test.TestSomething) ... ok\ntest_foo[3-0] (test.TestSomething) ... ok\ntest_foo[3-1] (test.TestSomething) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.000s\n\nOK\n```\n##### Note: even though the tests are always generated in the same order, the execution order is not guaranteed\n\n\n## Compatibility \nAny `@parametrize` decorator can be converted to `@pytest.mark.parametrize` just by changing its name. \n`@pytest.mark.parametrize` decorator can be converted to `@parametrize` as long as `pytest.param`, `indirect`, `ids` and `scope` are not used.\n\n`@parametrize` works with both `unittest` and `pytest`. However, `pytest` is recommended due to [limitations when using unittest in cli](#parametrized-method-can-be-ran-from-command-line-only-via-pytest). \n\nParametrized tests are properly detected and handled by PyCharm. They are displayed as if they were parametrized with `@pytest.mark.parametrize`.\n\n\n## Limitations\nSince `@parametrize` does some kind of magic under the hood, there are some limitations you need to consider.\nIt\'s likely you will never face most of them, but if you will, `@parametrize` will let you know with an error:\n\n- ### All parametrization must be done via decorators\n    :white_check_mark: OK\n    ```python\n    @parametrize(\'a\', (1, 2))\n    def f(a):\n        ...\n    ```   \n    :x: Won\'t work:\n    ```python\n    def f(a):\n        ...\n  \n    parametrize(\'a\', (1, 2))(func)\n    ```\n    ```py\n    RuntimeError: Unable to find any parametrizes in decorators, please rewrite decorator name to match any of detected names @{\'parametrize\'}\n    ```\n    \n- ### All other decorators must be defined before parametrize decorators\n    :white_check_mark: OK:\n    ```py\n    @parametrize("a", (1, 2))\n    @parametrize("b", (2, 3))\n    @mock.patch(f"{__name__}.bar", "foo")\n    def f(a, b):\n        return a, b\n    ```\n    :x: Won\'t work:\n    ```python\n    @mock.patch(f"{__name__}.bar", "foo")\n    @parametrize("a", (1, 2))\n    @parametrize("b", (2, 3))\n    def f(a, b):\n        return a, b\n    ```\n    ```py\n    TypeError: @mock.patch(f"{__name__}.bar", "foo") must be defined before any of @{\'parametrize\'} decorators\n    ```\n\n- ### If you assign parametrized decorator to variable, it must be accessible from `locals()` or `globals()` namespaces:\n    :white_check_mark: OK:\n    ```py\n    a_parameters = parametrize("a", (4, 5))  # defined in module\n    def func():  \n        class TestSomething:\n            b_parameters = parametrize("b", (1, 2, 3))\n  \n            @b_parameters  # b_parameters found in locals()\n            @a_parameters  # a_parameters found in globals()\n            def test_method(self, a, b):\n                ...\n    ```\n    :x: Won\'t work:\n    ```py\n    def func():\n        # defined in function scope\n        a_parameters = parametrize("a", (4, 5))\n    \n        class TestSomething:\n            print(\'a_parameters\' in {**globals(), **locals()})  # False\n    \n            @a_parameters  # accessed in class body scope\n            def test_method(self, a, b):\n                ...\n    ```\n    ```py\n    RuntimeError: Unable to find any parametrizes in decorators, please rewrite decorator name to match any of detected names @{\'parametrize\'}  \n    ```\n\n- ### Parametrized method can be ran from command line only via pytest:\n    `$ cat test.py`\n    ```py\n    import unittest\n    from parametrize import parametrize\n    \n    class TestSomething(unittest.TestCase):\n        @parametrize(\'a\', (1, 2))\n        def test_something(self, a):\n            self.assertIsInstance(a, int)\n    ```\n    :white_check_mark: OK:\n    \n    `$ pytest test.py::TestSomething::test_something -v`\n    ```py\n     ...    \n     test.py::TestSomething.test_something[1] ✓                                       50% █████     \n     test.py::TestSomething.test_something[2] ✓                                      100% ██████████\n    \n    Results (0.07s):\n           2 passed\n    ```\n    :x: Won\'t work:\n    \n    `$ python -m unittest test.TestSomething.test_something`\n    ```py\n    Traceback (most recent call last):\n      ...\n    TypeError: don\'t know how to make test from: test_something[...]\n    ```\n- ### `@parametrize` cannot be used in interactive environments like REPL (It works in IPython though)\n- ### `@parametrize` cannot be used in cythonized code  \n',
+15	    'author': 'MrMrRobat',
+16	    'author_email': 'appkiller16@gmail.com',
+17	    'maintainer': None,
+18	    'maintainer_email': None,
+19	    'url': 'https://github.com/MrMrRobat/parametrize/',
+20	    'packages': packages,
+21	    'package_data': package_data,
+22	    'python_requires': '>=3.6.2,<4.0.0',
+23	}
+24	
+25	
+26	setup(**setup_kwargs)
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/parametrize-0.1.1/parametrize-0.1.1/setup.py:19
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+18	    'maintainer_email': None,
+19	    'url': 'https://github.com/MrMrRobat/parametrize/',
+20	    'packages': packages,
+21	    'package_data': package_data,
+22	    'python_requires': '>=3.6.2,<4.0.0',
+23	}
+24	
+25	
+26	setup(**setup_kwargs)
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 278
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+Files skipped (0):

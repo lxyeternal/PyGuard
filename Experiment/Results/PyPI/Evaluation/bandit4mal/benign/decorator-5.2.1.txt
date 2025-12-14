@@ -1,0 +1,1403 @@
+Run started:2025-05-25 12:48:38.274482
+
+Test results:
+>> Issue: [B800:exec_used] exec
+   Severity: Medium   Confidence: High
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/decorator-5.2.1/decorator-5.2.1/src/decorator.py:161
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b800_exec_used.html
+160	            code = compile(src, filename, 'single')
+161	            exec(code, evaldict)
+162	        except Exception:
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/decorator-5.2.1/decorator-5.2.1/tests/documentation.py:11
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+10	
+11	doc = r"""# Decorators for Humans
+12	
+13	|Author | Michele Simionato|
+14	|---|---|
+15	|E-mail | michele.simionato@gmail.com|
+16	|Version| $VERSION ($DATE)|
+17	|Supports| Python 3.7, 3.8, 3.9, 3.10, 3.11, 3.12|
+18	|Download page| https://pypi.org/project/decorator/$VERSION|
+19	|Installation| ``pip install decorator``|
+20	|License | BSD license|
+21	
+22	## Introduction
+23	
+24	The ``decorator`` module is over ten years old, but still alive and
+25	kicking. It is used by several frameworks (IPython, scipy, authkit,
+26	pylons, pycuda, sugar, ...) and has been stable for a *long* time. It
+27	is your best option if you want to preserve the signature of decorated
+28	functions in a consistent way across Python releases. Versions 5.X
+29	supports Python versions greater than 3.4, versions 4.X supports Python
+30	versions back to 2.6; versions 3.X are able to support even Python 2.5 and
+31	2.4.
+32	
+33	## What's New in version 5
+34	
+35	Version 5 of the decorator module features a major simplification of
+36	the code base made possible by dropping support for Python releases
+37	older than 3.5. From that version the ``Signature`` object works well
+38	enough that it is possible to fix the signature of a decorated
+39	function without resorting to ``exec`` tricks. The simplification
+40	has a very neat advantage: in case of exceptions raised in decorated
+41	functions the traceback is nicer than it used to be. Moreover, it is
+42	now possible to mimic the behavior of decorators defined with
+43	``functool.wraps``: see the section about the ``kwsyntax`` flag below.
+44	
+45	## What's New in version 4
+46	
+47	- **New documentation**
+48	  There is now a single manual for all Python versions, so I took the
+49	  opportunity to overhaul the documentation.
+50	  Even if you are a long-time user, you may want to revisit the docs, since
+51	  several examples have been improved.
+52	
+53	- **Packaging improvements**
+54	  The code is now also available in wheel format. Integration with
+55	  setuptools has improved and you can run the tests with the command
+56	  ``python setup.py test`` too.
+57	
+58	- **Code changes**
+59	  A new utility function ``decorate(func, caller)`` has been added.
+60	  It does the same job that was performed by the older
+61	  ``decorator(caller, func)``. The old functionality is now deprecated
+62	  and no longer documented, but still available for now.
+63	
+64	- **Multiple dispatch**
+65	  The decorator module now includes an implementation of generic
+66	  functions (sometimes called "multiple dispatch functions").
+67	  The API is designed to mimic ``functools.singledispatch`` (added
+68	  in Python 3.4), but the implementation is much simpler.
+69	  Moreover, all decorators involved preserve the signature of the
+70	  decorated functions. For now, this exists mostly to demonstrate
+71	  the power of the module. In the future it could be enhanced/optimized.
+72	  In any case, it is very short and compact (less then 100 lines), so you
+73	  can extract it for your own use. Take it as food for thought.
+74	
+75	- **Python 3.5 coroutines**
+76	  From version 4.1 it is possible to decorate coroutines, i.e. functions
+77	  defined with the `async def` syntax, and to maintain the
+78	  `inspect.iscoroutinefunction` check working for the decorated function.
+79	
+80	- **Decorator factories**
+81	  From version 4.2 there is facility to define factories of decorators in
+82	  a simple way, a feature requested by the users since a long time.
+83	
+84	## Usefulness of decorators
+85	
+86	Python decorators are an interesting example of why syntactic sugar
+87	matters. In principle, their introduction in Python 2.4 changed
+88	nothing, since they did not provide any new functionality which was not
+89	already present in the language. In practice, their introduction has
+90	significantly changed the way we structure our programs.
+91	I believe the change is for the best, and that decorators are a great
+92	idea since:
+93	
+94	* decorators help reducing boilerplate code;
+95	* decorators help separation of concerns;
+96	* decorators enhance readability and maintenability;
+97	* decorators are explicit.
+98	
+99	Still, as of now, writing custom decorators correctly requires
+100	some experience and it is not as easy as it could be. For instance,
+101	typical implementations of decorators involve nested functions, and
+102	we all know that flat is better than nested.
+103	
+104	The aim of the ``decorator`` module it to simplify the usage of
+105	decorators for the average programmer, and to popularize decorators by
+106	showing various non-trivial examples. Of course, as all techniques,
+107	decorators can be abused (I have seen that) and you should not try to
+108	solve every problem with a decorator, just because you can.
+109	
+110	You may find the source code for all the examples
+111	discussed here in the ``documentation.py`` file, which contains
+112	the documentation you are reading in the form of doctests.
+113	
+114	## Definitions
+115	
+116	Technically speaking, any Python object which can be called with one argument
+117	can be used as a decorator. However, this definition is somewhat too large
+118	to be really useful. It is more convenient to split the generic class of
+119	decorators in two subclasses:
+120	
+121	1. **signature-preserving decorators**, callable objects which accept
+122	    a function as input and return a function as output, *with the
+123	    same signature*
+124	
+125	2. **signature-changing** decorators, i.e. decorators
+126	    which change the signature of their input function, or decorators
+127	    that return non-callable objects
+128	
+129	Signature-changing decorators have their use: for instance, the
+130	builtin classes ``staticmethod`` and ``classmethod`` are in this
+131	group. They take functions and return descriptor objects which
+132	are neither functions, nor callables.
+133	
+134	Still, signature-preserving decorators are more common, and easier
+135	to reason about. In particular, they can be composed together,
+136	whereas other decorators generally cannot.
+137	
+138	Writing signature-preserving decorators from scratch is not that
+139	obvious, especially if one wants to define proper decorators that
+140	can accept functions with any signature. A simple example will clarify
+141	the issue.
+142	
+143	## Statement of the problem
+144	
+145	A very common use case for decorators is the memoization of functions.
+146	A ``memoize`` decorator works by caching
+147	the result of the function call in a dictionary, so that the next time
+148	the function is called with the same input parameters the result is retrieved
+149	from the cache and not recomputed.
+150	
+151	There are many implementations of ``memoize`` in
+152	http://www.python.org/moin/PythonDecoratorLibrary,
+153	but they do not preserve the signature. In recent versions of
+154	Python you can find a sophisticated ``lru_cache`` decorator
+155	in the standard library's ``functools``. Here I am just
+156	interested in giving an example.
+157	
+158	Consider the following simple implementation (note that it is
+159	generally impossible to *correctly* memoize something
+160	that depends on non-hashable arguments):
+161	
+162	$$memoize_uw
+163	
+164	Here I used the functools.update_wrapper_ utility, which was added
+165	in Python 2.5 to simplify the writing of decorators.
+166	(Previously, you needed to manually copy the function attributes
+167	``__name__``, ``__doc__``, ``__module__``, and ``__dict__``
+168	to the decorated function by hand).
+169	
+170	This works insofar as the decorator accepts functions with generic signatures.
+171	Unfortunately, it is *not* a signature-preserving decorator, since
+172	``memoize_uw`` generally returns a function with a *different signature*
+173	from the original.
+174	
+175	Consider for instance the following case:
+176	
+177	$$f1
+178	
+179	Here, the original function takes a single argument named ``x``,
+180	but the decorated function takes any number of arguments and
+181	keyword arguments:
+182	
+183	```python
+184	>>> from inspect import getfullargspec
+185	>>> print(getfullargspec(f1))
+186	FullArgSpec(args=[], varargs='args', varkw='kw', defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={})
+187	
+188	```
+189	
+190	This means that introspection tools like ``getfullargspec`` will give
+191	you false information about the signature of ``f1`` This is pretty bad:
+192	``getfullargspec`` says that the function accepts the generic
+193	signature ``*args, **kw``, but calling the function with more than one
+194	argument raises an error:
+195	
+196	```python
+197	>>> f1(0, 1) # doctest: +IGNORE_EXCEPTION_DETAIL
+198	Traceback (most recent call last):
+199	   ...
+200	TypeError: f1() takes exactly 1 positional argument (2 given)
+201	
+202	```
+203	
+204	Notice that ``pydoc`` will give the right signature, but only in Python
+205	versions greater than 3.5.
+206	
+207	## The solution
+208	
+209	The solution is to provide a generic factory of generators, which
+210	hides the complexity of making signature-preserving decorators
+211	from the application programmer. The ``decorate`` function in
+212	the ``decorator`` module is such a factory:
+213	
+214	```python
+215	>>> from decorator import decorate
+216	
+217	```
+218	
+219	``decorate`` takes two arguments:
+220	
+221	1. a caller function describing the functionality of the decorator, and
+222	
+223	2. a function to be decorated.
+224	
+225	The caller function must have signature ``(f, *args, **kw)``, and it
+226	must call the original function ``f`` with arguments ``args`` and ``kw``,
+227	implementing the wanted capability (in this case, memoization):
+228	
+229	$$_memoize
+230	
+231	Now, you can define your decorator as follows:
+232	
+233	$$memoize
+234	
+235	The difference from the nested function approach of ``memoize_uw``
+236	is that the decorator module forces you to lift the inner function
+237	to the outer level. Moreover, you are forced to explicitly pass the
+238	function you want to decorate; there are no closures.
+239	
+240	Here is a test of usage:
+241	
+242	```python
+243	>>> @memoize
+244	... def heavy_computation():
+245	...     time.sleep(2)
+246	...     return "done"
+247	
+248	>>> print(heavy_computation()) # the first time it will take 2 seconds
+249	done
+250	
+251	>>> print(heavy_computation()) # the second time it will be instantaneous
+252	done
+253	
+254	```
+255	
+256	The signature of ``heavy_computation`` is the one you would expect:
+257	
+258	```python
+259	>>> print(getfullargspec(heavy_computation))
+260	FullArgSpec(args=[], varargs=None, varkw=None, defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={})
+261	
+262	```
+263	
+264	## A ``trace`` decorator
+265	
+266	Here is an example of how to define a simple ``trace`` decorator,
+267	which prints a message whenever the traced function is called:
+268	
+269	$$_trace
+270	
+271	$$trace
+272	
+273	Here is an example of usage:
+274	
+275	```python
+276	>>> @trace
+277	... def f1(x):
+278	...     pass
+279	
+280	```
+281	
+282	It is immediate to verify that ``f1`` works...
+283	
+284	```python
+285	>>> f1(0)
+286	calling f1 with args (0,), {}
+287	
+288	```
+289	
+290	...and it that it has the correct signature:
+291	
+292	```python
+293	>>> print(getfullargspec(f1))
+294	FullArgSpec(args=['x'], varargs=None, varkw=None, defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={})
+295	
+296	```
+297	
+298	The decorator works with functions of any signature:
+299	
+300	```python
+301	>>> @trace
+302	... def f(x, y=1, *args, **kw):
+303	...     pass
+304	
+305	>>> f(0, 3)
+306	calling f with args (0, 3), {}
+307	
+308	>>> print(getfullargspec(f))
+309	FullArgSpec(args=['x', 'y'], varargs='args', varkw='kw', defaults=(1,), kwonlyargs=[], kwonlydefaults=None, annotations={})
+310	
+311	```
+312	
+313	## Function annotations
+314	
+315	Python 3 introduced the concept of [function annotations](
+316	http://www.python.org/dev/peps/pep-3107/): the ability
+317	to annotate the signature of a function with additional information,
+318	stored in a dictionary named ``__annotations__``. The ``decorator`` module
+319	(starting from release 3.3) will understand and preserve these annotations.
+320	
+321	Here is an example:
+322	
+323	```python
+324	>>> @trace
+325	... def f(x: 'the first argument', y: 'default argument'=1, z=2,
+326	...       *args: 'varargs', **kw: 'kwargs'):
+327	...     pass
+328	
+329	```
+330	
+331	In order to introspect functions with annotations, one needs
+332	``inspect.getfullargspec`` (introduced in Python 3, then
+333	deprecated in Python 3.5, then undeprecated in Python 3.6):
+334	
+335	```python
+336	>>> from inspect import getfullargspec
+337	>>> argspec = getfullargspec(f)
+338	>>> argspec.args
+339	['x', 'y', 'z']
+340	>>> argspec.varargs
+341	'args'
+342	>>> argspec.varkw
+343	'kw'
+344	>>> argspec.defaults
+345	(1, 2)
+346	>>> argspec.kwonlyargs
+347	[]
+348	>>> argspec.kwonlydefaults
+349	
+350	```
+351	
+352	You can check that the ``__annotations__`` dictionary is preserved:
+353	
+354	```python
+355	>>> f.__annotations__ is f.__wrapped__.__annotations__
+356	True
+357	
+358	```
+359	
+360	Here ``f.__wrapped__`` is the original undecorated function.
+361	This attribute exists for consistency with the behavior of
+362	``functools.update_wrapper``.
+363	
+364	Another attribute copied from the original function is ``__qualname__``,
+365	the qualified name. This attribute was introduced in Python 3.3.
+366	
+367	## ``decorator.decorator``
+368	
+369	It can become tedious to write a caller function (like the above
+370	``_trace`` example) and then a trivial wrapper
+371	(``def trace(f): return decorate(f, _trace)``) every time.
+372	Not to worry!  The ``decorator`` module provides an easy shortcut
+373	to convert the caller function into a signature-preserving decorator.
+374	
+375	It is the ``decorator`` function:
+376	
+377	```python
+378	>>> from decorator import decorator
+379	
+380	```
+381	The ``decorator`` function can be used as a signature-changing
+382	decorator, just like ``classmethod`` and ``staticmethod``.
+383	But ``classmethod`` and ``staticmethod`` return generic
+384	objects which are not callable. Instead, ``decorator`` returns
+385	signature-preserving decorators (i.e. functions with a single argument).
+386	
+387	For instance, you can write:
+388	
+389	```python
+390	>>> @decorator
+391	... def trace(f, *args, **kw):
+392	...     kwstr = ', '.join('%r: %r' % (k, kw[k]) for k in sorted(kw))
+393	...     print("calling %s with args %s, {%s}" % (f.__name__, args, kwstr))
+394	...     return f(*args, **kw)
+395	
+396	```
+397	
+398	And ``trace`` is now a decorator!
+399	
+400	```python
+401	>>> trace # doctest: +ELLIPSIS
+402	<function trace at 0x...>
+403	
+404	```
+405	
+406	Here is an example of usage:
+407	
+408	```python
+409	>>> @trace
+410	... def func(): pass
+411	
+412	>>> func()
+413	calling func with args (), {}
+414	
+415	```
+416	
+417	## Mimicking the behavior of functools.wrap
+418	
+419	Often people are confused by the decorator module since, contrarily
+420	to ``functools.wraps`` in the standard library, it tries very hard
+421	to keep the semantics of the arguments: in particular, positional arguments
+422	stay positional even if they are called with the keyword argument syntax.
+423	An example will make the issue clear. Here is a simple caller
+424	
+425	$$chatty
+426	
+427	and here is a function to decorate:
+428	
+429	$$printsum
+430	
+431	In this example ``x`` and ``y`` are positional arguments (with
+432	defaults). From the caller perspective, it does not matter if the user
+433	calls them as named arguments, they will stay inside the ``args``
+434	tuple and not inside the ``kwargs`` dictionary:
+435	
+436	```python
+437	>>> printsum(y=2, x=1)
+438	(1, 2) []
+439	3
+440	
+441	```
+442	
+443	This is quite different from the behavior of ``functools.wraps``; if you
+444	define the decorator as follows
+445	
+446	$$chattywrapper
+447	
+448	you will see that calling ``printsum`` with named arguments will pass
+449	such arguments to ``kwargs``, while ``args`` will be the empty tuple.
+450	Since version 5 of the decorator module it is possible to mimic that
+451	behavior by using the ``kwsyntax`` flag:
+452	
+453	$$printsum2
+454	
+455	Here is how it works:
+456	
+457	```python
+458	>>> printsum2(y=2, x=1)
+459	() [('x', 1), ('y', 2)]
+460	3
+461	
+462	```
+463	
+464	This is exactly what the ``chattywrapper`` decorator would print:
+465	positional arguments are seen as keyword arguments, but only if the
+466	client code calls them with the keyword syntax. Otherwise they stay
+467	positional, i.e. they belongs to the ``args`` tuple and not to ``kwargs``:
+468	
+469	```python
+470	>>> printsum2(1, 2)
+471	(1, 2) []
+472	3
+473	
+474	```
+475	
+476	## Decorator factories
+477	
+478	The `decorator` function can also be used to define factories of decorators,
+479	i.e. functions returning decorators. In general you can just write something
+480	like this:
+481	
+482	```python
+483	def decfactory(param1, param2, ...):
+484	    def caller(f, *args, **kw):
+485	        return somefunc(f, param1, param2, .., *args, **kw)
+486	    return decorator(caller)
+487	```
+488	
+489	This is fully general but requires an additional level of nesting. For this
+490	reason since version 4.2 there is a facility to build decorator factories by
+491	using a single caller with default arguments:
+492	
+493	```python
+494	def caller(f, param1=default1, param2=default2, ..., *args, **kw):
+495	    return somefunc(f, param1, param2, *args, **kw)
+496	decfactory = decorator(caller)
+497	```
+498	
+499	Notice that this simplified approach *only works with default arguments*,
+500	i.e. `param1`, `param2` etc must have known defaults. Thanks to this
+501	restriction, there exists an unique default decorator, i.e. the member
+502	of the family which uses the default values for all parameters. Such
+503	decorator can be written as ``decfactory()`` with no parameters specified;
+504	moreover, as a shortcut, it is also possible to elide the parenthesis,
+505	a feature much requested by the users. For years I have been opposing
+506	the request, since having explicit parenthesis to me is more clear
+507	and less magic; however once this feature entered in decorators of
+508	the Python standard library (I am referring to the [dataclass decorator](
+509	https://www.python.org/dev/peps/pep-0557/)) I finally gave up.
+510	
+511	The example below shows how it works in practice. The goal is to
+512	convert a function relying on a blocking resource into a function
+513	returning a "busy" message if the resource is not available.
+514	This can be accomplished with a suitable family of decorators
+515	parameterize by a string, the busy message:
+516	
+517	$$blocking
+518	
+519	Functions decorated with ``blocking`` will return a busy message if
+520	the resource is unavailable, and the intended result if the resource is
+521	available. For instance:
+522	
+523	```python
+524	>>> @blocking(msg="Please wait ...")
+525	... def read_data():
+526	...     time.sleep(3) # simulate a blocking resource
+527	...     return "some data"
+528	
+529	>>> print(read_data())  # data is not available yet
+530	Please wait ...
+531	
+532	>>> time.sleep(1)
+533	>>> print(read_data())  # data is not available yet
+534	Please wait ...
+535	
+536	>>> time.sleep(1)
+537	>>> print(read_data())  # data is not available yet
+538	Please wait ...
+539	
+540	>>> time.sleep(1.1)  # after 3.1 seconds, data is available
+541	>>> print(read_data())
+542	some data
+543	
+544	```
+545	
+546	Decorator factories are most useful to framework builders. Here is an example
+547	that gives an idea of how you could manage permissions in a framework:
+548	
+549	$$Action
+550	
+551	where ``restricted`` is a decorator factory defined as follows
+552	
+553	$$restricted
+554	
+555	Notice that if you forget to use the keyword argument notation, i.e. if you
+556	write ``restricted(User)`` instead of ``restricted(user_class=User)`` you
+557	will get an error
+558	
+559	```python
+560	TypeError: You are decorating a non function: <class '__main__.User'>
+561	
+562	```
+563	
+564	Be careful!
+565	
+566	## ``decorator(cls)``
+567	
+568	The ``decorator`` facility can also produce a decorator starting
+569	from a class with the signature of a caller. In such a case the
+570	produced generator is able to convert functions into factories
+571	to create instances of that class.
+572	
+573	As an example, here is a decorator which can convert a
+574	blocking function into an asynchronous function. When
+575	the function is called, it is executed in a separate thread.
+576	
+577	(This is similar to the approach used in the ``concurrent.futures`` package.
+578	But I don't recommend that you implement futures this way; this is just an
+579	example.)
+580	
+581	$$Future
+582	
+583	The decorated function returns a ``Future`` object. It has a ``.result()``
+584	method which blocks until the underlying thread finishes and returns
+585	the final result.
+586	
+587	Here is the minimalistic usage:
+588	
+589	```python
+590	>>> @decorator(Future)
+591	... def long_running(x):
+592	...     time.sleep(.5)
+593	...     return x
+594	
+595	>>> fut1 = long_running(1)
+596	>>> fut2 = long_running(2)
+597	>>> fut1.result() + fut2.result()
+598	3
+599	
+600	```
+601	
+602	## contextmanager
+603	
+604	Python's standard library has the ``contextmanager`` decorator,
+605	which converts a generator function into a ``GeneratorContextManager``
+606	factory. For instance, if you write this...
+607	
+608	```python
+609	>>> from contextlib import contextmanager
+610	>>> @contextmanager
+611	... def before_after(before, after):
+612	...     print(before)
+613	...     yield
+614	...     print(after)
+615	
+616	```
+617	
+618	...then ``before_after`` is a factory function that returns
+619	``GeneratorContextManager`` objects, usable with the ``with`` statement:
+620	
+621	```python
+622	>>> with before_after('BEFORE', 'AFTER'):
+623	...     print('hello')
+624	BEFORE
+625	hello
+626	AFTER
+627	
+628	```
+629	
+630	Basically, it is as if the content of the ``with`` block was executed
+631	in the place of the ``yield`` expression in the generator function.
+632	
+633	In Python 3.2, ``GeneratorContextManager`` objects were enhanced with
+634	a ``__call__`` method, so that they can be used as decorators, like so:
+635	
+636	```python
+637	>>> ba = before_after('BEFORE', 'AFTER')
+638	>>>
+639	>>> @ba
+640	... def hello():
+641	...     print('hello')
+642	...
+643	>>> hello()
+644	BEFORE
+645	hello
+646	AFTER
+647	
+648	```
+649	
+650	The ``ba`` decorator basically inserts a ``with ba:`` block
+651	inside the function.
+652	
+653	However ``GeneratorContextManager`` objects do not preserve the signature of
+654	the decorated functions. The decorated ``hello`` function above will
+655	have the generic signature ``hello(*args, **kwargs)``, but fails if
+656	called with more than zero arguments.
+657	
+658	For these reasons, the `decorator` module, starting from release 3.4, offers a
+659	``decorator.contextmanager`` decorator that solves both problems,
+660	*and* works in all supported Python versions.  Its usage is identical,
+661	and factories decorated with ``decorator.contextmanager`` will return
+662	instances of ``ContextManager``, a subclass of the standard library's
+663	``contextlib.GeneratorContextManager`` class. The subclass includes
+664	an improved ``__call__`` method, which acts as a signature-preserving
+665	decorator.
+666	
+667	## The ``FunctionMaker`` class
+668	
+669	The ``decorator`` module also provides a ``FunctionMaker`` class, which
+670	is able to generate on-the-fly functions
+671	with a given name and signature from a function template
+672	passed as a string.
+673	
+674	If you're just writing ordinary decorators, then you probably won't
+675	need to use ``FunctionMaker``. But in some circumstances, it
+676	can be handy. You will see an example shortly--in
+677	the implementation of a cool decorator utility (``decorator_apply``).
+678	
+679	``FunctionMaker`` provides the ``.create`` classmethod, which
+680	accepts the *name*, *signature*, and *body* of the function
+681	you want to generate, as well as the execution environment
+682	where the function is generated by ``exec``.
+683	
+684	Here's an example:
+685	
+686	```python
+687	>>> def f(*args, **kw): # a function with a generic signature
+688	...     print(args, kw)
+689	
+690	>>> f1 = FunctionMaker.create('f1(a, b)', 'f(a, b)', dict(f=f))
+691	>>> f1(1,2)
+692	(1, 2) {}
+693	
+694	```
+695	
+696	It is important to notice that the function body is interpolated
+697	before being executed; **be careful** with the ``%`` sign!
+698	
+699	``FunctionMaker.create`` also accepts keyword arguments.
+700	The keyword arguments are attached to the generated function.
+701	This is useful if you want to set some function attributes
+702	(e.g., the docstring ``__doc__``).
+703	
+704	For debugging/introspection purposes, it may be useful to see
+705	the source code of the generated function. To do this, just
+706	pass ``addsource=True``, and the generated function will get
+707	a ``__source__`` attribute:
+708	
+709	```python
+710	>>> f1 = FunctionMaker.create(
+711	...     'f1(a, b)', 'f(a, b)', dict(f=f), addsource=True)
+712	>>> print(f1.__source__)
+713	def f1(a, b):
+714	    f(a, b)
+715	<BLANKLINE>
+716	
+717	```
+718	
+719	The first argument to ``FunctionMaker.create`` can be a string (as above),
+720	or a function. This is the most common usage, since you typically decorate
+721	pre-existing functions.
+722	
+723	If you're writing a framework, however, you may want to use
+724	``FunctionMaker.create`` directly, rather than ``decorator``, because it gives
+725	you direct access to the body of the generated function.
+726	
+727	For instance, suppose you want to instrument the ``__init__`` methods of a
+728	set of classes, by preserving their signature.
+729	(This use case is not made up. This is done by SQAlchemy, and other frameworks,
+730	too.)
+731	Here is what happens:
+732	
+733	- If first argument of ``FunctionMaker.create`` is a function,
+734	  an instance of ``FunctionMaker`` is created with the attributes
+735	  ``args``, ``varargs``, ``keywords``, and ``defaults``
+736	  (these mirror the return values of the standard library's
+737	  ``inspect.getfullargspec``).
+738	
+739	- For each item in ``args`` (a list of strings of the names of all required
+740	  arguments), an attribute ``arg0``, ``arg1``, ..., ``argN`` is also generated.
+741	
+742	- Finally, there is a ``signature`` attribute, which is a string with the
+743	  signature of the original function.
+744	
+745	**NOTE:** You should not pass signature strings with default arguments
+746	(e.g., something like ``'f1(a, b=None)'``). Just pass ``'f1(a, b)'``,
+747	followed by a tuple of defaults:
+748	
+749	```python
+750	>>> f1 = FunctionMaker.create(
+751	...     'f1(a, b)', 'f(a, b)', dict(f=f), addsource=True, defaults=(None,))
+752	>>> print(getfullargspec(f1))
+753	FullArgSpec(args=['a', 'b'], varargs=None, varkw=None, defaults=(None,), kwonlyargs=[], kwonlydefaults=None, annotations={})
+754	
+755	```
+756	
+757	## Getting the source code
+758	
+759	Internally, ``FunctionMaker.create`` uses ``exec`` to generate the
+760	decorated function. Therefore ``inspect.getsource`` will not work for
+761	decorated functions. In IPython, this means that the usual ``??`` trick
+762	will give you the (right on the spot) message ``Dynamically generated
+763	function. No source code available``.
+764	However, there is a workaround. The decorated function has the ``__wrapped__``
+765	attribute, pointing to the original function. The simplest way to get the
+766	source code is to call ``inspect.getsource`` on the undecorated function:
+767	
+768	```python
+769	>>> print(inspect.getsource(factorial.__wrapped__))
+770	@tail_recursive
+771	def factorial(n, acc=1):
+772	    "The good old factorial"
+773	    if n == 0:
+774	        return acc
+775	    return factorial(n-1, n*acc)
+776	<BLANKLINE>
+777	
+778	```
+779	
+780	## Dealing with third-party decorators
+781	
+782	Sometimes on the net you find some cool decorator that you would
+783	like to include in your code. However, more often than not, the cool
+784	decorator is not signature-preserving. What you need is an easy way to
+785	upgrade third party decorators to signature-preserving decorators...
+786	*without* having to rewrite them in terms of ``decorator``.
+787	
+788	You can use a ``FunctionMaker`` to implement that functionality as follows:
+789	
+790	$$decorator_apply
+791	
+792	``decorator_apply`` sets the generated function's ``__wrapped__`` attribute
+793	to the original function, so you can get the right source code.
+794	If you are using a Python later than 3.2, you should also set the
+795	``__qualname__`` attribute to preserve the qualified name of the original
+796	function.
+797	
+798	Notice that I am not providing this functionality in the ``decorator``
+799	module directly, since I think it is best to rewrite the decorator instead
+800	of adding another level of indirection. However, practicality
+801	beats purity, so you can add ``decorator_apply`` to your toolbox and
+802	use it if you need to.
+803	
+804	To give a good example for ``decorator_apply``, I will show a pretty slick
+805	decorator that converts a tail-recursive function into an iterative function.
+806	I have shamelessly stolen the core concept from Kay Schluehr's recipe
+807	in the Python Cookbook,
+808	http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/496691.
+809	
+810	$$TailRecursive
+811	
+812	Here the decorator is implemented as a class returning callable
+813	objects.
+814	
+815	$$tail_recursive
+816	
+817	Here is how you apply the upgraded decorator to the good old factorial:
+818	
+819	$$factorial
+820	
+821	```python
+822	>>> print(factorial(4))
+823	24
+824	
+825	```
+826	
+827	This decorator is pretty impressive, and should give you some food for
+828	thought! ;)
+829	
+830	Notice that there is no recursion limit now; you can easily compute
+831	``factorial(1001)`` (or larger) without filling the stack frame.
+832	
+833	Notice also that the decorator will *not* work on functions which
+834	are not tail recursive, such as the following:
+835	
+836	$$fact
+837	
+838	**Reminder:** A function is *tail recursive* if it does either of the
+839	following:
+840	
+841	- returns a value without making a recursive call; or,
+842	- returns directly the result of a recursive call.
+843	
+844	## Python 3.5 coroutines
+845	
+846	I am personally not using Python 3.5 coroutines yet. However, some
+847	users requested support for coroutines and since version 4.1 the
+848	decorator module has it.  You should consider the support experimental
+849	and kindly report issues if you find any.
+850	
+851	Here I will give a single example of usage. Suppose you want to log the moment
+852	a coroutine starts and the moment it stops for debugging purposes. You could
+853	write code like the following:
+854	
+855	```python
+856	import time
+857	import logging
+858	from asyncio import run, sleep, wait
+859	from decorator import decorator
+860	
+861	@decorator
+862	async def log_start_stop(coro, *args, **kwargs):
+863	    logging.info('Starting %s%s', coro.__name__, args)
+864	    t0 = time.time()
+865	    await coro(*args, **kwargs)
+866	    dt = time.time() - t0
+867	    logging.info('Ending %s%s after %d seconds', coro.__name__, args, dt)
+868	
+869	@log_start_stop
+870	async def make_task(n):
+871	    for i in range(n):
+872	        await sleep(1)
+873	
+874	if __name__ == '__main__':
+875	    logging.basicConfig(level=logging.INFO)
+876	    tasks = [make_task(3), make_task(2), make_task(1)]
+877	    run(wait(tasks))
+878	```
+879	
+880	and you will get an output like this:
+881	
+882	```bash
+883	INFO:root:Starting make_task(1,)
+884	INFO:root:Starting make_task(3,)
+885	INFO:root:Starting make_task(2,)
+886	INFO:root:Ending make_task(1,) after 1 seconds
+887	INFO:root:Ending make_task(2,) after 2 seconds
+888	INFO:root:Ending make_task(3,) after 3 seconds
+889	```
+890	
+891	This may be handy if you have trouble understanding what it going on
+892	with a particularly complex chain of coroutines. With a single line you
+893	can decorate the troubling coroutine function, understand what happens, fix the
+894	issue and then remove the decorator (or keep it if continuous monitoring
+895	of the coroutines makes sense). Notice that
+896	``inspect.iscoroutinefunction(make_task)``
+897	will return the right answer (i.e. ``True``).
+898	
+899	It is also possible to define decorators converting coroutine functions
+900	into regular functions, such as the following:
+901	
+902	```python
+903	@decorator
+904	def coro_to_func(coro, *args, **kw):
+905	    "Convert a coroutine into a function"
+906	     return run(coro(*args, **kw))
+907	```
+908	
+909	Notice the difference: the caller in ``log_start_stop`` was a coroutine
+910	function and the associate decorator was converting coroutines in coroutines;
+911	the caller in ``coro_to_func`` is a regular function and converts
+912	coroutines -> functions.
+913	
+914	## Multiple dispatch
+915	
+916	There has been talk of implementing multiple dispatch functions
+917	(i.e. "generic functions") in Python for over ten years. Last year,
+918	something concrete was done for the first time. As of Python 3.4,
+919	we have the decorator ``functools.singledispatch`` to implement generic
+920	functions!
+921	
+922	As its name implies, it is limited to *single dispatch*; in other words,
+923	it is able to dispatch on the first argument of the function only.
+924	
+925	The ``decorator`` module provides the decorator factory ``dispatch_on``,
+926	which can be used to implement generic functions dispatching on *any* argument.
+927	Moreover, it can manage dispatching on more than one argument.
+928	(And, of course, it is signature-preserving.)
+929	
+930	Here is a concrete example (from a real-life use case) where it is desiderable
+931	to dispatch on the second argument.
+932	
+933	Suppose you have an ``XMLWriter`` class, which is instantiated
+934	with some configuration parameters, and has the ``.write`` method which
+935	serializes objects to XML:
+936	
+937	$$XMLWriter
+938	
+939	Here, you want to dispatch on the *second* argument; the first is already
+940	taken by ``self``. The ``dispatch_on`` decorator factory allows you to specify
+941	the dispatch argument simply by passing its name as a string. (Note
+942	that if you misspell the name you will get an error.)
+943	
+944	The decorated function `write` is turned into a generic function (
+945	`write` is a function at the idea it is decorated; it will be turned
+946	into a method later, at class instantiation time),
+947	and it is called if there are no more specialized implementations.
+948	
+949	Usually, default functions should raise a ``NotImplementedError``, thus
+950	forcing people to register some implementation.
+951	You can perform the registration with a decorator:
+952	
+953	$$writefloat
+954	
+955	Now ``XMLWriter`` can serialize floats:
+956	
+957	```python
+958	>>> writer = XMLWriter()
+959	>>> writer.write(2.3)
+960	'<float>2.3</float>'
+961	
+962	```
+963	
+964	I could give a down-to-earth example of situations in which it is desiderable
+965	to dispatch on more than one argument--for instance, I once implemented
+966	a database-access library where the first dispatching argument was the
+967	the database driver, and the second was the database record--but here
+968	I will follow tradition, and show the time-honored Rock-Paper-Scissors example:
+969	
+970	$$Rock
+971	$$Paper
+972	$$Scissors
+973	
+974	I have added an ordinal to the Rock-Paper-Scissors classes to simplify
+975	the implementation. The idea is to define a generic function (``win(a,
+976	b)``) of two arguments corresponding to the *moves* of the first and
+977	second players. The *moves* are instances of the classes
+978	Rock, Paper, and Scissors:
+979	
+980	- Paper wins over Rock
+981	- Scissors wins over Paper
+982	- Rock wins over Scissors
+983	
+984	The function will return +1 for a win, -1 for a loss, and 0 for parity.
+985	There are 9 combinations, but combinations with the same ordinal
+986	(i.e. the same class) return 0. Moreover, by exchanging the order of the
+987	arguments, the sign of the result changes. Therefore, it is sufficient to
+988	directly specify only 3 implementations:
+989	
+990	$$win
+991	$$winRockPaper
+992	$$winPaperScissors
+993	$$winRockScissors
+994	
+995	Here is the result:
+996	
+997	```python
+998	>>> win(Paper(), Rock())
+999	1
+1000	>>> win(Scissors(), Paper())
+1001	1
+1002	>>> win(Rock(), Scissors())
+1003	1
+1004	>>> win(Paper(), Paper())
+1005	0
+1006	>>> win(Rock(), Rock())
+1007	0
+1008	>>> win(Scissors(), Scissors())
+1009	0
+1010	>>> win(Rock(), Paper())
+1011	-1
+1012	>>> win(Paper(), Scissors())
+1013	-1
+1014	>>> win(Scissors(), Rock())
+1015	-1
+1016	
+1017	```
+1018	
+1019	The point of generic functions is that they play well with subclassing.
+1020	For instance, suppose we define a ``StrongRock``, which does not lose against
+1021	Paper:
+1022	
+1023	$$StrongRock
+1024	$$winStrongRockPaper
+1025	
+1026	Then you do not need to define other implementations; they are
+1027	inherited from the parent:
+1028	
+1029	```python
+1030	>>> win(StrongRock(), Scissors())
+1031	1
+1032	
+1033	```
+1034	
+1035	You can introspect the precedence used by the dispatch algorithm by
+1036	calling ``.dispatch_info(*types)``:
+1037	
+1038	```python
+1039	>>> win.dispatch_info(StrongRock, Scissors)
+1040	[('StrongRock', 'Scissors'), ('Rock', 'Scissors')]
+1041	
+1042	```
+1043	
+1044	Since there is no direct implementation for (``StrongRock``, ``Scissors``),
+1045	the dispatcher will look at the implementation for (``Rock``, ``Scissors``)
+1046	which is available. Internally, the algorithm is doing a cross
+1047	product of the class precedence lists (or *Method Resolution Orders*,
+1048	[MRO](http://www.python.org/2.3/mro.html) for short) of ``StrongRock``
+1049	 and ``Scissors``, respectively.
+1050	
+1051	## Generic functions and virtual ancestors
+1052	
+1053	In Python, generic functions are complicated by the existence of
+1054	"virtual ancestors": superclasses which are not in the class hierarchy.
+1055	
+1056	Consider this class:
+1057	
+1058	$$WithLength
+1059	
+1060	This class defines a ``__len__`` method, and is therefore
+1061	considered to be a subclass of the abstract base class
+1062	``collections.abc.Sized`` (``collections.Sized`` on Python 2):
+1063	
+1064	```python
+1065	>>> issubclass(WithLength, collections.abc.Sized)
+1066	True
+1067	
+1068	```
+1069	
+1070	However, ``collections.abc.Sized`` is not in the MRO_ of ``WithLength``; it
+1071	is not a true ancestor. Any implementation of generic functions (even
+1072	with single dispatch) must go through some contorsion to take into
+1073	account the virtual ancestors.
+1074	
+1075	In particular, if we define a generic function...
+1076	
+1077	$$get_length
+1078	
+1079	...implemented on all classes with a length...
+1080	
+1081	$$get_length_sized
+1082	
+1083	...then ``get_length`` must be defined on ``WithLength`` instances...
+1084	
+1085	```python
+1086	>>> get_length(WithLength())
+1087	0
+1088	
+1089	```
+1090	
+1091	...even if ``collections.abc.Sized`` is not a true ancestor of ``WithLength``.
+1092	
+1093	Of course, this is a contrived example--you could just use the
+1094	builtin ``len``--but you should get the idea.
+1095	
+1096	Since in Python it is possible to consider any instance of ``ABCMeta``
+1097	as a virtual ancestor of any other class (it is enough to register it
+1098	as ``ancestor.register(cls)``), any implementation of generic functions
+1099	must be aware of the registration mechanism.
+1100	
+1101	For example, suppose you are using a third-party set-like class, like
+1102	the following:
+1103	
+1104	$$SomeSet
+1105	
+1106	Here, the author of ``SomeSet`` made a mistake by inheriting from
+1107	``collections.abc.Sized`` (instead of ``collections.abc.Set``).
+1108	
+1109	This is not a problem. You can register *a posteriori*
+1110	``collections.abc.Set`` as a virtual ancestor of ``SomeSet``:
+1111	
+1112	```python
+1113	>>> _ = collections.abc.Set.register(SomeSet)
+1114	>>> issubclass(SomeSet, collections.abc.Set)
+1115	True
+1116	
+1117	```
+1118	
+1119	Now, let's define an implementation of ``get_length`` specific to set:
+1120	
+1121	$$get_length_set
+1122	
+1123	The current implementation (and ``functools.singledispatch`` too)
+1124	is able to discern that a ``Set`` is a ``Sized`` object, by looking at
+1125	the class registry, so it uses the more specific implementation for ``Set``:
+1126	
+1127	```python
+1128	>>> get_length(SomeSet())  # NB: the implementation for Sized would give 0
+1129	1
+1130	
+1131	```
+1132	
+1133	Sometimes it is not clear how to dispatch. For instance, consider a
+1134	class ``C`` registered both as ``collections.abc.Iterable`` and
+1135	``collections.abc.Sized``, and defines a generic function ``g`` with
+1136	implementations for both ``collections.abc.Iterable`` *and*
+1137	``collections.abc.Sized``:
+1138	
+1139	$$singledispatch_example1
+1140	
+1141	It is impossible to decide which implementation to use, since the ancestors
+1142	are independent. The following function will raise a ``RuntimeError``
+1143	when called. This is consistent with the "refuse the temptation to guess"
+1144	philosophy. ``functools.singledispatch`` would raise a similar error.
+1145	
+1146	It would be easy to rely on the order of registration to decide the
+1147	precedence order. This is reasonable, but also fragile:
+1148	
+1149	- if, during some refactoring, you change the registration order by mistake,
+1150	  a different implementation could be taken;
+1151	- if implementations of the generic functions are distributed across modules,
+1152	  and you change the import order, a different implementation could be taken.
+1153	
+1154	So the ``decorator`` module prefers to raise an error in the face of ambiguity.
+1155	This is the same approach taken by the standard library.
+1156	
+1157	However, it should be noted that the *dispatch algorithm* used by the decorator
+1158	module is different from the one used by the standard library, so in certain
+1159	cases you will get different answers. The difference is that
+1160	``functools.singledispatch`` tries to insert the virtual ancestors *before* the
+1161	base classes, whereas ``decorator.dispatch_on`` tries to insert them *after*
+1162	the base classes.
+1163	
+1164	Here's an example that shows the difference:
+1165	
+1166	$$singledispatch_example2
+1167	
+1168	If you play with this example and replace the ``singledispatch`` definition
+1169	with ``functools.singledispatch``, the assertion will break: ``g`` will return
+1170	``"container"`` instead of ``"s"``, because ``functools.singledispatch``
+1171	will insert the ``Container`` class right before ``S``.
+1172	
+1173	Notice that here I am not making any bold claim such as "the standard
+1174	library algorithm is wrong and my algorithm is right" or vice versa. It
+1175	just point out that there are some subtle differences. The only way to
+1176	understand what is really happening here is to scratch your head by
+1177	looking at the implementations. I will just notice that
+1178	``.dispatch_info`` is quite essential to see the class precedence
+1179	list used by algorithm:
+1180	
+1181	```python
+1182	>>> g, V = singledispatch_example2()
+1183	>>> g.dispatch_info(V)
+1184	[('V',), ('Sized',), ('S',), ('Container',)]
+1185	
+1186	```
+1187	
+1188	The current implementation does not implement any kind of cooperation
+1189	between implementations. In other words, nothing is akin either to
+1190	call-next-method in Lisp, or to ``super`` in Python.
+1191	
+1192	Finally, let me notice that the decorator module implementation does
+1193	not use any cache, whereas the ``singledispatch`` implementation does.
+1194	
+1195	## Caveats and limitations
+1196	
+1197	In the present implementation, decorators generated by ``decorator``
+1198	can only be used on user-defined Python functions, methods or coroutines.
+1199	I have no interest in decorating generic callable objects. If you want to
+1200	decorate things like classmethods/staticmethods and general callables -
+1201	which I will never support in the decorator module - I suggest you
+1202	to look at the [wrapt](https://wrapt.readthedocs.io/en/latest/)
+1203	project by Graeme Dumpleton.
+1204	
+1205	Since version 5 the ``decorator`` module uses the ``inspect.Signature``
+1206	object in the standard library. Unfortunately, for legacy reasons, some
+1207	applications introspect decorated functions by using low-level entities like
+1208	the ``__code__`` object and not signature objects. An example will make
+1209	the issue clear:
+1210	
+1211	```python
+1212	>>> def f(a, b): pass
+1213	>>> f_dec = decorator(_trace)(f)
+1214	>>> f_dec.__code__.co_argcount
+1215	0
+1216	>>> f_dec.__code__.co_varnames
+1217	('args', 'kw')
+1218	
+1219	```
+1220	This is not what one would expect: the `argcount` should be 2 since
+1221	the original functions has two arguments and the `varnames` should be
+1222	`a` and `b`. The only way to fix the issue is to go back to an implementation
+1223	of the decorator using ``exec``, which is provided for convenience since
+1224	version 5.1:
+1225	
+1226	```python
+1227	>>> from decorator import decoratorx
+1228	>>> f_dec = decoratorx(_trace)(f)
+1229	>>> f_dec.__code__.co_argcount
+1230	2
+1231	>>> f_dec.__code__.co_varnames
+1232	('a', 'b')
+1233	
+1234	```
+1235	Rather than using `decoratorx`, you should fix your introspection
+1236	routines to use ``inspect.Signature`` without fiddling with the
+1237	``__code__`` object.
+1238	
+1239	There is a strange quirk when decorating functions with keyword
+1240	arguments, if one of the arguments has the same name used in the
+1241	caller function for the first argument. The quirk was reported by
+1242	David Goldstein.
+1243	
+1244	Here is an example where it is manifest:
+1245	
+1246	```python
+1247	>>> @memoize
+1248	... def getkeys(**kw):
+1249	...     return kw.keys()
+1250	
+1251	>>> getkeys(func='a') # doctest: +ELLIPSIS
+1252	Traceback (most recent call last):
+1253	 ...
+1254	TypeError: _memoize() got multiple values for ... 'func'
+1255	
+1256	```
+1257	
+1258	The error message looks really strange... until you realize that
+1259	the caller function `_memoize` uses `func` as first argument,
+1260	so there is a confusion between the positional argument and the
+1261	keyword arguments.
+1262	
+1263	The solution is to change the name of the first argument in `_memoize`,
+1264	or to change the implementation like so:
+1265	
+1266	```python
+1267	
+1268	def _memoize(*all_args, **kw):
+1269	    func = all_args[0]
+1270	    args = all_args[1:]
+1271	    if kw:  # frozenset is used to ensure hashability
+1272	        key = args, frozenset(kw.items())
+1273	    else:
+1274	        key = args
+1275	    cache = func.cache  # attribute added by memoize
+1276	    if key not in cache:
+1277	        cache[key] = func(*args, **kw)
+1278	    return cache[key]
+1279	```
+1280	
+1281	This avoids the need to name the first argument, so the problem
+1282	simply disappears. This is a technique that you should keep in mind
+1283	when writing decorators for functions with keyword arguments. Also,
+1284	notice that lately I have come to believe that decorating functions with
+1285	keyword arguments is not such a good idea, and you may want not to do
+1286	that.
+1287	
+1288	The implementation is such that the decorated function makes
+1289	a (shallow) copy of the original function dictionary:
+1290	
+1291	```python
+1292	>>> def f(): pass # the original function
+1293	>>> f.attr1 = "something" # setting an attribute
+1294	>>> f.attr2 = "something else" # setting another attribute
+1295	
+1296	>>> traced_f = trace(f) # the decorated function
+1297	
+1298	>>> traced_f.attr1
+1299	'something'
+1300	>>> traced_f.attr2 = "something different" # setting attr
+1301	>>> f.attr2 # the original attribute did not change
+1302	'something else'
+1303	
+1304	```
+1305	
+1306	Finally, you should be aware of the performance penalty of decorators.
+1307	The worse case is shown by the following example:
+1308	
+1309	```bash
+1310	 $ cat performance.sh
+1311	 python3 -m timeit -s "
+1312	 from decorator import decorator
+1313	
+1314	 @decorator
+1315	 def do_nothing(func, *args, **kw):
+1316	     return func(*args, **kw)
+1317	
+1318	 @do_nothing
+1319	 def f():
+1320	     pass
+1321	 " "f()"
+1322	
+1323	 python3 -m timeit -s "
+1324	 def f():
+1325	     pass
+1326	 " "f()"
+1327	
+1328	```
+1329	On my laptop, using the ``do_nothing`` decorator instead of the
+1330	plain function is five times slower:
+1331	
+1332	```bash
+1333	 $ bash performance.sh
+1334	 1000000 loops, best of 3: 1.39 usec per loop
+1335	 1000000 loops, best of 3: 0.278 usec per loop
+1336	```
+1337	
+1338	Of course, a real life function probably does something more useful
+1339	than the function ``f`` here, so the real life performance penalty
+1340	*could* be negligible.  As always, the only way to know if there is a
+1341	penalty in your specific use case is to measure it.
+1342	
+1343	## LICENSE (2-clause BSD)
+1344	
+1345	Copyright (c) 2005-2025, Michele Simionato
+1346	All rights reserved.
+1347	
+1348	Redistribution and use in source and binary forms, with or without
+1349	modification, are permitted provided that the following conditions are
+1350	met:
+1351	
+1352	  Redistributions of source code must retain the above copyright
+1353	  notice, this list of conditions and the following disclaimer.
+1354	  Redistributions in bytecode form must reproduce the above copyright
+1355	  notice, this list of conditions and the following disclaimer in
+1356	  the documentation and/or other materials provided with the
+1357	  distribution.
+1358	
+1359	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+1360	"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+1361	LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+1362	A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+1363	HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+1364	INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+1365	BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+1366	OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+1367	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+1368	TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+1369	USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+1370	DAMAGE.
+1371	
+1372	If you use this software and you are happy with it, consider sending me a
+1373	note, just to gratify my ego. On the other hand, if you use this software and
+1374	you are unhappy with it, send me a patch!
+1375	"""
+1376	
+1377	today = time.strftime('%Y-%m-%d')
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 2185
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 1.0
+		High: 1.0
+Files skipped (0):

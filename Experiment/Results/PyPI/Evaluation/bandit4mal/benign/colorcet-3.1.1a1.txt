@@ -1,0 +1,261 @@
+Run started:2025-05-25 13:32:27.303744
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/colorcet-3.1.1a1/colorcet-3.1.1a1/assets/CET_to_py.py:15
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+14	output_file = '../colorcet/__init__.py'
+15	header = '''\
+16	"""
+17	Python versions of the 256-color colormaps provided in
+18	http://peterkovesi.com/projects/colourmaps/CETperceptual_csv_0_1.zip
+19	
+20	Each of these colormaps can be accessed as a Bokeh palette or
+21	Matplotlib colormap, either by string name:
+22	
+23	  palette['name']
+24	  cm['name']
+25	
+26	or as Python attributes:
+27	
+28	  palette.name
+29	  cm.name
+30	
+31	or as individually importable Python attributes:
+32	
+33	  m_name
+34	  b_name
+35	
+36	All colormaps are named using Peter Kovesi\'s naming scheme:
+37	
+38	<category>_<huesequence>_<lightnessrange>_c<meanchroma>[_s<colorshift>_[r<ifreversed>]]
+39	
+40	but some have shorter, more convenient aliases, some of which are
+41	named for the color ranges included and others
+42	based on the qualitative appearance.  The colormaps with
+43	shorter names tend to be the most useful subset, and for
+44	cases like automatic population of a GUI widget these
+45	colormaps are provided as a separate subset:
+46	
+47	  palette_n['name'] or palette_n.name
+48	  cm_n['name'] or cm_n.name
+49	
+50	Also included are some sets of 256 Glasbey colors. These are available via the
+51	same methods described above and are named:
+52	
+53	  glasbey_<starting_palette>[_<min|max>c_<chroma_value>][_<min|max>l_<lightness_value>][_hue_<start>_<end>]
+54	
+55	Some of the Glasbey sets are aliased to short names as explained in the User Guide.
+56	"""
+57	
+58	import os
+59	
+60	from collections import OrderedDict
+61	from itertools import chain
+62	
+63	# Define '__version__'
+64	from importlib.metadata import version
+65	__version__ = version('colorcet')
+66	
+67	
+68	class AttrODict(OrderedDict):
+69	    """Ordered dictionary with attribute access (e.g. for tab completion)"""
+70	    def __dir__(self): return self.keys()
+71	    def __delattr__(self, name): del self[name]
+72	    def __getattr__(self, name):
+73	        return self[name] if not name.startswith('_') else super(AttrODict, self).__getattr__(name)
+74	    def __setattr__(self, name, value):
+75	        if (name.startswith('_')): return super(AttrODict, self).__setattr__(name, value)
+76	        self[name] = value
+77	
+78	
+79	try:
+80	    from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+81	    from matplotlib.cm import register_cmap
+82	except:
+83	    def LinearSegmentedColormap(colorlist,name): pass
+84	    def ListedColormap(colorlist,name): pass
+85	    def register_cmap(name,cmap): pass
+86	    LinearSegmentedColormap.from_list=lambda n,c,N: None
+87	
+88	
+89	def rgb_to_hex(r,g,b):
+90	    return '#%02x%02x%02x' % (r,g,b)
+91	
+92	
+93	def bokeh_palette(name,colorlist):
+94	    palette[name] = [rgb_to_hex(int(r*255),int(g*255),int(b*255)) for r,g,b in colorlist]
+95	    return palette[name]
+96	
+97	
+98	def mpl_cm(name,colorlist):
+99	    cm[name]      = LinearSegmentedColormap.from_list(name, colorlist, N=len(colorlist))
+100	    register_cmap("cet_"+name, cmap=cm[name])
+101	    return cm[name]
+102	
+103	
+104	def mpl_cl(name,colorlist):
+105	    cm[name]      = ListedColormap(colorlist, name)
+106	    register_cmap("cet_"+name, cmap=cm[name])
+107	    return cm[name]
+108	
+109	
+110	def get_aliases(name):
+111	    """Get the aliases for a given colormap name"""
+112	    names = [name]
+113	
+114	    def check_aliases(names, d,  k_position=-1, v_position=0):
+115	        for name in [n for n in names]:
+116	            for k, v in d.items():
+117	                v = [v] if not isinstance(v, list) else v
+118	                for vname in v:
+119	                    if name == vname and k not in names:
+120	                        if k_position == -2:
+121	                            names.append(k)
+122	                        else:
+123	                            names.insert(k_position, k)
+124	                    if name == k and vname not in names:
+125	                        if v_position == -2:
+126	                            names.append(vname)
+127	                        else:
+128	                            names.insert(v_position, vname)
+129	        return names
+130	
+131	    # Repeatedly look for new aliases until no new aliases are found
+132	    n_names = len(names)
+133	    while True:
+134	        names = check_aliases(names, aliases, k_position=-2, v_position=0)
+135	        names = check_aliases(names, cetnames_flipped, k_position=-2, v_position=-1)
+136	        if len(names) == n_names:
+137	            break
+138	        n_names = len(names)
+139	
+140	    # Sort names as 1or0_underscores, CET, multiple_under_scores (alias, cetname, algorithmicname)
+141	    def name_sortfn(name):
+142	        if name.count("_") > 1:
+143	            return 2
+144	        if "CET" in name:
+145	            return 1
+146	        return 0
+147	
+148	    return ',  '.join(sorted(names, key=name_sortfn))
+149	
+150	
+151	def all_original_names(group=None, not_group=None, only_aliased=False, only_CET=False):
+152	    """
+153	    Returns a list (optionally filtered) of the names of the available colormaps
+154	    Filters available:
+155	    - group: only include maps whose name include the given string(s)
+156	      (e.g. "'linear'" or "['linear','diverging']").
+157	    - not_group: filter out any maps whose names include the given string(s)
+158	    - only_aliased: only include maps with shorter/simpler aliases
+159	    - only_CET: only include maps from CET
+160	    """
+161	    names = palette.keys()
+162	    if group:
+163	        groups = group if isinstance(group, list) else [group]
+164	        names = [n for ns in [list(filter(lambda x: g in x, names)) for g in groups] for n in ns]
+165	    if not_group:
+166	        not_groups = not_group if isinstance(not_group, list) else [not_group]
+167	        for g in not_groups:
+168	            names = list(filter(lambda x: g not in x, names))
+169	    if only_aliased:
+170	        names = filter(lambda x: x in aliases.keys(), names)
+171	    else:
+172	        names = filter(lambda x: x not in chain.from_iterable(aliases.values()), names)
+173	    if only_CET:
+174	        names = filter(lambda x: x in cetnames_flipped.values(), names)
+175	    else:
+176	        names = filter(lambda x: x not in cetnames_flipped.values(), names)
+177	    return sorted(list(names))
+178	
+179	
+180	palette = AttrODict()
+181	cm = AttrODict()
+182	palette_n = AttrODict()
+183	cm_n = AttrODict()
+184	
+185	'''
+186	
+187	footer = """
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/colorcet-3.1.1a1/colorcet-3.1.1a1/doc/conf.py:25
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+24	html_theme_options = {
+25	    "github_url": "https://github.com/holoviz/colorcet",
+26	    "icon_links": [
+27	        {
+28	            # Pointing to Holoviz since colorcet has no dedicated twitter account
+29	            "name": "Twitter",
+30	            "url": "https://twitter.com/HoloViz_org",
+31	            "icon": "fab fa-twitter-square",
+32	        },
+33	        {
+34	            "name": "Discourse",
+35	            "url": "https://discourse.holoviz.org/",
+36	            "icon": "fab fa-discourse",
+37	        }
+38	    ],
+39	    "footer_items": [
+40	        "copyright",
+41	        "last-updated",
+42	    ],
+43	}
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/colorcet-3.1.1a1/colorcet-3.1.1a1/doc/conf.py:30
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+29	            "name": "Twitter",
+30	            "url": "https://twitter.com/HoloViz_org",
+31	            "icon": "fab fa-twitter-square",
+32	        },
+33	        {
+34	            "name": "Discourse",
+35	            "url": "https://discourse.holoviz.org/",
+36	            "icon": "fab fa-discourse",
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/colorcet-3.1.1a1/colorcet-3.1.1a1/doc/conf.py:35
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+34	            "name": "Discourse",
+35	            "url": "https://discourse.holoviz.org/",
+36	            "icon": "fab fa-discourse",
+37	        }
+38	    ],
+39	    "footer_items": [
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home2/blue/Documents/PyPIAgent/Dataset/evaluation/unzip_benign/colorcet-3.1.1a1/colorcet-3.1.1a1/scripts/sync_git_tags.py:13
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+12	    url = (
+13	        f'https://github.com/holoviz/{package}.git'
+14	        if origin.stdout.startswith(b'http')
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 27883
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 5.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 5.0
+		High: 0.0
+Files skipped (0):

@@ -1,0 +1,8 @@
+{
+  "package_name": "ai-readme",
+  "version": null,
+  "is_malicious": false,
+  "files_analyzed": 0,
+  "malicious_files": 0,
+  "file_results": []
+}
