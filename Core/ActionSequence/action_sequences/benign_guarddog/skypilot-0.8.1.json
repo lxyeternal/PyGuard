@@ -1,0 +1,174 @@
+[
+  {
+    "pyfile": "subprocess_utils.py",
+    "code_snippet": "import os\nimport subprocess\nimport psutil\nimport time\nimport random\nimport resource\nimport shlex\nfrom typing import Any, Callable, Dict, List, Optional, Tuple, Union\nfrom sky import exceptions\nfrom sky import sky_logging\nfrom sky.skylet import constants\nfrom sky.skylet import log_lib\nfrom sky.utils import timeline\nfrom sky.utils import ux_utils\nimport colorama\n\nlogger = sky_logging.init_logger(__name__)\n\n\ndef kill_process_daemon(process_pid: int) -> None:\n    \"\"\"Start a daemon as a safety net to kill the process.\n\n    Args:\n        process_pid: The PID of the process to kill.\n    \"\"\"\n    # Get initial children list\n    try:\n        process = psutil.Process(process_pid)\n        initial_children = [p.pid for p in process.children(recursive=True)]\n    except psutil.NoSuchProcess:\n        initial_children = []\n\n    parent_pid = os.getpid()\n    daemon_script = os.path.join(\n        os.path.dirname(os.path.abspath(log_lib.__file__)),\n        'subprocess_daemon.py')\n    python_path = subprocess.check_output(constants.SKY_GET_PYTHON_PATH_CMD,\n                                          shell=True,\n                                          stderr=subprocess.DEVNULL,\n                                          encoding='utf-8').strip()\n    daemon_cmd = [\n        python_path,\n        daemon_script,\n        '--parent-pid',\n        str(parent_pid),\n        '--proc-pid',\n        str(process_pid),\n        # We pass the initial children list to avoid the race condition where\n        # the process_pid is terminated before the daemon starts and gets the\n        # children list.\n        '--initial-children',\n        ','.join(map(str, initial_children)),\n    ]\n\n    # We do not need to set `start_new_session=True` here, as the\n    # daemon script will detach itself from the parent process with\n    # fork to avoid being killed by parent process. See the reason we\n    # daemonize the process in `sky/skylet/subprocess_daemon.py`.\n    subprocess.Popen(\n        daemon_cmd,\n        # Suppress output\n        stdout=subprocess.DEVNULL,\n        stderr=subprocess.DEVNULL,\n        # Disable input\n        stdin=subprocess.DEVNULL,\n    )\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "psutil.Process",
+        "psutil.Process.children",
+        "os.getpid",
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "subprocess.check_output",
+        "subprocess.Popen"
+      ],
+      "api_sequence_with_args": [
+        "psutil.Process(process_pid)",
+        "psutil.Process.children(recursive=True)",
+        "os.getpid()",
+        "os.path.abspath(log_lib.__file__)",
+        "os.path.dirname(os.path.abspath(log_lib.__file__))",
+        "os.path.join(os.path.dirname(os.path.abspath(log_lib.__file__)), 'subprocess_daemon.py')",
+        "subprocess.check_output(constants.SKY_GET_PYTHON_PATH_CMD, shell=True, stderr=subprocess.DEVNULL, encoding='utf-8')",
+        "subprocess.Popen(daemon_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "psutil.Process",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "psutil.Process.children",
+          "id": "iterate_processes",
+          "description": "Iterates over all running processes",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.getpid",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "def kill_process_daemon(process_pid: int) -> None:\n    try:\n        process = psutil.Process(process_pid)\n        initial_children = [p.pid for p in process.children(recursive=True)]\n    except psutil.NoSuchProcess:\n        initial_children = []\n\n    parent_pid = os.getpid()\n    daemon_script = os.path.join(\n        os.path.dirname(os.path.abspath(log_lib.__file__)),\n        'subprocess_daemon.py')\n    python_path = subprocess.check_output(constants.SKY_GET_PYTHON_PATH_CMD,\n                                          shell=True,\n                                          stderr=subprocess.DEVNULL,\n                                          encoding='utf-8').strip()\n    daemon_cmd = [\n        python_path,\n        daemon_script,\n        '--parent-pid',\n        str(parent_pid),\n        '--proc-pid',\n        str(process_pid),\n        '--initial-children',\n        ','.join(map(str, initial_children)),\n    ]\n    subprocess.Popen(\n        daemon_cmd,\n        stdout=subprocess.DEVNULL,\n        stderr=subprocess.DEVNULL,\n        stdin=subprocess.DEVNULL,\n    )"
+    }
+  },
+  {
+    "pyfile": "ibm.py",
+    "code_snippet": "import multiprocessing\nimport os\nimport yaml\nimport requests\nimport json\nfrom sky import sky_logging\nfrom sky.adaptors import common\n\nCREDENTIAL_FILE = '~/.ibm/credentials.yaml'\nlogger = sky_logging.init_logger(__name__)\n\n_IMPORT_ERROR_MESSAGE = ('Failed to import dependencies for IBM. '\n                         'Try running: pip install \"skypilot[ibm]\".\\n')\nibm_vpc = common.LazyImport('ibm_vpc',\n                            import_error_message=_IMPORT_ERROR_MESSAGE)\nibm_cloud_sdk_core = common.LazyImport(\n    'ibm_cloud_sdk_core', import_error_message=_IMPORT_ERROR_MESSAGE)\nibm_platform_services = common.LazyImport(\n    'ibm_platform_services', import_error_message=_IMPORT_ERROR_MESSAGE)\nibm_boto3 = common.LazyImport('ibm_boto3',\n                              import_error_message=_IMPORT_ERROR_MESSAGE)\nibm_botocore = common.LazyImport('ibm_botocore',\n                                 import_error_message=_IMPORT_ERROR_MESSAGE)\n\ndef read_credential_file():\n    try:\n        with open(os.path.expanduser(CREDENTIAL_FILE), 'r',\n                  encoding='utf-8') as f:\n            return yaml.safe_load(f)\n    except FileNotFoundError:\n        return {}\n\ndef get_hmac_keys():\n    cred_file = read_credential_file()\n    return cred_file['access_key_id'], cred_file['secret_access_key']\n\ndef _get_global_process_lock():\n    \"\"\"returns a multi-process lock.\n\n    lazily initializes a global multi-process lock if it wasn't\n      already initialized.\n    Necessary when process are spawned without a shared lock.\n    \"\"\"\n    global global_process_lock  # pylint: disable=global-variable-undefined\n\n    if 'global_process_lock' not in globals():\n        global_process_lock = multiprocessing.Lock()\n\n    return global_process_lock\n\ndef get_cos_client(region: str = 'us-east'):\n    \"\"\"Returns an IBM COS client object.\n      Using process lock to protect not multi process\n      safe Boto3.session, which is invoked (default session) by\n      boto3.client.\n\n    Args:\n        region (str, optional): Client endpoint. Defaults to 'us-east'.\n\n    Returns:\n        IBM COS client\n    \"\"\"\n    access_key_id, secret_access_key = get_hmac_keys()\n    with _get_global_process_lock():\n        return ibm_boto3.client(  # type: ignore[union-attr]\n            service_name='s3',\n            aws_access_key_id=access_key_id,\n            aws_secret_access_key=secret_access_key,\n            endpoint_url=\n            f'https://s3.{region}.cloud-object-storage.appdomain.cloud')\n\ndef get_cos_resource(region: str = 'us-east'):\n    \"\"\"Returns an IBM COS Resource object.\n      Using process lock to protect not multi process safe\n      boto3.Resource.\n\n    Args:\n        region (str, optional): Resource Endpoint. Defaults to 'us-east'.\n\n    Returns:\n        IBM COS Resource\n    \"\"\"\n    access_key_id, secret_access_key = get_hmac_keys()\n    with _get_global_process_lock():\n        return ibm_boto3.resource(  # type: ignore[union-attr]\n            's3',\n            aws_access_key_id=access_key_id,\n            aws_secret_access_key=secret_access_key,\n            endpoint_url=\n            f'https://s3.{region}.cloud-object-storage.appdomain.cloud')\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.expanduser",
+        "open",
+        "yaml.safe_load",
+        "multiprocessing.Lock",
+        "ibm_boto3.client",
+        "ibm_boto3.resource"
+      ],
+      "api_sequence_with_args": [
+        "os.path.expanduser(CREDENTIAL_FILE)",
+        "open(os.path.expanduser(CREDENTIAL_FILE), 'r', encoding='utf-8')",
+        "yaml.safe_load(f)",
+        "multiprocessing.Lock()",
+        "ibm_boto3.client(service_name='s3', aws_access_key_id=access_key_id, aws_secret_access_key=secret_access_key, endpoint_url=f'https://s3.{region}.cloud-object-storage.appdomain.cloud')",
+        "ibm_boto3.resource('s3', aws_access_key_id=access_key_id, aws_secret_access_key=secret_access_key, endpoint_url=f'https://s3.{region}.cloud-object-storage.appdomain.cloud')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.expanduser",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "yaml.safe_load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "multiprocessing.Lock",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "ibm_boto3.client",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "ibm_boto3.resource",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        }
+      ],
+      "contextual_code": "import os\nimport yaml\nimport multiprocessing\n\nCREDENTIAL_FILE = '~/.ibm/credentials.yaml'\n\ndef read_credential_file():\n    try:\n        with open(os.path.expanduser(CREDENTIAL_FILE), 'r', encoding='utf-8') as f:\n            return yaml.safe_load(f)\n    except FileNotFoundError:\n        return {}\n\ndef get_hmac_keys():\n    cred_file = read_credential_file()\n    return cred_file['access_key_id'], cred_file['secret_access_key']\n\ndef _get_global_process_lock():\n    global global_process_lock\n    if 'global_process_lock' not in globals():\n        global_process_lock = multiprocessing.Lock()\n    return global_process_lock\n\ndef get_cos_client(region: str = 'us-east'):\n    access_key_id, secret_access_key = get_hmac_keys()\n    with _get_global_process_lock():\n        return ibm_boto3.client(\n            service_name='s3',\n            aws_access_key_id=access_key_id,\n            aws_secret_access_key=secret_access_key,\n            endpoint_url=f'https://s3.{region}.cloud-object-storage.appdomain.cloud')\n\ndef get_cos_resource(region: str = 'us-east'):\n    access_key_id, secret_access_key = get_hmac_keys()\n    with _get_global_process_lock():\n        return ibm_boto3.resource(\n            's3',\n            aws_access_key_id=access_key_id,\n            aws_secret_access_key=secret_access_key,\n            endpoint_url=f'https://s3.{region}.cloud-object-storage.appdomain.cloud')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "skypilot-0.8.1",
+      "total_matches": 3
+    }
+  }
+]

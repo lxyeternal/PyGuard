@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import sys\nimport traceback\n\nBUILD_WARNING = \"\"\"\n\n-----------------------------------------------------------------------\nWARNING: The C extensions could not be compiled\n-----------------------------------------------------------------------\n\nMaybe you do not have a C compiler installed on this system?\nThe reason was:\n%s\n\nThis is just a warning as most of the functionality will work even\nwithout the updated C extension.  It will simply fallback to the\nbuilt-in _multiprocessing module.  Most notably you will not be able to use\nFORCE_EXECV on POSIX systems.  If this is a problem for you then please\ninstall a C compiler or fix the error(s) above.\n-----------------------------------------------------------------------\n\n\"\"\"\n\ndef _is_build_command(argv=sys.argv, cmds=('install', 'build', 'bdist')):\n    for arg in argv:\n        if arg.startswith(cmds):\n            return arg\n\ndef run_setup(with_extensions=True):\n    extensions = []\n    if with_extensions:\n        extensions = [\n            Extension(\n                '_%s' % pkgname,\n                sources=multiprocessing_srcs,\n                define_macros=list(macros.items()),\n                libraries=libraries,\n                include_dirs=[srcdir],\n                depends=glob.glob('%s/*.h' % srcdir) + ['setup.py'],\n            ),\n        ]\n    packages = find_packages(\n        where=pkgdir,\n        exclude=['ez_setup', 'examples', 'doc',],\n        )\n    # build the 'setup' call\n    setup_kwds = dict(\n        name='multiprocess',\n        version=__version__,\n        description=('better multiprocessing and multithreading in Python'),\n        long_description=README.strip(),\n        author=__author__,\n        author_email=AUTHOR_EMAIL,\n        maintainer=__author__,\n        maintainer_email=AUTHOR_EMAIL,\n        license = 'BSD-3-Clause',\n        platforms = ['Linux', 'Windows', 'Mac'],\n        url='https://github.com/uqfoundation/multiprocess',\n        download_url = 'https://pypi.org/project/multiprocess/#files',\n        project_urls = {\n            'Documentation':'http://multiprocess.rtfd.io',\n            'Source Code':'https://github.com/uqfoundation/multiprocess',\n            'Bug Tracker':'https://github.com/uqfoundation/multiprocess/issues',\n        },\n        python_requires = '>=3.8',\n        classifiers=[\n            'Development Status :: 5 - Production/Stable',\n            'Intended Audience :: Developers',\n            'Intended Audience :: Science/Research',\n            'License :: OSI Approved :: BSD License',\n            'Programming Language :: Python :: 3',\n            'Programming Language :: Python :: 3.8',\n            'Programming Language :: Python :: 3.9',\n            'Programming Language :: Python :: 3.10',\n            'Programming Language :: Python :: 3.11',\n            'Programming Language :: Python :: 3.12',\n            'Programming Language :: Python :: 3.13',\n            'Programming Language :: Python :: Implementation :: CPython',\n            'Programming Language :: Python :: Implementation :: PyPy',\n            'Topic :: Scientific/Engineering',\n            'Topic :: Software Development',\n        ],\n        packages=packages,\n        package_dir={'': pkgdir},\n        ext_modules=extensions,\n    )\n    # add dependencies\n    depend = [dill_version]\n    extras = {'dill': [dill_version]}\n    # update setup kwds\n    if has_setuptools:\n        setup_kwds.update(\n            zip_safe=False,\n            # distclass=BinaryDistribution,\n            install_requires=depend,\n            # extras_require=extras,\n        )\n    # call setup\n    setup(**setup_kwds)\n\ntry:\n    run_setup(False)\nexcept BaseException:\n    if _is_build_command(sys.argv): #XXX: skip WARNING if is_pypy?\n        import traceback\n        msg = BUILD_WARNING % '\\n'.join(traceback.format_stack())\n        exec('print(msg, file=sys.stderr)')\n        run_setup(False)\n    else:\n        raise\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.argv",
+        "traceback.format_stack",
+        "exec",
+        "sys.stderr"
+      ],
+      "api_sequence_with_args": [
+        "sys.argv",
+        "traceback.format_stack()",
+        "exec('print(msg, file=sys.stderr)')",
+        "sys.stderr"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "traceback.format_stack",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "sys.stderr",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        }
+      ],
+      "contextual_code": "import sys\nimport traceback\n\ntry:\n    run_setup(False)\nexcept BaseException:\n    if _is_build_command(sys.argv):\n        import traceback\n        msg = BUILD_WARNING % '\\n'.join(traceback.format_stack())\n        exec('print(msg, file=sys.stderr)')\n        run_setup(False)\n    else:\n        raise"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "multiprocess-0.70.17",
+      "total_matches": 1
+    }
+  }
+]

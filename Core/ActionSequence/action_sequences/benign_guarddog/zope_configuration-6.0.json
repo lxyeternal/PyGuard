@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "config.py",
+    "code_snippet": "import builtins\nimport sys\nfrom zope.configuration.exceptions import ConfigurationError\n\nclass ConfigurationContext:\n    ...\n    def resolve(self, dottedname):\n        \"\"\"\n        Resolve a dotted name to an object.\n        ...\n        \"\"\"  # noqa: E501 line too long\n        name = dottedname.strip()\n\n        if not name:\n            raise ValueError(\"The given name is blank\")\n\n        if name == '.':\n            return self.package\n\n        names = name.split('.')\n\n        if not names[-1]:\n            raise ValueError(\n                \"Trailing dots are no longer supported in dotted names\")\n\n        if len(names) == 1:\n            # Check for built-in objects\n            marker = object()\n            obj = getattr(builtins, names[0], marker)\n            if obj is not marker:\n                return obj\n\n        if not names[0]:\n            # Got a relative name. Convert it to abs using package info\n            if self.package is None:\n                raise ConfigurationError(\n                    \"Can't use leading dots in dotted names, \"\n                    \"no package has been set.\")\n            pnames = self.package.__name__.split(\".\")\n            pnames.append('')\n            while names and not names[0]:\n                names.pop(0)\n                try:\n                    pnames.pop()\n                except IndexError:\n                    raise ConfigurationError(\"Invalid global name\", name)\n            names[0:0] = pnames\n\n        # Now we should have an absolute dotted name\n\n        # Split off object name:\n        oname, mname = names[-1], '.'.join(names[:-1])\n\n        # Import the module\n        if not mname:\n            # Just got a single name. Must me a module\n            mname = oname\n            oname = ''\n\n        try:\n            # Without a fromlist, this returns the package rather than the\n            # module if the name contains a dot. Getting the module from\n            # sys.modules instead avoids this problem.\n            __import__(mname)\n            mod = sys.modules[mname]\n        except ImportError as v:\n            if sys.exc_info()[2].tb_next is not None:\n                # ImportError was caused deeper\n                raise\n            raise ConfigurationError(\n                f\"ImportError: Couldn't import {mname}, {v}\")\n\n        if not oname:\n            # see not mname case above\n            return mod\n\n        try:\n            obj = getattr(mod, oname)\n            return obj\n        except AttributeError:\n            # No such name, maybe it's a module that we still need to import\n            try:\n                moname = mname + '.' + oname\n                __import__(moname)\n                return sys.modules[moname]\n            except ImportError:\n                if sys.exc_info()[2].tb_next is not None:\n                    # ImportError was caused deeper\n                    raise\n                raise ConfigurationError(\n                    f\"ImportError: Module {mname} has no global {oname}\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.getattr",
+        "sys.modules",
+        "__import__",
+        "sys.modules",
+        "builtins.getattr",
+        "__import__",
+        "sys.modules"
+      ],
+      "api_sequence_with_args": [
+        "builtins.getattr(builtins, names[0], marker)",
+        "sys.modules[mname]",
+        "__import__(mname)",
+        "sys.modules[mname]",
+        "builtins.getattr(mod, oname)",
+        "__import__(moname)",
+        "sys.modules[moname]"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "__import__",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "__import__",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        }
+      ],
+      "contextual_code": "import builtins\nimport sys\nfrom zope.configuration.exceptions import ConfigurationError\n\nclass ConfigurationContext:\n    def resolve(self, dottedname):\n        name = dottedname.strip()\n        if not name:\n            raise ValueError(\"The given name is blank\")\n        if name == '.':\n            return self.package\n        names = name.split('.')\n        if not names[-1]:\n            raise ValueError(\"Trailing dots are no longer supported in dotted names\")\n        if len(names) == 1:\n            marker = object()\n            obj = getattr(builtins, names[0], marker)\n            if obj is not marker:\n                return obj\n        if not names[0]:\n            if self.package is None:\n                raise ConfigurationError(\"Can't use leading dots in dotted names, no package has been set.\")\n            pnames = self.package.__name__.split(\".\")\n            pnames.append('')\n            while names and not names[0]:\n                names.pop(0)\n                try:\n                    pnames.pop()\n                except IndexError:\n                    raise ConfigurationError(\"Invalid global name\", name)\n            names[0:0] = pnames\n        oname, mname = names[-1], '.'.join(names[:-1])\n        if not mname:\n            mname = oname\n            oname = ''\n        try:\n            __import__(mname)\n            mod = sys.modules[mname]\n        except ImportError as v:\n            if sys.exc_info()[2].tb_next is not None:\n                raise\n            raise ConfigurationError(f\"ImportError: Couldn't import {mname}, {v}\")\n        if not oname:\n            return mod\n        try:\n            obj = getattr(mod, oname)\n            return obj\n        except AttributeError:\n            try:\n                moname = mname + '.' + oname\n                __import__(moname)\n                return sys.modules[moname]\n            except ImportError:\n                if sys.exc_info()[2].tb_next is not None:\n                    raise\n                raise ConfigurationError(f\"ImportError: Module {mname} has no global {oname}\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "zope_configuration-6.0",
+      "total_matches": 1
+    }
+  }
+]

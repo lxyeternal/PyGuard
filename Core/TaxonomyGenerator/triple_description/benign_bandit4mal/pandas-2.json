@@ -1,0 +1,156 @@
+{
+  "metadata": {
+    "package_name": "pandas-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/pandas-2.2.3.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "__init__.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pandas-2.2.3/pandas-2.2.3/pandas/io/clipboard/__init__.py",
+      "line_number": "357",
+      "type_description": "B841:cdll",
+      "context_snippet": "def init_windows_clipboard():\n    global HGLOBAL, LPVOID, DWORD, LPCSTR, INT\n    global HWND, HINSTANCE, HMENU, BOOL, UINT, HANDLE\n    from ctypes.wintypes import (\n        BOOL,\n        DWORD,\n        HANDLE,\n        HGLOBAL,\n        HINSTANCE,\n        HMENU,\n        HWND,\n        INT,\n        LPCSTR,\n        LPVOID,\n        UINT,\n    )\n\n    windll = ctypes.windll\n    msvcrt = ctypes.CDLL(\"msvcrt\")\n\n    safeCreateWindowExA = CheckedCall(windll.user32.CreateWindowExA)\n    safeCreateWindowExA.argtypes = [\n        DWORD,\n        LPCSTR,\n        LPCSTR,\n        DWORD,\n        INT,\n        INT,\n        INT,\n        INT,\n        HWND,\n        HMENU,\n        HINSTANCE,\n        LPVOID,\n    ]\n    safeCreateWindowExA.restype = HWND\n\n    safeDestroyWindow = CheckedCall(windll.user32.DestroyWindow)\n    safeDestroyWindow.argtypes = [HWND]\n    safeDestroyWindow.restype = BOOL\n\n    OpenClipboard = windll.user32.OpenClipboard\n    OpenClipboard.argtypes = [HWND]\n    OpenClipboard.restype = BOOL\n\n    safeCloseClipboard = CheckedCall(windll.user32.CloseClipboard)\n    safeCloseClipboard.argtypes = []\n    safeCloseClipboard.restype = BOOL\n\n    safeEmptyClipboard = CheckedCall(windll.user32.EmptyClipboard)\n    safeEmptyClipboard.argtypes = []\n    safeEmptyClipboard.restype = BOOL\n\n    safeGetClipboardData = CheckedCall(windll.user32.GetClipboardData)\n    safeGetClipboardData.argtypes = [UINT]\n    safeGetClipboardData.restype = HANDLE\n\n    safeSetClipboardData = CheckedCall(windll.user32.SetClipboardData)\n    safeSetClipboardData.argtypes = [UINT, HANDLE]\n    safeSetClipboardData.restype = HANDLE\n\n    safeGlobalAlloc = CheckedCall(windll.kernel32.GlobalAlloc)\n    safeGlobalAlloc.argtypes = [UINT, c_size_t]\n    safeGlobalAlloc.restype = HGLOBAL\n\n    safeGlobalLock = CheckedCall(windll.kernel32.GlobalLock)\n    safeGlobalLock.argtypes = [HGLOBAL]\n    safeGlobalLock.restype = LPVOID\n\n    safeGlobalUnlock = CheckedCall(windll.kernel32.GlobalUnlock)\n    safeGlobalUnlock.argtypes = [HGLOBAL]\n    safeGlobalUnlock.restype = BOOL\n\n    wcslen = CheckedCall(msvcrt.wcslen)\n    wcslen.argtypes = [c_wchar_p]\n    wcslen.restype = UINT\n\n    GMEM_MOVEABLE = 0x0002\n    CF_UNICODETEXT = 13\n\n    @contextlib.contextmanager\n    def window():\n        \"\"\"\n        Context that provides a valid Windows hwnd.\n        \"\"\"\n        # we really just need the hwnd, so setting \"STATIC\"\n        # as predefined lpClass is just fine.\n        hwnd = safeCreateWindowExA(\n            0, b\"STATIC\", None, 0, 0, 0, 0, 0, None, None, None, None\n        )\n        try:\n            yield hwnd\n        finally:\n            safeDestroyWindow(hwnd)\n\n    @contextlib.contextmanager\n    def clipboard(hwnd):\n        \"\"\"\n        Context manager that opens the clipboard and prevents\n        other applications from modifying the clipboard content.\n        \"\"\"\n        # We may not get the clipboard handle immediately because\n        # some other application is accessing it (?)\n        # We try for at least 500ms to get the clipboard.\n        t = time.time() + 0.5\n        success = False\n        while time.time() < t:\n            success = OpenClipboard(hwnd)\n            if success:\n                break\n            time.sleep(0.01)\n        if not success:\n            raise PyperclipWindowsException(\"Error calling OpenClipboard\")\n\n        try:\n            yield\n        finally:\n            safeCloseClipboard()\n\n    def copy_windows(text):\n        # This function is heavily based on\n        # http://msdn.com/ms649016#_win32_Copying_Information_to_the_Clipboard\n\n        text = _stringifyText(text)  # Converts non-str values to str.\n\n        with window() as hwnd:\n            # http://msdn.com/ms649048\n            # If an application calls OpenClipboard with hwnd set to NULL,\n            # EmptyClipboard sets the clipboard owner to NULL;\n            # this causes SetClipboardData to fail.\n            # => We need a valid hwnd to copy something.\n            with clipboard(hwnd):\n                safeEmptyClipboard()\n\n                if text:\n                    # http://msdn.com/ms649051\n                    # If the hMem parameter identifies a memory object,\n                    # the object must have been allocated using the\n                    # function with the GMEM_MOVEABLE flag.\n                    count = wcslen(text) + 1\n                    handle = safeGlobalAlloc(GMEM_MOVEABLE, count * sizeof(c_wchar))\n                    locked_handle = safeGlobalLock(handle)\n\n                    ctypes.memmove(\n                        c_wchar_p(locked_handle),\n                        c_wchar_p(text),\n                        count * sizeof(c_wchar),\n                    )\n\n                    safeGlobalUnlock(handle)\n                    safeSetClipboardData(CF_UNICODETEXT, handle)\n\n    def paste_windows():\n        with clipboard(None):\n            handle = safeGetClipboardData(CF_UNICODETEXT)\n            if not handle:\n                # GetClipboardData may return NULL with errno == NO_ERROR\n                # if the clipboard is empty.\n                # (Also, it may return a handle to an empty buffer,\n                # but technically that's not empty)\n                return \"\"\n            return c_wchar_p(handle).value\n\n    return copy_windows, paste_windows\n",
+      "hash_value": "35178f8f557d2bee8d72305f63299887",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def init_windows_clipboard():\n    global HGLOBAL, LPVOID, DWORD, LPCSTR, INT\n    global HWND, HINSTANCE, HMENU, BOOL, UINT, HANDLE\n    from ctypes.wintypes import (\n        BOOL,\n        DWORD,\n        HANDLE,\n        HGLOBAL,\n        HINSTANCE,\n        HMENU,\n        HWND,\n        INT,\n        LPCSTR,\n        LPVOID,\n        UINT,\n    )\n\n    windll = ctypes.windll\n    msvcrt = ctypes.CDLL(\"msvcrt\")\n\n    safeCreateWindowExA = CheckedCall(windll.user32.CreateWindowExA)\n    safeCreateWindowExA.argtypes = [\n        DWORD,\n        LPCSTR,\n        LPCSTR,\n        DWORD,\n        INT,\n        INT,\n        INT,\n        INT,\n        HWND,\n        HMENU,\n        HINSTANCE,\n        LPVOID,\n    ]\n    safeCreateWindowExA.restype = HWND\n\n    safeDestroyWindow = CheckedCall(windll.user32.DestroyWindow)\n    safeDestroyWindow.argtypes = [HWND]\n    safeDestroyWindow.restype = BOOL\n\n    OpenClipboard = windll.user32.OpenClipboard\n    OpenClipboard.argtypes = [HWND]\n    OpenClipboard.restype = BOOL\n\n    safeCloseClipboard = CheckedCall(windll.user32.CloseClipboard)\n    safeCloseClipboard.argtypes = []\n    safeCloseClipboard.restype = BOOL\n\n    safeEmptyClipboard = CheckedCall(windll.user32.EmptyClipboard)\n    safeEmptyClipboard.argtypes = []\n    safeEmptyClipboard.restype = BOOL\n\n    safeGetClipboardData = CheckedCall(windll.user32.GetClipboardData)\n    safeGetClipboardData.argtypes = [UINT]\n    safeGetClipboardData.restype = HANDLE\n\n    safeSetClipboardData = CheckedCall(windll.user32.SetClipboardData)\n    safeSetClipboardData.argtypes = [UINT, HANDLE]\n    safeSetClipboardData.restype = HANDLE\n\n    safeGlobalAlloc = CheckedCall(windll.kernel32.GlobalAlloc)\n    safeGlobalAlloc.argtypes = [UINT, c_size_t]\n    safeGlobalAlloc.restype = HGLOBAL\n\n    safeGlobalLock = CheckedCall(windll.kernel32.GlobalLock)\n    safeGlobalLock.argtypes = [HGLOBAL]\n    safeGlobalLock.restype = LPVOID\n\n    safeGlobalUnlock = CheckedCall(windll.kernel32.GlobalUnlock)\n    safeGlobalUnlock.argtypes = [HGLOBAL]\n    safeGlobalUnlock.restype = BOOL\n\n    wcslen = CheckedCall(msvcrt.wcslen)\n    wcslen.argtypes = [c_wchar_p]\n    wcslen.restype = UINT\n\n    GMEM_MOVEABLE = 0x0002\n    CF_UNICODETEXT = 13\n\n    @contextlib.contextmanager\n    def window():\n        \"\"\"\n        Context that provides a valid Windows hwnd.\n        \"\"\"\n        # we really just need the hwnd, so setting \"STATIC\"\n        # as predefined lpClass is just fine.\n        hwnd = safeCreateWindowExA(\n            0, b\"STATIC\", None, 0, 0, 0, 0, 0, None, None, None, None\n        )\n        try:\n            yield hwnd\n        finally:\n            safeDestroyWindow(hwnd)\n\n    @contextlib.contextmanager\n    def clipboard(hwnd):\n        \"\"\"\n        Context manager that opens the clipboard and prevents\n        other applications from modifying the clipboard content.\n        \"\"\"\n        # We may not get the clipboard handle immediately because\n        # some other application is accessing it (?)\n        # We try for at least 500ms to get the clipboard.\n        t = time.time() + 0.5\n        success = False\n        while time.time() < t:\n            success = OpenClipboard(hwnd)\n            if success:\n                break\n            time.sleep(0.01)\n        if not success:\n            raise PyperclipWindowsException(\"Error calling OpenClipboard\")\n\n        try:\n            yield\n        finally:\n            safeCloseClipboard()\n\n    def copy_windows(text):\n        # This function is heavily based on\n        # http://msdn.com/ms649016#_win32_Copying_Information_to_the_Clipboard\n\n        text = _stringifyText(text)  # Converts non-str values to str.\n\n        with window() as hwnd:\n            # http://msdn.com/ms649048\n            # If an application calls OpenClipboard with hwnd set to NULL,\n            # EmptyClipboard sets the clipboard owner to NULL;\n            # this causes SetClipboardData to fail.\n            # => We need a valid hwnd to copy something.\n            with clipboard(hwnd):\n                safeEmptyClipboard()\n\n                if text:\n                    # http://msdn.com/ms649051\n                    # If the hMem parameter identifies a memory object,\n                    # the object must have been allocated using the\n                    # function with the GMEM_MOVEABLE flag.\n                    count = wcslen(text) + 1\n                    handle = safeGlobalAlloc(GMEM_MOVEABLE, count * sizeof(c_wchar))\n                    locked_handle = safeGlobalLock(handle)\n\n                    ctypes.memmove(\n                        c_wchar_p(locked_handle),\n                        c_wchar_p(text),\n                        count * sizeof(c_wchar),\n                    )\n\n                    safeGlobalUnlock(handle)\n                    safeSetClipboardData(CF_UNICODETEXT, handle)\n\n    def paste_windows():\n        with clipboard(None):\n            handle = safeGetClipboardData(CF_UNICODETEXT)\n            if not handle:\n                # GetClipboardData may return NULL with errno == NO_ERROR\n                # if the clipboard is empty.\n                # (Also, it may return a handle to an empty buffer,\n                # but technically that's not empty)\n                return \"\"\n            return c_wchar_p(handle).value\n\n    return copy_windows, paste_windows\n",
+          "triple_sequences": [
+            {
+              "action_api": "ctypes.CDLL()",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "\"msvcrt\"",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Import module dynamically",
+              "intention_id": "import_module_dynamically"
+            },
+            {
+              "action_api": "CheckedCall(windll.user32.CreateWindowExA)",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "windll.user32.CreateWindowExA",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Initialize shell object",
+              "intention_id": "initialize_shell_object"
+            },
+            {
+              "action_api": "CheckedCall(windll.user32.DestroyWindow)",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "windll.user32.DestroyWindow",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            },
+            {
+              "action_api": "windll.user32.OpenClipboard",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.user32.OpenClipboard",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Access clipboard data",
+              "intention_id": "access_clipboard_data"
+            },
+            {
+              "action_api": "CheckedCall(windll.user32.CloseClipboard)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.user32.CloseClipboard",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            },
+            {
+              "action_api": "CheckedCall(windll.user32.EmptyClipboard)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.user32.EmptyClipboard",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Access clipboard data",
+              "intention_id": "access_clipboard_data"
+            },
+            {
+              "action_api": "CheckedCall(windll.user32.GetClipboardData)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.user32.GetClipboardData",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Access clipboard data",
+              "intention_id": "access_clipboard_data"
+            },
+            {
+              "action_api": "CheckedCall(windll.user32.SetClipboardData)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.user32.SetClipboardData",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Access clipboard data",
+              "intention_id": "access_clipboard_data"
+            },
+            {
+              "action_api": "CheckedCall(windll.kernel32.GlobalAlloc)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.kernel32.GlobalAlloc",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "CheckedCall(windll.kernel32.GlobalLock)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.kernel32.GlobalLock",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "CheckedCall(windll.kernel32.GlobalUnlock)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "windll.kernel32.GlobalUnlock",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            },
+            {
+              "action_api": "CheckedCall(msvcrt.wcslen)",
+              "action_description": "Access system command execution functionality",
+              "action_id": "access_command_execution",
+              "object": "msvcrt.wcslen",
+              "object_description": "Dynamic library name",
+              "object_id": "library_name",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "ctypes.memmove()",
+              "action_description": "Copies memory from source to destination buffer",
+              "action_id": "copy_memory",
+              "object": "c_wchar_p(locked_handle), c_wchar_p(text), count * sizeof(c_wchar)",
+              "object_description": "Obfuscated byte string",
+              "object_id": "obfuscated_byte_string",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

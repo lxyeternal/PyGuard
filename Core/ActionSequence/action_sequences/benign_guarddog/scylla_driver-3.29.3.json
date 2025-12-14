@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport shutil\nimport sys\nimport json\nimport warnings\nfrom pathlib import Path\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools import Extension, Command, setup\nfrom setuptools.errors import (CCompilerError, PlatformError,\n                              ExecError)\n\ntry:\n    import subprocess\n    has_subprocess = True\nexcept ImportError:\n    has_subprocess = False\n\nclass DocCommand(Command):\n\n    description = \"generate or test documentation\"\n\n    user_options = [(\"test\", \"t\",\n                     \"run doctests instead of generating documentation\")]\n\n    boolean_options = [\"test\"]\n\n    def initialize_options(self):\n        self.test = False\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        if self.test:\n            path = \"docs/_build/doctest\"\n            mode = \"doctest\"\n        else:\n            from cassandra import __version__\n            path = \"docs/_build/%s\" % __version__\n            mode = \"html\"\n\n            try:\n                os.makedirs(path)\n            except:\n                pass\n\n        if has_subprocess:\n            # Prevent run with in-place extensions because cython-generated objects do not carry docstrings\n            # http://docs.cython.org/src/userguide/special_methods.html#docstrings\n            import glob\n            for f in glob.glob(\"cassandra/*.so\"):\n                print(\"Removing '%s' to allow docs to run on pure python modules.\" %(f,))\n                os.unlink(f)\n\n            # Build io extension to make import and docstrings work\n            try:\n                output = subprocess.check_output(\n                    [\"python\", \"setup.py\", \"build_ext\", \"--inplace\", \"--force\", \"--no-murmur3\", \"--no-cython\"],\n                    stderr=subprocess.STDOUT)\n            except subprocess.CalledProcessError as exc:\n                raise RuntimeError(\"Documentation step '%s' failed: %s: %s\" % (\"build_ext\", exc, exc.output))\n            else:\n                print(output)\n\n            try:\n                output = subprocess.check_output(\n                    [\"sphinx-build\", \"-b\", mode, \"docs\", path],\n                    stderr=subprocess.STDOUT)\n            except subprocess.CalledProcessError as exc:\n                raise RuntimeError(\"Documentation step '%s' failed: %s: %s\" % (mode, exc, exc.output))\n            else:\n                print(output)\n\n            print(\"\")\n            print(\"Documentation step '%s' performed, results here:\" % mode)\n            print(\"   file://%s/%s/index.html\" % (os.path.dirname(os.path.realpath(__file__)), path))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.makedirs",
+        "os.unlink",
+        "subprocess.check_output",
+        "subprocess.check_output",
+        "os.path.dirname",
+        "os.path.realpath"
+      ],
+      "api_sequence_with_args": [
+        "os.makedirs(path)",
+        "os.unlink(f)",
+        "subprocess.check_output([\"python\", \"setup.py\", \"build_ext\", \"--inplace\", \"--force\", \"--no-murmur3\", \"--no-cython\"], stderr=subprocess.STDOUT)",
+        "subprocess.check_output([\"sphinx-build\", \"-b\", mode, \"docs\", path], stderr=subprocess.STDOUT)",
+        "os.path.dirname(os.path.realpath(__file__))",
+        "os.path.realpath(__file__)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "def run(self):\n    if self.test:\n        path = \"docs/_build/doctest\"\n        mode = \"doctest\"\n    else:\n        from cassandra import __version__\n        path = \"docs/_build/%s\" % __version__\n        mode = \"html\"\n        try:\n            os.makedirs(path)\n        except:\n            pass\n\n    if has_subprocess:\n        import glob\n        for f in glob.glob(\"cassandra/*.so\"):\n            os.unlink(f)\n        try:\n            output = subprocess.check_output([\n                \"python\", \"setup.py\", \"build_ext\", \"--inplace\", \"--force\", \"--no-murmur3\", \"--no-cython\"],\n                stderr=subprocess.STDOUT)\n        except subprocess.CalledProcessError as exc:\n            raise RuntimeError(\"Documentation step '%s' failed: %s: %s\" % (\"build_ext\", exc, exc.output))\n        try:\n            output = subprocess.check_output([\n                \"sphinx-build\", \"-b\", mode, \"docs\", path],\n                stderr=subprocess.STDOUT)\n        except subprocess.CalledProcessError as exc:\n            raise RuntimeError(\"Documentation step '%s' failed: %s: %s\" % (mode, exc, exc.output))\n        print(\"   file://%s/%s/index.html\" % (os.path.dirname(os.path.realpath(__file__)), path))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "scylla_driver-3.29.3",
+      "total_matches": 1
+    }
+  }
+]

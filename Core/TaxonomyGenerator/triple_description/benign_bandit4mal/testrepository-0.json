@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "testrepository-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/testrepository-0.0.21.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "console.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/testrepository-0.0.21/testrepository-0.0.21/lib/python3.11/site-packages/pip/_vendor/rich/console.py",
+      "line_number": "2060",
+      "type_description": "B815:write",
+      "context_snippet": "def _check_buffer(self) -> None:\n    \"\"\"Check if the buffer may be rendered. Render it if it can (e.g. Console.quiet is False)\n    Rendering is supported on Windows, Unix and Jupyter environments. For\n    legacy Windows consoles, the win32 API is called directly.\n    This method will also record what it renders if recording is enabled via Console.record.\n    \"\"\"\n    if self.quiet:\n        del self._buffer[:]\n        return\n    with self._lock:\n        if self.record:\n            with self._record_buffer_lock:\n                self._record_buffer.extend(self._buffer[:])\n\n        if self._buffer_index == 0:\n            if self.is_jupyter:  # pragma: no cover\n                from .jupyter import display\n\n                display(self._buffer, self._render_buffer(self._buffer[:]))\n                del self._buffer[:]\n            else:\n                if WINDOWS:\n                    use_legacy_windows_render = False\n                    if self.legacy_windows:\n                        fileno = get_fileno(self.file)\n                        if fileno is not None:\n                            use_legacy_windows_render = (\n                                fileno in _STD_STREAMS_OUTPUT\n                            )\n\n                    if use_legacy_windows_render:\n                        from pip._vendor.rich._win32_console import LegacyWindowsTerm\n                        from pip._vendor.rich._windows_renderer import legacy_windows_render\n\n                        buffer = self._buffer[:]\n                        if self.no_color and self._color_system:\n                            buffer = list(Segment.remove_color(buffer))\n\n                        legacy_windows_render(buffer, LegacyWindowsTerm(self.file))\n                    else:\n                        # Either a non-std stream on legacy Windows, or modern Windows.\n                        text = self._render_buffer(self._buffer[:])\n                        # https://bugs.python.org/issue37871\n                        # https://github.com/python/cpython/issues/82052\n                        # We need to avoid writing more than 32Kb in a single write, due to the above bug\n                        write = self.file.write\n                        # Worse case scenario, every character is 4 bytes of utf-8\n                        MAX_WRITE = 32 * 1024 // 4\n                        try:\n                            if len(text) <= MAX_WRITE:\n                                write(text)\n                            else:\n                                batch: List[str] = []\n                                batch_append = batch.append\n                                size = 0\n                                for line in text.splitlines(True):\n                                    if size + len(line) > MAX_WRITE and batch:\n                                        write(\"\".join(batch))\n                                        batch.clear()\n                                        size = 0\n                                    batch_append(line)\n                                    size += len(line)\n                                if batch:\n                                    write(\"\".join(batch))\n                                    batch.clear()\n                        except UnicodeEncodeError as error:\n                            error.reason = f\"{error.reason}\\n*** You may need to add PYTHONIOENCODING=utf-8 to your environment ***\"\n                            raise\n                else:\n                    text = self._render_buffer(self._buffer[:])\n                    try:\n                        self.file.write(text)\n                    except UnicodeEncodeError as error:\n                        error.reason = f\"{error.reason}\\n*** You may need to add PYTHONIOENCODING=utf-8 to your environment ***\"\n                        raise\n\n                self.file.flush()\n                del self._buffer[:]",
+      "hash_value": "b6d25c6ca761df06a50a46d2c1c55fd7",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def _check_buffer(self) -> None:\n    \"\"\"Check if the buffer may be rendered. Render it if it can (e.g. Console.quiet is False)\n    Rendering is supported on Windows, Unix and Jupyter environments. For\n    legacy Windows consoles, the win32 API is called directly.\n    This method will also record what it renders if recording is enabled via Console.record.\n    \"\"\"\n    if self.quiet:\n        del self._buffer[:]\n        return\n    with self._lock:\n        if self.record:\n            with self._record_buffer_lock:\n                self._record_buffer.extend(self._buffer[:])\n\n        if self._buffer_index == 0:\n            if self.is_jupyter:  # pragma: no cover\n                from .jupyter import display\n\n                display(self._buffer, self._render_buffer(self._buffer[:]))\n                del self._buffer[:]\n            else:\n                if WINDOWS:\n                    use_legacy_windows_render = False\n                    if self.legacy_windows:\n                        fileno = get_fileno(self.file)\n                        if fileno is not None:\n                            use_legacy_windows_render = (\n                                fileno in _STD_STREAMS_OUTPUT\n                            )\n\n                    if use_legacy_windows_render:\n                        from pip._vendor.rich._win32_console import LegacyWindowsTerm\n                        from pip._vendor.rich._windows_renderer import legacy_windows_render\n\n                        buffer = self._buffer[:]\n                        if self.no_color and self._color_system:\n                            buffer = list(Segment.remove_color(buffer))\n\n                        legacy_windows_render(buffer, LegacyWindowsTerm(self.file))\n                    else:\n                        # Either a non-std stream on legacy Windows, or modern Windows.\n                        text = self._render_buffer(self._buffer[:])\n                        # https://bugs.python.org/issue37871\n                        # https://github.com/python/cpython/issues/82052\n                        # We need to avoid writing more than 32Kb in a single write, due to the above bug\n                        write = self.file.write\n                        # Worse case scenario, every character is 4 bytes of utf-8\n                        MAX_WRITE = 32 * 1024 // 4\n                        try:\n                            if len(text) <= MAX_WRITE:\n                                write(text)\n                            else:\n                                batch: List[str] = []\n                                batch_append = batch.append\n                                size = 0\n                                for line in text.splitlines(True):\n                                    if size + len(line) > MAX_WRITE and batch:\n                                        write(\"\".join(batch))\n                                        batch.clear()\n                                        size = 0\n                                    batch_append(line)\n                                    size += len(line)\n                                if batch:\n                                    write(\"\".join(batch))\n                                    batch.clear()\n                        except UnicodeEncodeError as error:\n                            error.reason = f\"{error.reason}\\n*** You may need to add PYTHONIOENCODING=utf-8 to your environment ***\"\n                            raise\n                else:\n                    text = self._render_buffer(self._buffer[:])\n                    try:\n                        self.file.write(text)\n                    except UnicodeEncodeError as error:\n                        error.reason = f\"{error.reason}\\n*** You may need to add PYTHONIOENCODING=utf-8 to your environment ***\"\n                        raise\n\n                self.file.flush()\n                del self._buffer[:]",
+          "triple_sequences": [
+            {
+              "action_api": "del self._buffer[:]",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self._buffer[:]",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Delete file content",
+              "intention_id": "delete_file_content"
+            },
+            {
+              "action_api": "self._record_buffer.extend()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "self._buffer[:]",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "display()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "self._buffer, self._render_buffer(self._buffer[:])",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Access screen content",
+              "intention_id": "access_screen_content"
+            },
+            {
+              "action_api": "Segment.remove_color()",
+              "action_description": "Removes all keyboard hooks",
+              "action_id": "remove_keyboard_hooks",
+              "object": "buffer",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "legacy_windows_render()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "buffer, LegacyWindowsTerm(self.file)",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Access screen content",
+              "intention_id": "access_screen_content"
+            },
+            {
+              "action_api": "self._render_buffer()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "self._buffer[:]",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.file.write()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "text",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.file.flush()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "self.file",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "del self._buffer[:]",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self._buffer[:]",
+              "object_description": "Local file or directory",
+              "object_id": "local_file_or_directory",
+              "intention_description": "Delete file content",
+              "intention_id": "delete_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

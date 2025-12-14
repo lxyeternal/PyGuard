@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "commbase.py",
+    "code_snippet": "import builtins\n\nclass CommsErrorWrapper():\n    def __init__(self, call_name, call_id):\n        self.call_name = call_name\n        self.call_id = call_id\n        self.etype, self.error, tb = sys.exc_info()\n        self.tb = traceback.extract_tb(tb)\n\n    def to_json(self):\n        \"\"\"Create JSON representation.\"\"\"\n        return {\n            \"call_name\": self.call_name,\n            \"call_id\": self.call_id,\n            \"etype\": self.etype.__name__,\n            \"args\": self.error.args,\n            \"tb\": stacksummary_to_json(self.tb)\n        }\n\n    @classmethod\n    def from_json(cls, json_data):\n        \"\"\"Get a CommsErrorWrapper from a JSON representation.\"\"\"\n        instance = cls.__new__(cls)\n        instance.call_name = json_data[\"call_name\"]\n        instance.call_id = json_data[\"call_id\"]\n        etype = json_data[\"etype\"]\n        instance.etype = getattr(\n            builtins,\n            etype,\n            type(etype, (Exception,), {})\n        )\n        instance.error = instance.etype(*json_data[\"args\"])\n        instance.tb = staksummary_from_json(json_data[\"tb\"])\n        return instance\n\n    def raise_error(self):\n        \"\"\"\n        Raise the error while adding informations on the callback.\n        \"\"\"\n        # Add the traceback in the error, so it can be handled upstream\n        raise self.etype(self)\n\n    def format_error(self):\n        \"\"\"\n        Format the error received from the other side and returns a list of\n        strings.\n        \"\"\"\n        lines = (['Exception in comms call {}:\\n'.format(self.call_name)]\n                 + traceback.format_list(self.tb)\n                 + traceback.format_exception_only(self.etype, self.error))\n        return lines\n\n    def print_error(self, file=None):\n        \"\"\"\n        Print the error to file or to sys.stderr if file is None.\n        \"\"\"\n        if file is None:\n            file = sys.stderr\n        for line in self.format_error():\n            print(line, file=file)\n\n    def __str__(self):\n        \"\"\"Get string representation.\"\"\"\n        return str(self.error)\n\n    def __repr__(self):\n        \"\"\"Get repr.\"\"\"\n        return repr(self.error)\n\ndef staksummary_from_json(stack):\n    \"\"\"StackSummary from json.\"\"\"\n    traceback.StackSummary.from_list([\n        (\n            frame[\"filename\"],\n            frame[\"lineno\"],\n            frame[\"name\"],\n            frame[\"line\"]\n        )\n        for frame in stack\n    ])\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.exc_info",
+        "traceback.extract_tb",
+        "traceback.format_list",
+        "traceback.format_exception_only",
+        "getattr",
+        "builtins.type"
+      ],
+      "api_sequence_with_args": [
+        "sys.exc_info()",
+        "traceback.extract_tb(tb)",
+        "traceback.format_list(self.tb)",
+        "traceback.format_exception_only(self.etype, self.error)",
+        "getattr(builtins, etype, type(etype, (Exception,), {}))",
+        "builtins.type(etype, (Exception,), {})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.exc_info",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "traceback.extract_tb",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "traceback.format_list",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "traceback.format_exception_only",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins.type",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "class CommsErrorWrapper():\n    def __init__(self, call_name, call_id):\n        self.call_name = call_name\n        self.call_id = call_id\n        self.etype, self.error, tb = sys.exc_info()\n        self.tb = traceback.extract_tb(tb)\n\n    def to_json(self):\n        return {\n            \"call_name\": self.call_name,\n            \"call_id\": self.call_id,\n            \"etype\": self.etype.__name__,\n            \"args\": self.error.args,\n            \"tb\": stacksummary_to_json(self.tb)\n        }\n\n    @classmethod\n    def from_json(cls, json_data):\n        instance = cls.__new__(cls)\n        instance.call_name = json_data[\"call_name\"]\n        instance.call_id = json_data[\"call_id\"]\n        etype = json_data[\"etype\"]\n        instance.etype = getattr(\n            builtins,\n            etype,\n            type(etype, (Exception,), {})\n        )\n        instance.error = instance.etype(*json_data[\"args\"])\n        instance.tb = staksummary_from_json(json_data[\"tb\"])\n        return instance\n\n    def format_error(self):\n        lines = (['Exception in comms call {}:\\n'.format(self.call_name)]\n                 + traceback.format_list(self.tb)\n                 + traceback.format_exception_only(self.etype, self.error))\n        return lines"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "spyder_kernels-3.1.0a1",
+      "total_matches": 1
+    }
+  }
+]

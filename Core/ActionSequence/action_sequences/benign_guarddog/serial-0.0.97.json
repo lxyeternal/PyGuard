@@ -1,0 +1,290 @@
+[
+  {
+    "pyfile": "__init__.py",
+    "code_snippet": "import builtins\nimport inspect\nimport sys\nimport os\nfrom io import UnsupportedOperation\nfrom collections import OrderedDict\nfrom unicodedata import normalize\nimport re\nfrom keyword import iskeyword\n\n# ... (other code omitted for brevity)\n\ndef qualified_name(type_):\n    # type: (Union[type, _Module]) -> str\n    \"\"\"\n    >>> print(qualified_name(qualified_name))\n    qualified_name\n\n    >>> from serial import model\n    >>> print(qualified_name(model.marshal))\n    serial.model.marshal\n    \"\"\"\n\n    if hasattr(type_, '__qualname__'):\n        type_name = '.'.join(name_part for name_part in type_.__qualname__.split('.') if name_part[0] != '<')\n    else:\n        type_name = type_.__name__\n\n    if isinstance(type_, _Module):\n\n        if type_name in (\n            'builtins', '__builtin__', '__main__', '__init__'\n        ):\n            type_name = None\n\n    else:\n\n        if type_.__module__ not in (\n            'builtins', '__builtin__', '__main__', '__init__'\n        ):\n            type_name = type_.__module__ + '.' + type_name\n\n    return type_name\n\n\ndef calling_function_qualified_name(depth=1):\n    # type: (int) -> Optional[str]\n    \"\"\"\n    >>> def my_function(): return calling_function_qualified_name()\n    >>> print(my_function())\n    \"\"\"\n\n    if not isinstance(depth, int):\n\n        depth_representation = repr(depth)\n\n        raise TypeError(\n            'The parameter `depth` for `serial.utilities.calling_function_qualified_name` must be an `int`, not' +\n            (\n                (':\\n%s' if '\\n' in depth_representation else ' %s.') %\n                depth_representation\n            )\n        )\n    try:\n        stack = inspect.stack()\n    except IndexError:\n        return None\n\n    if len(stack) < (depth + 1):\n        return None\n\n    name_list = []\n    frame_info = stack[depth]  # type: inspect.FrameInfo\n\n    try:\n        frame_function = frame_info.function\n    except AttributeError:\n        frame_function = frame_info[3]\n\n    if frame_function != '<module>':\n\n        try:\n            frame = frame_info.frame\n        except AttributeError:\n            frame = frame_info[0]\n\n        name_list.append(frame_function)\n        arguments, _, _, frame_locals = inspect.getargvalues(frame)\n\n        if arguments:\n\n            argument = arguments[0]\n            argument_value = frame_locals[argument]\n            argument_value_type = type(argument_value)\n\n            if (\n                hasattr(argument_value_type, '__name__') and\n                hasattr(argument_value_type, '__module__') and\n                (\n                    (argument_value_type.__name__ not in dir(builtins)) or\n                    (getattr(builtins, argument_value_type.__name__) is not argument_value_type)\n                )\n            ):\n                name_list.append(qualified_name(argument_value_type))\n\n    if len(name_list) < 2:\n\n        try:\n            file_name = frame_info.filename\n        except AttributeError:\n            file_name = frame_info[1]\n\n        module_name = inspect.getmodulename(file_name)\n\n        if (module_name is not None) and (module_name not in sys.modules):\n\n            path_parts = list(os.path.split(file_name))\n            path_parts.pop()\n\n            while path_parts:\n\n                parent = path_parts.pop()\n                module_name = parent + '.' + module_name\n\n                if module_name in sys.modules:\n                    break\n\n        if module_name is None:\n            raise ValueError('The path \"%s\" is not a python module' % file_name)\n        else:\n            if module_name in sys.modules:\n                qualified_module_name = qualified_name(sys.modules[module_name])\n                name_list.append(qualified_module_name)\n\n    return '.'.join(reversed(name_list))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "hasattr",
+        "type_.__qualname__",
+        "type_.__name__",
+        "isinstance",
+        "inspect.stack",
+        "isinstance",
+        "repr",
+        "inspect.stack",
+        "len",
+        "inspect.FrameInfo.function",
+        "inspect.FrameInfo.frame",
+        "inspect.getargvalues",
+        "type",
+        "hasattr",
+        "hasattr",
+        "getattr",
+        "hasattr",
+        "inspect.FrameInfo.filename",
+        "inspect.getmodulename",
+        "os.path.split",
+        "path_parts.pop",
+        "sys.modules.__contains__",
+        "sys.modules.__getitem__",
+        "qualified_name",
+        "len",
+        "reversed",
+        "str.join"
+      ],
+      "api_sequence_with_args": [
+        "hasattr(type_, '__qualname__')",
+        "type_.__qualname__",
+        "type_.__name__",
+        "isinstance(type_, _Module)",
+        "inspect.stack()",
+        "isinstance(depth, int)",
+        "repr(depth)",
+        "inspect.stack()",
+        "len(stack)",
+        "frame_info.function",
+        "frame_info.frame",
+        "inspect.getargvalues(frame)",
+        "type(argument_value)",
+        "hasattr(argument_value_type, '__name__')",
+        "hasattr(argument_value_type, '__module__')",
+        "getattr(builtins, argument_value_type.__name__)",
+        "hasattr(frame_info, 'filename')",
+        "inspect.getmodulename(file_name)",
+        "os.path.split(file_name)",
+        "path_parts.pop()",
+        "module_name in sys.modules",
+        "sys.modules[module_name]",
+        "qualified_name(sys.modules[module_name])",
+        "len(name_list)",
+        "reversed(name_list)",
+        "'.'.join(reversed(name_list))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "type_.__qualname__",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "type_.__name__",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "inspect.stack",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "repr",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "inspect.stack",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "len",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "inspect.FrameInfo.function",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "inspect.FrameInfo.frame",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "inspect.getargvalues",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "type",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "inspect.FrameInfo.filename",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "inspect.getmodulename",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "path_parts.pop",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "module_name in sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules[module_name]",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "qualified_name",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "len",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "reversed",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "str.join",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import builtins\nimport inspect\nimport sys\nimport os\n\ndef qualified_name(type_):\n    if hasattr(type_, '__qualname__'):\n        type_name = '.'.join(name_part for name_part in type_.__qualname__.split('.') if name_part[0] != '<')\n    else:\n        type_name = type_.__name__\n    if isinstance(type_, _Module):\n        if type_name in (\n            'builtins', '__builtin__', '__main__', '__init__'\n        ):\n            type_name = None\n    else:\n        if type_.__module__ not in (\n            'builtins', '__builtin__', '__main__', '__init__'\n        ):\n            type_name = type_.__module__ + '.' + type_name\n    return type_name\n\ndef calling_function_qualified_name(depth=1):\n    if not isinstance(depth, int):\n        depth_representation = repr(depth)\n        raise TypeError(\n            'The parameter `depth` for `serial.utilities.calling_function_qualified_name` must be an `int`, not' +\n            (\n                (':\\n%s' if '\\n' in depth_representation else ' %s.') %\n                depth_representation\n            )\n        )\n    try:\n        stack = inspect.stack()\n    except IndexError:\n        return None\n    if len(stack) < (depth + 1):\n        return None\n    name_list = []\n    frame_info = stack[depth]  # type: inspect.FrameInfo\n    try:\n        frame_function = frame_info.function\n    except AttributeError:\n        frame_function = frame_info[3]\n    if frame_function != '<module>':\n        try:\n            frame = frame_info.frame\n        except AttributeError:\n            frame = frame_info[0]\n        name_list.append(frame_function)\n        arguments, _, _, frame_locals = inspect.getargvalues(frame)\n        if arguments:\n            argument = arguments[0]\n            argument_value = frame_locals[argument]\n            argument_value_type = type(argument_value)\n            if (\n                hasattr(argument_value_type, '__name__') and\n                hasattr(argument_value_type, '__module__') and\n                (\n                    (argument_value_type.__name__ not in dir(builtins)) or\n                    (getattr(builtins, argument_value_type.__name__) is not argument_value_type)\n                )\n            ):\n                name_list.append(qualified_name(argument_value_type))\n    if len(name_list) < 2:\n        try:\n            file_name = frame_info.filename\n        except AttributeError:\n            file_name = frame_info[1]\n        module_name = inspect.getmodulename(file_name)\n        if (module_name is not None) and (module_name not in sys.modules):\n            path_parts = list(os.path.split(file_name))\n            path_parts.pop()\n            while path_parts:\n                parent = path_parts.pop()\n                module_name = parent + '.' + module_name\n                if module_name in sys.modules:\n                    break\n        if module_name is None:\n            raise ValueError('The path \"%s\" is not a python module' % file_name)\n        else:\n            if module_name in sys.modules:\n                qualified_module_name = qualified_name(sys.modules[module_name])\n                name_list.append(qualified_module_name)\n    return '.'.join(reversed(name_list))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "serial-0.0.97",
+      "total_matches": 1
+    }
+  }
+]

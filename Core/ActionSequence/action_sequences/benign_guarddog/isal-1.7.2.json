@@ -1,0 +1,243 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import functools\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nISA_L_SOURCE = os.path.join(\"src\", \"isal\", \"isa-l\")\n\nSYSTEM_IS_BSD = (sys.platform.startswith(\"freebsd\") or\n                 sys.platform.startswith(\"netbsd\"))\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  sys.platform.startswith(\"gnu\") or\n                  SYSTEM_IS_BSD)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\n# Since pip builds in a temp directory by default, setting a fixed file in\n# /tmp works during the entire session.\nDEFAULT_CACHE_FILE = Path(tempfile.gettempdir()\n                          ).absolute() / \".isal_build_cache\"\nBUILD_CACHE = os.environ.get(\"PYTHON_ISAL_BUILD_CACHE\")\nBUILD_CACHE_FILE = Path(os.environ.get(\"PYTHON_ISAL_BUILD_CACHE_FILE\",\n                                       DEFAULT_CACHE_FILE))\n\n@functools.lru_cache(maxsize=None)\ndef build_isa_l():\n    # Check for cache\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"isa-l.h\").exists():\n                return str(cache_path)\n\n    # Creating temporary directories\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ISA_L_SOURCE, build_dir)\n\n    # Build environment is a copy of OS environment to allow user to influence\n    # it.\n    build_env = os.environ.copy()\n    if SYSTEM_IS_UNIX:\n        build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:  # sched_getaffinity not available on all platforms\n        cpu_count = os.cpu_count() or 1  # os.cpu_count() can return None\n    run_args = dict(cwd=build_dir, env=build_env)\n    if SYSTEM_IS_UNIX:\n        if platform.machine() == \"aarch64\":\n            cflags_param = \"CFLAGS_aarch64\"\n        else:\n            cflags_param = \"CFLAGS_\"\n        make_cmd = \"make\"\n        if SYSTEM_IS_BSD:\n            make_cmd = \"gmake\"\n        subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\",\n                        \"isa-l.h\", \"bin/isa-l.a\",\n                        f\"{cflags_param}={build_env.get('CFLAGS', '')}\"],\n                       **run_args)\n    elif SYSTEM_IS_WINDOWS:\n        subprocess.run([\"nmake\", \"/f\", \"Makefile.nmake\"], **run_args)\n    else:\n        raise NotImplementedError(f\"Unsupported platform: {sys.platform}\")\n    shutil.copytree(os.path.join(build_dir, \"include\"),\n                    os.path.join(build_dir, \"isa-l\"))\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)\n    return build_dir",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "sys.platform.startswith",
+        "sys.platform.startswith",
+        "sys.platform.startswith",
+        "sys.platform.startswith",
+        "sys.platform.startswith",
+        "tempfile.gettempdir",
+        "Path.absolute",
+        "os.environ.get",
+        "os.environ.get",
+        "Path",
+        "functools.lru_cache",
+        "Path.read_text",
+        "Path",
+        "Path.exists",
+        "Path.__truediv__",
+        "Path.exists",
+        "tempfile.mktemp",
+        "shutil.copytree",
+        "os.environ.copy",
+        "os.environ.get",
+        "hasattr",
+        "os.sched_getaffinity",
+        "os.cpu_count",
+        "platform.machine",
+        "subprocess.run",
+        "subprocess.run",
+        "shutil.copytree",
+        "os.path.join",
+        "os.path.join",
+        "BUILD_CACHE_FILE.write_text"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(\"src\", \"isal\", \"isa-l\")",
+        "sys.platform.startswith(\"freebsd\")",
+        "sys.platform.startswith(\"netbsd\")",
+        "sys.platform.startswith(\"linux\")",
+        "sys.platform.startswith(\"darwin\")",
+        "sys.platform.startswith(\"gnu\")",
+        "tempfile.gettempdir()",
+        "Path(tempfile.gettempdir()).absolute()",
+        "os.environ.get(\"PYTHON_ISAL_BUILD_CACHE\")",
+        "os.environ.get(\"PYTHON_ISAL_BUILD_CACHE_FILE\", DEFAULT_CACHE_FILE)",
+        "Path(os.environ.get(\"PYTHON_ISAL_BUILD_CACHE_FILE\", DEFAULT_CACHE_FILE))",
+        "functools.lru_cache(maxsize=None)",
+        "Path(BUILD_CACHE_FILE.read_text())",
+        "Path(BUILD_CACHE_FILE.read_text())",
+        "Path.exists()",
+        "cache_path / \"isa-l.h\"",
+        "(cache_path / \"isa-l.h\").exists()",
+        "tempfile.mktemp()",
+        "shutil.copytree(ISA_L_SOURCE, build_dir)",
+        "os.environ.copy()",
+        "build_env.get(\"CFLAGS\", \"\")",
+        "hasattr(os, \"sched_getaffinity\")",
+        "os.sched_getaffinity(0)",
+        "os.cpu_count()",
+        "platform.machine()",
+        "subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\", \"isa-l.h\", \"bin/isa-l.a\", f\"{cflags_param}={build_env.get('CFLAGS', '')}\"], **run_args)",
+        "subprocess.run([\"nmake\", \"/f\", \"Makefile.nmake\"], **run_args)",
+        "shutil.copytree(os.path.join(build_dir, \"include\"), os.path.join(build_dir, \"isa-l\"))",
+        "os.path.join(build_dir, \"include\")",
+        "os.path.join(build_dir, \"isa-l\")",
+        "BUILD_CACHE_FILE.write_text(build_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "tempfile.gettempdir",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "Path.absolute",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.read_text",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "tempfile.mktemp",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.sched_getaffinity",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "platform.machine",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "BUILD_CACHE_FILE.write_text",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nISA_L_SOURCE = os.path.join(\"src\", \"isal\", \"isa-l\")\n\nSYSTEM_IS_BSD = (sys.platform.startswith(\"freebsd\") or\n                 sys.platform.startswith(\"netbsd\"))\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  sys.platform.startswith(\"gnu\") or\n                  SYSTEM_IS_BSD)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\nDEFAULT_CACHE_FILE = Path(tempfile.gettempdir()).absolute() / \".isal_build_cache\"\nBUILD_CACHE = os.environ.get(\"PYTHON_ISAL_BUILD_CACHE\")\nBUILD_CACHE_FILE = Path(os.environ.get(\"PYTHON_ISAL_BUILD_CACHE_FILE\", DEFAULT_CACHE_FILE))\n\ndef build_isa_l():\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"isa-l.h\").exists():\n                return str(cache_path)\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ISA_L_SOURCE, build_dir)\n    build_env = os.environ.copy()\n    if SYSTEM_IS_UNIX:\n        build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:\n        cpu_count = os.cpu_count() or 1\n    run_args = dict(cwd=build_dir, env=build_env)\n    if SYSTEM_IS_UNIX:\n        if platform.machine() == \"aarch64\":\n            cflags_param = \"CFLAGS_aarch64\"\n        else:\n            cflags_param = \"CFLAGS_\"\n        make_cmd = \"make\"\n        if SYSTEM_IS_BSD:\n            make_cmd = \"gmake\"\n        subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\", \"isa-l.h\", \"bin/isa-l.a\", f\"{cflags_param}={build_env.get('CFLAGS', '')}\"], **run_args)\n    elif SYSTEM_IS_WINDOWS:\n        subprocess.run([\"nmake\", \"/f\", \"Makefile.nmake\"], **run_args)\n    else:\n        raise NotImplementedError(f\"Unsupported platform: {sys.platform}\")\n    shutil.copytree(os.path.join(build_dir, \"include\"), os.path.join(build_dir, \"isa-l\"))\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)\n    return build_dir"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "isal-1.7.2",
+      "total_matches": 2
+    }
+  }
+]

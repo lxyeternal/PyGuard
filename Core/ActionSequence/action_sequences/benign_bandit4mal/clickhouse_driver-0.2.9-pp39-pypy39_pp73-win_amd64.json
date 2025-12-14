@@ -1,0 +1,88 @@
+[
+  {
+    "metadata": {
+      "package_name": "clickhouse_driver-0.2.9-pp39-pypy39_pp73-win_amd64",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "connection.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/clickhouse_driver-0.2.9-pp39-pypy39_pp73-win_amd64/clickhouse_driver/connection.py",
+    "line_number": "298",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "297\t                if sock is not None:\n298\t                    sock.close()\n299",
+    "code_snippet": "def _create_socket(self, host, port):\n    \"\"\"\n    Acts like socket.create_connection, but wraps socket with SSL\n    if connection is secure.\n    \"\"\"\n    ssl_options = {}\n    if self.secure_socket:\n        if self.verify_cert:\n            cert_reqs = ssl.CERT_REQUIRED\n        else:\n            cert_reqs = ssl.CERT_NONE\n\n        ssl_options = self.ssl_options.copy()\n        ssl_options['cert_reqs'] = cert_reqs\n\n    err = None\n    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):\n        af, socktype, proto, canonname, sa = res\n        sock = None\n        try:\n            sock = socket.socket(af, socktype, proto)\n            sock.settimeout(self.connect_timeout)\n\n            if self.secure_socket:\n                ssl_context = self._create_ssl_context(ssl_options)\n                sock = ssl_context.wrap_socket(\n                    sock, server_hostname=self.server_hostname or host)\n\n            sock.connect(sa)\n            return sock\n\n        except socket.error as _:\n            err = _\n            if sock is not None:\n                sock.close()\n\n    if err is not None:\n        raise err\n    else:\n        raise socket.error(\"getaddrinfo returns an empty list\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "socket.getaddrinfo",
+        "socket.socket",
+        "socket.socket.settimeout",
+        "ssl.SSLContext.wrap_socket",
+        "socket.socket.connect",
+        "socket.socket.close"
+      ],
+      "api_sequence_with_args": [
+        "socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)",
+        "socket.socket(af, socktype, proto)",
+        "socket.socket.settimeout(self.connect_timeout)",
+        "ssl.SSLContext.wrap_socket(sock, server_hostname=self.server_hostname or host)",
+        "socket.socket.connect(sa)",
+        "socket.socket.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "socket.getaddrinfo",
+          "id": "resolve_hostname",
+          "description": "Resolves host name to IPv4 address",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "domain_resolution"
+        },
+        {
+          "api_name": "socket.socket",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "socket.socket.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "ssl.SSLContext.wrap_socket",
+          "id": "wrap_socket_ssl",
+          "description": "Wraps socket for SSL/TLS communication",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def _create_socket(self, host, port):\n    ssl_options = {}\n    if self.secure_socket:\n        if self.verify_cert:\n            cert_reqs = ssl.CERT_REQUIRED\n        else:\n            cert_reqs = ssl.CERT_NONE\n        ssl_options = self.ssl_options.copy()\n        ssl_options['cert_reqs'] = cert_reqs\n    err = None\n    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):\n        af, socktype, proto, canonname, sa = res\n        sock = None\n        try:\n            sock = socket.socket(af, socktype, proto)\n            sock.settimeout(self.connect_timeout)\n            if self.secure_socket:\n                ssl_context = self._create_ssl_context(ssl_options)\n                sock = ssl_context.wrap_socket(sock, server_hostname=self.server_hostname or host)\n            sock.connect(sa)\n            return sock\n        except socket.error as _:\n            err = _\n            if sock is not None:\n                sock.close()\n    if err is not None:\n        raise err\n    else:\n        raise socket.error(\"getaddrinfo returns an empty list\")"
+    }
+  }
+]

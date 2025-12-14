@@ -1,0 +1,151 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport shlex\nfrom subprocess import call, PIPE, Popen\nimport re\nimport sys\nimport subprocess\n\nmin_required_hidapi_version = \"0.14\"\nlibusb_pkgconfig = \"libusb-1.0 >= 1.0.9\"\nhidapi_libusb_pkgconfig = \"hidapi-libusb >= \" + min_required_hidapi_version\nhidapi_hidraw_pkgconfig = \"hidapi-hidraw >= \" + min_required_hidapi_version\nhidapi_pkgconfig = \"hidapi >= \" + min_required_hidapi_version\n\ntld = os.path.abspath(os.path.dirname(__file__))\nembedded_hidapi_topdir = os.path.join(tld, \"hidapi\")\nembedded_hidapi_include = os.path.join(embedded_hidapi_topdir, \"hidapi\")\n\ndef get_extension_compiler_type():\n    \"\"\"\n    Returns a compiler to be used by setuptools to build Extensions\n    Taken from https://github.com/pypa/setuptools/issues/2806#issuecomment-961805789\n    \"\"\"\n    d = Distribution()\n    build_ext = Distribution().get_command_obj(\"build_ext\")\n    build_ext.finalize_options()\n    # register an extension to ensure a compiler is created\n    build_ext.extensions = [Extension(\"ignored\", [\"ignored.c\"])]\n    # disable building fake extensions\n    build_ext.build_extensions = lambda: None\n    # run to populate self.compiler\n    build_ext.run()\n    return build_ext.compiler.compiler_type\n\ndef pkgconfig_configure_extension(ext, package):\n    pkg_config_exe = os.environ.get(\"PKG_CONFIG\", None) or \"pkg-config\"\n\n    def exists(package):\n        cmd = f\"{pkg_config_exe} --exists '{package}'\"\n        return call(shlex.split(cmd)) == 0\n\n    if not exists(package):\n        raise Exception(f\"pkg-config package '{package}' not found\")\n\n    def query_pkg_config(package, *options):\n        cmd = f\"{pkg_config_exe} {' '.join(options)} '{package}'\"\n        proc = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)\n        out, err = proc.communicate()\n\n        return out.rstrip().decode(\"utf-8\")\n\n    def query_and_extend(option, target):\n        os_opts = [\"--msvc-syntax\"] if get_extension_compiler_type() == \"msvc\" else []\n        flags = query_pkg_config(package, *os_opts, option)\n        flags = flags.replace('\\\\\"', \"\")\n        if flags:\n            target.extend(re.split(r\"(?<!\\\\) \", flags))\n\n    query_and_extend(\"--cflags\", ext.extra_compile_args)\n    query_and_extend(\"--libs\", ext.extra_link_args)\n\n    return ext\n\ndef hid_from_embedded_hidapi():\n    # TODO: what about MinGW/msys?\n    if sys.platform.startswith(\"win\") or sys.platform.startswith(\"cygwin\"):\n        modules = [\n            Extension(\n                \"hid\",\n                sources=[\"hid.pyx\", hidapi_src(\"windows\")],\n                include_dirs=[embedded_hidapi_include],\n                extra_compile_args=[\"-DHID_API_NO_EXPORT_DEFINE\"],\n                libraries=[\"setupapi\"],\n            )\n        ]\n\n    elif sys.platform.startswith(\"darwin\"):\n        macos_sdk_path = (\n            subprocess.check_output([\"xcrun\", \"--show-sdk-path\"]).decode().strip()\n        )\n        modules = [\n            Extension(\n                \"hid\",\n                sources=[\"hid.pyx\", hidapi_src(\"mac\")],\n                include_dirs=[embedded_hidapi_include],\n                # TODO: remove -Wno-unreachable-code when the time comes: https://github.com/cython/cython/issues/3172\n                extra_compile_args=[\n                    \"-isysroot\",\n                    macos_sdk_path,\n                    \"-Wno-unreachable-code\",\n                ],\n                # TODO: remove '-framework AppKit' after switching to 0.14.1 or newer\n                extra_link_args=[\n                    \"-framework\",\n                    \"IOKit\",\n                    \"-framework\",\n                    \"CoreFoundation\",\n                    \"-framework\",\n                    \"AppKit\",\n                ],\n            )\n        ]\n\n    elif sys.platform.startswith(\"linux\"):\n        modules = []\n        if \"--with-hidraw\" in sys.argv:\n            sys.argv.remove(\"--with-hidraw\")\n            HIDAPI_WITH_HIDRAW = True\n        else:\n            HIDAPI_WITH_HIDRAW = to_bool(os.getenv(\"HIDAPI_WITH_HIDRAW\"))\n        if \"--with-libusb\" in sys.argv:\n            sys.argv.remove(\"--with-libusb\")\n            HIDAPI_WITH_LIBUSB = True\n        else:\n            HIDAPI_WITH_LIBUSB = to_bool(os.getenv(\"HIDAPI_WITH_LIBUSB\"))\n\n        # make libusb backend default if none is specified\n        if not HIDAPI_WITH_HIDRAW and not HIDAPI_WITH_LIBUSB:\n            HIDAPI_WITH_LIBUSB = True\n\n        if HIDAPI_WITH_LIBUSB:\n            hidraw_module = \"hidraw\"\n            modules.append(\n                pkgconfig_configure_extension(\n                    Extension(\n                        \"hid\",\n                        sources=[\"hid.pyx\", hidapi_src(\"libusb\")],\n                        include_dirs=[embedded_hidapi_include],\n                    ),\n                    libusb_pkgconfig,\n                )\n            )\n        elif HIDAPI_WITH_HIDRAW:\n            hidraw_module = \"hid\"\n        else:\n            raise ValueError(\"Unknown HIDAPI backend\")\n\n        modules.append(\n            Extension(\n                hidraw_module,\n                sources=[\"hidraw.pyx\", hidapi_src(\"linux\")],\n                include_dirs=[embedded_hidapi_include],\n                libraries=[\"udev\"],\n            )\n        )\n\n    else:\n        modules = [\n            pkgconfig_configure_extension(\n                Extension(\n                    \"hid\",\n                    sources=[\"hid.pyx\", hidapi_src(\"libusb\")],\n                    include_dirs=[embedded_hidapi_include],\n                ),\n                libusb_pkgconfig,\n            )\n        ]\n\n    return modules\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.environ.get",
+        "subprocess.call",
+        "shlex.split",
+        "subprocess.Popen",
+        "shlex.split",
+        "subprocess.Popen.communicate",
+        "os.getenv",
+        "os.getenv"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(os.path.dirname(__file__))",
+        "os.path.dirname(__file__)",
+        "os.path.join(tld, \"hidapi\")",
+        "os.path.join(embedded_hidapi_topdir, \"hidapi\")",
+        "os.path.join(tld, \"hidapi\")",
+        "os.environ.get(\"PKG_CONFIG\", None)",
+        "subprocess.call(shlex.split(cmd))",
+        "shlex.split(cmd)",
+        "subprocess.Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)",
+        "shlex.split(cmd)",
+        "subprocess.Popen(...).communicate()",
+        "os.getenv(\"HIDAPI_WITH_HIDRAW\")",
+        "os.getenv(\"HIDAPI_WITH_LIBUSB\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "shlex.split",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "shlex.split",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\nimport shlex\nfrom subprocess import call, PIPE, Popen\nimport subprocess\n\ntld = os.path.abspath(os.path.dirname(__file__))\nembedded_hidapi_topdir = os.path.join(tld, \"hidapi\")\nembedded_hidapi_include = os.path.join(embedded_hidapi_topdir, \"hidapi\")\n\ndef pkgconfig_configure_extension(ext, package):\n    pkg_config_exe = os.environ.get(\"PKG_CONFIG\", None) or \"pkg-config\"\n\n    def exists(package):\n        cmd = f\"{pkg_config_exe} --exists '{package}'\"\n        return call(shlex.split(cmd)) == 0\n\n    def query_pkg_config(package, *options):\n        cmd = f\"{pkg_config_exe} {' '.join(options)} '{package}'\"\n        proc = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)\n        out, err = proc.communicate()\n        return out.rstrip().decode(\"utf-8\")\n\n    def query_and_extend(option, target):\n        os_opts = [\"--msvc-syntax\"] if get_extension_compiler_type() == \"msvc\" else []\n        flags = query_pkg_config(package, *os_opts, option)\n        flags = flags.replace('\\\\\"', \"\")\n        if flags:\n            target.extend(re.split(r\"(?<!\\\\) \", flags))\n\n    query_and_extend(\"--cflags\", ext.extra_compile_args)\n    query_and_extend(\"--libs\", ext.extra_link_args)\n    return ext\n\ndef hid_from_embedded_hidapi():\n    if sys.platform.startswith(\"linux\"):\n        if \"--with-hidraw\" in sys.argv:\n            sys.argv.remove(\"--with-hidraw\")\n            HIDAPI_WITH_HIDRAW = True\n        else:\n            HIDAPI_WITH_HIDRAW = to_bool(os.getenv(\"HIDAPI_WITH_HIDRAW\"))\n        if \"--with-libusb\" in sys.argv:\n            sys.argv.remove(\"--with-libusb\")\n            HIDAPI_WITH_LIBUSB = True\n        else:\n            HIDAPI_WITH_LIBUSB = to_bool(os.getenv(\"HIDAPI_WITH_LIBUSB\"))\n        # ...\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "hidapi-0.14.0.post4",
+      "total_matches": 3
+    }
+  }
+]

@@ -1,0 +1,185 @@
+{
+  "metadata": {
+    "package_name": "pyro_ppl-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/pyro_ppl-1.9.1.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "bart.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyro_ppl-1.9.1/pyro_ppl-1.9.1/pyro/contrib/examples/bart.py",
+      "line_number": "22",
+      "type_description": "shady-links",
+      "context_snippet": "# https://www.bart.gov/about/reports/ridership\nSOURCE_DIR = \"http://64.111.127.166/origin-destination/\"\nSOURCE_FILES = [\n    \"date-hour-soo-dest-2011.csv.gz\",\n    \"date-hour-soo-dest-2012.csv.gz\",\n    \"date-hour-soo-dest-2013.csv.gz\",\n    \"date-hour-soo-dest-2014.csv.gz\",\n    \"date-hour-soo-dest-2015.csv.gz\",\n    \"date-hour-soo-dest-2016.csv.gz\",\n    \"date-hour-soo-dest-2017.csv.gz\",\n    \"date-hour-soo-dest-2018.csv.gz\",\n    \"date-hour-soo-dest-2019.csv.gz\",\n]\nCACHE_URL = \"https://d2hg8soec8ck9v.cloudfront.net/datasets/bart_full.pkl.bz2\"\n\n\ndef _load_hourly_od(basename):\n    filename = os.path.join(DATA, basename.replace(\".csv.gz\", \".pkl\"))\n    if os.path.exists(filename):\n        return filename\n\n    # Download source files.\n    gz_filename = os.path.join(DATA, basename)\n    if not os.path.exists(gz_filename):\n        url = SOURCE_DIR + basename\n        logging.debug(\"downloading {}\".format(url))\n        urllib.request.urlretrieve(url, gz_filename)\n    csv_filename = gz_filename[:-3]\n    assert csv_filename.endswith(\".csv\")\n    if not os.path.exists(csv_filename):\n        logging.debug(\"unzipping {}\".format(gz_filename))\n        subprocess.check_call([\"gunzip\", \"-k\", gz_filename])\n    assert os.path.exists(csv_filename)\n\n    # Convert to PyTorch.\n    logging.debug(\"converting {}\".format(csv_filename))\n    start_date = datetime.datetime.strptime(\"2000-01-01\", \"%Y-%m-%d\")\n    stations = {}\n    num_rows = sum(1 for _ in open(csv_filename))\n    logging.info(\"Formatting {} rows\".format(num_rows))\n    rows = torch.empty((num_rows, 4), dtype=torch.long)\n    with open(csv_filename) as f:\n        for i, (date, hour, origin, destin, trip_count) in enumerate(csv.reader(f)):\n            date = datetime.datetime.strptime(date, \"%Y-%m-%d\")\n            date += datetime.timedelta(hours=int(hour))\n            rows[i, 0] = int((date - start_date).total_seconds() / 3600)\n            rows[i, 1] = stations.setdefault(origin, len(stations))\n            rows[i, 2] = stations.setdefault(destin, len(stations))\n            rows[i, 3] = int(trip_count)\n            if i % 10000 == 0:\n                sys.stderr.write(\".\")\n                sys.stderr.flush()\n\n    # Save data with metadata.\n    dataset = {\n        \"basename\": basename,\n        \"start_date\": start_date,\n        \"stations\": stations,\n        \"rows\": rows,\n        \"schema\": [\"time_hours\", \"origin\", \"destin\", \"trip_count\"],\n    }\n    dataset[\"rows\"]\n    logging.debug(\"saving {}\".format(filename))\n    torch.save(dataset, filename)\n    return filename",
+      "hash_value": "74fa02613e0f87aaae25602880284456",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "# https://www.bart.gov/about/reports/ridership\nSOURCE_DIR = \"http://64.111.127.166/origin-destination/\"\nSOURCE_FILES = [\n    \"date-hour-soo-dest-2011.csv.gz\",\n    \"date-hour-soo-dest-2012.csv.gz\",\n    \"date-hour-soo-dest-2013.csv.gz\",\n    \"date-hour-soo-dest-2014.csv.gz\",\n    \"date-hour-soo-dest-2015.csv.gz\",\n    \"date-hour-soo-dest-2016.csv.gz\",\n    \"date-hour-soo-dest-2017.csv.gz\",\n    \"date-hour-soo-dest-2018.csv.gz\",\n    \"date-hour-soo-dest-2019.csv.gz\",\n]\nCACHE_URL = \"https://d2hg8soec8ck9v.cloudfront.net/datasets/bart_full.pkl.bz2\"\n\n\ndef _load_hourly_od(basename):\n    filename = os.path.join(DATA, basename.replace(\".csv.gz\", \".pkl\"))\n    if os.path.exists(filename):\n        return filename\n\n    # Download source files.\n    gz_filename = os.path.join(DATA, basename)\n    if not os.path.exists(gz_filename):\n        url = SOURCE_DIR + basename\n        logging.debug(\"downloading {}\".format(url))\n        urllib.request.urlretrieve(url, gz_filename)\n    csv_filename = gz_filename[:-3]\n    assert csv_filename.endswith(\".csv\")\n    if not os.path.exists(csv_filename):\n        logging.debug(\"unzipping {}\".format(gz_filename))\n        subprocess.check_call([\"gunzip\", \"-k\", gz_filename])\n    assert os.path.exists(csv_filename)\n\n    # Convert to PyTorch.\n    logging.debug(\"converting {}\".format(csv_filename))\n    start_date = datetime.datetime.strptime(\"2000-01-01\", \"%Y-%m-%d\")\n    stations = {}\n    num_rows = sum(1 for _ in open(csv_filename))\n    logging.info(\"Formatting {} rows\".format(num_rows))\n    rows = torch.empty((num_rows, 4), dtype=torch.long)\n    with open(csv_filename) as f:\n        for i, (date, hour, origin, destin, trip_count) in enumerate(csv.reader(f)):\n            date = datetime.datetime.strptime(date, \"%Y-%m-%d\")\n            date += datetime.timedelta(hours=int(hour))\n            rows[i, 0] = int((date - start_date).total_seconds() / 3600)\n            rows[i, 1] = stations.setdefault(origin, len(stations))\n            rows[i, 2] = stations.setdefault(destin, len(stations))\n            rows[i, 3] = int(trip_count)\n            if i % 10000 == 0:\n                sys.stderr.write(\".\")\n                sys.stderr.flush()\n\n    # Save data with metadata.\n    dataset = {\n        \"basename\": basename,\n        \"start_date\": start_date,\n        \"stations\": stations,\n        \"rows\": rows,\n        \"schema\": [\"time_hours\", \"origin\", \"destin\", \"trip_count\"],\n    }\n    dataset[\"rows\"]\n    logging.debug(\"saving {}\".format(filename))\n    torch.save(dataset, filename)\n    return filename",
+          "triple_sequences": [
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "DATA, basename.replace('.csv.gz', '.pkl')",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "DATA, basename",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "gz_filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "urllib.request.urlretrieve()",
+              "action_description": "Downloads file from URL to local path",
+              "action_id": "download_file_url",
+              "object": "url, gz_filename",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "csv_filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "subprocess.check_call()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"gunzip\", \"-k\", gz_filename]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "csv_filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "datetime.datetime.strptime()",
+              "action_description": "Parses string into datetime object",
+              "action_id": "parse_datetime",
+              "object": "\"2000-01-01\", \"%Y-%m-%d\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "csv_filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "csv.reader()",
+              "action_description": "Iterates over response content in chunks",
+              "action_id": "iterate_response_chunks",
+              "object": "f",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "datetime.datetime.strptime()",
+              "action_description": "Parses string into datetime object",
+              "action_id": "parse_datetime",
+              "object": "date, \"%Y-%m-%d\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "datetime.timedelta()",
+              "action_description": "Parses string into datetime object",
+              "action_id": "parse_datetime",
+              "object": "hours=int(hour)",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\".\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "sys.stderr.flush()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "torch.save()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "dataset, filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,300 @@
+[
+  {
+    "pyfile": "Wuguokai.py",
+    "code_snippet": "from __future__ import annotations\n\nimport random\n\nimport requests\n\nfrom ...typing import Any, CreateResult\nfrom ..base_provider import AbstractProvider, format_prompt\n\nclass Wuguokai(AbstractProvider):\n    url = 'https://chat.wuguokai.xyz'\n    supports_gpt_35_turbo = True\n    working = False\n\n    @staticmethod\n    def create_completion(\n        model: str,\n        messages: list[dict[str, str]],\n        stream: bool,\n        **kwargs: Any,\n    ) -> CreateResult:\n        headers = {\n            'authority': 'ai-api.wuguokai.xyz',\n            'accept': 'application/json, text/plain, */*',\n            'accept-language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',\n            'content-type': 'application/json',\n            'origin': 'https://chat.wuguokai.xyz',\n            'referer': 'https://chat.wuguokai.xyz/',\n            'sec-ch-ua': '\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\"',\n            'sec-ch-ua-mobile': '?0',\n            'sec-ch-ua-platform': '\"Windows\"',\n            'sec-fetch-dest': 'empty',\n            'sec-fetch-mode': 'cors',\n            'sec-fetch-site': 'same-site',\n            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'\n        }\n        data ={\n            \"prompt\": format_prompt(messages),\n            \"options\": {},\n            \"userId\": f\"#/chat/{random.randint(1,99999999)}\",\n            \"usingContext\": True\n        }\n        response = requests.post(\n            \"https://ai-api20.wuguokai.xyz/api/chat-process\",\n            headers=headers,\n            timeout=3,\n            json=data,\n            proxies=kwargs.get('proxy', {}),\n        )\n        _split = response.text.split(\"> 若回答失败请重试或多刷新几次界面后重试\")\n        if response.status_code != 200:\n            raise Exception(f\"Error: {response.status_code} {response.reason}\")\n        if len(_split) > 1:\n            yield _split[1].strip()\n        else:\n            yield _split[0].strip()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "random.randint",
+        "format_prompt",
+        "requests.post",
+        "requests.models.Response.text.split",
+        "requests.models.Response.status_code",
+        "requests.models.Response.reason"
+      ],
+      "api_sequence_with_args": [
+        "random.randint(1, 99999999)",
+        "format_prompt(messages)",
+        "requests.post('https://ai-api20.wuguokai.xyz/api/chat-process', headers=headers, timeout=3, json=data, proxies=kwargs.get('proxy', {}))",
+        "response.text.split('> 若回答失败请重试或多刷新几次界面后重试')",
+        "response.status_code",
+        "response.reason"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "random.randint",
+          "id": "apply_lambda_elements",
+          "description": "Applies lambda to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "format_prompt",
+          "id": "apply_lambda_elements",
+          "description": "Applies lambda to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.text.split",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.models.Response.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.models.Response.reason",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import random\nimport requests\nfrom ..base_provider import format_prompt\n\nclass Wuguokai(AbstractProvider):\n    @staticmethod\n    def create_completion(\n        model: str,\n        messages: list[dict[str, str]],\n        stream: bool,\n        **kwargs: Any,\n    ) -> CreateResult:\n        headers = { ... }\n        data ={\n            \"prompt\": format_prompt(messages),\n            \"options\": {},\n            \"userId\": f\"#/chat/{random.randint(1,99999999)}\",\n            \"usingContext\": True\n        }\n        response = requests.post(\n            \"https://ai-api20.wuguokai.xyz/api/chat-process\",\n            headers=headers,\n            timeout=3,\n            json=data,\n            proxies=kwargs.get('proxy', {}),\n        )\n        _split = response.text.split(\"> 若回答失败请重试或多刷新几次界面后重试\")\n        if response.status_code != 200:\n            raise Exception(f\"Error: {response.status_code} {response.reason}\")\n        if len(_split) > 1:\n            yield _split[1].strip()\n        else:\n            yield _split[0].strip()"
+    }
+  },
+  {
+    "pyfile": "Ylokh.py",
+    "code_snippet": "from __future__ import annotations\n\nimport json\n\nfrom ...requests import StreamSession\nfrom ..base_provider import AsyncGeneratorProvider\nfrom ...typing import AsyncResult, Messages\n\nclass Ylokh(AsyncGeneratorProvider):\n    url = \"https://chat.ylokh.xyz\"\n    working = False\n    supports_message_history = True \n    supports_gpt_35_turbo = True\n\n    @classmethod\n    async def create_async_generator(\n        cls,\n        model: str,\n        messages: Messages,\n        stream: bool = True,\n        proxy: str = None,\n        timeout: int = 120,\n        **kwargs\n    ) -> AsyncResult:\n        model = model if model else \"gpt-3.5-turbo\"\n        headers = {\"Origin\": cls.url, \"Referer\": f\"{cls.url}/\"}\n        data = {\n            \"messages\": messages,\n            \"model\": model,\n            \"temperature\": 1,\n            \"presence_penalty\": 0,\n            \"top_p\": 1,\n            \"frequency_penalty\": 0,\n            \"allow_fallback\": True,\n            \"stream\": stream,\n            **kwargs\n        }\n        async with StreamSession(\n                headers=headers,\n                proxies={\"https\": proxy},\n                timeout=timeout\n            ) as session:\n            async with session.post(\"https://chatapi.ylokh.xyz/v1/chat/completions\", json=data) as response:\n                response.raise_for_status()\n                if stream:\n                    async for line in response.iter_lines():\n                        line = line.decode()\n                        if line.startswith(\"data: \"):\n                            if line.startswith(\"data: [DONE]\"):\n                                break\n                            line = json.loads(line[6:])\n                            content = line[\"choices\"][0][\"delta\"].get(\"content\")\n                            if content:\n                                yield content\n                else:\n                    chat = await response.json()\n                    yield chat[\"choices\"][0][\"message\"].get(\"content\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "StreamSession",
+        "StreamSession.post",
+        "response.raise_for_status",
+        "response.iter_lines",
+        "line.decode",
+        "json.loads",
+        "response.json"
+      ],
+      "api_sequence_with_args": [
+        "StreamSession(headers=headers, proxies={\"https\": proxy}, timeout=timeout)",
+        "session.post(\"https://chatapi.ylokh.xyz/v1/chat/completions\", json=data)",
+        "response.raise_for_status()",
+        "response.iter_lines()",
+        "line.decode()",
+        "json.loads(line[6:])",
+        "response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "StreamSession",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "StreamSession.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.iter_lines",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "line.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "async def create_async_generator(\n    cls,\n    model: str,\n    messages: Messages,\n    stream: bool = True,\n    proxy: str = None,\n    timeout: int = 120,\n    **kwargs\n) -> AsyncResult:\n    model = model if model else \"gpt-3.5-turbo\"\n    headers = {\"Origin\": cls.url, \"Referer\": f\"{cls.url}/\"}\n    data = {\n        \"messages\": messages,\n        \"model\": model,\n        \"temperature\": 1,\n        \"presence_penalty\": 0,\n        \"top_p\": 1,\n        \"frequency_penalty\": 0,\n        \"allow_fallback\": True,\n        \"stream\": stream,\n        **kwargs\n    }\n    async with StreamSession(\n            headers=headers,\n            proxies={\"https\": proxy},\n            timeout=timeout\n        ) as session:\n        async with session.post(\"https://chatapi.ylokh.xyz/v1/chat/completions\", json=data) as response:\n            response.raise_for_status()\n            if stream:\n                async for line in response.iter_lines():\n                    line = line.decode()\n                    if line.startswith(\"data: \"):\n                        if line.startswith(\"data: [DONE]\"):\n                            break\n                        line = json.loads(line[6:])\n                        content = line[\"choices\"][0][\"delta\"].get(\"content\")\n                        if content:\n                            yield content\n            else:\n                chat = await response.json()\n                yield chat[\"choices\"][0][\"message\"].get(\"content\")"
+    }
+  },
+  {
+    "pyfile": "Yqcloud.py",
+    "code_snippet": "from __future__ import annotations\n\nimport random\nfrom ...requests import StreamSession\n\nfrom ...typing import AsyncResult, Messages\nfrom ..base_provider import AsyncGeneratorProvider, format_prompt\n\n\nclass Yqcloud(AsyncGeneratorProvider):\n    url = \"https://chat9.yqcloud.top/\"\n    working = False\n    supports_gpt_35_turbo = True\n\n    @staticmethod\n    async def create_async_generator(\n        model: str,\n        messages: Messages,\n        proxy: str = None,\n        timeout: int = 120,\n        **kwargs,\n    ) -> AsyncResult:\n        async with StreamSession(\n            headers=_create_header(), proxies={\"https\": proxy}, timeout=timeout\n        ) as session:\n            payload = _create_payload(messages, **kwargs)\n            async with session.post(\"https://api.aichatos.cloud/api/generateStream\", json=payload) as response:\n                response.raise_for_status()\n                async for chunk in response.iter_content():\n                    if chunk:\n                        chunk = chunk.decode()\n                        if \"sorry, 您的ip已由于触发防滥用检测而被封禁\" in chunk:\n                            raise RuntimeError(\"IP address is blocked by abuse detection.\")\n                        yield chunk\n\n\ndef _create_header():\n    return {\n        \"accept\"        : \"application/json, text/plain, */*\",\n        \"content-type\"  : \"application/json\",\n        \"origin\"        : \"https://chat9.yqcloud.top\",\n        \"referer\"       : \"https://chat9.yqcloud.top/\"\n    }\n\n\ndef _create_payload(\n    messages: Messages,\n    system_message: str = \"\",\n    user_id: int = None,\n    **kwargs\n):\n    if not user_id:\n        user_id = random.randint(1690000544336, 2093025544336)\n    return {\n        \"prompt\": format_prompt(messages),\n        \"network\": True,\n        \"system\": system_message,\n        \"withoutContext\": False,\n        \"stream\": True,\n        \"userId\": f\"#/chat/{user_id}\"\n    }\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "random.randint",
+        "format_prompt",
+        "StreamSession",
+        "StreamSession.post",
+        "response.raise_for_status",
+        "response.iter_content",
+        "chunk.decode"
+      ],
+      "api_sequence_with_args": [
+        "random.randint(1690000544336, 2093025544336)",
+        "format_prompt(messages)",
+        "StreamSession(headers=_create_header(), proxies={\"https\": proxy}, timeout=timeout)",
+        "session.post(\"https://api.aichatos.cloud/api/generateStream\", json=payload)",
+        "response.raise_for_status()",
+        "response.iter_content()",
+        "chunk.decode()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "random.randint",
+          "id": "apply_lambda_elements",
+          "description": "Applies lambda to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "format_prompt",
+          "id": "apply_lambda_elements",
+          "description": "Applies lambda to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "StreamSession",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "StreamSession.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.iter_content",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "chunk.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "import random\nfrom ...requests import StreamSession\nfrom ..base_provider import format_prompt\n\nasync def create_async_generator(model: str, messages, proxy: str = None, timeout: int = 120, **kwargs):\n    async with StreamSession(headers=_create_header(), proxies={\"https\": proxy}, timeout=timeout) as session:\n        payload = _create_payload(messages, **kwargs)\n        async with session.post(\"https://api.aichatos.cloud/api/generateStream\", json=payload) as response:\n            response.raise_for_status()\n            async for chunk in response.iter_content():\n                if chunk:\n                    chunk = chunk.decode()\n                    if \"sorry, 您的ip已由于触发防滥用检测而被封禁\" in chunk:\n                        raise RuntimeError(\"IP address is blocked by abuse detection.\")\n                    yield chunk\n\ndef _create_payload(messages, system_message: str = \"\", user_id: int = None, **kwargs):\n    if not user_id:\n        user_id = random.randint(1690000544336, 2093025544336)\n    return {\n        \"prompt\": format_prompt(messages),\n        \"network\": True,\n        \"system\": system_message,\n        \"withoutContext\": False,\n        \"stream\": True,\n        \"userId\": f\"#/chat/{user_id}\"\n    }"
+    }
+  },
+  {
+    "pyfile": "Prodia.py",
+    "code_snippet": "from aiohttp import ClientSession\nimport asyncio\nimport random\n\nclass Prodia(AsyncGeneratorProvider, ProviderModelMixin):\n    url = \"https://app.prodia.com\"\n    api_endpoint = \"https://api.prodia.com/generate\"\n    # ... (other class variables and methods omitted for brevity)\n\n    @classmethod\n    async def _poll_job(cls, session: ClientSession, job_id: str, proxy: str, max_attempts: int = 30, delay: int = 2) -> str:\n        for _ in range(max_attempts):\n            async with session.get(f\"https://api.prodia.com/job/{job_id}\", proxy=proxy) as response:\n                response.raise_for_status()\n                job_status = await response.json()\n\n                if job_status[\"status\"] == \"succeeded\":\n                    return f\"https://images.prodia.xyz/{job_id}.png\"\n                elif job_status[\"status\"] == \"failed\":\n                    raise Exception(\"Image generation failed\")\n\n            await asyncio.sleep(delay)\n\n        raise Exception(\"Timeout waiting for image generation\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "aiohttp.ClientSession.get",
+        "aiohttp.ClientResponse.raise_for_status",
+        "aiohttp.ClientResponse.json",
+        "asyncio.sleep"
+      ],
+      "api_sequence_with_args": [
+        "aiohttp.ClientSession.get(f\"https://api.prodia.com/job/{job_id}\", proxy=proxy)",
+        "aiohttp.ClientResponse.raise_for_status()",
+        "aiohttp.ClientResponse.json()",
+        "asyncio.sleep(delay)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "aiohttp.ClientSession.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "aiohttp.ClientResponse.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "aiohttp.ClientResponse.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "asyncio.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "from aiohttp import ClientSession\nimport asyncio\n\nclass Prodia(AsyncGeneratorProvider, ProviderModelMixin):\n    @classmethod\n    async def _poll_job(cls, session: ClientSession, job_id: str, proxy: str, max_attempts: int = 30, delay: int = 2) -> str:\n        for _ in range(max_attempts):\n            async with session.get(f\"https://api.prodia.com/job/{job_id}\", proxy=proxy) as response:\n                response.raise_for_status()\n                job_status = await response.json()\n\n                if job_status[\"status\"] == \"succeeded\":\n                    return f\"https://images.prodia.xyz/{job_id}.png\"\n                elif job_status[\"status\"] == \"failed\":\n                    raise Exception(\"Image generation failed\")\n\n            await asyncio.sleep(delay)\n\n        raise Exception(\"Timeout waiting for image generation\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "g4f-0.5.0.4",
+      "total_matches": 6
+    }
+  }
+]

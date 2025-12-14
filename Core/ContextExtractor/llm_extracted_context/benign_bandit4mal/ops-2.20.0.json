@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "ops-2.20.0",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_model.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ops-2.20.0/ops-2.20.0/test/test_model.py",
+    "line_number": "4185",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4184\t        # Two open ports, leave one alone and open another one.\n4185\t        fake_script.write('open-port', 'exit 0')\n4186\t        fake_script.write('close-port', 'exit 0')",
+    "context_snippet": "def test_set_ports_mixed(self, fake_script: FakeScript, unit: ops.Unit):\n    # Two open ports, leave one alone and open another one.\n    fake_script.write('open-port', 'exit 0')\n    fake_script.write('close-port', 'exit 0')\n    fake_script.write('opened-ports', 'echo 8025/tcp; echo 8028/tcp')\n    unit.set_ports(ops.Port('udp', 8022), 8028)\n    assert fake_script.calls(clear=True) == [\n        ['opened-ports', ''],\n        ['close-port', '8025/tcp'],\n        ['open-port', '8022/udp'],\n    ]",
+    "hash_value": "8e56243e8b7c8f4144f674c5f970bf8d"
+  },
+  {
+    "pyfile": "model.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ops-2.20.0/ops-2.20.0/test/charms/test_main/lib/ops/model.py",
+    "line_number": "3573",
+    "type_description": "B836:rmtree",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3572\t        finally:\n3573\t            shutil.rmtree(str(tmpdir))\n3574",
+    "context_snippet": "def pod_spec_set(\n    self, spec: Mapping[str, Any], k8s_resources: Optional[Mapping[str, Any]] = None\n):\n    tmpdir = Path(tempfile.mkdtemp('-pod-spec-set'))\n    try:\n        spec_path = tmpdir / 'spec.yaml'\n        with spec_path.open('wt', encoding='utf8') as f:\n            yaml.safe_dump(spec, stream=f)\n        args = ['--file', str(spec_path)]\n        if k8s_resources:\n            k8s_res_path = tmpdir / 'k8s-resources.yaml'\n            with k8s_res_path.open('wt', encoding='utf8') as f:\n                yaml.safe_dump(k8s_resources, stream=f)\n            args.extend(['--k8s-resources', str(k8s_res_path)])\n        self._run('pod-spec-set', *args)\n    finally:\n        shutil.rmtree(str(tmpdir))",
+    "hash_value": "4b457878dbda37c5427817cfbc5193c5"
+  },
+  {
+    "pyfile": "fake_pebble.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ops-2.20.0/ops-2.20.0/test/fake_pebble.py",
+    "line_number": "112",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "111\t    def do_GET(self):  # noqa: N802 (\"should be lowercase\")\n112\t        self.do_request('GET')\n113",
+    "context_snippet": "class Handler(http.server.BaseHTTPRequestHandler):\n    _route = typing.List[\n        typing.Tuple[typing.Literal['GET', 'POST'], typing.Any, typing.Callable[..., None]]\n    ]\n\n    def __init__(\n        self,\n        request: socket.socket,\n        client_address: typing.Tuple[str, int],\n        server: socketserver.BaseServer,\n    ):\n        self.routes: Handler._route = [\n            ('GET', re.compile(r'^/system-info$'), self.get_system_info),\n            ('POST', re.compile(r'^/services$'), self.services_action),\n        ]\n        self._services = ['foo']\n        super().__init__(request, ('unix-socket', 80), server)\n\n    def log_message(self, format: str, *args: typing.Any):\n        # Disable logging for tests\n        pass\n\n    def respond(self, d: _Response, status: int = 200):\n        self.send_response(status)\n        self.send_header('Content-Type', 'application/json')\n        self.end_headers()\n        d_json = json.dumps(d, indent=4, sort_keys=True)\n        self.wfile.write(d_json.encode('utf-8'))\n\n    def bad_request(self, message: str):\n        d: _Response = {\n            'result': {\n                'message': message,\n            },\n            'status': 'Bad Request',\n            'status-code': 400,\n            'type': 'error',\n        }\n        self.respond(d, 400)\n\n    def not_found(self):\n        d: _Response = {\n            'result': {'message': 'invalid API endpoint requested'},\n            'status': 'Not Found',\n            'status-code': 404,\n            'type': 'error',\n        }\n        self.respond(d, 404)\n\n    def method_not_allowed(self):\n        d: _Response = {\n            'result': {'message': 'method \"PUT\" not allowed'},\n            'status': 'Method Not Allowed',\n            'status-code': 405,\n            'type': 'error',\n        }\n        self.respond(d, 405)\n\n    def internal_server_error(self, msg: Exception):\n        d: _Response = {\n            'result': {\n                'message': f'internal server error: {msg}',\n            },\n            'status': 'Internal Server Error',\n            'status-code': 500,\n            'type': 'error',\n        }\n        self.respond(d, 500)\n\n    def do_GET(self):  # noqa: N802 (\"should be lowercase\")\n        self.do_request('GET')\n\n    def do_POST(self):  # noqa: N802 (\"should be lowercase\")\n        self.do_request('POST')\n\n    def do_request(self, request_method: typing.Literal['GET', 'POST']):\n        path, _, query = self.path.partition('?')\n        path = urllib.parse.unquote(path)\n        query = dict(urllib.parse.parse_qsl(query))\n\n        if not path.startswith('/v1/'):\n            self.not_found()\n            return\n        path = path[3:]\n\n        allowed: typing.List[str] = []\n        for method, regex, func in self.routes:\n            match = regex.match(path)\n            if match:\n                if request_method == method:\n                    data = self.read_body_json()\n                    try:\n                        func(match, query, data)\n                    except Exception as e:\n                        self.internal_server_error(e)\n                        raise\n                    return\n                allowed.append(method)\n\n        if allowed:\n            self.method_not_allowed()\n            return\n\n        self.not_found()\n\n    def read_body_json(self) -> typing.Dict[str, str]:\n        try:\n            content_len = int(self.headers.get('Content-Length', ''))\n        except ValueError:\n            content_len = 0\n        if not content_len:\n            return {}\n        body = self.rfile.read(content_len)\n        if isinstance(body, bytes):\n            body = body.decode('utf-8')\n        return json.loads(body)\n\n    def get_system_info(\n        self, match: typing.Any, query: typing.Dict[str, str], data: typing.Dict[str, str]\n    ):\n        self.respond({\n            'result': {'version': '3.14.159'},\n            'status': 'OK',\n            'status-code': 200,\n            'type': 'sync',\n        })\n\n    def services_action(\n        self, match: typing.Any, query: typing.Dict[str, str], data: typing.Dict[str, str]\n    ):\n        action = data['action']\n        services = data['services']\n        if action == 'start':\n            for service in services:\n                if service not in self._services:\n                    self.bad_request(f'service \"{service}\" does not exist')\n                    return\n            self.respond({\n                'change': '1234',\n                'result': None,\n                'status': 'Accepted',\n                'status-code': 202,\n                'type': 'async',\n            })\n        else:\n            self.bad_request(f'action \"{action}\" not implemented')",
+    "hash_value": "5feac7121b746c63c07c7dca1e11d42b"
+  }
+]

@@ -1,0 +1,206 @@
+{
+  "metadata": {
+    "package_name": "kivy-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/kivy-2.3.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "loader.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/kivy-2.3.1/Kivy-2.3.1/kivy/loader.py",
+      "line_number": "363",
+      "type_description": "B830:read",
+      "context_snippet": "def _load_urllib(self, filename, kwargs):\n    '''(internal) Loading a network file. First download it, save it to a\n    temporary file, and pass it to _load_local().'''\n    import urllib.request\n    import tempfile\n\n    proto = filename.split(':', 1)[0]\n    if proto == 'smb':\n        try:\n            # note: it's important to load SMBHandler every time\n            # otherwise the data is occasionally not loaded\n            from smb.SMBHandler import SMBHandler\n        except ImportError:\n            Logger.warning(\n                'Loader: can not load PySMB: make sure it is installed')\n            return\n\n    data = fd = _out_osfd = None\n    try:\n        _out_filename = ''\n\n        if proto == 'smb':\n            # read from samba shares\n            fd = urllib.request.build_opener(SMBHandler).open(filename)\n        else:\n            # read from internet\n            request = urllib.request.Request(filename)\n            if Config.has_option('network', 'useragent'):\n                useragent = Config.get('network', 'useragent')\n                if useragent:\n                    request.add_header('User-Agent', useragent)\n\n            # A custom context is only needed on Android and iOS\n            # as we need to use the certs provided via certifi.\n            ssl_ctx = None\n            if platform in ['android', 'ios']:\n                import certifi\n                import ssl\n                ssl_ctx = ssl.create_default_context(cafile=certifi.where())\n                ssl_ctx.verify_mode = ssl.CERT_REQUIRED\n\n            fd = urllib.request.urlopen(request, context=ssl_ctx)\n\n        if '#.' in filename:\n            # allow extension override from URL fragment\n            suffix = '.' + filename.split('#.')[-1]\n        else:\n            ctype = fd.info().get_content_type()\n            suffix = mimetypes.guess_extension(ctype)\n            suffix = LoaderBase.EXT_ALIAS.get(suffix, suffix)\n            if not suffix:\n                # strip query string and split on path\n                parts = filename.split('?')[0].split('/')[1:]\n                while len(parts) > 1 and not parts[0]:\n                    # strip out blanks from '//'\n                    parts = parts[1:]\n                if len(parts) > 1 and '.' in parts[-1]:\n                    # we don't want '.com', '.net', etc. as the extension\n                    suffix = '.' + parts[-1].split('.')[-1]\n        _out_osfd, _out_filename = tempfile.mkstemp(\n            prefix='kivyloader', suffix=suffix)\n\n        idata = fd.read()\n        fd.close()\n        fd = None\n\n        # write to local filename\n        write(_out_osfd, idata)\n        close(_out_osfd)\n        _out_osfd = None\n\n        # load data\n        data = self._load_local(_out_filename, kwargs)\n\n        # FIXME create a clean API for that\n        for imdata in data._data:\n            imdata.source = filename\n    except Exception as ex:\n        Logger.exception('Loader: Failed to load image <%s>' % filename)\n        # close file when remote file not found or download error\n        try:\n            if _out_osfd:\n                close(_out_osfd)\n        except OSError:\n            pass\n\n        # update client\n        for c_filename, client in self._client[:]:\n            if filename != c_filename:\n                continue\n            # got one client to update\n            client.image = self.error_image\n            client.dispatch('on_error', error=ex)\n            self._client.remove((c_filename, client))\n\n        return self.error_image\n    finally:\n        if fd:\n            fd.close()\n        if _out_osfd:\n            close(_out_osfd)\n        if _out_filename != '':\n            unlink(_out_filename)\n\n    return data",
+      "hash_value": "63d170f673fd957d372b7490601ea3d0",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def _load_urllib(self, filename, kwargs):\n    '''(internal) Loading a network file. First download it, save it to a\n    temporary file, and pass it to _load_local().'''\n    import urllib.request\n    import tempfile\n\n    proto = filename.split(':', 1)[0]\n    if proto == 'smb':\n        try:\n            # note: it's important to load SMBHandler every time\n            # otherwise the data is occasionally not loaded\n            from smb.SMBHandler import SMBHandler\n        except ImportError:\n            Logger.warning(\n                'Loader: can not load PySMB: make sure it is installed')\n            return\n\n    data = fd = _out_osfd = None\n    try:\n        _out_filename = ''\n\n        if proto == 'smb':\n            # read from samba shares\n            fd = urllib.request.build_opener(SMBHandler).open(filename)\n        else:\n            # read from internet\n            request = urllib.request.Request(filename)\n            if Config.has_option('network', 'useragent'):\n                useragent = Config.get('network', 'useragent')\n                if useragent:\n                    request.add_header('User-Agent', useragent)\n\n            # A custom context is only needed on Android and iOS\n            # as we need to use the certs provided via certifi.\n            ssl_ctx = None\n            if platform in ['android', 'ios']:\n                import certifi\n                import ssl\n                ssl_ctx = ssl.create_default_context(cafile=certifi.where())\n                ssl_ctx.verify_mode = ssl.CERT_REQUIRED\n\n            fd = urllib.request.urlopen(request, context=ssl_ctx)\n\n        if '#.' in filename:\n            # allow extension override from URL fragment\n            suffix = '.' + filename.split('#.')[-1]\n        else:\n            ctype = fd.info().get_content_type()\n            suffix = mimetypes.guess_extension(ctype)\n            suffix = LoaderBase.EXT_ALIAS.get(suffix, suffix)\n            if not suffix:\n                # strip query string and split on path\n                parts = filename.split('?')[0].split('/')[1:]\n                while len(parts) > 1 and not parts[0]:\n                    # strip out blanks from '//'\n                    parts = parts[1:]\n                if len(parts) > 1 and '.' in parts[-1]:\n                    # we don't want '.com', '.net', etc. as the extension\n                    suffix = '.' + parts[-1].split('.')[-1]\n        _out_osfd, _out_filename = tempfile.mkstemp(\n            prefix='kivyloader', suffix=suffix)\n\n        idata = fd.read()\n        fd.close()\n        fd = None\n\n        # write to local filename\n        write(_out_osfd, idata)\n        close(_out_osfd)\n        _out_osfd = None\n\n        # load data\n        data = self._load_local(_out_filename, kwargs)\n\n        # FIXME create a clean API for that\n        for imdata in data._data:\n            imdata.source = filename\n    except Exception as ex:\n        Logger.exception('Loader: Failed to load image <%s>' % filename)\n        # close file when remote file not found or download error\n        try:\n            if _out_osfd:\n                close(_out_osfd)\n        except OSError:\n            pass\n\n        # update client\n        for c_filename, client in self._client[:]:\n            if filename != c_filename:\n                continue\n            # got one client to update\n            client.image = self.error_image\n            client.dispatch('on_error', error=ex)\n            self._client.remove((c_filename, client))\n\n        return self.error_image\n    finally:\n        if fd:\n            fd.close()\n        if _out_osfd:\n            close(_out_osfd)\n        if _out_filename != '':\n            unlink(_out_filename)\n\n    return data",
+          "triple_sequences": [
+            {
+              "action_api": "filename.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "urllib.request.build_opener()",
+              "action_description": "Builds opener object with specified handler",
+              "action_id": "build_opener",
+              "object": "SMBHandler",
+              "object_description": "Built-in module or package",
+              "object_id": "builtin_module",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "opener.open()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "filename",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "urllib.request.Request()",
+              "action_description": "Creates HTTP request object with specified URL, data, and headers",
+              "action_id": "create_http_request",
+              "object": "filename",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "request.add_header()",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "User-Agent, useragent",
+              "object_description": "User agent string",
+              "object_id": "user_agent_string",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "ssl.create_default_context()",
+              "action_description": "Creates SSL context with specified protocol",
+              "action_id": "create_ssl_context",
+              "object": "cafile=certifi.where()",
+              "object_description": "Certificate file path",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "urllib.request.urlopen()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "request, context=ssl_ctx",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "fd.info().get_content_type()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "mimetypes.guess_extension()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "ctype",
+              "object_description": "Content type string",
+              "object_id": "content_type",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "tempfile.mkstemp()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "prefix='kivyloader', suffix=suffix",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "fd.read()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "fd.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "_out_osfd, idata",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "_out_osfd",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "self._load_local()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "_out_filename, kwargs",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Open file",
+              "intention_id": "open_file"
+            },
+            {
+              "action_api": "Logger.exception()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "'Loader: Failed to load image <%s>' % filename",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "_out_osfd",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "unlink()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "_out_filename",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

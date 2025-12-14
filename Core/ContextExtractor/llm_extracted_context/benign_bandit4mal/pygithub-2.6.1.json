@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "pygithub-2.6.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "Framework.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pygithub-2.6.1/pygithub-2.6.1/tests/Framework.py",
+    "line_number": "191",
+    "type_description": "B802:b64encode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "190\t            for chunk in chunks:\n191\t                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n192\t            self.__writeLine(\"\")",
+    "context_snippet": "import base64\n\nclass RecordingConnection:\n    __openFile = None\n\n    @staticmethod\n    def setOpenFile(func):\n        RecordingConnection.__openFile = func\n\n    def __init__(self, protocol, host, port, *args, **kwds):\n        self.__file = self.__openFile(\"w\")\n        # write operations make the assumption that the file is not in binary mode\n        assert isinstance(self.__file, io.TextIOBase)\n        self.__protocol = protocol\n        self.__host = host\n        self.__port = port\n        self.__cnx = self._realConnection(host, port, *args, **kwds)\n        self.__stream = False\n\n    @property\n    def host(self):\n        return self.__host\n\n    def request(self, verb, url, input, headers, stream=False):\n        self.__cnx.request(verb, url, input, headers)\n        self.__stream = stream\n        # fixAuthorizationHeader changes the parameter directly to remove Authorization token.\n        # however, this is the real dictionary that *will be sent* by \"requests\",\n        # since we are writing here *before* doing the actual request.\n        # So we must avoid changing the real \"headers\" or this create this:\n        # https://github.com/PyGithub/PyGithub/pull/664#issuecomment-389964369\n        # https://github.com/PyGithub/PyGithub/issues/822\n        # Since it's dict[str, str], a simple copy is enough.\n        anonymous_headers = headers.copy()\n        fixAuthorizationHeader(anonymous_headers)\n        self.__writeLine(self.__protocol)\n        self.__writeLine(verb)\n        self.__writeLine(self.__host)\n        self.__writeLine(self.__port)\n        self.__writeLine(url)\n        self.__writeLine(anonymous_headers)\n        self.__writeLine(str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\"))\n\n    def getresponse(self):\n        res = self.__cnx.getresponse()\n\n        status = res.status\n        headers = res.getheaders()\n        output = res if self.__stream else res.read()\n\n        self.__writeLine(status)\n        self.__writeLine(list(headers))\n        if self.__stream:\n            chunks = [chunk for chunk in output.iter_content(chunk_size=64)]\n            output = b\"\".join(chunks)\n            for chunk in chunks:\n                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n            self.__writeLine(\"\")\n        else:\n            self.__writeLine(output)\n        self.__writeLine(\"\")\n\n        return FakeHttpResponse(status, headers, output)\n\n    def close(self):\n        return self.__cnx.close()\n\n    def __writeLine(self, line):\n        self.__file.write(str(line) + \"\\n\")",
+    "hash_value": "5621911d2be0daee90e55dbf13444da2"
+  }
+]

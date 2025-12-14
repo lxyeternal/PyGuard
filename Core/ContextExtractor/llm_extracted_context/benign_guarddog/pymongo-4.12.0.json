@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "pymongo-4.12.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/pymongo-4.12.0.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "setup_tests.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pymongo-4.12.0/pymongo-4.12.0/.evergreen/scripts/setup_tests.py",
+    "line_number": "110",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310",
+    "context_snippet": "def setup_libmongocrypt():\n    target = \"\"\n    if PLATFORM == \"windows\":\n        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.\n        if is_set(\"TEST_FLE_GCP_AUTO\"):\n            run_command('powershell.exe \"Invoke-WebRequest -URI https://oauth2.googleapis.com/\"')\n        target = \"windows-test\"\n\n    elif PLATFORM == \"darwin\":\n        target = \"macos\"\n\n    else:\n        distro = get_distro()\n        if distro.name.startswith(\"Debian\"):\n            target = f\"debian{distro.version_id}\"\n        elif distro.name.startswith(\"Red Hat\"):\n            if distro.version_id.startswith(\"7\"):\n                target = \"rhel-70-64-bit\"\n            elif distro.version_id.startswith(\"8\"):\n                if distro.arch == \"aarch64\":\n                    target = \"rhel-82-arm64\"\n                else:\n                    target = \"rhel-80-64-bit\"\n\n    if not is_set(\"LIBMONGOCRYPT_URL\"):\n        if not target:\n            raise ValueError(\"Cannot find libmongocrypt target for current platform!\")\n        url = f\"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz\"\n    else:\n        url = os.environ[\"LIBMONGOCRYPT_URL\"]\n\n    shutil.rmtree(HERE / \"libmongocrypt\", ignore_errors=True)\n\n    LOGGER.info(f\"Fetching {url}...\")\n    with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310\n        if response.status == 200:\n            fileobj = io.BytesIO(response.read())\n        with tarfile.open(\"libmongocrypt.tar.gz\", fileobj=fileobj) as fid:\n            fid.extractall(Path.cwd() / \"libmongocrypt\")\n    LOGGER.info(f\"Fetching {url}... done.\")\n\n    run_command(\"ls -la libmongocrypt\")\n    run_command(\"ls -la libmongocrypt/nocrypto\")\n\n    if PLATFORM == \"windows\":\n        # libmongocrypt's windows dll is not marked executable.\n        run_command(\"chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll\")",
+    "hash_value": "015c463945dd65deb58740eff9597f63",
+    "detection_index": 1
+  }
+]

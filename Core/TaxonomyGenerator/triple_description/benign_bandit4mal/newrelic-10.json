@@ -1,0 +1,496 @@
+{
+  "metadata": {
+    "package_name": "newrelic-10",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/newrelic-10.8.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "environment.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/newrelic-10.8.1/newrelic-10.8.1/newrelic/core/environment.py",
+      "line_number": "49",
+      "type_description": "B817:system",
+      "context_snippet": "def environment_settings():\n    \"\"\"Returns an array of arrays of environment settings\"\"\"\n    env = []\n\n    # Agent information.\n\n    env.append((\"Agent Version\", \".\".join(map(str, newrelic.version_info))))\n\n    # System information.\n\n    env.append((\"Arch\", platform.machine()))\n    env.append((\"OS\", platform.system()))\n    env.append((\"OS version\", platform.release()))\n\n    env.append((\"Total Physical Memory (MB)\", total_physical_memory()))\n    env.append((\"Logical Processors\", logical_processor_count()))\n\n    physical_processor_packages, physical_cores = physical_processor_count()\n\n    # Report this attribute only if it has a valid value.\n\n    if physical_processor_packages:\n        env.append((\"Physical Processor Packages\", physical_processor_packages))\n\n    # Report this attribute only if it has a valid value.\n\n    if physical_cores:\n        env.append((\"Physical Cores\", physical_cores))\n\n    # Python information.\n\n    env.append((\"Python Program Name\", sys.argv[0]))\n\n    env.append((\"Python Executable\", sys.executable))\n\n    env.append((\"Python Home\", os.environ.get(\"PYTHONHOME\", \"\")))\n    env.append((\"Python Path\", os.environ.get(\"PYTHONPATH\", \"\")))\n\n    env.append((\"Python Prefix\", sys.prefix))\n    env.append((\"Python Exec Prefix\", sys.exec_prefix))\n\n    env.append((\"Python Runtime\", \".\".join(platform.python_version_tuple())))\n\n    env.append((\"Python Implementation\", platform.python_implementation()))\n    env.append((\"Python Version\", sys.version))\n\n    env.append((\"Python Platform\", sys.platform))\n\n    env.append((\"Python Max Unicode\", sys.maxunicode))\n\n    # Extensions information.\n\n    extensions = []\n\n    if \"newrelic.core._thread_utilization\" in sys.modules:\n        extensions.append(\"newrelic.core._thread_utilization\")\n\n    env.append((\"Compiled Extensions\", \", \".join(extensions)))\n\n    # Dispatcher information.\n\n    dispatcher = []\n\n    # Find the first dispatcher module that's been loaded and report that as the dispatcher.\n    # If possible, also report the dispatcher's version and any other environment information.\n    if not dispatcher and \"mod_wsgi\" in sys.modules:\n        mod_wsgi = sys.modules[\"mod_wsgi\"]\n        if hasattr(mod_wsgi, \"process_group\"):\n            if mod_wsgi.process_group == \"\":\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (embedded)\"))\n            else:\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (daemon)\"))\n            env.append((\"Apache/mod_wsgi Process Group\", mod_wsgi.process_group))\n        else:\n            dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi\"))\n        if hasattr(mod_wsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", str(mod_wsgi.version)))\n        if hasattr(mod_wsgi, \"application_group\"):\n            env.append((\"Apache/mod_wsgi Application Group\", mod_wsgi.application_group))\n\n    if not dispatcher and \"uwsgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uWSGI\"))\n        uwsgi = sys.modules[\"uwsgi\"]\n        if hasattr(uwsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", uwsgi.version))\n\n    if not dispatcher and \"flup.server.fcgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (threaded)\"))\n\n    if not dispatcher and \"flup.server.fcgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (prefork)\"))\n\n    if not dispatcher and \"flup.server.scgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (threaded)\"))\n\n    if not dispatcher and \"flup.server.scgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (prefork)\"))\n\n    if not dispatcher and \"flup.server.ajp\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (threaded)\"))\n\n    if not dispatcher and \"flup.server.ajp_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (forking)\"))\n\n    if not dispatcher and \"flup.server.cgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/cgi\"))\n\n    if not dispatcher and \"gunicorn\" in sys.modules:\n        if \"gunicorn.workers.ggevent\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (gevent)\"))\n        elif \"gunicorn.workers.geventlet\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (eventlet)\"))\n        elif \"uvicorn.workers\" in sys.modules or \"uvicorn_worker\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (uvicorn)\"))\n            uvicorn = sys.modules.get(\"uvicorn\")\n            if hasattr(uvicorn, \"__version__\"):\n                dispatcher.append((\"Worker Version\", uvicorn.__version__))\n        else:\n            dispatcher.append((\"Dispatcher\", \"gunicorn\"))\n\n        gunicorn = sys.modules[\"gunicorn\"]\n        if hasattr(gunicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", gunicorn.__version__))\n\n    if not dispatcher and \"uvicorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uvicorn\"))\n        uvicorn = sys.modules[\"uvicorn\"]\n\n        if hasattr(uvicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", uvicorn.__version__))\n\n    if not dispatcher and \"hypercorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"hypercorn\"))\n        hypercorn = sys.modules[\"hypercorn\"]\n\n        if hasattr(hypercorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", hypercorn.__version__))\n        else:\n            try:\n                dispatcher.append((\"Dispatcher Version\", get_package_version(\"hypercorn\")))\n            except Exception:\n                pass\n\n    if not dispatcher and \"daphne\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"daphne\"))\n        daphne = sys.modules[\"daphne\"]\n\n        if hasattr(daphne, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", daphne.__version__))\n\n    if not dispatcher and \"tornado\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"tornado\"))\n        tornado = sys.modules[\"tornado\"]\n        if hasattr(tornado, \"version_info\"):\n            dispatcher.append((\"Dispatcher Version\", str(tornado.version_info)))\n\n    env.extend(dispatcher)\n\n    return env",
+      "hash_value": "c7a3460b86de14b0c15a8edd9345dce2",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def environment_settings():\n    \"\"\"Returns an array of arrays of environment settings\"\"\"\n    env = []\n\n    # Agent information.\n\n    env.append((\"Agent Version\", \".\".join(map(str, newrelic.version_info))))\n\n    # System information.\n\n    env.append((\"Arch\", platform.machine()))\n    env.append((\"OS\", platform.system()))\n    env.append((\"OS version\", platform.release()))\n\n    env.append((\"Total Physical Memory (MB)\", total_physical_memory()))\n    env.append((\"Logical Processors\", logical_processor_count()))\n\n    physical_processor_packages, physical_cores = physical_processor_count()\n\n    # Report this attribute only if it has a valid value.\n\n    if physical_processor_packages:\n        env.append((\"Physical Processor Packages\", physical_processor_packages))\n\n    # Report this attribute only if it has a valid value.\n\n    if physical_cores:\n        env.append((\"Physical Cores\", physical_cores))\n\n    # Python information.\n\n    env.append((\"Python Program Name\", sys.argv[0]))\n\n    env.append((\"Python Executable\", sys.executable))\n\n    env.append((\"Python Home\", os.environ.get(\"PYTHONHOME\", \"\")))\n    env.append((\"Python Path\", os.environ.get(\"PYTHONPATH\", \"\")))\n\n    env.append((\"Python Prefix\", sys.prefix))\n    env.append((\"Python Exec Prefix\", sys.exec_prefix))\n\n    env.append((\"Python Runtime\", \".\".join(platform.python_version_tuple())))\n\n    env.append((\"Python Implementation\", platform.python_implementation()))\n    env.append((\"Python Version\", sys.version))\n\n    env.append((\"Python Platform\", sys.platform))\n\n    env.append((\"Python Max Unicode\", sys.maxunicode))\n\n    # Extensions information.\n\n    extensions = []\n\n    if \"newrelic.core._thread_utilization\" in sys.modules:\n        extensions.append(\"newrelic.core._thread_utilization\")\n\n    env.append((\"Compiled Extensions\", \", \".join(extensions)))\n\n    # Dispatcher information.\n\n    dispatcher = []\n\n    # Find the first dispatcher module that's been loaded and report that as the dispatcher.\n    # If possible, also report the dispatcher's version and any other environment information.\n    if not dispatcher and \"mod_wsgi\" in sys.modules:\n        mod_wsgi = sys.modules[\"mod_wsgi\"]\n        if hasattr(mod_wsgi, \"process_group\"):\n            if mod_wsgi.process_group == \"\":\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (embedded)\"))\n            else:\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (daemon)\"))\n            env.append((\"Apache/mod_wsgi Process Group\", mod_wsgi.process_group))\n        else:\n            dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi\"))\n        if hasattr(mod_wsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", str(mod_wsgi.version)))\n        if hasattr(mod_wsgi, \"application_group\"):\n            env.append((\"Apache/mod_wsgi Application Group\", mod_wsgi.application_group))\n\n    if not dispatcher and \"uwsgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uWSGI\"))\n        uwsgi = sys.modules[\"uwsgi\"]\n        if hasattr(uwsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", uwsgi.version))\n\n    if not dispatcher and \"flup.server.fcgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (threaded)\"))\n\n    if not dispatcher and \"flup.server.fcgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (prefork)\"))\n\n    if not dispatcher and \"flup.server.scgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (threaded)\"))\n\n    if not dispatcher and \"flup.server.scgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (prefork)\"))\n\n    if not dispatcher and \"flup.server.ajp\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (threaded)\"))\n\n    if not dispatcher and \"flup.server.ajp_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (forking)\"))\n\n    if not dispatcher and \"flup.server.cgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/cgi\"))\n\n    if not dispatcher and \"gunicorn\" in sys.modules:\n        if \"gunicorn.workers.ggevent\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (gevent)\"))\n        elif \"gunicorn.workers.geventlet\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (eventlet)\"))\n        elif \"uvicorn.workers\" in sys.modules or \"uvicorn_worker\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (uvicorn)\"))\n            uvicorn = sys.modules.get(\"uvicorn\")\n            if hasattr(uvicorn, \"__version__\"):\n                dispatcher.append((\"Worker Version\", uvicorn.__version__))\n        else:\n            dispatcher.append((\"Dispatcher\", \"gunicorn\"))\n\n        gunicorn = sys.modules[\"gunicorn\"]\n        if hasattr(gunicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", gunicorn.__version__))\n\n    if not dispatcher and \"uvicorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uvicorn\"))\n        uvicorn = sys.modules[\"uvicorn\"]\n\n        if hasattr(uvicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", uvicorn.__version__))\n\n    if not dispatcher and \"hypercorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"hypercorn\"))\n        hypercorn = sys.modules[\"hypercorn\"]\n\n        if hasattr(hypercorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", hypercorn.__version__))\n        else:\n            try:\n                dispatcher.append((\"Dispatcher Version\", get_package_version(\"hypercorn\")))\n            except Exception:\n                pass\n\n    if not dispatcher and \"daphne\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"daphne\"))\n        daphne = sys.modules[\"daphne\"]\n\n        if hasattr(daphne, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", daphne.__version__))\n\n    if not dispatcher and \"tornado\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"tornado\"))\n        tornado = sys.modules[\"tornado\"]\n        if hasattr(tornado, \"version_info\"):\n            dispatcher.append((\"Dispatcher Version\", str(tornado.version_info)))\n\n    env.extend(dispatcher)\n\n    return env",
+          "triple_sequences": [
+            {
+              "action_api": "platform.machine()",
+              "action_description": "Retrieves machine type",
+              "action_id": "get_machine_type",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "platform.system()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system name",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "platform.release()",
+              "action_description": "Retrieves operating system release version",
+              "action_id": "get_os_release",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system version",
+              "intention_id": "get_operating_system_version"
+            },
+            {
+              "action_api": "total_physical_memory()",
+              "action_description": "Retrieves system virtual memory statistics",
+              "action_id": "get_virtual_memory",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "logical_processor_count()",
+              "action_description": "Retrieves processor name",
+              "action_id": "get_processor_name",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "physical_processor_count()",
+              "action_description": "Retrieves processor name",
+              "action_id": "get_processor_name",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "sys.argv[0]",
+              "action_description": "Retrieves command-line arguments passed to script",
+              "action_id": "get_cmd_args",
+              "object": "sys.argv[0]",
+              "object_description": "Command-line arguments passed to script",
+              "object_id": "python_command",
+              "intention_description": "Access command line arguments",
+              "intention_id": "access_command_line_arguments"
+            },
+            {
+              "action_api": "sys.executable",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "sys.executable",
+              "object_description": "Executable file",
+              "object_id": "executable_file",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "os.environ.get(\"PYTHONHOME\", \"\")",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "PYTHONHOME",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get(\"PYTHONPATH\", \"\")",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "PYTHONPATH",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "sys.prefix",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "sys.prefix",
+              "object_description": "Python installation prefix",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "sys.exec_prefix",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "sys.exec_prefix",
+              "object_description": "Python exec prefix",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "platform.python_version_tuple()",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "platform.python_implementation()",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "sys.version",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "sys.version",
+              "object_description": "Python version string",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "sys.platform",
+              "action_description": "Retrieves platform information",
+              "action_id": "get_platform_info",
+              "object": "sys.platform",
+              "object_description": "Platform information string",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "sys.maxunicode",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "sys.maxunicode",
+              "object_description": "Python max unicode value",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "\"newrelic.core._thread_utilization\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "newrelic.core._thread_utilization",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"mod_wsgi\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "mod_wsgi",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(mod_wsgi, \"process_group\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "process_group",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "hasattr(mod_wsgi, \"version\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "version",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "hasattr(mod_wsgi, \"application_group\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "application_group",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "\"uwsgi\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "uwsgi",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(uwsgi, \"version\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "version",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "\"flup.server.fcgi\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.fcgi",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"flup.server.fcgi_fork\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.fcgi_fork",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"flup.server.scgi\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.scgi",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"flup.server.scgi_fork\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.scgi_fork",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"flup.server.ajp\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.ajp",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"flup.server.ajp_fork\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.ajp_fork",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"flup.server.cgi\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "flup.server.cgi",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"gunicorn\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "gunicorn",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"gunicorn.workers.ggevent\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "gunicorn.workers.ggevent",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"gunicorn.workers.geventlet\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "gunicorn.workers.geventlet",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"uvicorn.workers\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "uvicorn.workers",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "\"uvicorn_worker\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "uvicorn_worker",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(uvicorn, \"__version__\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "__version__",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "hasattr(gunicorn, \"__version__\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "__version__",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "\"uvicorn\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "uvicorn",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(uvicorn, \"__version__\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "__version__",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "\"hypercorn\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "hypercorn",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(hypercorn, \"__version__\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "__version__",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "get_package_version(\"hypercorn\")",
+              "action_description": "Retrieves package version",
+              "action_id": "",
+              "object": "hypercorn",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "\"daphne\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "daphne",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(daphne, \"__version__\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "__version__",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "\"tornado\" in sys.modules",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "tornado",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "hasattr(tornado, \"version_info\")",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "version_info",
+              "object_description": "Attribute value",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

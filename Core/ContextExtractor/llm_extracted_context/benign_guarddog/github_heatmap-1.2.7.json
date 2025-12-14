@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "github_heatmap-1.2.7",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/github_heatmap-1.2.7.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "dota2_loader.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/github_heatmap-1.2.7/github_heatmap-1.2.7/github_heatmap/loader/dota2_loader.py",
+    "line_number": "28",
+    "type_description": "shady-links",
+    "original_snippet": "\"https://steamid.xyz/\",",
+    "context_snippet": "    @classmethod\n    def add_loader_arguments(cls, parser, optional):\n        parser.add_argument(\n            \"--dota2_id\",\n            dest=\"dota2_id\",\n            type=str,\n            required=optional,\n            help=\"Check your dota2-id in-game or on the website(steamid32): \"\n            \"https://steamid.xyz/\",\n        )",
+    "hash_value": "b785169c07e899031271c2e12c59ab66",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "bbdc_loader.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/github_heatmap-1.2.7/github_heatmap-1.2.7/github_heatmap/loader/bbdc_loader.py",
+    "line_number": "65",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "resp = requests.get(BBDC_API_URL.format(user_id=self.user_id))",
+    "context_snippet": "import json\nimport os.path\nfrom datetime import datetime\n\nimport requests\n\nfrom github_heatmap.loader.base_loader import BaseLoader, LoadError\nfrom github_heatmap.loader.config import BBDC_API_URL\n\nclass BBDCLoader(BaseLoader):\n    unit = \"minutes\"\n\n    def __init__(self, from_year, to_year, _type, **kwargs):\n        super().__init__(from_year, to_year, _type)\n        self.user_id = kwargs.get(\"bbdc_user_id\", \"\")\n        self.type = kwargs.get(\"bbdc_type\", \"time\")\n\n    @classmethod\n    def add_loader_arguments(cls, parser, optional):\n        parser.add_argument(\n            \"--bbdc_user_id\",\n            dest=\"bbdc_user_id\",\n            type=str,\n            required=optional,\n            help=\"BBDC user id\",\n        )\n        parser.add_argument(\n            \"--bbdc_type\",\n            dest=\"bbdc_type\",\n            type=str,\n            default=\"time\",\n            choices=[\"time\", \"word\"],\n            help=\"generate count type [time,word]\",\n        )\n\n    def _update_cache(self):\n        \"\"\"\n        cache structure\n\n        id: user-id\n        data:\n          2021-1-1:\n            learn: 20\n            time: 5\n            review: 20\n        \"\"\"\n\n        data_path = os.path.join(os.getcwd(), \"data\")\n        cache_path = os.path.join(os.getcwd(), \"data\", \"bbdc.json\")\n\n        if not os.path.exists(data_path):\n            os.mkdir(data_path)\n        if not os.path.exists(cache_path):\n            if not self.user_id:\n                raise LoadError(\"user id is required\")\n            cache = {\"id\": self.user_id, \"data\": {}}\n        else:\n            with open(cache_path, \"r\", encoding=\"utf-8\") as f:\n                cache = json.load(f)\n                self.user_id = cache.get(\"id\", \"\")\n                if not self.user_id:\n                    raise LoadError(\"user_id not found in cache.\")\n\n        resp = requests.get(BBDC_API_URL.format(user_id=self.user_id))\n        if not resp.ok:\n            raise LoadError(f\"Meet network error. {resp.reason}\")\n        data = resp.json()\n        if data[\"result_code\"] != 200:\n            raise LoadError(f\"Unexpected error. {data}\")\n\n        body = data[\"data_body\"]\n        duration = body[\"durationList\"]\n        learn = body[\"learnList\"]\n\n        for i in duration:\n            full_date = self.today_transform(i[\"date\"])\n            if full_date not in cache[\"data\"]:\n                cache[\"data\"][full_date] = {}\n\n            dur = i[\"duration\"]\n            cache[\"data\"][full_date][\"time\"] = dur\n\n        for i in learn:\n            full_date = self.today_transform(i[\"date\"])\n            if full_date not in cache[\"data\"]:\n                cache[\"data\"][full_date] = {}\n\n            learn = i[\"learnNum\"]\n            review = i[\"reviewNum\"]\n            cache[\"data\"][full_date][\"learn\"] = learn\n            cache[\"data\"][full_date][\"review\"] = review\n\n        with open(cache_path, \"w\", encoding=\"utf-8\") as f:\n            json.dump(cache, f, ensure_ascii=False)\n\n        return cache",
+    "hash_value": "6143148e06404d1d54139f669c11c8f6",
+    "detection_index": 1
+  }
+]

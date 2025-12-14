@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "package_name": "astronomer_providers-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/astronomer_providers-1.19.4.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "example_hive.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/astronomer_providers-1.19.4/astronomer_providers-1.19.4/astronomer/providers/apache/hive/example_dags/example_hive.py",
+      "line_number": "160",
+      "type_description": "shady-links",
+      "context_snippet": "def add_inbound_rule_for_security_group(task_instance: Any) -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n    from botocore.exceptions import ClientError\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    # Port HIVE_OPERATOR_INGRESS_PORT needs to be open for Impyla connectivity to Hive.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                HIVE_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n    # Allow SSH traffic on port 22 and copy file to HDFS.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error",
+      "hash_value": "233d100eb7063bda6707b57ca80665a3",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def add_inbound_rule_for_security_group(task_instance: Any) -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n    from botocore.exceptions import ClientError\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    # Port HIVE_OPERATOR_INGRESS_PORT needs to be open for Impyla connectivity to Hive.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                HIVE_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n    # Allow SSH traffic on port 22 and copy file to HDFS.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error",
+          "triple_sequences": [
+            {
+              "action_api": "get()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "https://api.ipify.org",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Collect public IP address",
+              "intention_id": "collect_public_ip"
+            },
+            {
+              "action_api": "boto3.client()",
+              "action_description": "Creates HTTP connection to specified host",
+              "action_id": "create_http_connection",
+              "object": "\"ec2\", **AWS_S3_CREDS",
+              "object_description": "API key or token",
+              "object_id": "api_key",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "task_instance.xcom_pull()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "client.authorize_security_group_ingress()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "GroupId=..., IpPermissions=[{'IpProtocol': 'tcp', 'FromPort': HIVE_OPERATOR_INGRESS_PORT, 'ToPort': HIVE_OPERATOR_INGRESS_PORT, 'IpRanges': [{'CidrIp': str(current_docker_ip) + '/32'}]}]",
+              "object_description": "System command",
+              "object_id": "system_command",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "client.authorize_security_group_ingress()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "GroupId=..., IpPermissions=[{'IpProtocol': 'tcp', 'FromPort': 22, 'ToPort': 22, 'IpRanges': [{'CidrIp': str(current_docker_ip) + '/32'}]}]",
+              "object_description": "System command",
+              "object_id": "system_command",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "logging.info()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "\"Current ip address is: %s\", str(current_docker_ip)",
+              "object_description": "System command",
+              "object_id": "system_command",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "logging.error()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "\"Ingress for port %s already authorized. Error Message is: %s\", HIVE_OPERATOR_INGRESS_PORT, error.response[\"Error\"][\"Message\"]",
+              "object_description": "System command",
+              "object_id": "system_command",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "logging.error()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "\"Ingress for port 22 already authorized. Error message is: %s\", error.response[\"Error\"][\"Message\"]",
+              "object_description": "System command",
+              "object_id": "system_command",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

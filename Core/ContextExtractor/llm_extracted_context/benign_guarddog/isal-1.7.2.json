@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "isal-1.7.2",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/isal-1.7.2.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/isal-1.7.2/isal-1.7.2/setup.py",
+    "line_number": "125",
+    "type_description": "code-execution",
+    "original_snippet": "subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\",\n\"isa-l.h\", \"bin/isa-l.a\",\nf\"{cflags_param}={build_env.get('CFLAGS', '')}\"],",
+    "context_snippet": "import functools\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nISA_L_SOURCE = os.path.join(\"src\", \"isal\", \"isa-l\")\nSYSTEM_IS_BSD = (sys.platform.startswith(\"freebsd\") or\n                 sys.platform.startswith(\"netbsd\"))\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  sys.platform.startswith(\"gnu\") or\n                  SYSTEM_IS_BSD)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\n@functools.lru_cache(maxsize=None)\ndef build_isa_l():\n    # Check for cache\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"isa-l.h\").exists():\n                return str(cache_path)\n\n    # Creating temporary directories\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ISA_L_SOURCE, build_dir)\n\n    # Build environment is a copy of OS environment to allow user to influence\n    # it.\n    build_env = os.environ.copy()\n    if SYSTEM_IS_UNIX:\n        build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:  # sched_getaffinity not available on all platforms\n        cpu_count = os.cpu_count() or 1  # os.cpu_count() can return None\n    run_args = dict(cwd=build_dir, env=build_env)\n    if SYSTEM_IS_UNIX:\n        if platform.machine() == \"aarch64\":\n            cflags_param = \"CFLAGS_aarch64\"\n        else:\n            cflags_param = \"CFLAGS_\"\n        make_cmd = \"make\"\n        if SYSTEM_IS_BSD:\n            make_cmd = \"gmake\"\n        subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\",\n                        \"isa-l.h\", \"bin/isa-l.a\",\n                        f\"{cflags_param}={build_env.get('CFLAGS', '')}\"],\n                       **run_args)\n    elif SYSTEM_IS_WINDOWS:\n        subprocess.run([\"nmake\", \"/f\", \"Makefile.nmake\"], **run_args)\n    else:\n        raise NotImplementedError(f\"Unsupported platform: {sys.platform}\")\n    shutil.copytree(os.path.join(build_dir, \"include\"),\n                    os.path.join(build_dir, \"isa-l\"))\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)\n    return build_dir",
+    "hash_value": "3fb370138339ead8ef654c35e12cff89",
+    "detection_index": 1
+  }
+]

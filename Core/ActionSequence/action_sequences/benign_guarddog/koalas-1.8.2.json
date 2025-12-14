@@ -1,0 +1,41 @@
+[
+  {
+    "pyfile": "namespace.py",
+    "code_snippet": "from typing import Any, Optional, Union, List, Tuple, Sized, cast\nimport pandas as pd\nfrom databricks.koalas.frame import DataFrame\n\ndef from_pandas(pobj: Union[pd.DataFrame, pd.Series, pd.Index]) -> Union[Series, DataFrame, Index]:\n    \"\"\"Create a Koalas DataFrame, Series or Index from a pandas DataFrame, Series or Index.\n\n    This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,\n    but this also works with pandas Series and picks the index.\n\n    Parameters\n    ----------\n    pobj : pandas.DataFrame or pandas.Series\n        pandas DataFrame or Series to read.\n\n    Returns\n    -------\n    Series or DataFrame\n        If a pandas Series is passed in, this function returns a Koalas Series.\n        If a pandas DataFrame is passed in, this function returns a Koalas DataFrame.\n    \"\"\"\n    if isinstance(pobj, pd.Series):\n        return Series(pobj)\n    elif isinstance(pobj, pd.DataFrame):\n        return DataFrame(pobj)\n    elif isinstance(pobj, pd.Index):\n        return DataFrame(pd.DataFrame(index=pobj)).index\n    else:\n        raise ValueError(\"Unknown data type: {}\".format(type(pobj).__name__))\n\n\ndef read_clipboard(sep=r\"\\s+\", **kwargs) -> DataFrame:\n    r\"\"\"\n    Read text from clipboard and pass to read_csv. See read_csv for the\n    full argument list\n\n    Parameters\n    ----------\n    sep : str, default '\\s+'\n        A string or regex delimiter. The default of '\\s+' denotes\n        one or more whitespace characters.\n\n    See Also\n    --------\n    DataFrame.to_clipboard : Write text out to clipboard.\n\n    Returns\n    -------\n    parsed : DataFrame\n    \"\"\"\n    return cast(DataFrame, from_pandas(pd.read_clipboard(sep, **kwargs)))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "pd.read_clipboard",
+        "from_pandas"
+      ],
+      "api_sequence_with_args": [
+        "pd.read_clipboard(sep, **kwargs)",
+        "from_pandas(pd.read_clipboard(sep, **kwargs))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pd.read_clipboard",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "from_pandas",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import pandas as pd\nfrom databricks.koalas.frame import DataFrame\n\ndef from_pandas(pobj):\n    if isinstance(pobj, pd.Series):\n        return Series(pobj)\n    elif isinstance(pobj, pd.DataFrame):\n        return DataFrame(pobj)\n    elif isinstance(pobj, pd.Index):\n        return DataFrame(pd.DataFrame(index=pobj)).index\n    else:\n        raise ValueError(\"Unknown data type: {}\".format(type(pobj).__name__))\n\ndef read_clipboard(sep=r\"\\s+\", **kwargs) -> DataFrame:\n    return cast(DataFrame, from_pandas(pd.read_clipboard(sep, **kwargs)))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "koalas-1.8.2",
+      "total_matches": 1
+    }
+  }
+]

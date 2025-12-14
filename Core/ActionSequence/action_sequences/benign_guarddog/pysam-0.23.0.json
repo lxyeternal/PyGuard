@@ -1,0 +1,121 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\nimport sys\n\n# Helper function used by run_configure\n@contextmanager\ndef changedir(path):\n    save_dir = os.getcwd()\n    os.chdir(path)\n    try:\n        yield\n    finally:\n        os.chdir(save_dir)\n\ndef run_configure(option):\n    sys.stdout.flush()\n    try:\n        retcode = subprocess.call(\n            \" \".join((\"./configure\", option)),\n            shell=True)\n        if retcode != 0:\n            return False\n        else:\n            return True\n    except OSError as e:\n        return False\n\ndef run_make(targets):\n    sys.stdout.flush()\n    subprocess.check_call([os.environ.get(\"MAKE\", \"make\")] + targets)\n\ndef run_make_print_config():\n    stdout = subprocess.check_output([\"make\", \"-s\", \"print-config\"], encoding=\"ascii\")\n\n    make_print_config = {}\n    for line in stdout.splitlines():\n        if \"=\" in line:\n            row = line.split(\"=\")\n            if len(row) == 2:\n                make_print_config.update(\n                    {row[0].strip(): row[1].strip()})\n    return make_print_config\n\ndef run_nm_defined_symbols(objfile):\n    stdout = subprocess.check_output([\"nm\", \"-g\", \"-P\", objfile], encoding=\"ascii\")\n\n    symbols = set()\n    for line in stdout.splitlines():\n        (sym, symtype) = line.split()[:2]\n        if symtype not in \"UFNWw\":\n            if IS_DARWIN:\n                # On macOS, all symbols have a leading underscore\n                symbols.add(sym.lstrip('_'))\n            else:\n                # Ignore symbols such as _edata (present in all shared objects)\n                if sym[0] not in \"_$.@\": symbols.add(sym)\n\n    return symbols\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getcwd",
+        "os.chdir",
+        "os.chdir",
+        "sys.stdout.flush",
+        "subprocess.call",
+        "sys.stdout.flush",
+        "os.environ.get",
+        "subprocess.check_call",
+        "subprocess.check_output",
+        "subprocess.check_output"
+      ],
+      "api_sequence_with_args": [
+        "os.getcwd()",
+        "os.chdir(path)",
+        "os.chdir(save_dir)",
+        "sys.stdout.flush()",
+        "subprocess.call(' '.join(('./configure', option)), shell=True)",
+        "sys.stdout.flush()",
+        "os.environ.get('MAKE', 'make')",
+        "subprocess.check_call([os.environ.get('MAKE', 'make')] + targets)",
+        "subprocess.check_output(['make', '-s', 'print-config'], encoding='ascii')",
+        "subprocess.check_output(['nm', '-g', '-P', objfile], encoding='ascii')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.stdout.flush",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "sys.stdout.flush",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nimport sys\n\n@contextmanager\ndef changedir(path):\n    save_dir = os.getcwd()\n    os.chdir(path)\n    try:\n        yield\n    finally:\n        os.chdir(save_dir)\n\ndef run_configure(option):\n    sys.stdout.flush()\n    try:\n        retcode = subprocess.call(\n            \" \".join((\"./configure\", option)),\n            shell=True)\n        if retcode != 0:\n            return False\n        else:\n            return True\n    except OSError as e:\n        return False\n\ndef run_make(targets):\n    sys.stdout.flush()\n    subprocess.check_call([os.environ.get(\"MAKE\", \"make\")] + targets)\n\ndef run_make_print_config():\n    stdout = subprocess.check_output([\"make\", \"-s\", \"print-config\"], encoding=\"ascii\")\n    # ...\n\ndef run_nm_defined_symbols(objfile):\n    stdout = subprocess.check_output([\"nm\", \"-g\", \"-P\", objfile], encoding=\"ascii\")\n    # ...\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pysam-0.23.0",
+      "total_matches": 4
+    }
+  }
+]

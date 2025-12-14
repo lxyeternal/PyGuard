@@ -1,0 +1,345 @@
+[
+  {
+    "metadata": {
+      "package_name": "aiohttp-4.0.0a1",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_helpers.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aiohttp-4.0.0a1/aiohttp-4.0.0a1/tests/test_helpers.py",
+    "line_number": "127",
+    "type_description": "B802:b64encode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "126\t    with pytest.raises(ValueError, match='Invalid credentials.'):\n127\t        header = 'Basic {}'.format(base64.b64encode(b'username').decode())\n128\t        helpers.BasicAuth.decode(header)",
+    "code_snippet": "def test_basic_auth_decode_invalid_credentials() -> None:\n    with pytest.raises(ValueError, match='Invalid credentials.'):\n        header = 'Basic {}'.format(base64.b64encode(b'username').decode())\n        helpers.BasicAuth.decode(header)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "base64.b64encode",
+        "bytes.decode"
+      ],
+      "api_sequence_with_args": [
+        "base64.b64encode(b'username')",
+        "bytes.decode()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "header = 'Basic {}'.format(base64.b64encode(b'username').decode())"
+    }
+  },
+  {
+    "pyfile": "srv.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aiohttp-4.0.0a1/aiohttp-4.0.0a1/examples/legacy/srv.py",
+    "line_number": "92",
+    "type_description": "B830:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "91\t                        response.write(chunk)\n92\t                        chunk = fp.read(8192)\n93\t            except OSError:",
+    "code_snippet": "class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):\n\n    async def handle_request(self, message, payload):\n        print('method = {!r}; path = {!r}; version = {!r}'.format(\n            message.method, message.path, message.version))\n\n        path = message.path\n\n        if (not (path.isprintable() and path.startswith('/')) or '/.' in path):\n            print('bad path', repr(path))\n            path = None\n        else:\n            path = '.' + path\n            if not os.path.exists(path):\n                print('no file', repr(path))\n                path = None\n            else:\n                isdir = os.path.isdir(path)\n\n        if not path:\n            raise aiohttp.HttpProcessingError(code=404)\n\n        for hdr, val in message.headers.items():\n            print(hdr, val)\n\n        if isdir and not path.endswith('/'):\n            path = path + '/'\n            raise aiohttp.HttpProcessingError(\n                code=302, headers=(('URI', path), ('Location', path)))\n\n        response = aiohttp.Response(\n            self.writer, 200, http_version=message.version)\n        response.add_header('Transfer-Encoding', 'chunked')\n\n        # content encoding\n        accept_encoding = message.headers.get('accept-encoding', '').lower()\n        if 'deflate' in accept_encoding:\n            response.add_header('Content-Encoding', 'deflate')\n            response.add_compression_filter('deflate')\n        elif 'gzip' in accept_encoding:\n            response.add_header('Content-Encoding', 'gzip')\n            response.add_compression_filter('gzip')\n\n        response.add_chunking_filter(1025)\n\n        if isdir:\n            response.add_header('Content-type', 'text/html')\n            response.send_headers()\n\n            response.write(b'<ul>\\r\\n')\n            for name in sorted(os.listdir(path)):\n                if name.isprintable() and not name.startswith('.'):\n                    try:\n                        bname = name.encode('ascii')\n                    except UnicodeError:\n                        pass\n                    else:\n                        if os.path.isdir(os.path.join(path, name)):\n                            response.write(b'<li><a href=\"' + bname +\n                                           b'/\">' + bname + b'/</a></li>\\r\\n')\n                        else:\n                            response.write(b'<li><a href=\"' + bname +\n                                           b'\">' + bname + b'</a></li>\\r\\n')\n            response.write(b'</ul>')\n        else:\n            response.add_header('Content-type', 'text/plain')\n            response.send_headers()\n\n            try:\n                with open(path, 'rb') as fp:\n                    chunk = fp.read(8192)\n                    while chunk:\n                        response.write(chunk)\n                        chunk = fp.read(8192)\n            except OSError:\n                response.write(b'Cannot open')\n\n        await response.write_eof()\n        if response.keep_alive():\n            self.keep_alive(True)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "os.path.isdir",
+        "os.listdir",
+        "os.path.isdir",
+        "os.path.join",
+        "open",
+        "fp.read"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists(path)",
+        "os.path.isdir(path)",
+        "os.listdir(path)",
+        "os.path.isdir(os.path.join(path, name))",
+        "os.path.join(path, name)",
+        "open(path, 'rb')",
+        "fp.read(8192)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.listdir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "if not os.path.exists(path):\n    print('no file', repr(path))\n    path = None\nelse:\n    isdir = os.path.isdir(path)\n\nif isdir:\n    for name in sorted(os.listdir(path)):\n        if os.path.isdir(os.path.join(path, name)):\n            ...\nelse:\n    try:\n        with open(path, 'rb') as fp:\n            chunk = fp.read(8192)\n            while chunk:\n                response.write(chunk)\n                chunk = fp.read(8192)\n    except OSError:\n        response.write(b'Cannot open')"
+    }
+  },
+  {
+    "pyfile": "test_proxy.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aiohttp-4.0.0a1/aiohttp-4.0.0a1/tests/test_proxy.py",
+    "line_number": "513",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "512\t        self.loop.run_until_complete(proxy_req.close())\n513\t        proxy_resp.close()\n514\t        self.loop.run_until_complete(req.close())",
+    "code_snippet": "@mock.patch('aiohttp.connector.ClientRequest')\ndef test_https_connect(self, ClientRequestMock) -> None:\n    proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),\n                              loop=self.loop)\n    ClientRequestMock.return_value = proxy_req\n\n    proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),\n                                request_info=mock.Mock(),\n                                writer=mock.Mock(),\n                                continue100=None,\n                                timer=TimerNoop(),\n                                traces=[],\n                                loop=self.loop,\n                                session=mock.Mock())\n    proxy_req.send = make_mocked_coro(proxy_resp)\n    proxy_resp.start = make_mocked_coro(mock.Mock(status=200))\n\n    async def make_conn():\n        return aiohttp.TCPConnector()\n    connector = self.loop.run_until_complete(make_conn())\n    connector._resolve_host = make_mocked_coro(\n        [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,\n          'family': socket.AF_INET, 'proto': 0, 'flags': 0}])\n\n    tr, proto = mock.Mock(), mock.Mock()\n    self.loop.create_connection = make_mocked_coro((tr, proto))\n\n    req = ClientRequest(\n        'GET', URL('https://www.python.org'),\n        proxy=URL('http://proxy.example.com'),\n        loop=self.loop,\n    )\n    self.loop.run_until_complete(\n        connector._create_connection(req, None, aiohttp.ClientTimeout()))\n\n    self.assertEqual(req.url.path, '/')\n    self.assertEqual(proxy_req.method, 'CONNECT')\n    self.assertEqual(proxy_req.url, URL('https://www.python.org'))\n    tr.close.assert_called_once_with()\n    tr.get_extra_info.assert_called_with('socket', default=None)\n\n    self.loop.run_until_complete(proxy_req.close())\n    proxy_resp.close()\n    self.loop.run_until_complete(req.close())",
+    "pattern_analysis": {
+      "api_sequence": [
+        "aiohttp.connector.ClientRequest",
+        "aiohttp.connector.ClientResponse",
+        "aiohttp.TCPConnector",
+        "socket.AF_INET",
+        "self.loop.create_connection",
+        "aiohttp.connector.ClientRequest",
+        "aiohttp.ClientTimeout",
+        "aiohttp.connector.TCPConnector._create_connection",
+        "tr.close",
+        "tr.get_extra_info",
+        "aiohttp.connector.ClientRequest.close"
+      ],
+      "api_sequence_with_args": [
+        "aiohttp.connector.ClientRequest('GET', URL('http://proxy.example.com'), loop=self.loop)",
+        "aiohttp.connector.ClientResponse('get', URL('http://proxy.example.com'), request_info=mock.Mock(), writer=mock.Mock(), continue100=None, timer=TimerNoop(), traces=[], loop=self.loop, session=mock.Mock())",
+        "aiohttp.TCPConnector()",
+        "socket.AF_INET",
+        "self.loop.create_connection((tr, proto))",
+        "aiohttp.connector.ClientRequest('GET', URL('https://www.python.org'), proxy=URL('http://proxy.example.com'), loop=self.loop)",
+        "aiohttp.ClientTimeout()",
+        "aiohttp.connector.TCPConnector._create_connection(req, None, aiohttp.ClientTimeout())",
+        "tr.close()",
+        "tr.get_extra_info('socket', default=None)",
+        "aiohttp.connector.ClientRequest.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "aiohttp.connector.ClientRequest",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "aiohttp.connector.ClientResponse",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "aiohttp.TCPConnector",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "socket.AF_INET",
+          "id": "get_ipv4_family",
+          "description": "Retrieves IPv4 address family constant",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "self.loop.create_connection",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "aiohttp.connector.ClientRequest",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "aiohttp.ClientTimeout",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "aiohttp.connector.TCPConnector._create_connection",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "tr.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "tr.get_extra_info",
+          "id": "get_socket_fd",
+          "description": "Retrieves file descriptor for socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "aiohttp.connector.ClientRequest.close",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "@mock.patch('aiohttp.connector.ClientRequest')\ndef test_https_connect(self, ClientRequestMock) -> None:\n    proxy_req = aiohttp.connector.ClientRequest('GET', URL('http://proxy.example.com'), loop=self.loop)\n    ClientRequestMock.return_value = proxy_req\n\n    proxy_resp = aiohttp.connector.ClientResponse('get', URL('http://proxy.example.com'), request_info=mock.Mock(), writer=mock.Mock(), continue100=None, timer=TimerNoop(), traces=[], loop=self.loop, session=mock.Mock())\n    proxy_req.send = make_mocked_coro(proxy_resp)\n    proxy_resp.start = make_mocked_coro(mock.Mock(status=200))\n\n    async def make_conn():\n        return aiohttp.TCPConnector()\n    connector = self.loop.run_until_complete(make_conn())\n    connector._resolve_host = make_mocked_coro([\n        {'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80, 'family': socket.AF_INET, 'proto': 0, 'flags': 0}])\n\n    tr, proto = mock.Mock(), mock.Mock()\n    self.loop.create_connection = make_mocked_coro((tr, proto))\n\n    req = aiohttp.connector.ClientRequest(\n        'GET', URL('https://www.python.org'),\n        proxy=URL('http://proxy.example.com'),\n        loop=self.loop,\n    )\n    self.loop.run_until_complete(\n        connector._create_connection(req, None, aiohttp.ClientTimeout()))\n\n    tr.close.assert_called_once_with()\n    tr.get_extra_info.assert_called_with('socket', default=None)\n\n    self.loop.run_until_complete(proxy_req.close())"
+    }
+  },
+  {
+    "pyfile": "test_connector.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aiohttp-4.0.0a1/aiohttp-4.0.0a1/tests/test_connector.py",
+    "line_number": "1932",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1931\t    t1 = loop.create_task(conn.connect(req, None, ClientTimeout()))\n1932\t    t2 = loop.create_task(conn.connect(req, None, ClientTimeout()))\n1933\t    t3 = loop.create_task(conn.connect(req, None, ClientTimeout()))",
+    "code_snippet": "async def test_error_on_connection_with_cancelled_waiter(\n        loop, key) -> None:\n\n    conn = aiohttp.BaseConnector(limit=1)\n\n    req = mock.Mock()\n    req.connection_key = key\n    proto = create_mocked_conn()\n    i = 0\n\n    fut1 = loop.create_future()\n    fut2 = loop.create_future()\n    exc = OSError()\n\n    async def create_connection(req, traces, timeout):\n        nonlocal i\n        i += 1\n        if i == 1:\n            await fut1\n            raise exc\n        if i == 2:\n            await fut2\n        elif i == 3:\n            return proto\n\n    conn._create_connection = create_connection\n\n    t1 = loop.create_task(conn.connect(req, None, ClientTimeout()))\n    t2 = loop.create_task(conn.connect(req, None, ClientTimeout()))\n    t3 = loop.create_task(conn.connect(req, None, ClientTimeout()))\n    await asyncio.sleep(0)\n    assert not t1.done()\n    assert not t2.done()\n    assert len(conn._acquired_per_host[key]) == 1\n\n    fut1.set_result(None)\n    fut2.cancel()\n    with pytest.raises(OSError):\n        await t1\n\n    with pytest.raises(asyncio.CancelledError):\n        await t2\n\n    ret = await t3\n    assert len(conn._acquired_per_host[key]) == 1\n\n    assert ret._key == key\n    assert ret.protocol == proto\n    assert proto in conn._acquired\n    ret.release()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "aiohttp.BaseConnector",
+        "loop.create_future",
+        "loop.create_future",
+        "pytest.raises",
+        "pytest.raises",
+        "ret.release"
+      ],
+      "api_sequence_with_args": [
+        "aiohttp.BaseConnector(limit=1)",
+        "loop.create_future()",
+        "loop.create_future()",
+        "pytest.raises(OSError)",
+        "pytest.raises(asyncio.CancelledError)",
+        "ret.release()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "aiohttp.BaseConnector",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "loop.create_future",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "loop.create_future",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "pytest.raises",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "pytest.raises",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "ret.release",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "async def test_error_on_connection_with_cancelled_waiter(loop, key) -> None:\n    conn = aiohttp.BaseConnector(limit=1)\n    fut1 = loop.create_future()\n    fut2 = loop.create_future()\n    # ...\n    with pytest.raises(OSError):\n        await t1\n    with pytest.raises(asyncio.CancelledError):\n        await t2\n    ret = await t3\n    ret.release()"
+    }
+  }
+]

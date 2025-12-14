@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "aws_sam_cli-1.137.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "container.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aws_sam_cli-1.137.0/aws_sam_cli-1.137.0/samcli/local/docker/container.py",
+    "line_number": "428",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "427\t        with CONCURRENT_CALL_MANAGER_LOCK:\n428\t            lock = CONCURRENT_CALL_MANAGER.get(lock_key)\n429\t            if not lock:",
+    "context_snippet": "    @retry(exc=requests.exceptions.RequestException, exc_raise=ContainerResponseException)\n    def wait_for_http_response(self, name, event, stdout) -> Tuple[Union[str, bytes], bool]:\n        # TODO(sriram-mv): `aws-lambda-rie` is in a mode where the function_name is always \"function\"\n        # NOTE(sriram-mv): There is a connection timeout set on the http call to `aws-lambda-rie`, however there is not\n        # a read time out for the response received from the server.\n\n        # generate a lock key with host-port combination which is unique per function\n        lock_key = f\"{self._container_host}-{self.rapid_port_host}\"\n        LOG.debug(\"Getting lock for the key %s\", lock_key)\n        with CONCURRENT_CALL_MANAGER_LOCK:\n            lock = CONCURRENT_CALL_MANAGER.get(lock_key)\n            if not lock:\n                lock = threading.Lock()\n                CONCURRENT_CALL_MANAGER[lock_key] = lock\n        LOG.debug(\"Waiting to retrieve the lock (%s) to start invocation\", lock_key)\n        with lock:\n            resp = requests.post(\n                self.URL.format(host=self._container_host, port=self.rapid_port_host, function_name=\"function\"),\n                data=event.encode(\"utf-8\"),\n                timeout=(self.RAPID_CONNECTION_TIMEOUT, None),\n            )\n\n        try:\n            # if response is an image then json.loads/dumps will throw a UnicodeDecodeError so return raw content\n            if resp.headers.get(\"Content-Type\") and \"image\" in resp.headers[\"Content-Type\"]:\n                return resp.content, True\n            return json.dumps(json.loads(resp.content), ensure_ascii=False), False\n        except json.JSONDecodeError:\n            LOG.debug(\"Failed to deserialize response from RIE, returning the raw response as is\")\n            return resp.content, False",
+    "hash_value": "5b76386bb7c8b9ec7d44d56a008c44ac"
+  }
+]

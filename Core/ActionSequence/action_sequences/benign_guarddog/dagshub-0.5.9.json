@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "server.py",
+    "code_snippet": "import asyncio\nimport logging\nfrom threading import Thread\nfrom typing import TYPE_CHECKING, Optional\n\nfrom hypercorn.asyncio import serve\nfrom hypercorn.config import Config\n\nfrom dagshub.common import is_inside_colab\nfrom dagshub.data_engine.voxel_plugin_server.app import app\nfrom dagshub.data_engine.voxel_plugin_server.models import PluginServerState\n\nlogger = logging.getLogger(__name__)\n\nif TYPE_CHECKING:\n    from dagshub.data_engine.model.datasource import Datasource\n    import fiftyone as fo\n\nDEFAULT_PORT = 5152\n\n_running_server = None\n\nclass PluginServer:\n    def __init__(self, state: PluginServerState):\n        self._ev_loop = asyncio.new_event_loop()\n\n        self._config = Config()\n        self._config.bind = [f\"localhost:{DEFAULT_PORT}\"]\n        self._state = state\n\n        self.set_dataset_config(self._state.voxel_session)\n\n        asyncio.set_event_loop(self._ev_loop)\n        self._shutdown_event = asyncio.Event()\n        self._thread = Thread(target=self._ev_loop.run_until_complete, args=(self.start_serve(),), daemon=True)\n        self._thread.start()\n\n    @property\n    def server_address(self):\n        return f\"http://{self._config.bind[0]}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "asyncio.new_event_loop",
+        "Config",
+        "Config.bind",
+        "asyncio.set_event_loop",
+        "asyncio.Event",
+        "Thread",
+        "Thread.start"
+      ],
+      "api_sequence_with_args": [
+        "asyncio.new_event_loop()",
+        "Config()",
+        "Config.bind = [f\"localhost:{DEFAULT_PORT}\"]",
+        "asyncio.set_event_loop(self._ev_loop)",
+        "asyncio.Event()",
+        "Thread(target=self._ev_loop.run_until_complete, args=(self.start_serve(),), daemon=True)",
+        "Thread.start()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "asyncio.new_event_loop",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "Config",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "Config.bind",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "asyncio.set_event_loop",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "asyncio.Event",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "Thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "Thread.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "import asyncio\nfrom threading import Thread\nfrom hypercorn.config import Config\nfrom dagshub.data_engine.voxel_plugin_server.models import PluginServerState\n\nclass PluginServer:\n    def __init__(self, state: PluginServerState):\n        self._ev_loop = asyncio.new_event_loop()\n        self._config = Config()\n        self._config.bind = [f\"localhost:{DEFAULT_PORT}\"]\n        self._state = state\n        self.set_dataset_config(self._state.voxel_session)\n        asyncio.set_event_loop(self._ev_loop)\n        self._shutdown_event = asyncio.Event()\n        self._thread = Thread(target=self._ev_loop.run_until_complete, args=(self.start_serve(),), daemon=True)\n        self._thread.start()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "dagshub-0.5.9",
+      "total_matches": 1
+    }
+  }
+]

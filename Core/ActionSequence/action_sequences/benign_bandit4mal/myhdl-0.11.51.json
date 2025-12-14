@@ -1,0 +1,41 @@
+[
+  {
+    "metadata": {
+      "package_name": "myhdl-0.11.51",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "_toVHDL.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/myhdl-0.11.51/myhdl-0.11.51/myhdl/conversion/_toVHDL.py",
+    "line_number": "1651",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1650\t            self.writeline()\n1651\t        self.write(\"writeline(output, L);\")\n1652",
+    "code_snippet": "def visit_Print(self, node):\n    argnr = 0\n    for s in node.format:\n        if isinstance(s, str):\n            self.write('write(L, string\\'(\"%s\"));' % s)\n        else:\n            a = node.args[argnr]\n            argnr += 1\n            to_string = \"to_string\"\n            if s.conv is int:\n                a.vhd = vhd_int()\n            else:\n                if isinstance(a.vhdOri, vhd_vector):\n                    to_string = \"to_hstring\"\n                    # to_hstring correctly does sign extension\n                    # however, Verilog doesn not: therefore, interprete\n                    # print values as unsigned...\n                    a.vhd = vhd_unsigned(a.vhd.size)\n                elif isinstance(a.vhdOri, vhd_std_logic):\n                    a.vhd = vhd_boolean()\n            self.write(\"write(L, %s(\" % to_string)\n            self.visit(a)\n            self.write(\"))\")\n            self.write(';')\n        self.writeline()\n    self.write(\"writeline(output, L);\")",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "def visit_Print(self, node):\n    argnr = 0\n    for s in node.format:\n        if isinstance(s, str):\n            self.write('write(L, string\\'(\"%s\"));' % s)\n        else:\n            a = node.args[argnr]\n            argnr += 1\n            to_string = \"to_string\"\n            if s.conv is int:\n                a.vhd = vhd_int()\n            else:\n                if isinstance(a.vhdOri, vhd_vector):\n                    to_string = \"to_hstring\"\n                    a.vhd = vhd_unsigned(a.vhd.size)\n                elif isinstance(a.vhdOri, vhd_std_logic):\n                    a.vhd = vhd_boolean()\n            self.write(\"write(L, %s(\" % to_string)\n            self.visit(a)\n            self.write(\"))\")\n            self.write(';')\n        self.writeline()\n    self.write(\"writeline(output, L);\")"
+    }
+  },
+  {
+    "pyfile": "_toVHDL.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/myhdl-0.11.51/myhdl-0.11.51/myhdl/conversion/_toVHDL.py",
+    "line_number": "1064",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1063\t                else:\n1064\t                    self.write('\"%s\";' % tobin(n, size))\n1065\t            self.dedent()",
+    "code_snippet": "def visit_Assign(self, node):\n    lhs = node.targets[0]\n    rhs = node.value\n    # shortcut for expansion of ROM in case statement\n    if isinstance(node.value, ast.Subscript) and \\\n                  not isinstance(node.value.slice, ast.Slice) and \\\n                  isinstance(node.value.value.obj, _Rom):\n        rom = node.value.value.obj.rom\n        self.write(\"case \")\n        self.visit(node.value.slice)\n        self.write(\" is\")\n        self.indent()\n        size = lhs.vhd.size\n        for i, n in enumerate(rom):\n            self.writeline()\n            if i == len(rom) - 1:\n                self.write(\"when others => \")\n            else:\n                self.write(\"when %s => \" % i)\n            self.visit(lhs)\n            if self.SigAss:\n                self.write(' <= ')\n                self.SigAss = False\n            else:\n                self.write(' := ')\n            if isinstance(lhs.vhd, vhd_std_logic):\n                self.write(\"'%s';\" % n)\n            elif isinstance(lhs.vhd, vhd_int):\n                self.write(\"%s;\" % n)\n            else:\n                self.write('\"%s\";' % tobin(n, size))\n        self.dedent()\n        self.writeline()\n        self.write(\"end case;\")\n        return\n    elif isinstance(node.value, ast.ListComp):\n        # skip list comprehension assigns for now\n        return\n    # default behavior\n    convOpen, convClose = \"\", \"\"\n    if isinstance(lhs.vhd, vhd_type):\n        rhs.vhd = lhs.vhd\n    self.isLhs = True\n    self.visit(lhs)\n    self.isLhs = False\n    if self.SigAss:\n        rhs.dest = lhs.value\n        if isinstance(lhs.value, ast.Name):\n            sig = self.tree.symdict[lhs.value.id]\n        self.write(' <= ')\n        self.SigAss = False\n    else:\n        self.write(' := ')\n    self.write(convOpen)\n    # node.expr.target = obj = self.getObj(node.nodes[0])\n    self.visit(rhs)\n    self.write(convClose)\n    self.write(';')",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "def visit_Assign(self, node):\n    lhs = node.targets[0]\n    rhs = node.value\n    # shortcut for expansion of ROM in case statement\n    if isinstance(node.value, ast.Subscript) and \\\n                  not isinstance(node.value.slice, ast.Slice) and \\\n                  isinstance(node.value.value.obj, _Rom):\n        rom = node.value.value.obj.rom\n        self.write(\"case \")\n        self.visit(node.value.slice)\n        self.write(\" is\")\n        self.indent()\n        size = lhs.vhd.size\n        for i, n in enumerate(rom):\n            self.writeline()\n            if i == len(rom) - 1:\n                self.write(\"when others => \")\n            else:\n                self.write(\"when %s => \" % i)\n            self.visit(lhs)\n            if self.SigAss:\n                self.write(' <= ')\n                self.SigAss = False\n            else:\n                self.write(' := ')\n            if isinstance(lhs.vhd, vhd_std_logic):\n                self.write(\"'%s';\" % n)\n            elif isinstance(lhs.vhd, vhd_int):\n                self.write(\"%s;\" % n)\n            else:\n                self.write('\"%s\";' % tobin(n, size))\n        self.dedent()\n        self.writeline()\n        self.write(\"end case;\")\n        return\n    elif isinstance(node.value, ast.ListComp):\n        # skip list comprehension assigns for now\n        return\n    # default behavior\n    convOpen, convClose = \"\", \"\"\n    if isinstance(lhs.vhd, vhd_type):\n        rhs.vhd = lhs.vhd\n    self.isLhs = True\n    self.visit(lhs)\n    self.isLhs = False\n    if self.SigAss:\n        rhs.dest = lhs.value\n        if isinstance(lhs.value, ast.Name):\n            sig = self.tree.symdict[lhs.value.id]\n        self.write(' <= ')\n        self.SigAss = False\n    else:\n        self.write(' := ')\n    self.write(convOpen)\n    # node.expr.target = obj = self.getObj(node.nodes[0])\n    self.visit(rhs)\n    self.write(convClose)\n    self.write(';')"
+    }
+  }
+]

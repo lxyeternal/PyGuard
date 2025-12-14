@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "python_irodsclient-3.1.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "login_auth_test_must_run_manually.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/python_irodsclient-3.1.0/python_irodsclient-3.1.0/irods/test/login_auth_test_must_run_manually.py",
+    "line_number": "360",
+    "type_description": "B803:gethostname",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "359\t                    session = iRODSSession(\n360\t                        host=gethostname(),\n361\t                        user=lookup[\"USER\"],",
+    "context_snippet": "def create_env_dirs(self):\n    dirs = {}\n    retval = []\n    # -- create environment configurations and secrets\n    with pam_password_in_plaintext():\n        for dirname, lookup in self.user_auth_envs.items():\n            if lookup[\"AUTH\"] in (\"pam\", \"pam_password\"):\n                ses = iRODSSession(\n                    host=gethostname(),\n                    user=lookup[\"USER\"],\n                    zone=\"tempZone\",\n                    authentication_scheme=lookup[\"AUTH\"],\n                    password=lookup[\"PASSWORD\"],\n                    port=1247,\n                )\n                try:\n                    pam_hashes = ses.pam_pw_negotiated\n                except AttributeError:\n                    pam_hashes = []\n                if not pam_hashes:\n                    print(\"Warning ** PAM pw couldnt be generated\")\n                    break\n                scrambled_pw = pw_encode(pam_hashes[0])\n            # elif lookup['AUTH'] == 'XXXXXX': # TODO: insert other authentication schemes here\n            elif lookup[\"AUTH\"] in (\"native\", \"\", None):\n                scrambled_pw = pw_encode(lookup[\"PASSWORD\"])\n            cl_env = client_env_keys_from_admin_env(TEST_RODS_USER)\n            if (\n                lookup.get(\"AUTH\", None) is not None\n            ):  # - specify auth scheme only if given\n                cl_env[\"irods_authentication_scheme\"] = lookup[\"AUTH\"]\n            dirbase = os.path.join(os.environ[\"HOME\"], dirname)\n            dirs[dirbase] = {\"secrets\": scrambled_pw, \"client_environment\": cl_env}\n\n    # -- create the environment directories and write into them the configurations just created\n    for absdir in dirs.keys():\n        shutil.rmtree(absdir, ignore_errors=True)\n        os.mkdir(absdir)\n        with open(os.path.join(absdir, \"irods_environment.json\"), \"w\") as envfile:\n            envfile.write(\"{}\")\n        json_file_update(envfile.name, **dirs[absdir][\"client_environment\"])\n        with open(os.path.join(absdir, \".irodsA\"), \"w\") as secrets_file:\n            secrets_file.write(dirs[absdir][\"secrets\"])\n        os.chmod(secrets_file.name, 0o600)\n\n    retval = dirs.keys()\n    return retval",
+    "hash_value": "c1ec0c958ce7ad2d35d3670f6df39953"
+  }
+]

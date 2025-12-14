@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "percy_appium_app-2.0.7",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/percy_appium_app-2.0.7.txt",
+      "total_matches": 4
+    }
+  },
+  {
+    "pyfile": "cli_wrapper.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/percy_appium_app-2.0.7/percy_appium_app-2.0.7/percy/lib/cli_wrapper.py",
+    "line_number": "21",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.get(f'{PERCY_CLI_API}/percy/healthcheck', timeout=10)",
+    "context_snippet": "from functools import lru_cache\nimport os\nimport requests\n\nfrom percy.errors import CLIException\nfrom percy.common import log\nfrom percy.environment import Environment\n\n# Maybe get the CLI API address from the environment\nPERCY_CLI_API = os.environ.get('PERCY_CLI_API') or 'http://localhost:5338'\n\nclass CLIWrapper:\n    def __init__(self) -> None:\n        pass\n\n    # Check if Percy is enabled, caching the result so it is only checked once\n    @staticmethod\n    @lru_cache(maxsize=None)\n    def is_percy_enabled():\n        try:\n            response = requests.get(f'{PERCY_CLI_API}/percy/healthcheck', timeout=10)\n            response.raise_for_status()\n            data = response.json()\n\n            if not data['success']: raise CLIException(data['error'])\n            Environment.percy_build_id = data['build']['id']\n            Environment.percy_build_url = data['build']['url']\n            Environment.session_type = data.get('type', None)\n            version = response.headers.get('x-percy-core-version')\n\n            if version.split('.')[0] != '1':\n                log(f'Unsupported Percy CLI version, {version}')\n                return False\n\n            if int(version.split('.')[1]) < 27:\n                log('Please upgrade to latest CLI version for using this SDK. Minimum compatible version is 1.27.0-beta.0')\n                return False\n\n            return True\n        except Exception as e:\n            log('Percy is not running, disabling screenshots')\n            log(e, on_debug=True)\n            return False",
+    "hash_value": "75b8d41ba853f48aa160872496be4123",
+    "detection_index": 1
+  }
+]

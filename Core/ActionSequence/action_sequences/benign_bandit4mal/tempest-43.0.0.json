@@ -1,0 +1,268 @@
+[
+  {
+    "metadata": {
+      "package_name": "tempest-43.0.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "ssh.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tempest-43.0.0/tempest-43.0.0/tempest/lib/common/ssh.py",
+    "line_number": "214",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "213\t                    if channel.recv_ready():\n214\t                        out_chunk = channel.recv(self.buf_size)\n215\t                        out_data_chunks += out_chunk,",
+    "code_snippet": "def exec_command(self, cmd, encoding=\"utf-8\"):\n    \"\"\"Execute the specified command on the server\n\n    Note that this method is reading whole command outputs to memory, thus\n    shouldn't be used for large outputs.\n\n    :param str cmd: Command to run at remote server.\n    :param str encoding: Encoding for result from paramiko.\n                         Result will not be decoded if None.\n    :returns: data read from standard output of the command.\n    :raises: SSHExecCommandFailed if command returns nonzero\n             status. The exception contains command status stderr content.\n    :raises: TimeoutException if cmd doesn't end when timeout expires.\n    \"\"\"\n    ssh = self._get_ssh_connection()\n    transport = ssh.get_transport()\n    with transport.open_session() as channel:\n        channel.fileno()  # Register event pipe\n        channel.exec_command(cmd)\n        channel.shutdown_write()\n\n        # If the executing host is linux-based, poll the channel\n        if self._can_system_poll():\n            out_data_chunks = []\n            err_data_chunks = []\n            poll = select.poll()\n            poll.register(channel, select.POLLIN)\n            start_time = time.time()\n\n            while True:\n                ready = poll.poll(self.channel_timeout)\n                if not any(ready):\n                    if not self._is_timed_out(start_time):\n                        continue\n                    raise exceptions.TimeoutException(\n                        \"Command: '{0}' executed on host '{1}'.\".format(\n                            cmd, self.host))\n                if not ready[0]:  # If there is nothing to read.\n                    continue\n                out_chunk = err_chunk = None\n                if channel.recv_ready():\n                    out_chunk = channel.recv(self.buf_size)\n                    out_data_chunks += out_chunk,\n                if channel.recv_stderr_ready():\n                    err_chunk = channel.recv_stderr(self.buf_size)\n                    err_data_chunks += err_chunk,\n                if not err_chunk and not out_chunk:\n                    break\n            out_data = b''.join(out_data_chunks)\n            err_data = b''.join(err_data_chunks)\n        # Just read from the channels\n        else:\n            out_file = channel.makefile('rb', self.buf_size)\n            err_file = channel.makefile_stderr('rb', self.buf_size)\n            out_data = out_file.read()\n            err_data = err_file.read()\n        if encoding:\n            out_data = out_data.decode(encoding)\n            err_data = err_data.decode(encoding)\n\n        exit_status = channel.recv_exit_status()\n\n    ssh.close()\n\n    if 0 != exit_status:\n        raise exceptions.SSHExecCommandFailed(\n            command=cmd, exit_status=exit_status,\n            stderr=err_data, stdout=out_data)\n    return out_data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._get_ssh_connection",
+        "ssh.get_transport",
+        "transport.open_session",
+        "channel.fileno",
+        "channel.exec_command",
+        "channel.shutdown_write",
+        "self._can_system_poll",
+        "select.poll",
+        "poll.register",
+        "time.time",
+        "poll.poll",
+        "self._is_timed_out",
+        "channel.recv_ready",
+        "channel.recv",
+        "channel.recv_stderr_ready",
+        "channel.recv_stderr",
+        "channel.makefile",
+        "channel.makefile_stderr",
+        "out_file.read",
+        "err_file.read",
+        "out_data.decode",
+        "err_data.decode",
+        "channel.recv_exit_status",
+        "ssh.close"
+      ],
+      "api_sequence_with_args": [
+        "self._get_ssh_connection()",
+        "ssh.get_transport()",
+        "transport.open_session()",
+        "channel.fileno()",
+        "channel.exec_command(cmd)",
+        "channel.shutdown_write()",
+        "self._can_system_poll()",
+        "select.poll()",
+        "poll.register(channel, select.POLLIN)",
+        "time.time()",
+        "poll.poll(self.channel_timeout)",
+        "self._is_timed_out(start_time)",
+        "channel.recv_ready()",
+        "channel.recv(self.buf_size)",
+        "channel.recv_stderr_ready()",
+        "channel.recv_stderr(self.buf_size)",
+        "channel.makefile('rb', self.buf_size)",
+        "channel.makefile_stderr('rb', self.buf_size)",
+        "out_file.read()",
+        "err_file.read()",
+        "out_data.decode(encoding)",
+        "err_data.decode(encoding)",
+        "channel.recv_exit_status()",
+        "ssh.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._get_ssh_connection",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "ssh.get_transport",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "transport.open_session",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "channel.fileno",
+          "id": "get_socket_fd",
+          "description": "Retrieves file descriptor for socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "channel.exec_command",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "channel.shutdown_write",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "self._can_system_poll",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "select.poll",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "poll.register",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "poll.poll",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "self._is_timed_out",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "channel.recv_ready",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "channel.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "channel.recv_stderr_ready",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "channel.recv_stderr",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "channel.makefile",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "channel.makefile_stderr",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "out_file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "err_file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "out_data.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "err_data.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "channel.recv_exit_status",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "ssh.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def exec_command(self, cmd, encoding=\"utf-8\"):\n    ssh = self._get_ssh_connection()\n    transport = ssh.get_transport()\n    with transport.open_session() as channel:\n        channel.fileno()  # Register event pipe\n        channel.exec_command(cmd)\n        channel.shutdown_write()\n\n        if self._can_system_poll():\n            out_data_chunks = []\n            err_data_chunks = []\n            poll = select.poll()\n            poll.register(channel, select.POLLIN)\n            start_time = time.time()\n\n            while True:\n                ready = poll.poll(self.channel_timeout)\n                if not any(ready):\n                    if not self._is_timed_out(start_time):\n                        continue\n                    raise exceptions.TimeoutException(...)\n                if not ready[0]:\n                    continue\n                out_chunk = err_chunk = None\n                if channel.recv_ready():\n                    out_chunk = channel.recv(self.buf_size)\n                    out_data_chunks += out_chunk,\n                if channel.recv_stderr_ready():\n                    err_chunk = channel.recv_stderr(self.buf_size)\n                    err_data_chunks += err_chunk,\n                if not err_chunk and not out_chunk:\n                    break\n            out_data = b''.join(out_data_chunks)\n            err_data = b''.join(err_data_chunks)\n        else:\n            out_file = channel.makefile('rb', self.buf_size)\n            err_file = channel.makefile_stderr('rb', self.buf_size)\n            out_data = out_file.read()\n            err_data = err_file.read()\n        if encoding:\n            out_data = out_data.decode(encoding)\n            err_data = err_data.decode(encoding)\n\n        exit_status = channel.recv_exit_status()\n\n    ssh.close()"
+    }
+  }
+]

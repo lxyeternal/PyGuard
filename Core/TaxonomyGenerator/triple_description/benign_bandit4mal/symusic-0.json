@@ -1,0 +1,276 @@
+{
+  "metadata": {
+    "package_name": "symusic-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/symusic-0.5.7.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "manage.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/symusic-0.5.7/symusic-0.5.7/3rdparty/fmt/support/manage.py",
+      "line_number": "282",
+      "type_description": "B815:write",
+      "context_snippet": "def release(args):\n    env = create_build_env()\n    fmt_repo = env.fmt_repo\n\n    branch = args.get('<branch>')\n    if branch is None:\n        branch = 'master'\n    if not fmt_repo.update('-b', branch, fmt_repo_url):\n        clean_checkout(fmt_repo, branch)\n\n    # Update the date in the changelog and extract the version and the first\n    # section content.\n    changelog = 'ChangeLog.md'\n    changelog_path = os.path.join(fmt_repo.dir, changelog)\n    is_first_section = True\n    first_section = []\n    for i, line in enumerate(fileinput.input(changelog_path, inplace=True)):\n        if i == 0:\n            version = re.match(r'# (.*) - TBD', line).group(1)\n            line = '# {} - {}\\n'.format(\n                version, datetime.date.today().isoformat())\n        elif not is_first_section:\n            pass\n        elif line.startswith('#'):\n            is_first_section = False\n        else:\n            first_section.append(line)\n        sys.stdout.write(line)\n    if first_section[0] == '\\n':\n        first_section.pop(0)\n\n    changes = ''\n    code_block = False\n    stripped = False\n    for line in first_section:\n        if re.match(r'^\\s*```', line):\n            code_block = not code_block\n            changes += line\n            stripped = False\n            continue\n        if code_block:\n            changes += line\n            continue\n        if line == '\\n':\n            changes += line\n            if stripped:\n                changes += line\n                stripped = False\n            continue\n        if stripped:\n            line = ' ' + line.lstrip()\n        changes += line.rstrip()\n        stripped = True\n\n    cmakelists = 'CMakeLists.txt'\n    for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),\n                                inplace=True):\n        prefix = 'set(FMT_VERSION '\n        if line.startswith(prefix):\n            line = prefix + version + ')\\n'\n        sys.stdout.write(line)\n\n    # Add the version to the build script.\n    script = os.path.join('doc', 'build.py')\n    script_path = os.path.join(fmt_repo.dir, script)\n    for line in fileinput.input(script_path, inplace=True):\n      m = re.match(r'( *versions \\+= )\\[(.+)\\]', line)\n      if m:\n        line = '{}[{}, \\'{}\\']\\n'.format(m.group(1), m.group(2), version)\n      sys.stdout.write(line)\n\n    fmt_repo.checkout('-B', 'release')\n    fmt_repo.add(changelog, cmakelists, script)\n    fmt_repo.commit('-m', 'Update version')\n\n    # Build the docs and package.\n    run = Runner(fmt_repo.dir)\n    run('cmake', '.')\n    run('make', 'doc', 'package_source')\n\n    # Create a release on GitHub.\n    fmt_repo.push('origin', 'release')\n    auth_headers = {'Authorization': 'token ' + os.getenv('FMT_TOKEN')}\n    r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',\n                      headers=auth_headers,\n                      data=json.dumps({'tag_name': version,\n                                       'target_commitish': 'release',\n                                       'body': changes, 'draft': True}))\n    if r.status_code != 201:\n        raise Exception('Failed to create a release ' + str(r))\n    id = r.json()['id']\n    uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'\n    package = 'fmt-{}.zip'.format(version)\n    r = requests.post(\n        '{}/{}/assets?name={}'.format(uploads_url, id, package),\n        headers={'Content-Type': 'application/zip'} | auth_headers,\n        data=open('build/fmt/' + package, 'rb'))\n    if r.status_code != 201:\n        raise Exception('Failed to upload an asset ' + str(r))\n\n    update_site(env)",
+      "hash_value": "55f80940b7aba9f7862de9d7e39a96a2",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def release(args):\n    env = create_build_env()\n    fmt_repo = env.fmt_repo\n\n    branch = args.get('<branch>')\n    if branch is None:\n        branch = 'master'\n    if not fmt_repo.update('-b', branch, fmt_repo_url):\n        clean_checkout(fmt_repo, branch)\n\n    # Update the date in the changelog and extract the version and the first\n    # section content.\n    changelog = 'ChangeLog.md'\n    changelog_path = os.path.join(fmt_repo.dir, changelog)\n    is_first_section = True\n    first_section = []\n    for i, line in enumerate(fileinput.input(changelog_path, inplace=True)):\n        if i == 0:\n            version = re.match(r'# (.*) - TBD', line).group(1)\n            line = '# {} - {}\\n'.format(\n                version, datetime.date.today().isoformat())\n        elif not is_first_section:\n            pass\n        elif line.startswith('#'):\n            is_first_section = False\n        else:\n            first_section.append(line)\n        sys.stdout.write(line)\n    if first_section[0] == '\\n':\n        first_section.pop(0)\n\n    changes = ''\n    code_block = False\n    stripped = False\n    for line in first_section:\n        if re.match(r'^\\s*```', line):\n            code_block = not code_block\n            changes += line\n            stripped = False\n            continue\n        if code_block:\n            changes += line\n            continue\n        if line == '\\n':\n            changes += line\n            if stripped:\n                changes += line\n                stripped = False\n            continue\n        if stripped:\n            line = ' ' + line.lstrip()\n        changes += line.rstrip()\n        stripped = True\n\n    cmakelists = 'CMakeLists.txt'\n    for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),\n                                inplace=True):\n        prefix = 'set(FMT_VERSION '\n        if line.startswith(prefix):\n            line = prefix + version + ')\\n'\n        sys.stdout.write(line)\n\n    # Add the version to the build script.\n    script = os.path.join('doc', 'build.py')\n    script_path = os.path.join(fmt_repo.dir, script)\n    for line in fileinput.input(script_path, inplace=True):\n      m = re.match(r'( *versions \\+= )\\[(.+)\\]', line)\n      if m:\n        line = '{}[{}, \\'{}\\']\\n'.format(m.group(1), m.group(2), version)\n      sys.stdout.write(line)\n\n    fmt_repo.checkout('-B', 'release')\n    fmt_repo.add(changelog, cmakelists, script)\n    fmt_repo.commit('-m', 'Update version')\n\n    # Build the docs and package.\n    run = Runner(fmt_repo.dir)\n    run('cmake', '.')\n    run('make', 'doc', 'package_source')\n\n    # Create a release on GitHub.\n    fmt_repo.push('origin', 'release')\n    auth_headers = {'Authorization': 'token ' + os.getenv('FMT_TOKEN')}\n    r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',\n                      headers=auth_headers,\n                      data=json.dumps({'tag_name': version,\n                                       'target_commitish': 'release',\n                                       'body': changes, 'draft': True}))\n    if r.status_code != 201:\n        raise Exception('Failed to create a release ' + str(r))\n    id = r.json()['id']\n    uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'\n    package = 'fmt-{}.zip'.format(version)\n    r = requests.post(\n        '{}/{}/assets?name={}'.format(uploads_url, id, package),\n        headers={'Content-Type': 'application/zip'} | auth_headers,\n        data=open('build/fmt/' + package, 'rb'))\n    if r.status_code != 201:\n        raise Exception('Failed to upload an asset ' + str(r))\n\n    update_site(env)",
+          "triple_sequences": [
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "fmt_repo.dir, changelog",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "fileinput.input()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "changelog_path, inplace=True",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'# (.*) - TBD', line",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Prepare regex for browser profile detection",
+              "intention_id": "browser_profile_detection_preparation"
+            },
+            {
+              "action_api": "datetime.date.today().isoformat()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "sys.stdout.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "line",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'^\u001b*```', line",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Prepare regex for browser profile detection",
+              "intention_id": "browser_profile_detection_preparation"
+            },
+            {
+              "action_api": "fileinput.input()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "os.path.join(fmt_repo.dir, cmakelists), inplace=True",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "sys.stdout.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "line",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fileinput.input()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "script_path, inplace=True",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'( *versions \\+= )\\[(.+)\\]', line",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Prepare regex for browser profile detection",
+              "intention_id": "browser_profile_detection_preparation"
+            },
+            {
+              "action_api": "sys.stdout.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "line",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fmt_repo.checkout()",
+              "action_description": "Clones Git repository to local path",
+              "action_id": "clone_git_repo",
+              "object": "'-B', 'release'",
+              "object_description": "Repository reference",
+              "object_id": "repository_reference",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "fmt_repo.add()",
+              "action_description": "Adds file to ZIP archive with specified archive name",
+              "action_id": "add_file_zip",
+              "object": "changelog, cmakelists, script",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Add file to zip archive",
+              "intention_id": "add_file_to_archive"
+            },
+            {
+              "action_api": "fmt_repo.commit()",
+              "action_description": "Commits current transaction to SQLite database",
+              "action_id": "commit_transaction",
+              "object": "'-m', 'Update version'",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "Runner()",
+              "action_description": "Creates child process",
+              "action_id": "create_child_process",
+              "object": "fmt_repo.dir",
+              "object_description": "Program directory",
+              "object_id": "program_directory",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "'cmake', '.'",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "'make', 'doc', 'package_source'",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "fmt_repo.push()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "'origin', 'release'",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit encoded data via HTTP POST",
+              "intention_id": "transmit_data_http_post"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'FMT_TOKEN'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "{'tag_name': version, 'target_commitish': 'release', 'body': changes, 'draft': True}",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "'https://api.github.com/repos/fmtlib/fmt/releases', headers=auth_headers, data=json.dumps(...)",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit encoded data via HTTP POST",
+              "intention_id": "transmit_data_http_post"
+            },
+            {
+              "action_api": "r.status_code",
+              "action_description": "Retrieves HTTP response status code",
+              "action_id": "get_http_status",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Extract file upload response",
+              "intention_id": "extract_file_upload_response"
+            },
+            {
+              "action_api": "r.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "'{}/{}/assets?name={}'.format(uploads_url, id, package), headers={'Content-Type': 'application/zip'} | auth_headers, data=open('build/fmt/' + package, 'rb')",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit encoded data via HTTP POST",
+              "intention_id": "transmit_data_http_post"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "'build/fmt/' + package, 'rb'",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

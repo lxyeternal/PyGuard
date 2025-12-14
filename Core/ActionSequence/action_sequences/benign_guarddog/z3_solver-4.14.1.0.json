@@ -1,0 +1,114 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport shutil\nimport platform\nimport subprocess\nimport multiprocessing\nimport re\nimport glob\nfrom setuptools import setup\nfrom setuptools.command.build import build as _build\nfrom setuptools.command.sdist import sdist as _sdist\nfrom setuptools.command.bdist_wheel import bdist_wheel as _bdist_wheel\nfrom setuptools.command.develop import develop as _develop\n\nclass LibError(Exception):\n    pass\n\nbuild_env = dict(os.environ)\nbuild_env['PYTHON'] = sys.executable\nbuild_env['CXXFLAGS'] = build_env.get('CXXFLAGS', '') + \" -std=c++20\"\n\n# ... (other code omitted for brevity)\n\ndef _configure_z3():\n    global IS_SINGLE_THREADED\n    global ENABLE_LTO\n    # bail out early if we don't need to do this - it forces a rebuild every time otherwise\n    if os.path.exists(BUILD_DIR):\n        return\n    else:\n        os.mkdir(BUILD_DIR)\n    # Config options\n    cmake_options = {\n        # Config Options\n        'Z3_SINGLE_THREADED' : IS_SINGLE_THREADED,      # avoid solving features that use threads\n        'Z3_POLLING_TIMER' : IS_SINGLE_THREADED,         # avoid using timer threads\n        'Z3_BUILD_PYTHON_BINDINGS' : True,\n        # Build Options\n        'CMAKE_BUILD_TYPE' : 'Release',\n        'Z3_BUILD_EXECUTABLE' : True,\n        'Z3_BUILD_LIBZ3_SHARED' : True,\n        'Z3_LINK_TIME_OPTIMIZATION' : ENABLE_LTO,\n        'WARNINGS_AS_ERRORS' : 'SERIOUS_ONLY',\n        # Disable Unwanted Options\n        'Z3_USE_LIB_GMP' : False, # Is default false in python build\n        'Z3_INCLUDE_GIT_HASH' : False, # Can be changed if we bundle the .git as well\n        'Z3_INCLUDE_GIT_DESCRIBE' : False,\n        'Z3_SAVE_CLANG_OPTIMIZATION_RECORDS' : False,\n        'Z3_ENABLE_TRACING_FOR_NON_DEBUG' : False,\n        'Z3_ENABLE_EXAMPLE_TARGETS' : False,\n        'Z3_ENABLE_CFI' : False,\n        'Z3_BUILD_DOCUMENTATION' : False,\n        'Z3_BUILD_TEST_EXECUTABLES' : False,\n        'Z3_BUILD_DOTNET_BINDINGS' : False,\n        'Z3_BUILD_JAVA_BINDINGS' : False\n    }\n    # Convert cmake options to CLI arguments\n    for key, val in cmake_options.items():\n        if type(val) is bool:\n            cmake_options[key] = str(val).upper()\n\n    # Allow command-line arguments to add and override Z3_ options\n    for i in range(len(sys.argv) - 1):\n        key = sys.argv[i]\n        if key.startswith(\"Z3_\"):\n            val = sys.argv[i + 1].upper()\n            if val == \"TRUE\" or val == \"FALSE\":\n                cmake_options[key] = val\n                \n    cmake_args = [ '-D' + key + '=' + value for key,value in cmake_options.items() ]\n    args = [ 'cmake', *cmake_args, SRC_DIR ]\n    if subprocess.call(args, env=build_env, cwd=BUILD_DIR) != 0:\n        raise LibError(\"Unable to configure Z3.\")\n\ndef _build_z3():\n    if sys.platform == 'win32':\n        if subprocess.call(['nmake'], env=build_env,\n                           cwd=BUILD_DIR) != 0:\n            raise LibError(\"Unable to build Z3.\")\n    else:   # linux and macOS\n        if subprocess.call(['make', '-j', str(multiprocessing.cpu_count())],\n                env=build_env, cwd=BUILD_DIR) != 0:\n            raise LibError(\"Unable to build Z3.\")\n\n# ... (other code omitted for brevity)\n\nsetup(\n    name='z3-solver',\n    version=_z3_version(),\n    description='an efficient SMT solver library',\n    long_description='Z3 is a theorem prover from Microsoft Research with support for bitvectors, booleans, arrays, floating point numbers, strings, and other data types.\\n\\nFor documentation, please read http://z3prover.github.io/api/html/z3.html',\n    author=\"The Z3 Theorem Prover Project\",\n    maintainer=\"Audrey Dutcher and Nikolaj Bjorner\",\n    maintainer_email=\"audrey@rhelmot.io\",\n    url='https://github.com/Z3Prover/z3',\n    license='MIT License',\n    keywords=['z3', 'smt', 'sat', 'prover', 'theorem'],\n    packages=['z3'],\n    setup_requires = SETUP_REQUIRES,\n    install_requires = [\"importlib-resources; python_version < '3.9'\"],\n    include_package_data=True,\n    package_data={\n        'z3': [os.path.join('lib', '*'), os.path.join('include', '*.h'), os.path.join('include', 'c++', '*.h')]\n    },\n    data_files=[('bin',[os.path.join('bin',EXECUTABLE_FILE)])],\n    cmdclass={'build': build, 'develop': develop, 'sdist': sdist, 'bdist_wheel': bdist_wheel},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "sys.executable",
+        "os.path.exists",
+        "os.mkdir",
+        "sys.argv",
+        "subprocess.call",
+        "multiprocessing.cpu_count",
+        "subprocess.call",
+        "os.path.join"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "sys.executable",
+        "os.path.exists(BUILD_DIR)",
+        "os.mkdir(BUILD_DIR)",
+        "sys.argv",
+        "subprocess.call(args, env=build_env, cwd=BUILD_DIR)",
+        "multiprocessing.cpu_count()",
+        "subprocess.call(['make', '-j', str(multiprocessing.cpu_count())], env=build_env, cwd=BUILD_DIR)",
+        "os.path.join('lib', '*')",
+        "os.path.join('include', '*.h')",
+        "os.path.join('include', 'c++', '*.h')",
+        "os.path.join('bin', EXECUTABLE_FILE)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "build_env = dict(os.environ)\nbuild_env['PYTHON'] = sys.executable\nbuild_env['CXXFLAGS'] = build_env.get('CXXFLAGS', '') + \" -std=c++20\"\n\ndef _configure_z3():\n    global IS_SINGLE_THREADED\n    global ENABLE_LTO\n    if os.path.exists(BUILD_DIR):\n        return\n    else:\n        os.mkdir(BUILD_DIR)\n    # ...\n    for i in range(len(sys.argv) - 1):\n        key = sys.argv[i]\n        if key.startswith(\"Z3_\"):\n            val = sys.argv[i + 1].upper()\n            if val == \"TRUE\" or val == \"FALSE\":\n                cmake_options[key] = val\n    cmake_args = [ '-D' + key + '=' + value for key,value in cmake_options.items() ]\n    args = [ 'cmake', *cmake_args, SRC_DIR ]\n    if subprocess.call(args, env=build_env, cwd=BUILD_DIR) != 0:\n        raise LibError(\"Unable to configure Z3.\")\n\ndef _build_z3():\n    if sys.platform == 'win32':\n        if subprocess.call(['nmake'], env=build_env, cwd=BUILD_DIR) != 0:\n            raise LibError(\"Unable to build Z3.\")\n    else:\n        if subprocess.call(['make', '-j', str(multiprocessing.cpu_count())], env=build_env, cwd=BUILD_DIR) != 0:\n            raise LibError(\"Unable to build Z3.\")\n\nsetup(\n    # ...\n    package_data={\n        'z3': [os.path.join('lib', '*'), os.path.join('include', '*.h'), os.path.join('include', 'c++', '*.h')]\n    },\n    data_files=[('bin',[os.path.join('bin',EXECUTABLE_FILE)])],\n    # ...\n)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "z3_solver-4.14.1.0",
+      "total_matches": 4
+    }
+  }
+]

@@ -1,0 +1,223 @@
+[
+  {
+    "metadata": {
+      "package_name": "matrix_synapse-1.128.0",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "well_known_resolver.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/synapse/http/federation/well_known_resolver.py",
+    "line_number": "188",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "187\t        # errors (such as getting a 404 response).\n188\t        response, body = await self._make_well_known_request(\n189\t            server_name, retry=had_valid_well_known\n190\t        )",
+    "code_snippet": "    async def _fetch_well_known(self, server_name: bytes) -> Tuple[bytes, float]:\n        \"\"\"Actually fetch and parse a .well-known, without checking the cache\n\n        Args:\n            server_name: name of the server, from the requested url\n\n        Raises:\n            _FetchWellKnownFailure if we fail to lookup a result\n\n        Returns:\n            The lookup result and cache period.\n        \"\"\"\n\n        had_valid_well_known = self._had_valid_well_known_cache.get(server_name, False)\n\n        # We do this in two steps to differentiate between possibly transient\n        # errors (e.g. can't connect to host, 503 response) and more permanent\n        # errors (such as getting a 404 response).\n        response, body = await self._make_well_known_request(\n            server_name, retry=had_valid_well_known\n        )\n\n        try:\n            if response.code != 200:\n                raise Exception(\"Non-200 response %s\" % (response.code,))\n\n            parsed_body = json_decoder.decode(body.decode(\"utf-8\"))\n            logger.info(\"Response from .well-known: %s\", parsed_body)\n\n            result = parsed_body[\"m.server\"].encode(\"ascii\")\n        except defer.CancelledError:\n            # Bail if we've been cancelled\n            raise\n        except Exception as e:\n            logger.info(\"Error parsing well-known for %s: %s\", server_name, e)\n            raise _FetchWellKnownFailure(temporary=False)\n\n        cache_period = _cache_period_from_headers(\n            response.headers, time_now=self._reactor.seconds\n        )\n        if cache_period is None:\n            cache_period = WELL_KNOWN_DEFAULT_CACHE_PERIOD\n            # add some randomness to the TTL to avoid a stampeding herd every 24 hours\n            # after startup\n            cache_period *= random.uniform(\n                1 - WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n                1 + WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n            )\n        else:\n            cache_period = min(cache_period, WELL_KNOWN_MAX_CACHE_PERIOD)\n            cache_period = max(cache_period, WELL_KNOWN_MIN_CACHE_PERIOD)\n\n        # We got a success, mark as such in the cache\n        self._had_valid_well_known_cache.set(\n            server_name,\n            bool(result),\n            cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID,\n        )\n\n        return result, cache_period",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._had_valid_well_known_cache.get",
+        "self._make_well_known_request",
+        "json_decoder.decode",
+        "body.decode",
+        "logger.info",
+        "logger.info",
+        "self._had_valid_well_known_cache.set"
+      ],
+      "api_sequence_with_args": [
+        "self._had_valid_well_known_cache.get(server_name, False)",
+        "self._make_well_known_request(server_name, retry=had_valid_well_known)",
+        "json_decoder.decode(body.decode(\"utf-8\"))",
+        "body.decode(\"utf-8\")",
+        "logger.info(\"Response from .well-known: %s\", parsed_body)",
+        "logger.info(\"Error parsing well-known for %s: %s\", server_name, e)",
+        "self._had_valid_well_known_cache.set(server_name, bool(result), cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._had_valid_well_known_cache.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self._make_well_known_request",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json_decoder.decode",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "body.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._had_valid_well_known_cache.set",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        }
+      ],
+      "contextual_code": "async def _fetch_well_known(self, server_name: bytes) -> Tuple[bytes, float]:\n    had_valid_well_known = self._had_valid_well_known_cache.get(server_name, False)\n    response, body = await self._make_well_known_request(\n        server_name, retry=had_valid_well_known\n    )\n    try:\n        if response.code != 200:\n            raise Exception(\"Non-200 response %s\" % (response.code,))\n        parsed_body = json_decoder.decode(body.decode(\"utf-8\"))\n        logger.info(\"Response from .well-known: %s\", parsed_body)\n        result = parsed_body[\"m.server\"].encode(\"ascii\")\n    except defer.CancelledError:\n        raise\n    except Exception as e:\n        logger.info(\"Error parsing well-known for %s: %s\", server_name, e)\n        raise _FetchWellKnownFailure(temporary=False)\n    # ...\n    self._had_valid_well_known_cache.set(\n        server_name,\n        bool(result),\n        cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID,\n    )"
+    }
+  },
+  {
+    "pyfile": "test_user.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/tests/rest/admin/test_user.py",
+    "line_number": "5221",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5220\n5221\t        channel = self.make_request(\n5222\t            \"GET\", f\"rooms/{self.rm2}/messages?limit=50\", access_token=self.admin_tok\n5223\t        )",
+    "code_snippet": "    def test_redact_messages_specific_rooms(self) -> None:\n        \"\"\"\n        Test that request to redact events in specified rooms user is member of is successful\n        \"\"\"\n\n        originals = []\n        for rm in [self.rm1, self.rm2, self.rm3]:\n            join = self.helper.join(rm, self.bad_user, tok=self.bad_user_tok)\n            originals.append(join[\"event_id\"])\n            for i in range(15):\n                event = {\"body\": f\"hello{i}\", \"msgtype\": \"m.text\"}\n                res = self.helper.send_event(\n                    rm, \"m.room.message\", event, tok=self.bad_user_tok\n                )\n                originals.append(res[\"event_id\"])\n\n        # redact messages in rooms 1 and 3\n        channel = self.make_request(\n            \"POST\",\n            f\"/_synapse/admin/v1/user/{self.bad_user}/redact\",\n            content={\"rooms\": [self.rm1, self.rm3]},\n            access_token=self.admin_tok,\n        )\n        self.assertEqual(channel.code, 200)\n\n        # messages in requested rooms are redacted\n        for rm in [self.rm1, self.rm3]:\n            filter = json.dumps({\"types\": [EventTypes.Redaction]})\n            channel = self.make_request(\n                \"GET\",\n                f\"rooms/{rm}/messages?filter={filter}&limit=50\",\n                access_token=self.admin_tok,\n            )\n            self.assertEqual(channel.code, 200)\n\n            matches = []\n            for event in channel.json_body[\"chunk\"]:\n                for event_id in originals:\n                    if (\n                        event[\"type\"] == \"m.room.redaction\"\n                        and event[\"redacts\"] == event_id\n                    ):\n                        matches.append((event_id, event))\n            # we redacted 16 messages\n            self.assertEqual(len(matches), 16)\n\n        channel = self.make_request(\n            \"GET\", f\"rooms/{self.rm2}/messages?limit=50\", access_token=self.admin_tok\n        )\n        self.assertEqual(channel.code, 200)\n\n        # messages in remaining room are not\n        for event in channel.json_body[\"chunk\"]:\n            if event[\"type\"] == \"m.room.redaction\":\n                self.fail(\"found redaction in room 2\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.helper.join",
+        "self.helper.send_event",
+        "self.make_request",
+        "json.dumps",
+        "self.make_request",
+        "self.assertEqual",
+        "self.make_request",
+        "self.assertEqual",
+        "self.fail"
+      ],
+      "api_sequence_with_args": [
+        "self.helper.join(rm, self.bad_user, tok=self.bad_user_tok)",
+        "self.helper.send_event(rm, \"m.room.message\", event, tok=self.bad_user_tok)",
+        "self.make_request(\"POST\", f\"/_synapse/admin/v1/user/{self.bad_user}/redact\", content={\"rooms\": [self.rm1, self.rm3]}, access_token=self.admin_tok)",
+        "json.dumps({\"types\": [EventTypes.Redaction]})",
+        "self.make_request(\"GET\", f\"rooms/{rm}/messages?filter={filter}&limit=50\", access_token=self.admin_tok)",
+        "self.assertEqual(channel.code, 200)",
+        "self.make_request(\"GET\", f\"rooms/{self.rm2}/messages?limit=50\", access_token=self.admin_tok)",
+        "self.assertEqual(channel.code, 200)",
+        "self.fail(\"found redaction in room 2\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.helper.join",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "self.helper.send_event",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "self.make_request",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.make_request",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "self.assertEqual",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.make_request",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "self.assertEqual",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.fail",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def test_redact_messages_specific_rooms(self) -> None:\n    originals = []\n    for rm in [self.rm1, self.rm2, self.rm3]:\n        join = self.helper.join(rm, self.bad_user, tok=self.bad_user_tok)\n        originals.append(join[\"event_id\"])\n        for i in range(15):\n            event = {\"body\": f\"hello{i}\", \"msgtype\": \"m.text\"}\n            res = self.helper.send_event(\n                rm, \"m.room.message\", event, tok=self.bad_user_tok\n            )\n            originals.append(res[\"event_id\"])\n\n    # redact messages in rooms 1 and 3\n    channel = self.make_request(\n        \"POST\",\n        f\"/_synapse/admin/v1/user/{self.bad_user}/redact\",\n        content={\"rooms\": [self.rm1, self.rm3]},\n        access_token=self.admin_tok,\n    )\n    self.assertEqual(channel.code, 200)\n\n    # messages in requested rooms are redacted\n    for rm in [self.rm1, self.rm3]:\n        filter = json.dumps({\"types\": [EventTypes.Redaction]})\n        channel = self.make_request(\n            \"GET\",\n            f\"rooms/{rm}/messages?filter={filter}&limit=50\",\n            access_token=self.admin_tok,\n        )\n        self.assertEqual(channel.code, 200)\n\n        matches = []\n        for event in channel.json_body[\"chunk\"]:\n            for event_id in originals:\n                if (\n                    event[\"type\"] == \"m.room.redaction\"\n                    and event[\"redacts\"] == event_id\n                ):\n                    matches.append((event_id, event))\n        # we redacted 16 messages\n        self.assertEqual(len(matches), 16)\n\n    channel = self.make_request(\n        \"GET\", f\"rooms/{self.rm2}/messages?limit=50\", access_token=self.admin_tok\n    )\n    self.assertEqual(channel.code, 200)\n\n    # messages in remaining room are not\n    for event in channel.json_body[\"chunk\"]:\n        if event[\"type\"] == \"m.room.redaction\":\n            self.fail(\"found redaction in room 2\")"
+    }
+  },
+  {
+    "pyfile": "test_user.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/tests/rest/admin/test_user.py",
+    "line_number": "4986",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4985\t        fake_user = \"@bums:other\"\n4986\t        channel = self.make_request(\n4987\t            \"POST\", self.url(fake_user), access_token=self.admin_user_tok\n4988\t        )",
+    "code_snippet": "def test_error_cases(self) -> None:\n    fake_user = \"@bums:other\"\n    channel = self.make_request(\n        \"POST\", self.url(fake_user), access_token=self.admin_user_tok\n    )\n    # Fail: user doesn't exist\n    self.assertEqual(404, channel.code, msg=channel.json_body)\n\n    channel = self.make_request(\n        \"POST\", self.url(self.other_user), access_token=self.admin_user_tok\n    )\n    # Fail: user exists, but has no master cross-signing key\n    self.assertEqual(404, channel.code, msg=channel.json_body)",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "def test_error_cases(self) -> None:\n    fake_user = \"@bums:other\"\n    channel = self.make_request(\n        \"POST\", self.url(fake_user), access_token=self.admin_user_tok\n    )\n    self.assertEqual(404, channel.code, msg=channel.json_body)\n\n    channel = self.make_request(\n        \"POST\", self.url(self.other_user), access_token=self.admin_user_tok\n    )\n    self.assertEqual(404, channel.code, msg=channel.json_body)"
+    }
+  }
+]

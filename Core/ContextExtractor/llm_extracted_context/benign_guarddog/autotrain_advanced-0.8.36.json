@@ -1,0 +1,59 @@
+[
+  {
+    "metadata": {
+      "package_name": "autotrain_advanced-0.8.36",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/autotrain_advanced-0.8.36.txt",
+      "total_matches": 6
+    }
+  },
+  {
+    "pyfile": "ngc.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/autotrain_advanced-0.8.36/autotrain_advanced-0.8.36/src/autotrain/backends/ngc.py",
+    "line_number": "61",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.get(NGC_AUTH + \"/token\", headers=headers, params=querystring, timeout=30)",
+    "context_snippet": "import base64\nimport json\nimport os\n\nimport requests\nfrom requests.exceptions import HTTPError\n\nfrom autotrain import logger\nfrom autotrain.backends.base import BaseBackend\n\nNGC_API = os.environ.get(\"NGC_API\", \"https://api.ngc.nvidia.com/v2/org\")\nNGC_AUTH = os.environ.get(\"NGC_AUTH\", \"https://authn.nvidia.com\")\nNGC_ACE = os.environ.get(\"NGC_ACE\")\nNGC_ORG = os.environ.get(\"NGC_ORG\")\nNGC_API_KEY = os.environ.get(\"NGC_CLI_API_KEY\")\nNGC_TEAM = os.environ.get(\"NGC_TEAM\")\n\nclass NGCRunner(BaseBackend):\n    def _user_authentication_ngc(self):\n        logger.info(\"Authenticating NGC user...\")\n        scope = \"group/ngc\"\n\n        querystring = {\"service\": \"ngc\", \"scope\": scope}\n        auth = f\"$oauthtoken:{NGC_API_KEY}\"\n        headers = {\n            \"Authorization\": f\"Basic {base64.b64encode(auth.encode('utf-8')).decode('utf-8')}\",\n            \"Content-Type\": \"application/json\",\n            \"Cache-Control\": \"no-cache\",\n        }\n        try:\n            response = requests.get(NGC_AUTH + \"/token\", headers=headers, params=querystring, timeout=30)\n        except HTTPError as http_err:\n            logger.error(f\"HTTP error occurred: {http_err}\")\n            raise Exception(\"HTTP Error %d: from '%s'\" % (response.status_code, NGC_AUTH))\n        except (requests.Timeout, ConnectionError) as err:\n            logger.error(f\"Failed to request NGC token - {repr(err)}\")\n            raise Exception(\"%s is unreachable, please try again later.\" % NGC_AUTH)\n        return json.loads(response.text.encode(\"utf8\"))[\"token\"]",
+    "hash_value": "66dc77ed8c23ec6f915557c012e1c421",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/autotrain_advanced-0.8.36/autotrain_advanced-0.8.36/src/autotrain/trainers/clm/utils.py",
+    "line_number": "314",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "r = requests.post(api_url, headers=headers, timeout=30)",
+    "context_snippet": "import os\nimport requests\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a Hugging Face endpoint using the provided parameters.\n\n    Args:\n        params (object): An object containing the necessary parameters, including:\n            - token (str): The authorization token to access the Hugging Face API.\n\n    Returns:\n        dict: The JSON response from the API call.\n\n    Raises:\n        KeyError: If the \"ENDPOINT_ID\" environment variable is not set.\n        requests.exceptions.RequestException: If there is an issue with the API request.\n    \"\"\"\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers, timeout=30)\n    return r.json()",
+    "hash_value": "f04e08bdd1308606e92d1a23c1c6070b",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "common.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/autotrain_advanced-0.8.36/autotrain_advanced-0.8.36/src/autotrain/trainers/common.py",
+    "line_number": "129",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "r = requests.post(api_url, headers=headers, timeout=120)",
+    "context_snippet": "def pause_endpoint(params):\n    \"\"\"\n    Pauses a Hugging Face endpoint using the provided parameters.\n\n    Args:\n        params (dict or object): Parameters containing the token required for authorization.\n            If a dictionary is provided, it should have a key \"token\" with the authorization token.\n            If an object is provided, it should have an attribute `token` with the authorization token.\n\n    Returns:\n        dict: The JSON response from the API call to pause the endpoint.\n\n    Raises:\n        KeyError: If the \"token\" key is missing in the params dictionary.\n        requests.exceptions.RequestException: If there is an issue with the API request.\n\n    Environment Variables:\n        ENDPOINT_ID: Should be set to the endpoint identifier in the format \"username/project_name\".\n    \"\"\"\n    if isinstance(params, dict):\n        token = params[\"token\"]\n    else:\n        token = params.token\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {token}\"}\n    r = requests.post(api_url, headers=headers, timeout=120)\n    return r.json()",
+    "hash_value": "b78d1a37ea385e6a3abab71b132a8775",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/autotrain_advanced-0.8.36/autotrain_advanced-0.8.36/src/autotrain/trainers/generic/utils.py",
+    "line_number": "200",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "r = requests.post(api_url, headers=headers, timeout=120)",
+    "context_snippet": "import os\nimport requests\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a specific endpoint using the Hugging Face API.\n\n    This function retrieves the endpoint ID from the environment variables,\n    extracts the username and project name from the endpoint ID, constructs\n    the API URL, and sends a POST request to pause the endpoint.\n\n    Args:\n        params (object): An object containing the token attribute for authorization.\n\n    Returns:\n        dict: The JSON response from the API call.\n    \"\"\"\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers, timeout=120)\n    return r.json()",
+    "hash_value": "a781635a749915cb545098f011eb633d",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/autotrain_advanced-0.8.36/autotrain_advanced-0.8.36/src/autotrain/trainers/text_classification/utils.py",
+    "line_number": "178",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "r = requests.post(api_url, headers=headers)",
+    "context_snippet": "import os\nimport requests\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a Hugging Face endpoint using the provided parameters.\n\n    This function constructs an API URL using the endpoint ID from the environment\n    variables, and sends a POST request to pause the specified endpoint.\n\n    Args:\n        params (object): An object containing the following attribute:\n            - token (str): The authorization token required to authenticate the API request.\n\n    Returns:\n        dict: The JSON response from the API call.\n    \"\"\"\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers)\n    return r.json()",
+    "hash_value": "b79337b8f79ae838e7a45b3a5906fb3b",
+    "detection_index": 1
+  }
+]

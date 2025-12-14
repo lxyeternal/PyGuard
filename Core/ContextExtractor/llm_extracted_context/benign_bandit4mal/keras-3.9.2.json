@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "keras-3.9.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "remote_monitor.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/keras-3.9.2/keras-3.9.2/keras/src/callbacks/remote_monitor.py",
+    "line_number": "74",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "73\t            else:\n74\t                requests.post(\n75\t                    self.root + self.path,\n76\t                    {self.field: json.dumps(send)},\n77\t                    headers=self.headers,\n78\t                )",
+    "context_snippet": "import json\nimport warnings\n\nimport numpy as np\n\nfrom keras.src.api_export import keras_export\nfrom keras.src.callbacks.callback import Callback\n\ntry:\n    import requests\nexcept ImportError:\n    requests = None\n\n\n@keras_export(\"keras.callbacks.RemoteMonitor\")\nclass RemoteMonitor(Callback):\n    \"\"\"Callback used to stream events to a server.\n\n    Requires the `requests` library.\n    Events are sent to `root + '/publish/epoch/end/'` by default. Calls are\n    HTTP POST, with a `data` argument which is a\n    JSON-encoded dictionary of event data.\n    If `send_as_json=True`, the content type of the request will be\n    `\"application/json\"`.\n    Otherwise the serialized JSON will be sent within a form.\n\n    Args:\n        root: String; root url of the target server.\n        path: String; path relative to `root` to which the events will be sent.\n        field: String; JSON field under which the data will be stored.\n            The field is used only if the payload is sent within a form\n            (i.e. when `send_as_json=False`).\n        headers: Dictionary; optional custom HTTP headers.\n        send_as_json: Boolean; whether the request should be\n            sent as `\"application/json\"`.\n    \"\"\"\n\n    def __init__(\n        self,\n        root=\"http://localhost:9000\",\n        path=\"/publish/epoch/end/\",\n        field=\"data\",\n        headers=None,\n        send_as_json=False,\n    ):\n        super().__init__()\n\n        self.root = root\n        self.path = path\n        self.field = field\n        self.headers = headers\n        self.send_as_json = send_as_json\n\n    def on_epoch_end(self, epoch, logs=None):\n        if requests is None:\n            raise ImportError(\"RemoteMonitor requires the `requests` library.\")\n        logs = logs or {}\n        send = {}\n        send[\"epoch\"] = epoch\n        for k, v in logs.items():\n            # np.ndarray and np.generic are not scalar types\n            # therefore we must unwrap their scalar values and\n            # pass to the json-serializable dict 'send'\n            if isinstance(v, (np.ndarray, np.generic)):\n                send[k] = v.item()\n            else:\n                send[k] = v\n        try:\n            if self.send_as_json:\n                requests.post(\n                    self.root + self.path, json=send, headers=self.headers\n                )\n            else:\n                requests.post(\n                    self.root + self.path,\n                    {self.field: json.dumps(send)},\n                    headers=self.headers,\n                )\n        except requests.exceptions.RequestException:\n            warnings.warn(\n                f\"Could not reach RemoteMonitor root server at {self.root}\",\n                stacklevel=2,\n            )",
+    "hash_value": "4f857a29930444f3b08d8b320597ce39"
+  }
+]

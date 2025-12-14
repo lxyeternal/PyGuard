@@ -1,0 +1,165 @@
+{
+  "metadata": {
+    "package_name": "isal-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/isal-1.7.2.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "setup.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/isal-1.7.2/isal-1.7.2/setup.py",
+      "line_number": "125",
+      "type_description": "code-execution",
+      "context_snippet": "import functools\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nISA_L_SOURCE = os.path.join(\"src\", \"isal\", \"isa-l\")\nSYSTEM_IS_BSD = (sys.platform.startswith(\"freebsd\") or\n                 sys.platform.startswith(\"netbsd\"))\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  sys.platform.startswith(\"gnu\") or\n                  SYSTEM_IS_BSD)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\n@functools.lru_cache(maxsize=None)\ndef build_isa_l():\n    # Check for cache\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"isa-l.h\").exists():\n                return str(cache_path)\n\n    # Creating temporary directories\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ISA_L_SOURCE, build_dir)\n\n    # Build environment is a copy of OS environment to allow user to influence\n    # it.\n    build_env = os.environ.copy()\n    if SYSTEM_IS_UNIX:\n        build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:  # sched_getaffinity not available on all platforms\n        cpu_count = os.cpu_count() or 1  # os.cpu_count() can return None\n    run_args = dict(cwd=build_dir, env=build_env)\n    if SYSTEM_IS_UNIX:\n        if platform.machine() == \"aarch64\":\n            cflags_param = \"CFLAGS_aarch64\"\n        else:\n            cflags_param = \"CFLAGS_\"\n        make_cmd = \"make\"\n        if SYSTEM_IS_BSD:\n            make_cmd = \"gmake\"\n        subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\",\n                        \"isa-l.h\", \"bin/isa-l.a\",\n                        f\"{cflags_param}={build_env.get('CFLAGS', '')}\"],\n                       **run_args)\n    elif SYSTEM_IS_WINDOWS:\n        subprocess.run([\"nmake\", \"/f\", \"Makefile.nmake\"], **run_args)\n    else:\n        raise NotImplementedError(f\"Unsupported platform: {sys.platform}\")\n    shutil.copytree(os.path.join(build_dir, \"include\"),\n                    os.path.join(build_dir, \"isa-l\"))\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)\n    return build_dir",
+      "hash_value": "3fb370138339ead8ef654c35e12cff89",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "import functools\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nISA_L_SOURCE = os.path.join(\"src\", \"isal\", \"isa-l\")\nSYSTEM_IS_BSD = (sys.platform.startswith(\"freebsd\") or\n                 sys.platform.startswith(\"netbsd\"))\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  sys.platform.startswith(\"gnu\") or\n                  SYSTEM_IS_BSD)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\n@functools.lru_cache(maxsize=None)\ndef build_isa_l():\n    # Check for cache\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"isa-l.h\").exists():\n                return str(cache_path)\n\n    # Creating temporary directories\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ISA_L_SOURCE, build_dir)\n\n    # Build environment is a copy of OS environment to allow user to influence\n    # it.\n    build_env = os.environ.copy()\n    if SYSTEM_IS_UNIX:\n        build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:  # sched_getaffinity not available on all platforms\n        cpu_count = os.cpu_count() or 1  # os.cpu_count() can return None\n    run_args = dict(cwd=build_dir, env=build_env)\n    if SYSTEM_IS_UNIX:\n        if platform.machine() == \"aarch64\":\n            cflags_param = \"CFLAGS_aarch64\"\n        else:\n            cflags_param = \"CFLAGS_\"\n        make_cmd = \"make\"\n        if SYSTEM_IS_BSD:\n            make_cmd = \"gmake\"\n        subprocess.run([make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\",\n                        \"isa-l.h\", \"bin/isa-l.a\",\n                        f\"{cflags_param}={build_env.get('CFLAGS', '')}\"],\n                       **run_args)\n    elif SYSTEM_IS_WINDOWS:\n        subprocess.run([\"nmake\", \"/f\", \"Makefile.nmake\"], **run_args)\n    else:\n        raise NotImplementedError(f\"Unsupported platform: {sys.platform}\")\n    shutil.copytree(os.path.join(build_dir, \"include\"),\n                    os.path.join(build_dir, \"isa-l\"))\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)\n    return build_dir",
+          "triple_sequences": [
+            {
+              "action_api": "Path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "BUILD_CACHE_FILE",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "Path.read_text()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "BUILD_CACHE_FILE",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "Path()",
+              "action_description": "Path object and status operations (creating Path objects, retrieving file status)",
+              "action_id": "path_object_operations",
+              "object": "Path(BUILD_CACHE_FILE.read_text())",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "Path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "cache_path / \"isa-l.h\"",
+              "object_description": "Directory path with file",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "tempfile.mktemp()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "shutil.copytree()",
+              "action_description": "Copies file to destination",
+              "action_id": "copy_file",
+              "object": "ISA_L_SOURCE, build_dir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Copy file to temporary directory",
+              "intention_id": "copy_file_temp_directory"
+            },
+            {
+              "action_api": "os.environ.copy()",
+              "action_description": "Path object and status operations (creating Path objects, retrieving file status)",
+              "action_id": "path_object_operations",
+              "object": "os.environ",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.sched_getaffinity()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "os.cpu_count()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "platform.machine()",
+              "action_description": "Retrieves machine type",
+              "action_id": "get_machine_type",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[make_cmd, \"-j\", str(cpu_count), \"-f\", \"Makefile.unx\", \"isa-l.h\", \"bin/isa-l.a\", f\"{cflags_param}={build_env.get('CFLAGS', '')}\"]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"nmake\", \"/f\", \"Makefile.nmake\"]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "shutil.copytree()",
+              "action_description": "Copies file to destination",
+              "action_id": "copy_file",
+              "object": "os.path.join(build_dir, \"include\"), os.path.join(build_dir, \"isa-l\")",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Copy file to temporary directory",
+              "intention_id": "copy_file_temp_directory"
+            },
+            {
+              "action_api": "Path.write_text()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "build_dir",
+              "object_description": "Temporary directory",
+              "object_id": "temporary_directory",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

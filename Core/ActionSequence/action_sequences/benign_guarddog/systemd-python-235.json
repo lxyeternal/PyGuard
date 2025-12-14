@@ -1,0 +1,101 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import sys, os\nfrom setuptools import setup, Extension\nfrom subprocess import Popen, PIPE, check_output\n\ndef call(*cmd):\n    cmd = Popen(cmd,\n                stdout=PIPE, stderr=PIPE,\n                universal_newlines=True)\n    if cmd.wait() == 0:\n        return cmd.returncode, cmd.stdout.read()\n    else:\n        return cmd.returncode, cmd.stderr.read()\n\ndef pkgconfig(package, **kw):\n    pkg_version = package.replace('-', '_').upper() + '_VERSION'\n    flag_map = {'-I': 'include_dirs', '-L': 'library_dirs', '-l': 'libraries'}\n    pkgconf = os.getenv('PKG_CONFIG', 'pkg-config')\n    status, result = call(pkgconf, '--libs', '--cflags', package)\n    if status != 0:\n        return status, result\n    for token in result.split():\n        kw.setdefault(flag_map.get(token[:2]), []).append(token[2:])\n\n    # allow version detection to be overridden using environment variables\n    version = os.getenv(pkg_version)\n    if not version:\n        version = check_output([pkgconf, '--modversion', package],\n                               universal_newlines=True).strip()\n    pair = (pkg_version, version)\n    defines = kw.setdefault('define_macros', [])\n    if pair not in defines:\n        defines.append(pair)\n    return status, kw\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "subprocess.Popen",
+        "subprocess.Popen.wait",
+        "subprocess.Popen.stdout.read",
+        "subprocess.Popen.stderr.read",
+        "os.getenv",
+        "subprocess.check_output",
+        "subprocess.check_output.strip"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv('PKG_CONFIG', 'pkg-config')",
+        "subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)",
+        "subprocess.Popen.wait()",
+        "subprocess.Popen.stdout.read()",
+        "subprocess.Popen.stderr.read()",
+        "os.getenv(pkg_version)",
+        "subprocess.check_output([pkgconf, '--modversion', package], universal_newlines=True)",
+        "subprocess.check_output([pkgconf, '--modversion', package], universal_newlines=True).strip()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "subprocess.Popen.stdout.read",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.stderr.read",
+          "id": "read_process_stderr",
+          "description": "Reads all bytes from process standard error",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.check_output.strip",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "import sys, os\nfrom setuptools import setup, Extension\nfrom subprocess import Popen, PIPE, check_output\n\ndef call(*cmd):\n    cmd = Popen(cmd,\n                stdout=PIPE, stderr=PIPE,\n                universal_newlines=True)\n    if cmd.wait() == 0:\n        return cmd.returncode, cmd.stdout.read()\n    else:\n        return cmd.returncode, cmd.stderr.read()\n\ndef pkgconfig(package, **kw):\n    pkg_version = package.replace('-', '_').upper() + '_VERSION'\n    flag_map = {'-I': 'include_dirs', '-L': 'library_dirs', '-l': 'libraries'}\n    pkgconf = os.getenv('PKG_CONFIG', 'pkg-config')\n    status, result = call(pkgconf, '--libs', '--cflags', package)\n    if status != 0:\n        return status, result\n    for token in result.split():\n        kw.setdefault(flag_map.get(token[:2]), []).append(token[2:])\n\n    version = os.getenv(pkg_version)\n    if not version:\n        version = check_output([pkgconf, '--modversion', package],\n                               universal_newlines=True).strip()\n    pair = (pkg_version, version)\n    defines = kw.setdefault('define_macros', [])\n    if pair not in defines:\n        defines.append(pair)\n    return status, kw"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "systemd-python-235",
+      "total_matches": 3
+    }
+  }
+]

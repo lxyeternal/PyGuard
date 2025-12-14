@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "package_name": "oslo_service-4.1.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_service.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/oslo_service-4.1.1/oslo_service-4.1.1/oslo_service/tests/test_service.py",
+    "line_number": "669",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "668\t        proc.join()\n669\t        conn.close()\n670",
+    "code_snippet": "def run_server(self):\n    queue = multiprocessing.Queue()\n    # NOTE(bnemec): process_time of 5 needs to be longer than the graceful\n    # shutdown timeout in the \"exceeded\" test below, but also needs to be\n    # shorter than the timeout in the regular graceful shutdown test.\n    proc = multiprocessing.Process(target=eventlet_service.run,\n                                   args=(queue,),\n                                   kwargs={'workers': self.workers,\n                                           'process_time': 5})\n    proc.start()\n\n    port = queue.get()\n    conn = socket.create_connection(('127.0.0.1', port))\n    # Send request to make the connection active.\n    conn.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n')\n\n    # NOTE(blk-u): The sleep shouldn't be necessary. There must be a bug in\n    # the server implementation where it takes some time to set up the\n    # server or signal handlers.\n    time.sleep(1)\n\n    return (proc, conn)\n\n# ...\n\ndef test_shuts_down_on_sigint_when_client_connected(self):\n    proc, conn = self.run_server()\n\n    # check that server is live\n    self.assertTrue(proc.is_alive())\n\n    # send SIGINT to the server and wait for it to exit while client still\n    # connected.\n    os.kill(proc.pid, signal.SIGINT)\n    proc.join()\n    conn.close()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "multiprocessing.Queue",
+        "multiprocessing.Process",
+        "multiprocessing.Process.start",
+        "queue.get",
+        "socket.create_connection",
+        "socket.socket.sendall",
+        "time.sleep",
+        "multiprocessing.Process.is_alive",
+        "os.kill",
+        "multiprocessing.Process.join",
+        "socket.socket.close"
+      ],
+      "api_sequence_with_args": [
+        "multiprocessing.Queue()",
+        "multiprocessing.Process(target=eventlet_service.run, args=(queue,), kwargs={'workers': self.workers, 'process_time': 5})",
+        "multiprocessing.Process.start()",
+        "queue.get()",
+        "socket.create_connection(('127.0.0.1', port))",
+        "socket.socket.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n')",
+        "time.sleep(1)",
+        "multiprocessing.Process.is_alive()",
+        "os.kill(proc.pid, signal.SIGINT)",
+        "multiprocessing.Process.join()",
+        "socket.socket.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "multiprocessing.Queue",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "multiprocessing.Process",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "multiprocessing.Process.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "queue.get",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.create_connection",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "multiprocessing.Process.is_alive",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.kill",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "multiprocessing.Process.join",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def run_server(self):\n    queue = multiprocessing.Queue()\n    proc = multiprocessing.Process(target=eventlet_service.run,\n                                   args=(queue,),\n                                   kwargs={'workers': self.workers,\n                                           'process_time': 5})\n    proc.start()\n\n    port = queue.get()\n    conn = socket.create_connection(('127.0.0.1', port))\n    conn.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n')\n    time.sleep(1)\n    return (proc, conn)\n\ndef test_shuts_down_on_sigint_when_client_connected(self):\n    proc, conn = self.run_server()\n    self.assertTrue(proc.is_alive())\n    os.kill(proc.pid, signal.SIGINT)\n    proc.join()\n    conn.close()"
+    }
+  }
+]

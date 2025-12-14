@@ -1,0 +1,193 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import codecs\nimport os\nimport string\nimport subprocess\nimport sys\nfrom setuptools import Extension, setup\nfrom setuptools.command.build_ext import build_ext as _build_ext\nfrom setuptools.command.build_py import build_py as _build_py\n\nsys.path.append(os.path.join('.', 'test'))\n\n\ndef run_pkg_config(section, pkg_config_path=None):\n  try:\n    cmd = 'pkg-config sentencepiece --{}'.format(section)\n    if pkg_config_path:\n      cmd = 'env PKG_CONFIG_PATH={} {}'.format(pkg_config_path, cmd)\n    output = subprocess.check_output(cmd, shell=True)\n    if sys.version_info >= (3, 0, 0):\n      output = output.decode('utf-8')\n  except subprocess.CalledProcessError:\n    sys.stderr.write('Failed to find sentencepiece pkg-config\\n')\n    sys.exit(1)\n  return output.strip().split()\n\n\ndef is_sentencepiece_installed():\n  try:\n    subprocess.check_call('pkg-config sentencepiece --libs', shell=True)\n    return True\n  except subprocess.CalledProcessError:\n    return False\n\n\ndef get_cflags_and_libs(root):\n  cflags = ['-std=c++17', '-I' + os.path.join(root, 'include')]\n  libs = []\n  if os.path.exists(os.path.join(root, 'lib/pkgconfig/sentencepiece.pc')):\n    libs = [\n        os.path.join(root, 'lib/libsentencepiece.a'),\n        os.path.join(root, 'lib/libsentencepiece_train.a'),\n    ]\n  elif os.path.exists(os.path.join(root, 'lib64/pkgconfig/sentencepiece.pc')):\n    libs = [\n        os.path.join(root, 'lib64/libsentencepiece.a'),\n        os.path.join(root, 'lib64/libsentencepiece_train.a'),\n    ]\n  return cflags, libs\n\n\nclass build_ext(_build_ext):\n  \"\"\"Override build_extension to run cmake.\"\"\"\n\n  def build_extension(self, ext):\n    cflags, libs = get_cflags_and_libs('../build/root')\n\n    if len(libs) == 0:\n      if is_sentencepiece_installed():\n        cflags = cflags + run_pkg_config('cflags')\n        libs = run_pkg_config('libs')\n      else:\n        subprocess.check_call(['./build_bundled.sh', __version__])\n        cflags, libs = get_cflags_and_libs('./build/root')\n\n    # Fix compile on some versions of Mac OSX\n    # See: https://github.com/neulab/xnmt/issues/199\n    if sys.platform == 'darwin':\n      cflags.append('-mmacosx-version-min=10.9')\n    else:\n      cflags.append('-Wl,-strip-all')\n      libs.append('-Wl,-strip-all')\n    if sys.platform == 'linux':\n      libs.append('-Wl,-Bsymbolic')\n    print('## cflags={}'.format(' '.join(cflags)))\n    print('## libs={}'.format(' '.join(libs)))\n    ext.extra_compile_args = cflags\n    ext.extra_link_args = libs\n    _build_ext.build_extension(self, ext)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.path.append",
+        "os.path.join",
+        "subprocess.check_output",
+        "sys.version_info",
+        "output.decode",
+        "subprocess.CalledProcessError",
+        "sys.stderr.write",
+        "sys.exit",
+        "output.strip",
+        "subprocess.check_call",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "subprocess.check_call",
+        "os.path.join",
+        "os.path.join"
+      ],
+      "api_sequence_with_args": [
+        "sys.path.append(os.path.join('.', 'test'))",
+        "os.path.join('.', 'test')",
+        "subprocess.check_output(cmd, shell=True)",
+        "sys.version_info >= (3, 0, 0)",
+        "output.decode('utf-8')",
+        "except subprocess.CalledProcessError",
+        "sys.stderr.write('Failed to find sentencepiece pkg-config\\n')",
+        "sys.exit(1)",
+        "output.strip().split()",
+        "subprocess.check_call('pkg-config sentencepiece --libs', shell=True)",
+        "os.path.exists(os.path.join(root, 'lib/pkgconfig/sentencepiece.pc'))",
+        "os.path.join(root, 'lib/pkgconfig/sentencepiece.pc')",
+        "os.path.exists(os.path.join(root, 'lib64/pkgconfig/sentencepiece.pc'))",
+        "os.path.join(root, 'lib64/pkgconfig/sentencepiece.pc')",
+        "subprocess.check_call(['./build_bundled.sh', __version__])",
+        "os.path.join('./build/root', 'include')",
+        "os.path.join('./build/root', 'lib/libsentencepiece.a')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.path.append",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "output.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "subprocess.CalledProcessError",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "sys.stderr.write",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "output.strip",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\nimport subprocess\n\nsys.path.append(os.path.join('.', 'test'))\n\ndef run_pkg_config(section, pkg_config_path=None):\n  try:\n    cmd = 'pkg-config sentencepiece --{}'.format(section)\n    if pkg_config_path:\n      cmd = 'env PKG_CONFIG_PATH={} {}'.format(pkg_config_path, cmd)\n    output = subprocess.check_output(cmd, shell=True)\n    if sys.version_info >= (3, 0, 0):\n      output = output.decode('utf-8')\n  except subprocess.CalledProcessError:\n    sys.stderr.write('Failed to find sentencepiece pkg-config\\n')\n    sys.exit(1)\n  return output.strip().split()\n\ndef is_sentencepiece_installed():\n  try:\n    subprocess.check_call('pkg-config sentencepiece --libs', shell=True)\n    return True\n  except subprocess.CalledProcessError:\n    return False\n\ndef get_cflags_and_libs(root):\n  cflags = ['-std=c++17', '-I' + os.path.join(root, 'include')]\n  libs = []\n  if os.path.exists(os.path.join(root, 'lib/pkgconfig/sentencepiece.pc')):\n    libs = [\n        os.path.join(root, 'lib/libsentencepiece.a'),\n        os.path.join(root, 'lib/libsentencepiece_train.a'),\n    ]\n  elif os.path.exists(os.path.join(root, 'lib64/pkgconfig/sentencepiece.pc')):\n    libs = [\n        os.path.join(root, 'lib64/libsentencepiece.a'),\n        os.path.join(root, 'lib64/libsentencepiece_train.a'),\n    ]\n  return cflags, libs\n\nclass build_ext(_build_ext):\n  def build_extension(self, ext):\n    cflags, libs = get_cflags_and_libs('../build/root')\n\n    if len(libs) == 0:\n      if is_sentencepiece_installed():\n        cflags = cflags + run_pkg_config('cflags')\n        libs = run_pkg_config('libs')\n      else:\n        subprocess.check_call(['./build_bundled.sh', __version__])\n        cflags, libs = get_cflags_and_libs('./build/root')\n\n    if sys.platform == 'darwin':\n      cflags.append('-mmacosx-version-min=10.9')\n    else:\n      cflags.append('-Wl,-strip-all')\n      libs.append('-Wl,-strip-all')\n    if sys.platform == 'linux':\n      libs.append('-Wl,-Bsymbolic')\n    ext.extra_compile_args = cflags\n    ext.extra_link_args = libs\n    _build_ext.build_extension(self, ext)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "sentencepiece-0.2.0",
+      "total_matches": 2
+    }
+  }
+]

@@ -1,0 +1,424 @@
+[
+  {
+    "pyfile": "client.py",
+    "code_snippet": "import os\nimport requests\n\nclass KodexaClient:\n    \"\"\"\n    A class to represent a Kodexa client.\n\n    Attributes:\n        base_url (str): The base URL for the Kodexa platform.\n        access_token (str): The access token for the Kodexa platform.\n\n        assistants (AssistantsEndpoint): An endpoint for assistants.\n        channels (ChannelsEndpoint): An endpoint for channels.\n        executions (ExecutionsEndpoint): An endpoint for executions.\n        memberships (MembershipsEndpoint): An endpoint for memberships.\n        messages (MessagesEndpoint): An endpoint for messages.\n        organizations (OrganizationsEndpoint): An endpoint for organizations.\n        products (ProductsEndpoint): An endpoint for products.\n        projects (ProjectsEndpoint): An endpoint for projects.\n        retained_guidances (RetainedGuidancesEndpoint): An endpoint for retained guidances.\n        task_activities (TaskActivitiesEndpoint): An endpoint for task activities.\n        task_document_families (TaskDocumentFamiliesEndpoint): An endpoint for task document families.\n        task_tags (TaskTagsEndpoint): An endpoint for task tags.\n        tasks (TasksEndpoint): An endpoint for tasks.\n        users (UsersEndpoint): An endpoint for users.\n        workspaces (WorkspacesEndpoint): An endpoint for workspaces.\n    \"\"\"\n\n    def __init__(self, url=None, access_token=None, profile=None):\n        from kodexa import KodexaPlatform\n        from kodexa.model.entities.product import ProductsEndpoint\n\n        self.base_url = url if url is not None else KodexaPlatform.get_url(profile)\n        self.access_token = (\n            access_token\n            if access_token is not None\n            else KodexaPlatform.get_access_token(profile)\n        )\n\n        self.assistants = AssistantsEndpoint(self)\n        self.channels = ChannelsEndpoint(self)\n        self.document_families = DocumentFamiliesEndpoint(self)\n        self.executions = ExecutionsEndpoint(self)\n        self.memberships = MembershipsEndpoint(self)\n        self.messages = MessagesEndpoint(self)        \n        self.organizations = OrganizationsEndpoint(self)\n        self.products = ProductsEndpoint(self)\n        self.projects = ProjectsEndpoint(self)\n        self.retained_guidances = RetainedGuidancesEndpoint(self)\n        self.task_activities = TaskActivitiesEndpoint(self)\n        self.task_document_families = TaskDocumentFamiliesEndpoint(self)\n        self.task_tags = TaskTagsEndpoint(self)\n        self.tasks = TasksEndpoint(self)\n        self.users = UsersEndpoint(self)\n        self.workspaces = WorkspacesEndpoint(self)\n\n    @staticmethod\n    def login(url, token):\n        \"\"\"\n        A static method to login to the Kodexa platform.\n\n        Args:\n            url (str): The URL for the Kodexa platform.\n            token (str): The email for the user.\n\n        Returns:\n            KodexaClient: A KodexaClient instance.\n\n        Raises:\n            Exception: If the status code is not 200.\n        \"\"\"\n\n        obj_response = requests.get(\n            f\"{url}/api/account/me\",\n            headers={\"content-type\": \"application/json\",\n                     \"x-access-token\": token,\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")}\n        )\n        if obj_response.status_code == 200:\n            return KodexaClient(url, obj_response.text)\n\n        raise Exception(f\"Check your URL and password [{obj_response.status_code}]\")\n\n    def get(self, url, params=None) -> requests.Response:\n        \"\"\"\n        A method to send a GET request.\n\n        Args:\n            url (str): The URL for the request.\n            params (dict, optional): The parameters for the request. Defaults to None.\n\n        Returns:\n            requests.Response: The response from the server.\n        \"\"\"\n        response = requests.get(\n            self.get_url(url),\n            params=params,\n            headers={\n                \"x-access-token\": self.access_token,\n                \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                \"content-type\": \"application/json\",\n                \"X-Requested-With\": \"XMLHttpRequest\",\n            }\n        )\n\n        return process_response(response)\n\n    def exists(self, url, params=None) -> bool:\n        \"\"\"\n        A method to check if a URL exists.\n\n        Args:\n            url (str): The URL to check.\n            params (dict, optional): The parameters for the request. Defaults to None.\n\n        Returns:\n            bool: True if the URL exists, False otherwise.\n        \"\"\"\n        response = requests.get(\n            self.get_url(url),\n            params=params,\n            headers={\n                \"x-access-token\": self.access_token,\n                \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                \"content-type\": \"application/json\",\n            },\n        )\n        if response.status_code == 200:\n            return True\n        if response.status_code == 404:\n            return False\n\n        process_response(response)\n\n    def post(\n            self, url, body=None, data=None, files=None, params=None\n    ) -> requests.Response:\n        \"\"\"\n        A method to send a POST request.\n\n        Args:\n            url (str): The URL for the request.\n            body (dict, optional): The body for the request. Defaults to None.\n            data (dict, optional): The data for the request. Defaults to None.\n            files (dict, optional): The files for the request. Defaults to None.\n            params (dict, optional): The parameters for the request. Defaults to None.\n\n        Returns:\n            requests.Response: The response from the server.\n        \"\"\"\n        headers = {\n            \"x-access-token\": self.access_token,\n            \"X-Requested-With\": \"XMLHttpRequest\",\n            \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")}\n        if files is None:\n            headers[\"content-type\"] = \"application/json\"\n\n        response = requests.post(\n            self.get_url(url),\n            json=body,\n            data=data,\n            files=files,\n            params=params,\n            headers=headers,\n        )\n        return process_response(response)\n\n    def put(\n            self, url, body=None, data=None, files=None, params=None\n    ) -> requests.Response:\n        \"\"\"\n        A method to send a PUT request.\n\n        Args:\n            url (str): The URL for the request.\n            body (dict, optional): The body for the request. Defaults to None.\n            data (dict, optional): The data for the request. Defaults to None.\n            files (dict, optional): The files for the request. Defaults to None.\n            params (dict, optional): The parameters for the request. Defaults to None.\n\n        Returns:\n            requests.Response: The response from the server.\n        \"\"\"\n        headers = {\"x-access-token\": self.access_token,\n                   \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                   \"X-Requested-With\": \"XMLHttpRequest\"}\n        if files is None:\n            headers[\"content-type\"] = \"application/json\"\n\n        response = requests.put(\n            self.get_url(url),\n            json=body,\n            data=data,\n            files=files,\n            params=params,\n            headers=headers,\n        )\n        return process_response(response)\n\n    def delete(self, url, params=None) -> requests.Response:\n        \"\"\"\n        A method to send a DELETE request.\n\n        Args:\n            url (str): The URL for the request.\n            params (dict, optional): The parameters for the request. Defaults to None.\n\n        Returns:\n            requests.Response: The response from the server.\n        \"\"\"\n        response = requests.delete(\n            self.get_url(url),\n            params=params,\n            headers={\"x-access-token\": self.access_token,\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                     \"X-Requested-With\": \"XMLHttpRequest\"}\n        )\n        return process_response(response)\n\n    def get_url(self, url):\n        \"\"\"\n        A method to get the full URL.\n\n        Args:\n            url (str): The URL to append to the base URL.\n\n        Returns:\n            str: The full URL.\n        \"\"\"\n        if url.startswith(\"/\"):\n            return self.base_url + url\n        else:\n            return self.base_url + \"/\" + url\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "requests.get",
+        "os.environ.get",
+        "requests.get",
+        "os.environ.get",
+        "requests.get",
+        "os.environ.get",
+        "requests.post",
+        "os.environ.get",
+        "requests.put",
+        "os.environ.get",
+        "requests.delete"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.get(f\"{url}/api/account/me\", headers={...})",
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.get(self.get_url(url), params=params, headers={...})",
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.get(self.get_url(url), params=params, headers={...})",
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.post(self.get_url(url), json=body, data=data, files=files, params=params, headers=headers)",
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.put(self.get_url(url), json=body, data=data, files=files, params=params, headers=headers)",
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.delete(self.get_url(url), params=params, headers={...})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.put",
+          "id": "send_http_put",
+          "description": "Sends HTTP PUT request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.delete",
+          "id": "send_http_delete",
+          "description": "Sends HTTP DELETE request with parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\nclass KodexaClient:\n    def __init__(self, url=None, access_token=None, profile=None):\n        from kodexa import KodexaPlatform\n        from kodexa.model.entities.product import ProductsEndpoint\n        self.base_url = url if url is not None else KodexaPlatform.get_url(profile)\n        self.access_token = (\n            access_token\n            if access_token is not None\n            else KodexaPlatform.get_access_token(profile)\n        )\n        # ... endpoint initializations ...\n\n    @staticmethod\n    def login(url, token):\n        obj_response = requests.get(\n            f\"{url}/api/account/me\",\n            headers={\"content-type\": \"application/json\",\n                     \"x-access-token\": token,\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")}\n        )\n        if obj_response.status_code == 200:\n            return KodexaClient(url, obj_response.text)\n        raise Exception(f\"Check your URL and password [{obj_response.status_code}]\")\n\n    def get(self, url, params=None) -> requests.Response:\n        response = requests.get(\n            self.get_url(url),\n            params=params,\n            headers={\n                \"x-access-token\": self.access_token,\n                \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                \"content-type\": \"application/json\",\n                \"X-Requested-With\": \"XMLHttpRequest\",\n            }\n        )\n        return process_response(response)\n\n    def exists(self, url, params=None) -> bool:\n        response = requests.get(\n            self.get_url(url),\n            params=params,\n            headers={\n                \"x-access-token\": self.access_token,\n                \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                \"content-type\": \"application/json\",\n            },\n        )\n        if response.status_code == 200:\n            return True\n        if response.status_code == 404:\n            return False\n        process_response(response)\n\n    def post(self, url, body=None, data=None, files=None, params=None) -> requests.Response:\n        headers = {\n            \"x-access-token\": self.access_token,\n            \"X-Requested-With\": \"XMLHttpRequest\",\n            \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")}\n        if files is None:\n            headers[\"content-type\"] = \"application/json\"\n        response = requests.post(\n            self.get_url(url),\n            json=body,\n            data=data,\n            files=files,\n            params=params,\n            headers=headers,\n        )\n        return process_response(response)\n\n    def put(self, url, body=None, data=None, files=None, params=None) -> requests.Response:\n        headers = {\"x-access-token\": self.access_token,\n                   \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                   \"X-Requested-With\": \"XMLHttpRequest\"}\n        if files is None:\n            headers[\"content-type\"] = \"application/json\"\n        response = requests.put(\n            self.get_url(url),\n            json=body,\n            data=data,\n            files=files,\n            params=params,\n            headers=headers,\n        )\n        return process_response(response)\n\n    def delete(self, url, params=None) -> requests.Response:\n        response = requests.delete(\n            self.get_url(url),\n            params=params,\n            headers={\"x-access-token\": self.access_token,\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                     \"X-Requested-With\": \"XMLHttpRequest\"}\n        )\n        return process_response(response)"
+    }
+  },
+  {
+    "pyfile": "kodexa.py",
+    "code_snippet": "import os\nimport requests\nimport json\nimport logging\nfrom json import JSONDecodeError\n\nlogger = logging.getLogger()\n\ndef get_config(profile=None, create=False):\n    global CURRENT_CONFIG\n    if CURRENT_CONFIG:\n        return CURRENT_CONFIG\n    path = os.path.join(dirs.user_config_dir, \".kodexa.json\")\n    if os.path.exists(path):\n        with open(path, \"r\") as outfile:\n            kodexa_config = json.load(outfile)\n            if \"_current_profile_\" in kodexa_config and profile is None:\n                profile = kodexa_config[\"_current_profile_\"]\n                if profile is None:\n                    raise Exception(\"No profile set\")\n            else:\n                profile = \"default\" if profile is None else profile\n            if profile not in kodexa_config:\n                if create:\n                    kodexa_config[profile] = {\n                        \"url\": None,\n                        \"access_token\": None,\n                    }\n                else:\n                    raise Exception(f\"Profile {profile} does not exist\")\n            CURRENT_CONFIG = kodexa_config\n            return kodexa_config\n    else:\n        profile = \"default\" if profile is None else profile\n        return (\n            {profile: {\"url\": None, \"access_token\": None}}\n        )\n\ndef get_profile(profile=None):\n    kodexa_config = get_config()\n    if profile is None:\n        if \"_current_profile_\" in kodexa_config:\n            return kodexa_config[\"_current_profile_\"]\n        else:\n            return \"default\"\n    return profile\n\nclass KodexaPlatform:\n    @staticmethod\n    def get_access_token(profile=None) -> str:\n        kodexa_config = get_config(profile)\n        access_token = os.getenv(\"KODEXA_ACCESS_TOKEN\")\n        return (\n            access_token\n            if access_token is not None\n            else kodexa_config[get_profile(profile)][\"access_token\"]\n        )\n\n    @staticmethod\n    def get_url(profile=None) -> str:\n        kodexa_config = get_config(profile)\n        env_url = os.getenv(\"KODEXA_URL\", None)\n        return (\n            env_url\n            if env_url is not None\n            else kodexa_config[get_profile(profile)][\"url\"]\n        )\n\n    @classmethod\n    def login(cls, kodexa_url, token, profile=None):\n        \"\"\"\n        Login to the Kodexa platform.\n\n        Args:\n            kodexa_url (str): The URL of the Kodexa platform.\n            token (str): The token to use for login.\n            profile (str, optional): The profile to use. Defaults to None.\n        \"\"\"\n        from requests.auth import HTTPBasicAuth\n\n        obj_response = requests.get(\n            f\"{kodexa_url}/api/account/me\",\n            headers={\"content-type\": \"application/json\", \"x-access-token\": token, \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")}\n        )\n        if obj_response.status_code == 200:\n            kodexa_config = get_config(profile, create=True)\n\n            if profile not in kodexa_config:\n                kodexa_config[profile] = {}\n\n            kodexa_config[profile][\"url\"] = kodexa_url\n            kodexa_config[profile][\"access_token\"] = token\n            save_config(kodexa_config)\n            print(\"Logged in\")\n        else:\n            print(f\"Check your URL and password [{obj_response.status_code}]\")\n\n    @classmethod\n    def get_server_info(cls):\n        \"\"\"\n        Get server information.\n\n        Returns:\n            dict: The server information.\n        \"\"\"\n        r = requests.get(\n            f\"{KodexaPlatform.get_url()}/api/overview\",\n            headers={\n                \"x-access-token\": KodexaPlatform.get_access_token(),\n                \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                \"content-type\": \"application/json\",\n            },\n        )\n        if r.status_code == 401:\n            raise Exception(\"Your access token was not authorized\")\n        if r.status_code == 200:\n            try:\n                return r.json()\n            except JSONDecodeError:\n                raise Exception(\"Unable to decode server information, check your access token\")\n\n        logger.warning(r.text)\n        raise Exception(\n            \"Unable to get server information, check your platform settings\"\n        )\n\nclass RemoteSession:\n    def __init__(self, session_type, slug):\n        self.session_type = session_type\n        self.slug = slug\n        self.cloud_session = None\n\n    def get_action_metadata(self, ref):\n        \"\"\"\n        Download metadata for a specific action.\n\n        Args:\n            ref (str): The reference of the action.\n\n        Returns:\n            dict: The metadata of the action if the request is successful.\n        \"\"\"\n        logger.debug(f\"Downloading metadata for action {ref}\")\n        r = requests.get(\n            f\"{KodexaPlatform.get_url()}/api/actions/{ref.replace(':', '/')}\",\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n        )\n        if r.status_code == 401:\n            raise Exception(\"Your access token was not authorized\")\n        if r.status_code == 200:\n            return r.json()\n\n        logger.warning(r.text)\n        raise Exception(\n            \"Unable to get action metadata, check your reference and platform settings\"\n        )\n\n    def start(self):\n        \"\"\"\n        Start the session.\n        \"\"\"\n        logger.info(f\"Creating session {self.slug} ({KodexaPlatform.get_url()})\")\n        r = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions\",\n            params={self.session_type: self.slug},\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n        )\n\n        process_response(r)\n\n        self.cloud_session = json.loads(r.text)\n\n    def execution_action(self, document, options, attach_source, context):\n        files = {}\n        if attach_source:\n            logger.debug(\"Attaching source to call\")\n            files[\"file\"] = get_source(document)\n            files[\"file_document\"] = document.to_kddb()\n        else:\n            files[\"document\"] = document.to_kddb()\n\n        data = {\n            \"options\": json.dumps(options),\n            \"document_metadata_json\": json.dumps(document.metadata),\n            \"context\": json.dumps(context.context),\n        }\n\n        logger.info(f\"Executing session {self.cloud_session.id}\")\n        r = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/execute\",\n            params={self.session_type: self.slug, \"documentVersion\": document.version},\n            data=data,\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            files=files,\n        )\n        try:\n            if r.status_code == 200:\n                execution = json.loads(r.text)\n            else:\n                logger.warning(\n                    \"Execution creation failed [\"\n                    + r.text\n                    + \"], response \"\n                    + str(r.status_code)\n                )\n                raise Exception(\n                    \"Execution creation failed [\"\n                    + r.text\n                    + \"], response \"\n                    + str(r.status_code)\n                )\n        except JSONDecodeError:\n            logger.warning(\n                \"Unable to handle response [\"\n                + r.text\n                + \"], response \"\n                + str(r.status_code)\n            )\n            raise\n\n        return execution\n\n    def wait_for_execution(self, execution):\n        status = execution.status\n        while execution.status == \"PENDING\" or execution.status == \"RUNNING\":\n            r = requests.get(\n                f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/executions/{execution.id}\",\n                headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                         \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            )\n            try:\n                execution = json.loads(r.text)\n            except JSONDecodeError:\n                logger.warning(\"Unable to handle response [\" + r.text + \"]\")\n                raise\n\n            if status != execution.status:\n                logger.info(f\"Status changed from {status} -> {execution.status}\")\n                status = execution.status\n\n            time.sleep(5)\n\n        if status == \"FAILED\":\n            logger.warning(\"Execution has failed\")\n            for step in execution.steps:\n                if step.status == \"FAILED\":\n                    logger.warning(\n                        f\"Step {step.name} has failed. {step.exceptionDetails.message}.\"\n                    )\n\n                    if step.exceptionDetails.errorType == \"Validation\":\n                        logger.warning(\n                            \"Additional validation information has been provided:\"\n                        )\n                        for validation_error in step.exceptionDetails.validationErrors:\n                            logger.warning(\n                                f\"- {validation_error.option} : {validation_error.message}\"\n                            )\n\n                    if step.exceptionDetails.help:\n                        logger.warning(\n                            f\"Additional help is available:\\n\\n{step.exceptionDetails.help}\"\n                        )\n\n                    raise Exception(f\"Processing has failed on step {step.name}\")\n\n            raise Exception(\"Processing has failed, no steps seem to have failed\")\n\n        return execution\n\n    def get_output_document(self, execution):\n        if execution.outputId:\n            logger.info(f\"Downloading output document [{execution.outputId}]\")\n            doc = requests.get(\n                f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/executions/{execution.id}/objects/{execution.outputId}\",\n                headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                         \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            )\n            return Document.from_kddb(doc.content)\n\n        logger.info(\"No output document\")\n        return None\n\nclass EventHelper:\n    def __init__(self, event: ExecutionEvent):\n        self.event: ExecutionEvent = event\n\n    def log(self, message: str):\n        response = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/logs\",\n            json=[{\"entry\": message}],\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            timeout=300,\n        )\n        if response.status_code != 200:\n            print(f\"Logging failed {response.status_code}\", flush=True)\n\n    def get_content_object(self, content_object_id: str):\n        logger.info(\n            f\"Getting content object {content_object_id} in event {self.event.id} in execution {self.event.execution.id}\"\n        )\n\n        co_response = requests.get(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/objects/{content_object_id}\",\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            timeout=300\n        )\n        process_response(co_response)\n        return io.BytesIO(co_response.content)\n\n    def put_content_object(\n            self, content_object: ContentObject, content\n    ) -> ContentObject:\n        files = {\"content\": content}\n        data = {\"contentObjectJson\": json.dumps(content_object.model_dump(by_alias=True))}\n        logger.info(\"Posting back content object to execution object\")\n        co_response = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/objects\",\n            data=data,\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            files=files,\n            timeout=300\n        )\n\n        process_response(co_response)\n\n        logger.info(\"Object posted back\")\n\n        return ContentObject.model_validate(co_response.json())\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.path.exists",
+        "open",
+        "json.load",
+        "os.getenv",
+        "os.getenv",
+        "os.environ.get",
+        "requests.get",
+        "json.loads",
+        "requests.get",
+        "requests.get",
+        "json.loads",
+        "requests.post",
+        "json.dumps",
+        "json.dumps",
+        "json.dumps",
+        "requests.post",
+        "json.loads",
+        "requests.get",
+        "json.loads",
+        "time.sleep",
+        "requests.get",
+        "Document.from_kddb",
+        "requests.post",
+        "requests.get",
+        "io.BytesIO",
+        "requests.post"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(dirs.user_config_dir, \".kodexa.json\")",
+        "os.path.exists(path)",
+        "open(path, \"r\")",
+        "json.load(outfile)",
+        "os.getenv(\"KODEXA_ACCESS_TOKEN\")",
+        "os.getenv(\"KODEXA_URL\", None)",
+        "os.environ.get(\"CF_TOKEN\", \"\")",
+        "requests.get(f\"{kodexa_url}/api/account/me\", headers={...})",
+        "json.loads(r.text)",
+        "requests.get(f\"{KodexaPlatform.get_url()}/api/overview\", headers={...})",
+        "requests.get(f\"{KodexaPlatform.get_url()}/api/actions/{ref.replace(':', '/')}\" , headers={...})",
+        "json.loads(r.text)",
+        "requests.post(f\"{KodexaPlatform.get_url()}/api/sessions\", params={self.session_type: self.slug}, headers={...})",
+        "json.dumps(options)",
+        "json.dumps(document.metadata)",
+        "json.dumps(context.context)",
+        "requests.post(f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/execute\", params={...}, data=data, headers={...}, files=files)",
+        "json.loads(r.text)",
+        "requests.get(f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/executions/{execution.id}\", headers={...})",
+        "json.loads(r.text)",
+        "time.sleep(5)",
+        "requests.get(f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/executions/{execution.id}/objects/{execution.outputId}\", headers={...})",
+        "Document.from_kddb(doc.content)",
+        "requests.post(f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/logs\", json=[{\"entry\": message}], headers={...}, timeout=300)",
+        "requests.get(f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/objects/{content_object_id}\", headers={...}, timeout=300)",
+        "io.BytesIO(co_response.content)",
+        "requests.post(f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/objects\", data=data, headers={...}, files=files, timeout=300)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "Document.from_kddb",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\nimport json\nimport logging\nfrom json import JSONDecodeError\n\nlogger = logging.getLogger()\n\ndef get_config(profile=None, create=False):\n    global CURRENT_CONFIG\n    if CURRENT_CONFIG:\n        return CURRENT_CONFIG\n    path = os.path.join(dirs.user_config_dir, \".kodexa.json\")\n    if os.path.exists(path):\n        with open(path, \"r\") as outfile:\n            kodexa_config = json.load(outfile)\n            ...\n            CURRENT_CONFIG = kodexa_config\n            return kodexa_config\n    ...\n\ndef get_profile(profile=None):\n    kodexa_config = get_config()\n    ...\n    return profile\n\nclass KodexaPlatform:\n    @staticmethod\n    def get_access_token(profile=None) -> str:\n        kodexa_config = get_config(profile)\n        access_token = os.getenv(\"KODEXA_ACCESS_TOKEN\")\n        return (\n            access_token\n            if access_token is not None\n            else kodexa_config[get_profile(profile)][\"access_token\"]\n        )\n\n    @staticmethod\n    def get_url(profile=None) -> str:\n        kodexa_config = get_config(profile)\n        env_url = os.getenv(\"KODEXA_URL\", None)\n        return (\n            env_url\n            if env_url is not None\n            else kodexa_config[get_profile(profile)][\"url\"]\n        )\n\n    @classmethod\n    def login(cls, kodexa_url, token, profile=None):\n        from requests.auth import HTTPBasicAuth\n        obj_response = requests.get(\n            f\"{kodexa_url}/api/account/me\",\n            headers={\"content-type\": \"application/json\", \"x-access-token\": token, \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")}\n        )\n        if obj_response.status_code == 200:\n            kodexa_config = get_config(profile, create=True)\n            ...\n            save_config(kodexa_config)\n            print(\"Logged in\")\n        else:\n            print(f\"Check your URL and password [{obj_response.status_code}]\")\n\n    @classmethod\n    def get_server_info(cls):\n        r = requests.get(\n            f\"{KodexaPlatform.get_url()}/api/overview\",\n            headers={\n                \"x-access-token\": KodexaPlatform.get_access_token(),\n                \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\"),\n                \"content-type\": \"application/json\",\n            },\n        )\n        if r.status_code == 401:\n            raise Exception(\"Your access token was not authorized\")\n        if r.status_code == 200:\n            try:\n                return r.json()\n            except JSONDecodeError:\n                raise Exception(\"Unable to decode server information, check your access token\")\n        logger.warning(r.text)\n        raise Exception(\n            \"Unable to get server information, check your platform settings\"\n        )\n\nclass RemoteSession:\n    def __init__(self, session_type, slug):\n        self.session_type = session_type\n        self.slug = slug\n        self.cloud_session = None\n\n    def get_action_metadata(self, ref):\n        logger.debug(f\"Downloading metadata for action {ref}\")\n        r = requests.get(\n            f\"{KodexaPlatform.get_url()}/api/actions/{ref.replace(':', '/')}\",\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n        )\n        if r.status_code == 401:\n            raise Exception(\"Your access token was not authorized\")\n        if r.status_code == 200:\n            return r.json()\n        logger.warning(r.text)\n        raise Exception(\n            \"Unable to get action metadata, check your reference and platform settings\"\n        )\n\n    def start(self):\n        logger.info(f\"Creating session {self.slug} ({KodexaPlatform.get_url()})\")\n        r = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions\",\n            params={self.session_type: self.slug},\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n        )\n        process_response(r)\n        self.cloud_session = json.loads(r.text)\n\n    def execution_action(self, document, options, attach_source, context):\n        files = {}\n        if attach_source:\n            logger.debug(\"Attaching source to call\")\n            files[\"file\"] = get_source(document)\n            files[\"file_document\"] = document.to_kddb()\n        else:\n            files[\"document\"] = document.to_kddb()\n        data = {\n            \"options\": json.dumps(options),\n            \"document_metadata_json\": json.dumps(document.metadata),\n            \"context\": json.dumps(context.context),\n        }\n        logger.info(f\"Executing session {self.cloud_session.id}\")\n        r = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/execute\",\n            params={self.session_type: self.slug, \"documentVersion\": document.version},\n            data=data,\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            files=files,\n        )\n        try:\n            if r.status_code == 200:\n                execution = json.loads(r.text)\n            else:\n                logger.warning(\n                    \"Execution creation failed [\"\n                    + r.text\n                    + \"], response \"\n                    + str(r.status_code)\n                )\n                raise Exception(\n                    \"Execution creation failed [\"\n                    + r.text\n                    + \"], response \"\n                    + str(r.status_code)\n                )\n        except JSONDecodeError:\n            logger.warning(\n                \"Unable to handle response [\"\n                + r.text\n                + \"], response \"\n                + str(r.status_code)\n            )\n            raise\n        return execution\n\n    def wait_for_execution(self, execution):\n        status = execution.status\n        while execution.status == \"PENDING\" or execution.status == \"RUNNING\":\n            r = requests.get(\n                f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/executions/{execution.id}\",\n                headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                         \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            )\n            try:\n                execution = json.loads(r.text)\n            except JSONDecodeError:\n                logger.warning(\"Unable to handle response [\" + r.text + \"]\")\n                raise\n            if status != execution.status:\n                logger.info(f\"Status changed from {status} -> {execution.status}\")\n                status = execution.status\n            time.sleep(5)\n        if status == \"FAILED\":\n            logger.warning(\"Execution has failed\")\n            for step in execution.steps:\n                if step.status == \"FAILED\":\n                    logger.warning(\n                        f\"Step {step.name} has failed. {step.exceptionDetails.message}.\"\n                    )\n                    if step.exceptionDetails.errorType == \"Validation\":\n                        logger.warning(\n                            \"Additional validation information has been provided:\"\n                        )\n                        for validation_error in step.exceptionDetails.validationErrors:\n                            logger.warning(\n                                f\"- {validation_error.option} : {validation_error.message}\"\n                            )\n                    if step.exceptionDetails.help:\n                        logger.warning(\n                            f\"Additional help is available:\\n\\n{step.exceptionDetails.help}\"\n                        )\n                    raise Exception(f\"Processing has failed on step {step.name}\")\n            raise Exception(\"Processing has failed, no steps seem to have failed\")\n        return execution\n\n    def get_output_document(self, execution):\n        if execution.outputId:\n            logger.info(f\"Downloading output document [{execution.outputId}]\")\n            doc = requests.get(\n                f\"{KodexaPlatform.get_url()}/api/sessions/{self.cloud_session.id}/executions/{execution.id}/objects/{execution.outputId}\",\n                headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                         \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            )\n            return Document.from_kddb(doc.content)\n        logger.info(\"No output document\")\n        return None\n\nclass EventHelper:\n    def __init__(self, event: ExecutionEvent):\n        self.event: ExecutionEvent = event\n\n    def log(self, message: str):\n        response = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/logs\",\n            json=[{\"entry\": message}],\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            timeout=300,\n        )\n        if response.status_code != 200:\n            print(f\"Logging failed {response.status_code}\", flush=True)\n\n    def get_content_object(self, content_object_id: str):\n        logger.info(\n            f\"Getting content object {content_object_id} in event {self.event.id} in execution {self.event.execution.id}\"\n        )\n        co_response = requests.get(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/objects/{content_object_id}\",\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            timeout=300\n        )\n        process_response(co_response)\n        return io.BytesIO(co_response.content)\n\n    def put_content_object(\n            self, content_object: ContentObject, content\n    ) -> ContentObject:\n        files = {\"content\": content}\n        data = {\"contentObjectJson\": json.dumps(content_object.model_dump(by_alias=True))}\n        logger.info(\"Posting back content object to execution object\")\n        co_response = requests.post(\n            f\"{KodexaPlatform.get_url()}/api/sessions/{self.event.session_id}/executions/{self.event.execution.id}/objects\",\n            data=data,\n            headers={\"x-access-token\": KodexaPlatform.get_access_token(),\n                     \"cf-access-token\": os.environ.get(\"CF_TOKEN\", \"\")},\n            files=files,\n            timeout=300\n        )\n        process_response(co_response)\n        logger.info(\"Object posted back\")\n        return ContentObject.model_validate(co_response.json())"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "kodexa-7.4.414330611518",
+      "total_matches": 16
+    }
+  }
+]

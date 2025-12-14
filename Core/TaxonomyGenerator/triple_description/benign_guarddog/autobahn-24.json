@@ -1,0 +1,115 @@
+{
+  "metadata": {
+    "package_name": "autobahn-24",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/autobahn-24.4.2.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "protocol.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/autobahn-24.4.2/autobahn-24.4.2/autobahn/wamp/protocol.py",
+      "line_number": "1140",
+      "type_description": "obfuscation",
+      "context_snippet": "def success(res):\n    del self._invocations[msg.request]\n\n    encoded_payload = None\n    if msg.enc_algo:\n        if not self._payload_codec:\n            log_msg = \"trying to send encrypted payload, but no keyring active\"\n            self.log.warn(log_msg)\n        else:\n            try:\n                if isinstance(res, types.CallResult):\n                    encoded_payload = self._payload_codec.encode(False, proc, res.results, res.kwresults)\n                else:\n                    encoded_payload = self._payload_codec.encode(False, proc, [res])\n            except Exception as e:\n                self.log.warn(\n                    \"failed to encrypt application payload: {err}\",\n                    err=e,\n                )\n\n    if encoded_payload:\n        if isinstance(res, types.CallResult):\n            reply = message.Yield(msg.request,\n                                  payload=encoded_payload.payload,\n                                  enc_algo=encoded_payload.enc_algo,\n                                  enc_key=encoded_payload.enc_key,\n                                  enc_serializer=encoded_payload.enc_serializer,\n                                  callee=res.callee,\n                                  callee_authid=res.callee_authid,\n                                  callee_authrole=res.callee_authrole,\n                                  forward_for=res.forward_for)\n        else:\n            reply = message.Yield(msg.request,\n                                  payload=encoded_payload.payload,\n                                  enc_algo=encoded_payload.enc_algo,\n                                  enc_key=encoded_payload.enc_key,\n                                  enc_serializer=encoded_payload.enc_serializer)\n    else:\n        if isinstance(res, types.CallResult):\n            reply = message.Yield(msg.request,\n                                  args=res.results,\n                                  kwargs=res.kwresults,\n                                  callee=res.callee,\n                                  callee_authid=res.callee_authid,\n                                  callee_authrole=res.callee_authrole,\n                                  forward_for=res.forward_for)\n        else:\n            reply = message.Yield(msg.request,\n                                  args=[res])\n\n    if self._transport is None:\n        self.log.debug('Skipping result of \"{}\", request {} because transport disconnected.'.format(registration.procedure, msg.request))\n        return\n\n    try:\n        self._transport.send(reply)\n    except SerializationError as e:\n        # the application-level payload returned from the invoked procedure can't be serialized\n        error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD,\n                                    args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" could not be serialized: {}'.format(reply.args,\n                                                                                                                                                         reply.kwargs,\n                                                                                                                                                         registration.procedure,\n                                                                                                                                                         e)])\n        self._transport.send(error_reply)\n    except PayloadExceededError as e:\n        # the application-level payload returned from the invoked procedure, when serialized and framed\n        # for the transport, exceeds the transport message/frame size limit\n        error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.PAYLOAD_SIZE_EXCEEDED,\n                                    args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" exceeds transport size limit: {}'.format(reply.args,\n                                                                                                                                                                  reply.kwargs,\n                                                                                                                                                                  registration.procedure,\n                                                                                                                                                                  e)])\n        self._transport.send(error_reply)",
+      "hash_value": "8c1a8bc37423a87c550a6594e9a33177",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def success(res):\n    del self._invocations[msg.request]\n\n    encoded_payload = None\n    if msg.enc_algo:\n        if not self._payload_codec:\n            log_msg = \"trying to send encrypted payload, but no keyring active\"\n            self.log.warn(log_msg)\n        else:\n            try:\n                if isinstance(res, types.CallResult):\n                    encoded_payload = self._payload_codec.encode(False, proc, res.results, res.kwresults)\n                else:\n                    encoded_payload = self._payload_codec.encode(False, proc, [res])\n            except Exception as e:\n                self.log.warn(\n                    \"failed to encrypt application payload: {err}\",\n                    err=e,\n                )\n\n    if encoded_payload:\n        if isinstance(res, types.CallResult):\n            reply = message.Yield(msg.request,\n                                  payload=encoded_payload.payload,\n                                  enc_algo=encoded_payload.enc_algo,\n                                  enc_key=encoded_payload.enc_key,\n                                  enc_serializer=encoded_payload.enc_serializer,\n                                  callee=res.callee,\n                                  callee_authid=res.callee_authid,\n                                  callee_authrole=res.callee_authrole,\n                                  forward_for=res.forward_for)\n        else:\n            reply = message.Yield(msg.request,\n                                  payload=encoded_payload.payload,\n                                  enc_algo=encoded_payload.enc_algo,\n                                  enc_key=encoded_payload.enc_key,\n                                  enc_serializer=encoded_payload.enc_serializer)\n    else:\n        if isinstance(res, types.CallResult):\n            reply = message.Yield(msg.request,\n                                  args=res.results,\n                                  kwargs=res.kwresults,\n                                  callee=res.callee,\n                                  callee_authid=res.callee_authid,\n                                  callee_authrole=res.callee_authrole,\n                                  forward_for=res.forward_for)\n        else:\n            reply = message.Yield(msg.request,\n                                  args=[res])\n\n    if self._transport is None:\n        self.log.debug('Skipping result of \"{}\", request {} because transport disconnected.'.format(registration.procedure, msg.request))\n        return\n\n    try:\n        self._transport.send(reply)\n    except SerializationError as e:\n        # the application-level payload returned from the invoked procedure can't be serialized\n        error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD,\n                                    args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" could not be serialized: {}'.format(reply.args,\n                                                                                                                                                         reply.kwargs,\n                                                                                                                                                         registration.procedure,\n                                                                                                                                                         e)])\n        self._transport.send(error_reply)\n    except PayloadExceededError as e:\n        # the application-level payload returned from the invoked procedure, when serialized and framed\n        # for the transport, exceeds the transport message/frame size limit\n        error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.PAYLOAD_SIZE_EXCEEDED,\n                                    args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" exceeds transport size limit: {}'.format(reply.args,\n                                                                                                                                                                  reply.kwargs,\n                                                                                                                                                                  registration.procedure,\n                                                                                                                                                                  e)])\n        self._transport.send(error_reply)",
+          "triple_sequences": [
+            {
+              "action_api": "del self._invocations[msg.request]",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self._invocations[msg.request]",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Delete function from global namespace",
+              "intention_id": "delete_function_global_namespace"
+            },
+            {
+              "action_api": "self._payload_codec.encode()",
+              "action_description": "Encodes bytes to base64-encoded bytes",
+              "action_id": "encode_bytes_to_base64",
+              "object": "False, proc, res.results, res.kwresults / False, proc, [res]",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for base64 encoding",
+              "intention_id": "prepare_data_base64_encoding"
+            },
+            {
+              "action_api": "isinstance(res, types.CallResult)",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "res, types.CallResult",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine presence of required module",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "message.Yield()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "msg.request, payload=encoded_payload.payload, enc_algo=encoded_payload.enc_algo, enc_key=encoded_payload.enc_key, enc_serializer=encoded_payload.enc_serializer, callee=res.callee, callee_authid=res.callee_authid, callee_authrole=res.callee_authrole, forward_for=res.forward_for",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "self.log.warn()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\"trying to send encrypted payload, but no keyring active\" / \"failed to encrypt application payload: {err}\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "self.log.debug()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "'Skipping result of \"{}\", request {} because transport disconnected.'.format(registration.procedure, msg.request)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "self._transport.send()",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "reply",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Send command output to server",
+              "intention_id": "send_command_output_server"
+            },
+            {
+              "action_api": "message.Error()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD, args=[...] / ApplicationError.PAYLOAD_SIZE_EXCEEDED, args=[...]",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "self._transport.send()",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "error_reply",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Send command output to server",
+              "intention_id": "send_command_output_server"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

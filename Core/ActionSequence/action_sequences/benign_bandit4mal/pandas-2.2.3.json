@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "package_name": "pandas-2.2.3",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pandas-2.2.3/pandas-2.2.3/pandas/io/clipboard/__init__.py",
+    "line_number": "357",
+    "type_description": "B841:cdll",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "356\t    windll = ctypes.windll\n357\t    msvcrt = ctypes.CDLL(\"msvcrt\")\n358",
+    "code_snippet": "def init_windows_clipboard():\n    global HGLOBAL, LPVOID, DWORD, LPCSTR, INT\n    global HWND, HINSTANCE, HMENU, BOOL, UINT, HANDLE\n    from ctypes.wintypes import (\n        BOOL,\n        DWORD,\n        HANDLE,\n        HGLOBAL,\n        HINSTANCE,\n        HMENU,\n        HWND,\n        INT,\n        LPCSTR,\n        LPVOID,\n        UINT,\n    )\n\n    windll = ctypes.windll\n    msvcrt = ctypes.CDLL(\"msvcrt\")\n\n    safeCreateWindowExA = CheckedCall(windll.user32.CreateWindowExA)\n    safeCreateWindowExA.argtypes = [\n        DWORD,\n        LPCSTR,\n        LPCSTR,\n        DWORD,\n        INT,\n        INT,\n        INT,\n        INT,\n        HWND,\n        HMENU,\n        HINSTANCE,\n        LPVOID,\n    ]\n    safeCreateWindowExA.restype = HWND\n\n    safeDestroyWindow = CheckedCall(windll.user32.DestroyWindow)\n    safeDestroyWindow.argtypes = [HWND]\n    safeDestroyWindow.restype = BOOL\n\n    OpenClipboard = windll.user32.OpenClipboard\n    OpenClipboard.argtypes = [HWND]\n    OpenClipboard.restype = BOOL\n\n    safeCloseClipboard = CheckedCall(windll.user32.CloseClipboard)\n    safeCloseClipboard.argtypes = []\n    safeCloseClipboard.restype = BOOL\n\n    safeEmptyClipboard = CheckedCall(windll.user32.EmptyClipboard)\n    safeEmptyClipboard.argtypes = []\n    safeEmptyClipboard.restype = BOOL\n\n    safeGetClipboardData = CheckedCall(windll.user32.GetClipboardData)\n    safeGetClipboardData.argtypes = [UINT]\n    safeGetClipboardData.restype = HANDLE\n\n    safeSetClipboardData = CheckedCall(windll.user32.SetClipboardData)\n    safeSetClipboardData.argtypes = [UINT, HANDLE]\n    safeSetClipboardData.restype = HANDLE\n\n    safeGlobalAlloc = CheckedCall(windll.kernel32.GlobalAlloc)\n    safeGlobalAlloc.argtypes = [UINT, c_size_t]\n    safeGlobalAlloc.restype = HGLOBAL\n\n    safeGlobalLock = CheckedCall(windll.kernel32.GlobalLock)\n    safeGlobalLock.argtypes = [HGLOBAL]\n    safeGlobalLock.restype = LPVOID\n\n    safeGlobalUnlock = CheckedCall(windll.kernel32.GlobalUnlock)\n    safeGlobalUnlock.argtypes = [HGLOBAL]\n    safeGlobalUnlock.restype = BOOL\n\n    wcslen = CheckedCall(msvcrt.wcslen)\n    wcslen.argtypes = [c_wchar_p]\n    wcslen.restype = UINT\n\n    GMEM_MOVEABLE = 0x0002\n    CF_UNICODETEXT = 13\n\n    @contextlib.contextmanager\n    def window():\n        \"\"\"\n        Context that provides a valid Windows hwnd.\n        \"\"\"\n        # we really just need the hwnd, so setting \"STATIC\"\n        # as predefined lpClass is just fine.\n        hwnd = safeCreateWindowExA(\n            0, b\"STATIC\", None, 0, 0, 0, 0, 0, None, None, None, None\n        )\n        try:\n            yield hwnd\n        finally:\n            safeDestroyWindow(hwnd)\n\n    @contextlib.contextmanager\n    def clipboard(hwnd):\n        \"\"\"\n        Context manager that opens the clipboard and prevents\n        other applications from modifying the clipboard content.\n        \"\"\"\n        # We may not get the clipboard handle immediately because\n        # some other application is accessing it (?)\n        # We try for at least 500ms to get the clipboard.\n        t = time.time() + 0.5\n        success = False\n        while time.time() < t:\n            success = OpenClipboard(hwnd)\n            if success:\n                break\n            time.sleep(0.01)\n        if not success:\n            raise PyperclipWindowsException(\"Error calling OpenClipboard\")\n\n        try:\n            yield\n        finally:\n            safeCloseClipboard()\n\n    def copy_windows(text):\n        # This function is heavily based on\n        # http://msdn.com/ms649016#_win32_Copying_Information_to_the_Clipboard\n\n        text = _stringifyText(text)  # Converts non-str values to str.\n\n        with window() as hwnd:\n            # http://msdn.com/ms649048\n            # If an application calls OpenClipboard with hwnd set to NULL,\n            # EmptyClipboard sets the clipboard owner to NULL;\n            # this causes SetClipboardData to fail.\n            # => We need a valid hwnd to copy something.\n            with clipboard(hwnd):\n                safeEmptyClipboard()\n\n                if text:\n                    # http://msdn.com/ms649051\n                    # If the hMem parameter identifies a memory object,\n                    # the object must have been allocated using the\n                    # function with the GMEM_MOVEABLE flag.\n                    count = wcslen(text) + 1\n                    handle = safeGlobalAlloc(GMEM_MOVEABLE, count * sizeof(c_wchar))\n                    locked_handle = safeGlobalLock(handle)\n\n                    ctypes.memmove(\n                        c_wchar_p(locked_handle),\n                        c_wchar_p(text),\n                        count * sizeof(c_wchar),\n                    )\n\n                    safeGlobalUnlock(handle)\n                    safeSetClipboardData(CF_UNICODETEXT, handle)\n\n    def paste_windows():\n        with clipboard(None):\n            handle = safeGetClipboardData(CF_UNICODETEXT)\n            if not handle:\n                # GetClipboardData may return NULL with errno == NO_ERROR\n                # if the clipboard is empty.\n                # (Also, it may return a handle to an empty buffer,\n                # but technically that's not empty)\n                return \"\"\n            return c_wchar_p(handle).value\n\n    return copy_windows, paste_windows\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ctypes.windll.user32.CreateWindowExA",
+        "ctypes.windll.user32.DestroyWindow",
+        "ctypes.windll.user32.OpenClipboard",
+        "ctypes.windll.user32.CloseClipboard",
+        "ctypes.windll.user32.EmptyClipboard",
+        "ctypes.windll.kernel32.GlobalAlloc",
+        "ctypes.windll.kernel32.GlobalLock",
+        "ctypes.memmove",
+        "ctypes.windll.kernel32.GlobalUnlock",
+        "ctypes.windll.user32.SetClipboardData",
+        "ctypes.windll.user32.GetClipboardData"
+      ],
+      "api_sequence_with_args": [
+        "ctypes.windll.user32.CreateWindowExA(0, b\"STATIC\", None, 0, 0, 0, 0, 0, None, None, None, None)",
+        "ctypes.windll.user32.DestroyWindow(hwnd)",
+        "ctypes.windll.user32.OpenClipboard(hwnd)",
+        "ctypes.windll.user32.CloseClipboard()",
+        "ctypes.windll.user32.EmptyClipboard()",
+        "ctypes.windll.kernel32.GlobalAlloc(GMEM_MOVEABLE, count * sizeof(c_wchar))",
+        "ctypes.windll.kernel32.GlobalLock(handle)",
+        "ctypes.memmove(c_wchar_p(locked_handle), c_wchar_p(text), count * sizeof(c_wchar))",
+        "ctypes.windll.kernel32.GlobalUnlock(handle)",
+        "ctypes.windll.user32.SetClipboardData(CF_UNICODETEXT, handle)",
+        "ctypes.windll.user32.GetClipboardData(CF_UNICODETEXT)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ctypes.windll.user32.CreateWindowExA",
+          "id": "find_window_by_title",
+          "description": "Finds window handle by title",
+          "first_id": "system_operations",
+          "second_id": "window_management",
+          "third_id": "window_finding"
+        },
+        {
+          "api_name": "ctypes.windll.user32.DestroyWindow",
+          "id": "close_window",
+          "description": "Closes the opened window",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "ctypes.windll.user32.OpenClipboard",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.windll.user32.CloseClipboard",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.windll.user32.EmptyClipboard",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.windll.kernel32.GlobalAlloc",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.windll.kernel32.GlobalLock",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.memmove",
+          "id": "copy_memory",
+          "description": "Copies memory from source to destination buffer",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "ctypes.windll.kernel32.GlobalUnlock",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.windll.user32.SetClipboardData",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "ctypes.windll.user32.GetClipboardData",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "def init_windows_clipboard():\n    from ctypes.wintypes import (\n        BOOL, DWORD, HANDLE, HGLOBAL, HINSTANCE, HMENU, HWND, INT, LPCSTR, LPVOID, UINT,\n    )\n    windll = ctypes.windll\n    msvcrt = ctypes.CDLL(\"msvcrt\")\n    safeCreateWindowExA = CheckedCall(windll.user32.CreateWindowExA)\n    safeDestroyWindow = CheckedCall(windll.user32.DestroyWindow)\n    OpenClipboard = windll.user32.OpenClipboard\n    safeCloseClipboard = CheckedCall(windll.user32.CloseClipboard)\n    safeEmptyClipboard = CheckedCall(windll.user32.EmptyClipboard)\n    safeGetClipboardData = CheckedCall(windll.user32.GetClipboardData)\n    safeSetClipboardData = CheckedCall(windll.user32.SetClipboardData)\n    safeGlobalAlloc = CheckedCall(windll.kernel32.GlobalAlloc)\n    safeGlobalLock = CheckedCall(windll.kernel32.GlobalLock)\n    safeGlobalUnlock = CheckedCall(windll.kernel32.GlobalUnlock)\n    wcslen = CheckedCall(msvcrt.wcslen)\n    GMEM_MOVEABLE = 0x0002\n    CF_UNICODETEXT = 13\n    @contextlib.contextmanager\n    def window():\n        hwnd = safeCreateWindowExA(0, b\"STATIC\", None, 0, 0, 0, 0, 0, None, None, None, None)\n        try:\n            yield hwnd\n        finally:\n            safeDestroyWindow(hwnd)\n    @contextlib.contextmanager\n    def clipboard(hwnd):\n        t = time.time() + 0.5\n        success = False\n        while time.time() < t:\n            success = OpenClipboard(hwnd)\n            if success:\n                break\n            time.sleep(0.01)\n        if not success:\n            raise PyperclipWindowsException(\"Error calling OpenClipboard\")\n        try:\n            yield\n        finally:\n            safeCloseClipboard()\n    def copy_windows(text):\n        text = _stringifyText(text)\n        with window() as hwnd:\n            with clipboard(hwnd):\n                safeEmptyClipboard()\n                if text:\n                    count = wcslen(text) + 1\n                    handle = safeGlobalAlloc(GMEM_MOVEABLE, count * sizeof(c_wchar))\n                    locked_handle = safeGlobalLock(handle)\n                    ctypes.memmove(c_wchar_p(locked_handle), c_wchar_p(text), count * sizeof(c_wchar))\n                    safeGlobalUnlock(handle)\n                    safeSetClipboardData(CF_UNICODETEXT, handle)\n    def paste_windows():\n        with clipboard(None):\n            handle = safeGetClipboardData(CF_UNICODETEXT)\n            if not handle:\n                return \"\"\n            return c_wchar_p(handle).value\n    return copy_windows, paste_windows"
+    }
+  }
+]

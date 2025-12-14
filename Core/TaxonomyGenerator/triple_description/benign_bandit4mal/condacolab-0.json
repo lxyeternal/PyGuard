@@ -1,0 +1,286 @@
+{
+  "metadata": {
+    "package_name": "condacolab-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/condacolab-0.1.10.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "condacolab.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/condacolab-0.1.10/condacolab-0.1.10/condacolab.py",
+      "line_number": "130",
+      "type_description": "B815:write",
+      "context_snippet": "def install_from_url(\n    installer_url: AnyStr,\n    prefix: os.PathLike = PREFIX,\n    env: Dict[AnyStr, AnyStr] = None,\n    run_checks: bool = True,\n    sha256: AnyStr = None,\n):\n    \"\"\"\n    Download and run a constructor-like installer, patching\n    the necessary bits so it works on Colab right away.\n\n    This will restart your kernel as a result!\n\n    Parameters\n    ----------\n    installer_url\n        URL pointing to a ``constructor``-like installer, such\n        as Miniconda or Mambaforge\n    prefix\n        Target location for the installation\n    env\n        Environment variables to inject in the kernel restart.\n        We *need* to inject ``LD_LIBRARY_PATH`` so ``{PREFIX}/lib``\n        is first, but you can also add more if you need it. Take\n        into account that no quote handling is done, so you need\n        to add those yourself in the raw string. They will\n        end up added to a line like ``exec env VAR=VALUE python3...``.\n        For example, a value with spaces should be passed as::\n\n            env={\"VAR\": '\"a value with spaces\"'}\n    run_checks\n        Run checks to see if installation was run previously.\n        Change to False to ignore checks and always attempt\n        to run the installation.\n    sha256\n        Expected SHA256 checksum of the installer. Optional.\n    \"\"\"\n    if run_checks:\n        try:  # run checks to see if it this was run already\n            return check(prefix)\n        except AssertionError:\n            pass  # just install\n\n    t0 = datetime.now()\n    print(f\"\u0001f817 Downloading {installer_url}...\")\n    installer_fn = \"__installer__.sh\"\n    with urlopen(installer_url) as response, open(installer_fn, \"wb\") as out:\n        shutil.copyfileobj(response, out)\n\n    if sha256 is not None:\n        digest = _chunked_sha256(installer_fn)\n        assert (\n            digest == sha256\n        ), f\"\u0001f4a5\u0001f494\u0001f4a5 Checksum failed! Expected {sha256}, got {digest}\"\n\n    print(\"\u0001f4e6 Installing...\")\n    task = run(\n        [\"bash\", installer_fn, \"-bfp\", str(prefix)],\n        check=False,\n        stdout=PIPE,\n        stderr=STDOUT,\n        text=True,\n    )\n    os.unlink(installer_fn)\n    with open(\"condacolab_install.log\", \"w\") as f:\n        f.write(task.stdout)\n    assert (\n        task.returncode == 0\n    ), \"\u0001f4a5\u0001f494\u0001f4a5 The installation failed! Logs are available at `/content/condacolab_install.log`.\"\n\n    print(\"\u0001f4cc Adjusting configuration...\")\n    cuda_version = \".\".join(os.environ.get(\"CUDA_VERSION\", \"*.*.*\").split(\".\")[:2])\n    prefix = Path(prefix)\n    condameta = prefix / \"conda-meta\"\n    condameta.mkdir(parents=True, exist_ok=True)\n    pymaj, pymin = sys.version_info[:2]\n\n    if cuda_version.startswith(\"12\"):\n        cudatoolkit = \"cuda-version 12.*\"\n    else:\n        cudatoolkit = f\"cudatoolkit {cuda_version}.*\"\n\n    with open(condameta / \"pinned\", \"a\") as f:\n        f.write(f\"python {pymaj}.{pymin}.*\\n\")\n        f.write(f\"python_abi {pymaj}.{pymin}.* *cp{pymaj}{pymin}*\\n\")\n        f.write(f\"{cudatoolkit}\\n\")\n\n    with open(prefix / \".condarc\", \"a\") as f:\n        f.write(\"always_yes: true\\n\")\n\n    with open(\"/etc/ipython/ipython_config.py\", \"a\") as f:\n        f.write(\n            f\"\"\"\\nc.InteractiveShellApp.exec_lines = [\n                    \"import sys\",\n                    \"sp = f'{prefix}/lib/python{pymaj}.{pymin}/site-packages'\",\n                    \"if sp not in sys.path:\",\n                    \"    sys.path.insert(0, sp)\",\n                ]\n            \"\"\"\n        )\n    sitepackages = f\"{prefix}/lib/python{pymaj}.{pymin}/site-packages\"\n    if sitepackages not in sys.path:\n        sys.path.insert(0, sitepackages)\n\n    print(\"\u0001fa79 Patching environment...\")\n    env = env or {}\n    bin_path = f\"{prefix}/bin\"\n    if bin_path not in os.environ.get(\"PATH\", \"\").split(\":\"):\n        env[\"PATH\"] = f\"{bin_path}:{os.environ.get('PATH', '')}\"\n    env[\"LD_LIBRARY_PATH\"] = f\"{prefix}/lib:{os.environ.get('LD_LIBRARY_PATH', '')}\"\n\n    os.rename(sys.executable, f\"{sys.executable}.real\")\n    with open(sys.executable, \"w\") as f:\n        f.write(\"#!/bin/bash\\n\")\n        envstr = \" \".join(f\"{k}={v}\" for k, v in env.items())\n        f.write(f\"exec env {envstr} {sys.executable}.real -x $@\\n\")\n    run([\"chmod\", \"+x\", sys.executable])\n\n    taken = timedelta(seconds=round((datetime.now() - t0).total_seconds(), 0))\n    print(f\"\u0001f553 Done in {taken}\")\n\n    print(\"\u0001f501 Restarting kernel...\")\n    get_ipython().kernel.do_shutdown(True)",
+      "hash_value": "3d2155826490f5ebefe7d845260c12f9",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def install_from_url(\n    installer_url: AnyStr,\n    prefix: os.PathLike = PREFIX,\n    env: Dict[AnyStr, AnyStr] = None,\n    run_checks: bool = True,\n    sha256: AnyStr = None,\n):\n    \"\"\"\n    Download and run a constructor-like installer, patching\n    the necessary bits so it works on Colab right away.\n\n    This will restart your kernel as a result!\n\n    Parameters\n    ----------\n    installer_url\n        URL pointing to a ``constructor``-like installer, such\n        as Miniconda or Mambaforge\n    prefix\n        Target location for the installation\n    env\n        Environment variables to inject in the kernel restart.\n        We *need* to inject ``LD_LIBRARY_PATH`` so ``{PREFIX}/lib``\n        is first, but you can also add more if you need it. Take\n        into account that no quote handling is done, so you need\n        to add those yourself in the raw string. They will\n        end up added to a line like ``exec env VAR=VALUE python3...``.\n        For example, a value with spaces should be passed as::\n\n            env={\"VAR\": '\"a value with spaces\"'}\n    run_checks\n        Run checks to see if installation was run previously.\n        Change to False to ignore checks and always attempt\n        to run the installation.\n    sha256\n        Expected SHA256 checksum of the installer. Optional.\n    \"\"\"\n    if run_checks:\n        try:  # run checks to see if it this was run already\n            return check(prefix)\n        except AssertionError:\n            pass  # just install\n\n    t0 = datetime.now()\n    print(f\"\u0001f817 Downloading {installer_url}...\")\n    installer_fn = \"__installer__.sh\"\n    with urlopen(installer_url) as response, open(installer_fn, \"wb\") as out:\n        shutil.copyfileobj(response, out)\n\n    if sha256 is not None:\n        digest = _chunked_sha256(installer_fn)\n        assert (\n            digest == sha256\n        ), f\"\u0001f4a5\u0001f494\u0001f4a5 Checksum failed! Expected {sha256}, got {digest}\"\n\n    print(\"\u0001f4e6 Installing...\")\n    task = run(\n        [\"bash\", installer_fn, \"-bfp\", str(prefix)],\n        check=False,\n        stdout=PIPE,\n        stderr=STDOUT,\n        text=True,\n    )\n    os.unlink(installer_fn)\n    with open(\"condacolab_install.log\", \"w\") as f:\n        f.write(task.stdout)\n    assert (\n        task.returncode == 0\n    ), \"\u0001f4a5\u0001f494\u0001f4a5 The installation failed! Logs are available at `/content/condacolab_install.log`.\"\n\n    print(\"\u0001f4cc Adjusting configuration...\")\n    cuda_version = \".\".join(os.environ.get(\"CUDA_VERSION\", \"*.*.*\").split(\".\")[:2])\n    prefix = Path(prefix)\n    condameta = prefix / \"conda-meta\"\n    condameta.mkdir(parents=True, exist_ok=True)\n    pymaj, pymin = sys.version_info[:2]\n\n    if cuda_version.startswith(\"12\"):\n        cudatoolkit = \"cuda-version 12.*\"\n    else:\n        cudatoolkit = f\"cudatoolkit {cuda_version}.*\"\n\n    with open(condameta / \"pinned\", \"a\") as f:\n        f.write(f\"python {pymaj}.{pymin}.*\\n\")\n        f.write(f\"python_abi {pymaj}.{pymin}.* *cp{pymaj}{pymin}*\\n\")\n        f.write(f\"{cudatoolkit}\\n\")\n\n    with open(prefix / \".condarc\", \"a\") as f:\n        f.write(\"always_yes: true\\n\")\n\n    with open(\"/etc/ipython/ipython_config.py\", \"a\") as f:\n        f.write(\n            f\"\"\"\\nc.InteractiveShellApp.exec_lines = [\n                    \"import sys\",\n                    \"sp = f'{prefix}/lib/python{pymaj}.{pymin}/site-packages'\",\n                    \"if sp not in sys.path:\",\n                    \"    sys.path.insert(0, sp)\",\n                ]\n            \"\"\"\n        )\n    sitepackages = f\"{prefix}/lib/python{pymaj}.{pymin}/site-packages\"\n    if sitepackages not in sys.path:\n        sys.path.insert(0, sitepackages)\n\n    print(\"\u0001fa79 Patching environment...\")\n    env = env or {}\n    bin_path = f\"{prefix}/bin\"\n    if bin_path not in os.environ.get(\"PATH\", \"\").split(\":\"):\n        env[\"PATH\"] = f\"{bin_path}:{os.environ.get('PATH', '')}\"\n    env[\"LD_LIBRARY_PATH\"] = f\"{prefix}/lib:{os.environ.get('LD_LIBRARY_PATH', '')}\"\n\n    os.rename(sys.executable, f\"{sys.executable}.real\")\n    with open(sys.executable, \"w\") as f:\n        f.write(\"#!/bin/bash\\n\")\n        envstr = \" \".join(f\"{k}={v}\" for k, v in env.items())\n        f.write(f\"exec env {envstr} {sys.executable}.real -x $@\\n\")\n    run([\"chmod\", \"+x\", sys.executable])\n\n    taken = timedelta(seconds=round((datetime.now() - t0).total_seconds(), 0))\n    print(f\"\u0001f553 Done in {taken}\")\n\n    print(\"\u0001f501 Restarting kernel...\")\n    get_ipython().kernel.do_shutdown(True)",
+          "triple_sequences": [
+            {
+              "action_api": "urlopen()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "installer_url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "installer_fn, \"wb\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "shutil.copyfileobj()",
+              "action_description": "Copies file to destination",
+              "action_id": "copy_file",
+              "object": "response, out",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Write downloaded content to file",
+              "intention_id": "write_downloaded_content_file"
+            },
+            {
+              "action_api": "_chunked_sha256()",
+              "action_description": "Creates SHA-256 hash object",
+              "action_id": "create_sha256_hash",
+              "object": "installer_fn",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Get file size",
+              "intention_id": "get_file_size"
+            },
+            {
+              "action_api": "run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"bash\", installer_fn, \"-bfp\", str(prefix)]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "os.unlink()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "installer_fn",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"condacolab_install.log\", \"w\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "task.stdout",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"CUDA_VERSION\", \"*.*.*\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "Path()",
+              "action_description": "Path object and status operations (creating Path objects, retrieving file status)",
+              "action_id": "path_object_operations",
+              "object": "prefix",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "condameta.mkdir()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "parents=True, exist_ok=True",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "condameta / \"pinned\", \"a\"",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"python {pymaj}.{pymin}.*\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"python_abi {pymaj}.{pymin}.* *cp{pymaj}{pymin}*\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"{cudatoolkit}\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "prefix / \".condarc\", \"a\"",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"always_yes: true\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"/etc/ipython/ipython_config.py\", \"a\"",
+              "object_description": "Script file path",
+              "object_id": "script_file_path",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"\"\"\\nc.InteractiveShellApp.exec_lines = [ ... ]\"\"\"",
+              "object_description": "Script file content",
+              "object_id": "script_file_content",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "sys.path.insert()",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "0, sitepackages",
+              "object_description": "Browser profile directory",
+              "object_id": "browser_profile_directory",
+              "intention_description": "Prepare path for browser data access",
+              "intention_id": "prepare_path_browser_data"
+            },
+            {
+              "action_api": "os.rename()",
+              "action_description": "Renames file or moves it to new location",
+              "action_id": "rename_file",
+              "object": "sys.executable, f\"{sys.executable}.real\"",
+              "object_description": "Executable file and startup path",
+              "object_id": "executable_startup_path",
+              "intention_description": "Move file to destination",
+              "intention_id": "move_file_destination"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "sys.executable, \"w\"",
+              "object_description": "Executable file",
+              "object_id": "executable_file",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"#!/bin/bash\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"exec env {envstr} {sys.executable}.real -x $@\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"chmod\", \"+x\", sys.executable]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "get_ipython().kernel.do_shutdown()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "True",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Execute shutdown or restart",
+              "intention_id": "execute_shutdown_restart"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

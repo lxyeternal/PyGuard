@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "haystack_ai-2.12.1",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/haystack_ai-2.12.1.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "type_serialization.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/haystack_ai-2.12.1/haystack_ai-2.12.1/haystack/utils/type_serialization.py",
+    "line_number": "142",
+    "type_description": "obfuscation",
+    "original_snippet": "return getattr(builtins, type_str)",
+    "context_snippet": "import builtins\nimport typing\nfrom haystack.core.errors import DeserializationError\n\ndef deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements\n    \"\"\"\n    Deserializes a type given its full import path as a string, including nested generic types.\n\n    This function will dynamically import the module if it's not already imported\n    and then retrieve the type object from it. It also handles nested generic types like\n    `typing.List[typing.Dict[int, str]]`.\n\n    :param type_str:\n        The string representation of the type's full import path.\n    :returns:\n        The deserialized type object.\n    :raises DeserializationError:\n        If the type cannot be deserialized due to missing module or type.\n    \"\"\"\n\n    type_mapping = {\n        list: typing.List,\n        dict: typing.Dict,\n        set: typing.Set,\n        tuple: typing.Tuple,\n        frozenset: typing.FrozenSet,\n    }\n\n    # Handle generics\n    if \"[\" in type_str and type_str.endswith(\"]\"):\n        main_type_str, generics_str = type_str.split(\"[\", 1)\n        generics_str = generics_str[:-1]\n\n        main_type = deserialize_type(main_type_str)\n        generic_args = [deserialize_type(arg) for arg in _parse_generic_args(generics_str)]\n\n        # Reconstruct\n        try:\n            if sys.version_info >= (3, 9) or repr(main_type).startswith(\"typing.\"):\n                return main_type[tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]\n            else:\n                return type_mapping[main_type][tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]\n        except (TypeError, AttributeError) as e:\n            raise DeserializationError(f\"Could not apply arguments {generic_args} to type {main_type}\") from e\n\n    # Handle non-generic types\n    # First, check if there's a module prefix\n    if \".\" in type_str:\n        parts = type_str.split(\".\")\n        module_name = \".\".join(parts[:-1])\n        type_name = parts[-1]\n\n        module = sys.modules.get(module_name)\n        if module is None:\n            try:\n                module = thread_safe_import(module_name)\n            except ImportError as e:\n                raise DeserializationError(f\"Could not import the module: {module_name}\") from e\n\n        # Get the class from the module\n        if hasattr(module, type_name):\n            return getattr(module, type_name)\n\n        raise DeserializationError(f\"Could not locate the type: {type_name} in the module: {module_name}\")\n\n    # No module prefix, check builtins and typing\n    # First check builtins\n    if hasattr(builtins, type_str):\n        return getattr(builtins, type_str)\n\n    # Then check typing\n    if hasattr(typing, type_str):\n        return getattr(typing, type_str)\n\n    # Special case for NoneType\n    if type_str == \"NoneType\":\n        return type(None)\n\n    # Special case for None\n    if type_str == \"None\":\n        return None\n\n    raise DeserializationError(f\"Could not deserialize type: {type_str}\")",
+    "hash_value": "f99500deda7ceb92078c0dd3c5fcfc2b",
+    "detection_index": 1
+  }
+]

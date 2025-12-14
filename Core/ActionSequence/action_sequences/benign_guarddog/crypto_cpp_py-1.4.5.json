@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\n\nfrom setuptools import Extension, setup\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.build_py import build_py\n\n\nclass CryptoExtension(Extension):\n    def __init__(self):\n        self.name = \"crypto_cpp\"\n        Extension.__init__(self, self.name, sources=[])\n\n\nclass BuildPy(build_py):\n    def run(self):\n        self.run_command(\"build_ext\")\n        return super().run()\n\n\nclass BuildCrypto(build_ext):\n    already_built = False\n\n    def build_extension(self, ext):\n        if self.already_built:\n            print(\"was already built, skipping...\")\n            return\n\n        if os.name != \"nt\":\n            subprocess.run(\"chmod a+x ./build_extension.sh\", shell=True, check=True)\n            subprocess.run(\n                \"./build_extension.sh\",\n                shell=True,\n                check=True,\n            )\n        else:\n            with subprocess.Popen(\n                [\"powershell.exe\", \".\\\\build_extension.ps1\"]\n            ) as process:\n                process.wait()\n                if process.returncode != 0:\n                    raise Exception(\"Build returned a non-zero code\")\n\n        self.already_built = True",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.name",
+        "subprocess.run",
+        "subprocess.run",
+        "subprocess.Popen",
+        "subprocess.Popen.wait"
+      ],
+      "api_sequence_with_args": [
+        "os.name",
+        "subprocess.run('chmod a+x ./build_extension.sh', shell=True, check=True)",
+        "subprocess.run('./build_extension.sh', shell=True, check=True)",
+        "subprocess.Popen(['powershell.exe', '.\\\\build_extension.ps1'])",
+        "subprocess.Popen.wait()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.name",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\n\nclass BuildCrypto(build_ext):\n    already_built = False\n\n    def build_extension(self, ext):\n        if self.already_built:\n            print(\"was already built, skipping...\")\n            return\n\n        if os.name != \"nt\":\n            subprocess.run(\"chmod a+x ./build_extension.sh\", shell=True, check=True)\n            subprocess.run(\n                \"./build_extension.sh\",\n                shell=True,\n                check=True,\n            )\n        else:\n            with subprocess.Popen(\n                [\"powershell.exe\", \".\\\\build_extension.ps1\"]\n            ) as process:\n                process.wait()\n                if process.returncode != 0:\n                    raise Exception(\"Build returned a non-zero code\")\n\n        self.already_built = True"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "crypto_cpp_py-1.4.5",
+      "total_matches": 3
+    }
+  }
+]

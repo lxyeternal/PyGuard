@@ -1,0 +1,125 @@
+Run started:2025-04-12 18:41:33.975033
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dagster_gcp_pandas-0.26.9-py3-none-any/dagster_gcp_pandas/bigquery/bigquery_pandas_type_handler.py:104
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+103	)
+104	bigquery_pandas_io_manager.__doc__ = """
+105	An I/O manager definition that reads inputs from and writes pandas DataFrames to BigQuery.
+106	
+107	Returns:
+108	    IOManagerDefinition
+109	
+110	Examples:
+111	
+112	    .. code-block:: python
+113	
+114	        from dagster_gcp_pandas import bigquery_pandas_io_manager
+115	        from dagster import Definitions
+116	
+117	        @asset(
+118	            key_prefix=["my_dataset"]  # will be used as the dataset in BigQuery
+119	        )
+120	        def my_table() -> pd.DataFrame:  # the name of the asset will be the table name
+121	            ...
+122	
+123	        defs = Definitions(
+124	            assets=[my_table],
+125	            resources={
+126	                "io_manager": bigquery_pandas_io_manager.configured({
+127	                    "project" : {"env": "GCP_PROJECT"}
+128	                })
+129	            }
+130	        )
+131	
+132	    You can set a default dataset to store the assets using the ``dataset`` configuration value of the BigQuery I/O
+133	    Manager. This dataset will be used if no other dataset is specified directly on an asset or op.
+134	
+135	    .. code-block:: python
+136	
+137	        defs = Definitions(
+138	            assets=[my_table],
+139	            resources={
+140	                    "io_manager": bigquery_pandas_io_manager.configured({
+141	                        "project" : {"env": "GCP_PROJECT"}
+142	                        "dataset": "my_dataset"
+143	                    })
+144	                }
+145	        )
+146	
+147	    On individual assets, you an also specify the dataset where they should be stored using metadata or
+148	    by adding a ``key_prefix`` to the asset key. If both ``key_prefix`` and metadata are defined, the metadata will
+149	    take precedence.
+150	
+151	    .. code-block:: python
+152	
+153	        @asset(
+154	            key_prefix=["my_dataset"]  # will be used as the dataset in BigQuery
+155	        )
+156	        def my_table() -> pd.DataFrame:
+157	            ...
+158	
+159	        @asset(
+160	            # note that the key needs to be "schema"
+161	            metadata={"schema": "my_dataset"}  # will be used as the dataset in BigQuery
+162	        )
+163	        def my_other_table() -> pd.DataFrame:
+164	            ...
+165	
+166	    For ops, the dataset can be specified by including a "schema" entry in output metadata.
+167	
+168	    .. code-block:: python
+169	
+170	        @op(
+171	            out={"my_table": Out(metadata={"schema": "my_schema"})}
+172	        )
+173	        def make_my_table() -> pd.DataFrame:
+174	            ...
+175	
+176	    If none of these is provided, the dataset will default to "public".
+177	
+178	    To only use specific columns of a table as input to a downstream op or asset, add the metadata "columns" to the
+179	    In or AssetIn.
+180	
+181	    .. code-block:: python
+182	
+183	        @asset(
+184	            ins={"my_table": AssetIn("my_table", metadata={"columns": ["a"]})}
+185	        )
+186	        def my_table_a(my_table: pd.DataFrame) -> pd.DataFrame:
+187	            # my_table will just contain the data from column "a"
+188	            ...
+189	
+190	    If you cannot upload a file to your Dagster deployment, or otherwise cannot
+191	    `authenticate with GCP <https://cloud.google.com/docs/authentication/provide-credentials-adc>`_
+192	    via a standard method, you can provide a service account key as the "gcp_credentials" configuration.
+193	    Dagster will store this key in a temporary file and set GOOGLE_APPLICATION_CREDENTIALS to point to the file.
+194	    After the run completes, the file will be deleted, and GOOGLE_APPLICATION_CREDENTIALS will be
+195	    unset. The key must be base64 encoded to avoid issues with newlines in the keys. You can retrieve
+196	    the base64 encoded key with this shell command: cat $GOOGLE_APPLICATION_CREDENTIALS | base64
+197	
+198	"""
+199	
+200	
+201	class BigQueryPandasIOManager(BigQueryIOManager):
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 239
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 1.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 1.0
+		High: 0.0
+Files skipped (0):

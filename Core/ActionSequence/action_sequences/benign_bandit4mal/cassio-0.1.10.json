@@ -1,0 +1,148 @@
+[
+  {
+    "metadata": {
+      "package_name": "cassio-0.1.10",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/cassio-0.1.10/cassio-0.1.10/src/cassio/config/__init__.py",
+    "line_number": "266",
+    "type_description": "B836:rmtree",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "265\t        if temp_dir_created and temp_dir is not None:\n266\t            shutil.rmtree(temp_dir)\n267",
+    "code_snippet": "def get_session_and_keyspace(\n    auto: bool = False,\n    session: Optional[Session] = None,\n    secure_connect_bundle: Optional[str] = None,\n    init_string: Optional[str] = None,\n    token: Optional[str] = None,\n    database_id: Optional[str] = None,\n    keyspace: Optional[str] = None,\n    contact_points: Optional[Union[str, List[str]]] = None,\n    username: Optional[str] = None,\n    password: Optional[str] = None,\n    cluster_kwargs: Optional[Dict[str, Any]] = None,\n    tempfile_basedir: Optional[str] = None,\n    bundle_url_template: Optional[str] = None,\n    cloud_kwargs: Optional[Dict[str, Any]] = None,\n) -> tuple[Session, Optional[str]]:\n    result_session: Optional[Session]\n    temp_dir_created: bool = False\n    temp_dir: Optional[str] = None\n    bundle_from_is: Optional[str] = None\n    bundle_from_arg: Optional[str] = None\n    bundle_from_download: Optional[str] = None\n    keyspace_from_is: Optional[str] = None\n    keyspace_from_bundle: Optional[str] = None\n    keyspace_from_arg: Optional[str] = None\n    token_from_is: Optional[str] = None\n    token_from_arg: Optional[str] = None\n    #\n    if auto:\n        if any(\n            v is not None\n            for v in (\n                session,\n                secure_connect_bundle,\n                init_string,\n                token,\n                database_id,\n                keyspace,\n                contact_points,\n                username,\n                password,\n                # cluster_kwargs is allowed\n                # tempfile_basedir is allowed\n                bundle_url_template,\n                cloud_kwargs,\n            )\n        ):\n            raise ValueError(\n                \"When auto=True, no arguments can be passed other than \"\n                \"tempfile_basedir and cluster_kwargs.\"\n            )\n        # setting some arguments from environment variables\n        if \"CASSANDRA_CONTACT_POINTS\" in os.environ:\n            contact_points = os.environ[\"CASSANDRA_CONTACT_POINTS\"]\n            username = os.environ.get(\"CASSANDRA_USERNAME\")\n            password = os.environ.get(\"CASSANDRA_PASSWORD\")\n            keyspace = os.environ.get(\"CASSANDRA_KEYSPACE\")\n        elif any(\n            avar in os.environ\n            for avar in [\n                \"ASTRA_DB_APPLICATION_TOKEN\",\n                \"ASTRA_DB_INIT_STRING\",\n            ]\n        ):\n            token = os.environ.get(\"ASTRA_DB_APPLICATION_TOKEN\")\n            init_string = os.environ.get(\"ASTRA_DB_INIT_STRING\")\n            secure_connect_bundle = os.environ.get(\"ASTRA_DB_SECURE_BUNDLE_PATH\")\n            keyspace = os.environ.get(\"ASTRA_DB_KEYSPACE\")\n            database_id = os.environ.get(\n                \"ASTRA_DB_ID\", os.environ.get(\"ASTRA_DB_DATABASE_ID\")\n            )\n    #\n    try:\n        # process init_string\n        base_dir = tempfile_basedir if tempfile_basedir else tempfile.gettempdir()\n        if init_string:\n            temp_dir = tempfile.mkdtemp(dir=base_dir)\n            temp_dir_created = True\n            bundle_from_is, options_from_is = init_string_to_bundle_path_and_options(\n                init_string,\n                target_dir=temp_dir,\n            )\n            keyspace_from_is = options_from_is.get(\"keyspace\")\n            token_from_is = options_from_is.get(\"token\")\n        if secure_connect_bundle:\n            if not token:\n                raise ValueError(\n                    \"`token` is required if `secure_connect_bundle` is passed\"\n                )\n        # params from arguments:\n        bundle_from_arg = secure_connect_bundle\n        token_from_arg = token\n        keyspace_from_arg = keyspace\n        # resolution of priority among args\n        if session:\n            result_session = session\n        else:\n            # first determine if Cassandra or Astra\n            is_cassandra = all(\n                [\n                    secure_connect_bundle is None,\n                    init_string is None,\n                    token is None,\n                    contact_points is not None,\n                ]\n            )\n            can_be_astra = any(\n                [\n                    secure_connect_bundle is not None,\n                    init_string is not None,\n                    token is not None,\n                ]\n            )\n            if is_cassandra:\n                # need to take care of:\n                #   contact_points, username, password, cluster_kwargs\n                chosen_contact_points: Union[List[str], None]\n                if contact_points:\n                    if isinstance(contact_points, str):\n                        chosen_contact_points = [\n                            cp.strip() for cp in contact_points.split(\",\") if cp.strip()\n                        ]\n                    else:\n                        # assume it's a list already\n                        chosen_contact_points = contact_points\n                else:\n                    # normalize \"\" to None for later `Cluster(...)` call\n                    chosen_contact_points = None\n                #\n                if username is not None and password is not None:\n                    chosen_auth_provider = PlainTextAuthProvider(\n                        username,\n                        password,\n                    )\n                else:\n                    if username is not None or password is not None:\n                        raise ValueError(\n                            \"Please provide both usename/password or none.\"\n                        )\n                    else:\n                        chosen_auth_provider = None\n                #\n                if chosen_contact_points is None:\n                    cluster = Cluster(\n                        auth_provider=chosen_auth_provider,\n                        **(cluster_kwargs if cluster_kwargs is not None else {}),\n                    )\n                else:\n                    cluster = Cluster(\n                        contact_points=chosen_contact_points,\n                        auth_provider=chosen_auth_provider,\n                        **(cluster_kwargs if cluster_kwargs is not None else {}),\n                    )\n                result_session = cluster.connect()\n            elif can_be_astra:\n                # Astra DB\n                chosen_token = _first_valid(token_from_arg, token_from_is)\n                if chosen_token is None:\n                    raise ValueError(\n                        \"A token must be supplied if connection is to be established.\"\n                    )\n                chosen_bundle_pre_token = _first_valid(bundle_from_arg, bundle_from_is)\n                # Try to get the bundle from the token if not supplied otherwise\n                if chosen_bundle_pre_token is None:\n                    if database_id is None:\n                        raise ValueError(\n                            \"A database_id must be supplied if no \"\n                            \"secure_connect_bundle is provided.\"\n                        )\n                    if not temp_dir_created:\n                        temp_dir = tempfile.mkdtemp(dir=base_dir)\n                        temp_dir_created = True\n                    bundle_from_download = os.path.join(\n                        temp_dir or \"\", DOWNLOADED_BUNDLE_FILE_NAME\n                    )\n                    download_astra_bundle_url(\n                        database_id,\n                        chosen_token,\n                        bundle_from_download,\n                        bundle_url_template,\n                    )\n                # After the devops-api part, re-evaluate chosen_bundle:\n                chosen_bundle = _first_valid(\n                    bundle_from_download, chosen_bundle_pre_token\n                )\n                #\n                if chosen_bundle:\n                    keyspace_from_bundle = infer_keyspace_from_bundle(chosen_bundle)\n                    try:\n                        cluster = Cluster(\n                            cloud={\n                                \"secure_connect_bundle\": chosen_bundle,\n                                **(cloud_kwargs if cloud_kwargs is not None else {}),\n                            },\n                            auth_provider=PlainTextAuthProvider(\n                                ASTRA_CLOUD_AUTH_USERNAME,\n                                chosen_token,\n                            ),\n                            **(\n                                {\n                                    **(\n                                        {\n                                            \"protocol_version\": DEFAULT_ASTRA_DB_PROTOCOL_VERSION\n                                        }\n                                    ),\n                                    **(\n                                        cluster_kwargs\n                                        if cluster_kwargs is not None\n                                        else {}\n                                    ),\n                                }\n                            ),\n                        )\n                        result_session = cluster.connect()\n                    except NoHostAvailable:\n                        # this is how a mismatched explicitly-set protocol version\n                        # manifests itself. If the V4 guess fails, retry w/out version\n                        cluster = Cluster(\n                            cloud={\n                                \"secure_connect_bundle\": chosen_bundle,\n                                **(cloud_kwargs if cloud_kwargs is not None else {}),\n                            },\n                            auth_provider=PlainTextAuthProvider(\n                                ASTRA_CLOUD_AUTH_USERNAME,\n                                chosen_token,\n                            ),\n                            **(cluster_kwargs if cluster_kwargs is not None else {}),\n                        )\n                        result_session = cluster.connect()\n                else:\n                    raise ValueError(\"No secure-connect-bundle was available.\")\n            else:\n                raise ValueError(\"Insufficient parameters to connect\")\n        # keyspace to be resolved in any case\n        chosen_keyspace = _first_valid(\n            keyspace_from_arg, keyspace_from_is, keyspace_from_bundle\n        )\n        return result_session, chosen_keyspace\n    finally:\n        if temp_dir_created and temp_dir is not None:\n            shutil.rmtree(temp_dir)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "tempfile.gettempdir",
+        "tempfile.mkdtemp",
+        "shutil.rmtree"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "os.environ.get(\"CASSANDRA_USERNAME\")",
+        "os.environ.get(\"CASSANDRA_PASSWORD\")",
+        "os.environ.get(\"CASSANDRA_KEYSPACE\")",
+        "os.environ.get(\"ASTRA_DB_APPLICATION_TOKEN\")",
+        "os.environ.get(\"ASTRA_DB_INIT_STRING\")",
+        "os.environ.get(\"ASTRA_DB_SECURE_BUNDLE_PATH\")",
+        "os.environ.get(\"ASTRA_DB_KEYSPACE\")",
+        "os.environ.get(\"ASTRA_DB_ID\", os.environ.get(\"ASTRA_DB_DATABASE_ID\"))",
+        "tempfile.gettempdir()",
+        "tempfile.mkdtemp(dir=base_dir)",
+        "shutil.rmtree(temp_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "tempfile.gettempdir",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "tempfile.mkdtemp",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        }
+      ],
+      "contextual_code": "if auto:\n    if any(\n        v is not None\n        for v in (\n            session,\n            secure_connect_bundle,\n            init_string,\n            token,\n            database_id,\n            keyspace,\n            contact_points,\n            username,\n            password,\n            bundle_url_template,\n            cloud_kwargs,\n        )\n    ):\n        raise ValueError(\n            \"When auto=True, no arguments can be passed other than \"\n            \"tempfile_basedir and cluster_kwargs.\"\n        )\n    # setting some arguments from environment variables\n    if \"CASSANDRA_CONTACT_POINTS\" in os.environ:\n        contact_points = os.environ[\"CASSANDRA_CONTACT_POINTS\"]\n        username = os.environ.get(\"CASSANDRA_USERNAME\")\n        password = os.environ.get(\"CASSANDRA_PASSWORD\")\n        keyspace = os.environ.get(\"CASSANDRA_KEYSPACE\")\n    elif any(\n        avar in os.environ\n        for avar in [\n            \"ASTRA_DB_APPLICATION_TOKEN\",\n            \"ASTRA_DB_INIT_STRING\",\n        ]\n    ):\n        token = os.environ.get(\"ASTRA_DB_APPLICATION_TOKEN\")\n        init_string = os.environ.get(\"ASTRA_DB_INIT_STRING\")\n        secure_connect_bundle = os.environ.get(\"ASTRA_DB_SECURE_BUNDLE_PATH\")\n        keyspace = os.environ.get(\"ASTRA_DB_KEYSPACE\")\n        database_id = os.environ.get(\n            \"ASTRA_DB_ID\", os.environ.get(\"ASTRA_DB_DATABASE_ID\")\n        )\n#\ntry:\n    base_dir = tempfile_basedir if tempfile_basedir else tempfile.gettempdir()\n    if init_string:\n        temp_dir = tempfile.mkdtemp(dir=base_dir)\n        temp_dir_created = True\n        bundle_from_is, options_from_is = init_string_to_bundle_path_and_options(\n            init_string,\n            target_dir=temp_dir,\n        )\n        keyspace_from_is = options_from_is.get(\"keyspace\")\n        token_from_is = options_from_is.get(\"token\")\n    ...\nfinally:\n    if temp_dir_created and temp_dir is not None:\n        shutil.rmtree(temp_dir)"
+    }
+  }
+]

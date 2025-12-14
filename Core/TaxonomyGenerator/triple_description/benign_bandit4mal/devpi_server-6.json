@@ -1,0 +1,216 @@
+{
+  "metadata": {
+    "package_name": "devpi_server-6",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/devpi_server-6.14.0-py3-none-any.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "fileutil.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/devpi_server-6.14.0-py3-none-any/devpi_server/fileutil.py",
+      "line_number": "87",
+      "type_description": "B814:read",
+      "context_snippet": "def load(fp, _from_bytes=int.from_bytes, _unpack=unpack):\n    read = fp.read\n    stack = []\n    stack_append = stack.append\n    stack_pop = stack.pop\n\n    def _load_collection(type_):\n        length = _from_bytes(read(4), byteorder=\"big\", signed=True)\n        if length:\n            res = type_(stack[-length:])\n            del stack[-length:]\n            stack_append(res)\n        else:\n            stack_append(type_())\n\n    stopped = False\n    while True:\n        opcode = read(1)\n        if not opcode:\n            raise EOFError\n        if opcode == b'@':  # tuple\n            _load_collection(tuple)\n        elif opcode == b'A':  # bytes\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode == b'B':  # Channel\n            raise NotImplementedError(\"opcode B for Channel\")\n        elif opcode == b'C':  # False\n            stack_append(False)  # noqa: FBT003\n        elif opcode == b'D':  # float\n            stack_append(_unpack(\"!d\", read(8))[0])\n        elif opcode == b'E':  # frozenset\n            _load_collection(frozenset)\n        elif opcode in (b'F', b'G'):  # int, long\n            stack_append(_from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode in (b'H', b'I'):  # longint, longlong\n            stack_append(int(read(_from_bytes(read(4), byteorder=\"big\", signed=True))))\n        elif opcode == b'J':  # dict\n            stack_append({})\n        elif opcode == b'K':  # list\n            stack_append([None] * _from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode == b'L':  # None\n            stack_append(None)\n        elif opcode == b'M':  # Python 2 string\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n        elif opcode == b'O':  # set\n            _load_collection(set)\n        elif opcode == b'P':  # setitem\n            try:\n                value = stack_pop()\n                key = stack_pop()\n            except IndexError:\n                raise LoadError(\"not enough items for setitem\")\n            stack[-1][key] = value\n        elif opcode == b'Q':  # stop\n            stopped = True\n            break\n        elif opcode == b'R':  # True\n            stack_append(True)  # noqa: FBT003\n        elif opcode == b'T':  # complex\n            stack_append(complex(_unpack(\"!d\", read(8))[0], _unpack(\"!d\", read(8))[0]))\n        else:\n            raise LoadError(\n                \"unknown opcode %r - wire protocol corruption?\" % opcode)\n    if not stopped:\n        raise LoadError(\"didn't get STOP\")\n    if len(stack) != 1:\n        raise LoadError(\"internal unserialization error\")\n    return stack_pop(0)",
+      "hash_value": "1fc432b1b2bae904649a002de60a9cc9",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def load(fp, _from_bytes=int.from_bytes, _unpack=unpack):\n    read = fp.read\n    stack = []\n    stack_append = stack.append\n    stack_pop = stack.pop\n\n    def _load_collection(type_):\n        length = _from_bytes(read(4), byteorder=\"big\", signed=True)\n        if length:\n            res = type_(stack[-length:])\n            del stack[-length:]\n            stack_append(res)\n        else:\n            stack_append(type_())\n\n    stopped = False\n    while True:\n        opcode = read(1)\n        if not opcode:\n            raise EOFError\n        if opcode == b'@':  # tuple\n            _load_collection(tuple)\n        elif opcode == b'A':  # bytes\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode == b'B':  # Channel\n            raise NotImplementedError(\"opcode B for Channel\")\n        elif opcode == b'C':  # False\n            stack_append(False)  # noqa: FBT003\n        elif opcode == b'D':  # float\n            stack_append(_unpack(\"!d\", read(8))[0])\n        elif opcode == b'E':  # frozenset\n            _load_collection(frozenset)\n        elif opcode in (b'F', b'G'):  # int, long\n            stack_append(_from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode in (b'H', b'I'):  # longint, longlong\n            stack_append(int(read(_from_bytes(read(4), byteorder=\"big\", signed=True))))\n        elif opcode == b'J':  # dict\n            stack_append({})\n        elif opcode == b'K':  # list\n            stack_append([None] * _from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode == b'L':  # None\n            stack_append(None)\n        elif opcode == b'M':  # Python 2 string\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n        elif opcode == b'O':  # set\n            _load_collection(set)\n        elif opcode == b'P':  # setitem\n            try:\n                value = stack_pop()\n                key = stack_pop()\n            except IndexError:\n                raise LoadError(\"not enough items for setitem\")\n            stack[-1][key] = value\n        elif opcode == b'Q':  # stop\n            stopped = True\n            break\n        elif opcode == b'R':  # True\n            stack_append(True)  # noqa: FBT003\n        elif opcode == b'T':  # complex\n            stack_append(complex(_unpack(\"!d\", read(8))[0], _unpack(\"!d\", read(8))[0]))\n        else:\n            raise LoadError(\n                \"unknown opcode %r - wire protocol corruption?\" % opcode)\n    if not stopped:\n        raise LoadError(\"didn't get STOP\")\n    if len(stack) != 1:\n        raise LoadError(\"internal unserialization error\")\n    return stack_pop(0)",
+          "triple_sequences": [
+            {
+              "action_api": "fp.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "fp",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "int.from_bytes()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "read(4), byteorder=\"big\", signed=True",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Convert string to integer",
+              "intention_id": "convert_string_to_integer"
+            },
+            {
+              "action_api": "unpack()",
+              "action_description": "Packs values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "\"!d\", read(8)",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "type_(stack[-length:])",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "type_()",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "read(_from_bytes(read(4), byteorder=\"big\", signed=True))",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "False",
+              "object_description": "Boolean value",
+              "object_id": "",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "_unpack(\"!d\", read(8))[0]",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "type_(stack[-length:])",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "_from_bytes(read(4), byteorder=\"big\", signed=True)",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "int(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "{}",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "[None] * _from_bytes(read(4), byteorder=\"big\", signed=True)",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "None",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "read(_from_bytes(read(4), byteorder=\"big\", signed=True))",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8')",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "type_(stack[-length:])",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "True",
+              "object_description": "Boolean value",
+              "object_id": "",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "stack.append()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "complex(_unpack(\"!d\", read(8))[0], _unpack(\"!d\", read(8))[0])",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

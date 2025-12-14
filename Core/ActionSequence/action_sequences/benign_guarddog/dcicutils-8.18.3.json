@@ -1,0 +1,515 @@
+[
+  {
+    "pyfile": "view_portal_object.py",
+    "code_snippet": "import argparse\nfrom functools import lru_cache\nimport io\nimport json\nimport pyperclip\nimport os\nimport sys\nfrom typing import Callable, List, Optional, TextIO, Tuple, Union\nimport yaml\nfrom dcicutils.captured_output import captured_output, uncaptured_output\nfrom dcicutils.command_utils import yes_or_no\nfrom dcicutils.misc_utils import get_error_message, is_uuid, PRINT, to_snake_case\nfrom dcicutils.portal_utils import Portal\n\n\ndef main():\n\n    global _output_file\n\n    parser = argparse.ArgumentParser(description=\"View Portal object.\")\n    parser.add_argument(\"uuid\", nargs=\"?\", type=str,\n                        help=f\"The uuid (or path) of the object to fetch and view. \")\n    parser.add_argument(\"--ini\", type=str, required=False, default=None,\n                        help=f\"Name of the application .ini file.\")\n    parser.add_argument(\"--env\", \"-e\", type=str, required=False, default=None,\n                        help=f\"Environment name (key from ~/.smaht-keys.json).\")\n    parser.add_argument(\"--server\", \"-s\", type=str, required=False, default=None,\n                        help=f\"Environment server name (server from key in ~/.smaht-keys.json).\")\n    parser.add_argument(\"--app\", type=str, required=False, default=None,\n                        help=f\"Application name (one of: smaht, cgap, fourfront).\")\n    parser.add_argument(\"--schema\", action=\"store_true\", required=False, default=False,\n                        help=\"View named schema rather than object.\")\n    parser.add_argument(\"--all\", action=\"store_true\", required=False, default=False,\n                        help=\"Include all properties for schema usage.\")\n    parser.add_argument(\"--raw\", action=\"store_true\", required=False, default=False, help=\"Raw output.\")\n    parser.add_argument(\"--inserts\", action=\"store_true\", required=False, default=False,\n                        help=\"Format output for subsequent inserts.\")\n    parser.add_argument(\"--insert-files\", action=\"store_true\", required=False, default=False,\n                        help=\"Output for to insert files.\")\n    parser.add_argument(\"--ignore\", nargs=\"+\", help=\"Ignore these fields for --inserts.\")\n    parser.add_argument(\"--tree\", action=\"store_true\", required=False, default=False, help=\"Tree output for schemas.\")\n    parser.add_argument(\"--database\", action=\"store_true\", required=False, default=False,\n                        help=\"Read from database output.\")\n    parser.add_argument(\"--bool\", action=\"store_true\", required=False,\n                        default=False, help=\"Only return whether found or not.\")\n    parser.add_argument(\"--yaml\", action=\"store_true\", required=False, default=False, help=\"YAML output.\")\n    parser.add_argument(\"--copy\", \"-c\", action=\"store_true\", required=False, default=False,\n                        help=\"Copy object data to clipboard.\")\n    parser.add_argument(\"--output\", required=False, help=\"Output file.\", type=str)\n    parser.add_argument(\"--indent\", required=False, default=False, help=\"Indent output.\", type=int)\n    parser.add_argument(\"--summary\", action=\"store_true\", required=False, default=False,\n                        help=\"Summary output (for schema only).\")\n    parser.add_argument(\"--force\", action=\"store_true\", required=False, default=False, help=\"Debugging output.\")\n    parser.add_argument(\"--terse\", action=\"store_true\", required=False, default=False, help=\"Terse output.\")\n    parser.add_argument(\"--verbose\", action=\"store_true\", required=False, default=False, help=\"Verbose output.\")\n    parser.add_argument(\"--noheader\", action=\"store_true\", required=False, default=False, help=\"Supress header output.\")\n    parser.add_argument(\"--debug\", action=\"store_true\", required=False, default=False, help=\"Debugging output.\")\n    args = parser.parse_args()\n\n    portal = _create_portal(ini=args.ini, env=args.env or os.environ.get(\"SMAHT_ENV\"),\n                            server=args.server, app=args.app,\n                            verbose=args.verbose and not args.noheader, debug=args.debug)\n\n    if not args.uuid:\n        _print(\"UUID or schema or path required.\")\n        _exit(1)\n\n    if args.insert_files:\n        args.inserts = True\n        if args.output:\n            if not os.path.isdir(args.output):\n                _print(f\"Specified output directory for insert files does not exist: {args.output}\")\n                exit(1)\n            args.insert_files = args.output\n            args.output = None\n\n    if args.output:\n        if os.path.exists(args.output):\n            if os.path.isdir(args.output):\n                _print(f\"Specified output file already exists as a directory: {args.output}\")\n                _exit(1)\n            elif os.path.isfile(args.output):\n                _print(f\"Specified output file already exists: {args.output}\")\n                if (not args.force) and not yes_or_no(f\"Do you want to overwrite this file?\"):\n                    _exit(0)\n        _output_file = io.open(args.output, \"w\")\n\n    if args.uuid and ((args.uuid.lower() == \"schemas\") or (args.uuid.lower() == \"schema\")):\n        _print_all_schema_names(portal=portal, terse=args.terse, all=args.all,\n                                tree=args.tree, summary=args.summary, yaml=args.yaml)\n        return\n    elif args.uuid and (args.uuid.lower() == \"info\"):\n        if consortia := portal.get_metadata(\"/consortia?limit=1000\"):\n            _print_output(\"Known Consortia:\")\n            consortia = sorted(consortia.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n            for consortium in consortia:\n                if ((consortium_name := consortium.get(\"identifier\")) and\n                    (consortium_uuid := consortium.get(\"uuid\"))):  # noqa\n                    _print_output(f\"- {consortium_name}: {consortium_uuid}\")\n        if submission_centers := portal.get_metadata(\"/submission-centers?limit=1000\"):\n            _print_output(\"Known Submission Centers:\")\n            submission_centers = sorted(submission_centers.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n            for submission_center in submission_centers:\n                if ((submission_center_name := submission_center.get(\"identifier\")) and\n                    (submission_center_uuid := submission_center.get(\"uuid\"))):  # noqa\n                    _print_output(f\"- {submission_center_name}: {submission_center_uuid}\")\n        try:\n            if file_formats := portal.get_metadata(\"/file-formats?limit=1000\"):\n                _print_output(\"Known File Formats:\")\n                file_formats = sorted(file_formats.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n                for file_format in file_formats:\n                    if ((file_format_name := file_format.get(\"identifier\")) and\n                        (file_format_uuid := file_format.get(\"uuid\"))):  # noqa\n                        _print_output(f\"- {file_format_name}: {file_format_uuid}\")\n        except Exception:\n            _print_output(\"Known File Formats: None\")\n        return\n\n    if _is_maybe_schema_name(args.uuid):\n        args.schema = True\n\n    if args.schema:\n        schema, schema_name = _get_schema(portal, args.uuid)\n        if schema:\n            if args.copy:\n                pyperclip.copy(json.dumps(schema, indent=4))\n            if args.summary:\n                if parent_schema_name := _get_parent_schema_name(schema):\n                    if schema.get(\"isAbstract\") is True:\n                        _print_output(f\"{schema_name} | parent: {parent_schema_name} | abstract\")\n                    else:\n                        _print_output(f\"{schema_name} | parent: {parent_schema_name}\")\n                else:\n                    _print_output(schema_name)\n            _print_schema(schema, terse=args.terse,\n                          all=args.all, summary=args.summary, yaml=args.yaml)\n            return\n\n    data = _get_portal_object(portal=portal, uuid=args.uuid, raw=args.raw, database=args.database,\n                              inserts=args.inserts, insert_files=args.insert_files,\n                              ignore=args.ignore, check=args.bool,\n                              force=args.force, verbose=args.verbose, debug=args.debug)\n    if args.insert_files:\n        return\n\n    if args.bool:\n        if data:\n            _print(f\"{args.uuid}: found\")\n            _exit(0)\n        else:\n            _print(f\"{args.uuid}: not found\")\n            _exit(1)\n    if args.copy:\n        pyperclip.copy(json.dumps(data, indent=4))\n    if args.yaml:\n        _print_output(yaml.dump(data))\n    else:\n        if args.indent > 0:\n            _print_output(_format_json_with_indent(data, indent=args.indent))\n        else:\n            _print_output(json.dumps(data, default=str, indent=4))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "os.path.isdir",
+        "os.path.exists",
+        "os.path.isdir",
+        "os.path.isfile",
+        "io.open",
+        "pyperclip.copy",
+        "json.dumps",
+        "pyperclip.copy",
+        "json.dumps",
+        "yaml.dump"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"SMAHT_ENV\")",
+        "os.path.isdir(args.output)",
+        "os.path.exists(args.output)",
+        "os.path.isdir(args.output)",
+        "os.path.isfile(args.output)",
+        "io.open(args.output, \"w\")",
+        "pyperclip.copy(json.dumps(schema, indent=4))",
+        "json.dumps(schema, indent=4)",
+        "pyperclip.copy(json.dumps(data, indent=4))",
+        "json.dumps(data, indent=4)",
+        "yaml.dump(data)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "io.open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "yaml.dump",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "if args.insert_files:\n    if args.output:\n        if not os.path.isdir(args.output):\n            _print(f\"Specified output directory for insert files does not exist: {args.output}\")\n            exit(1)\n        args.insert_files = args.output\n        args.output = None\n\nif args.output:\n    if os.path.exists(args.output):\n        if os.path.isdir(args.output):\n            _print(f\"Specified output file already exists as a directory: {args.output}\")\n            _exit(1)\n        elif os.path.isfile(args.output):\n            _print(f\"Specified output file already exists: {args.output}\")\n            if (not args.force) and not yes_or_no(f\"Do you want to overwrite this file?\"):\n                _exit(0)\n    _output_file = io.open(args.output, \"w\")\n\nportal = _create_portal(ini=args.ini, env=args.env or os.environ.get(\"SMAHT_ENV\"),\n                        server=args.server, app=args.app,\n                        verbose=args.verbose and not args.noheader, debug=args.debug)\n\nif args.schema:\n    schema, schema_name = _get_schema(portal, args.uuid)\n    if schema:\n        if args.copy:\n            pyperclip.copy(json.dumps(schema, indent=4))\n        ...\n\ndata = _get_portal_object(portal=portal, uuid=args.uuid, raw=args.raw, database=args.database,\n                          inserts=args.inserts, insert_files=args.insert_files,\n                          ignore=args.ignore, check=args.bool,\n                          force=args.force, verbose=args.verbose, debug=args.debug)\nif args.copy:\n    pyperclip.copy(json.dumps(data, indent=4))\nif args.yaml:\n    _print_output(yaml.dump(data))"
+    }
+  },
+  {
+    "pyfile": "beanstalk_utils.py",
+    "code_snippet": "import os\nimport json\nimport requests\nimport time\nimport boto3\nfrom botocore.exceptions import ClientError\n\n# ... (other imports and code omitted for brevity)\n\n@obsolete\ndef is_travis_started(request_url):\n    \"\"\"\n    Checker function used with torb waitfor lambda; output must be standarized.\n    Check the requests url to see if a given build has stared and been issued\n    a build id, which can in turn be used for is_travis_finished\n\n    Args:\n        request_url (str): Travis request url\n\n    Returns:\n        bool, dict: True if started, Travis response JSON\n\n    Raises:\n        Exception: if Travis key not in environ\n    \"\"\"\n    if 'travis_key' not in os.environ:\n        raise Exception('Must have travis_key environment variable defined')\n    is_ready = False\n    details = 'requested build has not started'\n    headers = {'Content-Type': 'application/json',\n               'Accept': 'application/json',\n               'Travis-API-Version': '3',\n               'User-Agent': 'tibanna/0.1.0',\n               'Authorization': 'token %s' % os.environ['travis_key']}\n    resp = requests.get(request_url, headers=headers)\n    if resp.ok:\n        logger.info(\"Travis request response (okay): %s\" % resp.json())\n        details = resp.json()\n        if len(resp.json().get('builds', [])) == 1:\n            is_ready = True\n    return is_ready, details\n\n@obsolete\ndef is_travis_finished(build_id):\n    \"\"\"\n    Checker function used with torb waitfor lambda; output must be standarized.\n    Check to see if a given travis build has passed\n\n    Args:\n        build_id (int or str): Travis build identifier\n\n    Returns:\n        bool, dict: True if done, Travis response JSON\n\n    Raises:\n        Exception: if the Travis build failed or Travis key not in environ\n    \"\"\"\n    if 'travis_key' not in os.environ:\n        raise Exception('Must have travis_key environment variable defined')\n    is_ready = False\n    details = 'build not done or not found'\n    headers = {'Content-Type': 'application/json',\n               'Accept': 'application/json',\n               'Travis-API-Version': '3',\n               'User-Agent': 'tibanna/0.1.0',\n               'Authorization': 'token %s' % os.environ['travis_key']}\n\n    url = 'https://api.travis-ci.org/build/%s' % build_id\n\n    logger.info(\"Travis build url: %s\" % url)\n    resp = requests.get(url, headers=headers)\n    logger.info(\"Travis build response: %s\" % resp.text)\n    state = resp.json()['state']\n    if resp.ok and state in ['failed', 'errored']:\n        raise Exception('Build Failed')\n    elif resp.ok and state == 'passed':\n        is_ready = True\n        details = resp.json()\n    return is_ready, details\n\ndef create_foursight(dest_env, bs_url, es_url, fs_url=None):\n    \"\"\"\n    Creates a new Foursight environment based off of dest_env. Since Foursight\n    environments don't include \"fourfront-\" by convention, remove this if part\n    of the env. Take some other options for settings on the env\n\n    Note: this will cause all checks in all schedules to be run, to initialize\n          environment.\n\n    Args:\n        dest_env (str): ElasticBeanstalk environment name\n        bs_url (str): url of the ElasticBeanstalk for FS env\n        es_url (str): url of the ElasticSearch for FS env\n        fs_url (str): If provided, use to override dest-env based FS url\n\n    Returns:\n        dict: response from Foursight PUT to /api/environments\n\n    Raises:\n        Exception: if cannot get body from Foursight response\n    \"\"\"\n    # we want some url like thing\n    if not bs_url.startswith('http'):\n        bs_url = 'http://' + bs_url\n    if not bs_url.endswith('/'):\n        bs_url += '/'\n\n    if ':80' in es_url:\n        es_url = remove_suffix(':80', es_url)\n    elif ':443' in es_url:\n        es_url = remove_suffix(':443', es_url)\n\n    if not es_url.startswith('http'):\n        es_url = 'https://' + es_url\n    if not es_url.endswith('/'):\n        es_url += '/'\n\n    # environments on foursight don't include fourfront\n    if not fs_url:\n        fs_url = dest_env\n    if fs_url.startswith('fourfront-'):\n        fs_url = fs_url[len('fourfront-'):]\n\n    foursight_url = FOURSIGHT_URL + 'environments/' + fs_url\n    payload = {'fourfront': bs_url, 'es': es_url, 'ff_env': dest_env}\n\n    ff_auth = os.environ.get('FS_AUTH')\n    headers = {'content-type': 'application/json', 'Authorization': ff_auth}\n    res = requests.put(foursight_url, data=json.dumps(payload), headers=headers)\n    try:\n        return res.json()\n    except Exception as exc:\n        raise Exception('Error creating FS environ to %s with body %s. '\n                        'Exception: %s. Response text: %s'\n                        % (foursight_url, payload, exc, res.text))\n\ndef log_to_foursight(event, lambda_name='', overrides=None):\n    \"\"\"\n    Use Foursight as a logging tool within in a lambda function by doing a PUT\n    to /api/checks. Requires that the event has \"_foursight\" key, which is a\n    subobject with the following:\n    fields:\n        \"check\": required, in form \"<fs environment>/<check name>\"\n        \"log_desc\": will set \"summary\" and \"description\" if those are missing\n        \"full_output\": optional. If not provided, use to provide info on lambda\n        \"brief_output\": optional\n        \"summary\": optional. If not provided, use \"log_desc\" value\n        \"description\": optional. If not provided, use \"log_desc\" value\n        \"status\": optional. If not provided, use \"WARN\"\n    Can also optionally provide an dictionary to overrides param, which will\n    update the event[\"_foursight\"]\n\n    Args:\n        event (dict): Event input, most likely from a lambda with a workflow\n        lambda_name (str): Name of the lambda that is calling this\n        overrides (dict): Optionally override event['_foursight'] with this\n\n    Returns:\n        Response object from foursight\n\n    Raises:\n        Exception: if cannot get body from Foursight response\n    \"\"\"\n    fs = event.get('_foursight')\n    if fs and fs.get('check'):\n        if overrides is not None and isinstance(overrides, dict):\n            fs.update(overrides)\n        # handles these fields. set full_output as a special case\n        full_output = fs.get('full_output', '%s started to run' % lambda_name)\n        brief_output = fs.get('brief_output')\n        summary = fs.get('summary', fs.get('log_desc'))\n        description = fs.get('description', fs.get('log_desc'))\n        status = fs.get('status', 'WARN')\n\n        data = {'status': status, 'summary': summary, 'description': description,\n                'full_output': full_output, 'brief_output': brief_output}\n        fs_auth = os.environ.get('FS_AUTH')\n        headers = {'content-type': \"application/json\", 'Authorization': fs_auth}\n        # fs['check'] should be in form: \"<fs environment>/<check name>\"\n        url = FOURSIGHT_URL + 'checks/' + fs['check']\n        res = requests.put(url, data=json.dumps(data), headers=headers)\n        PRINT('Foursight response from %s: %s' % (url, res.text))\n        try:\n            return res.json()\n        except Exception as exc:\n            raise Exception('Error putting FS check to %s with body %s. '\n                            'Exception: %s. Response text: %s'\n                            % (url, data, exc, res.text))\n\ndef auth0_client_update(url):\n    \"\"\"\n    Get a JWT for programmatic access to Auth0 using Client/Secret env vars.\n    Then add the given `url` to the Auth0 callbacks list.\n\n    Args:\n        url (str): url to add to callbacks\n\n    Returns:\n        None\n    \"\"\"\n    # generate a jwt to validate future requests\n    client = os.environ['Auth0Client']\n    secret = os.environ['Auth0Secret']\n    payload = {'grant_type': 'client_credentials',\n               'client_id': client,\n               'client_secret': secret,\n               'audience': 'https://hms-dbmi.auth0.com/api/v2/'}\n    headers = {'content-type': 'application/json'}\n    res = requests.post('https://hms-dbmi.auth0.com/oauth/token',\n                        data=json.dumps(payload),\n                        headers=headers)\n    jwt = res.json()['access_token']\n\n    client_url = 'https://hms-dbmi.auth0.com/api/v2/clients/%s' % client\n    headers['authorization'] = 'Bearer %s' % jwt\n\n    get_res = requests.get(client_url + '?fields=callbacks', headers=headers)\n    callbacks = get_res.json()['callbacks']\n    callbacks.append('http://' + url)\n    client_data = {'callbacks': callbacks}\n\n    update_res = requests.patch(client_url, data=json.dumps(client_data), headers=headers)\n    PRINT('auth0 callback urls are: %s' % update_res.json().get('callbacks'))\n\ndef auth0_client_remove(url):\n    \"\"\"\n    Get a JWT for programmatic access to Auth0 using Client/Secret env vars.\n    Then use that to remove the given `url` from the Auth0 callbacks list.\n\n    Args:\n        url (str): url to remove from callbacks\n\n    Returns:\n        None\n    \"\"\"\n    # generate a jwt to validate future requests\n    client = os.environ['Auth0Client']\n    secret = os.environ['Auth0Secret']\n    payload = {'grant_type': 'client_credentials',\n               'client_id': client,\n               'client_secret': secret,\n               'audience': 'https://hms-dbmi.auth0.com/api/v2/'}\n    headers = {'content-type': 'application/json'}\n    res = requests.post('https://hms-dbmi.auth0.com/oauth/token',\n                        data=json.dumps(payload),\n                        headers=headers)\n    jwt = res.json()['access_token']\n    client_url = 'https://hms-dbmi.auth0.com/api/v2/clients/%s' % client\n    headers['authorization'] = 'Bearer %s' % jwt\n\n    get_res = requests.get(client_url + '?fields=callbacks', headers=headers)\n    callbacks = get_res.json()['callbacks']\n    full_url = 'http://' + url\n    try:\n        idx = callbacks.index(full_url)\n    except ValueError:\n        PRINT(full_url + ' Not in auth0 auth, doesn\\'t need to be removed')\n        return\n    if idx:\n        callbacks.pop(idx)\n    client_data = {'callbacks': callbacks}\n\n    update_res = requests.patch(client_url, data=json.dumps(client_data), headers=headers)\n    PRINT('auth0 callback urls are: %s' % update_res.json().get('callbacks'))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.environ",
+        "requests.get",
+        "resp.ok",
+        "resp.json",
+        "resp.json",
+        "resp.json",
+        "os.environ",
+        "os.environ",
+        "requests.get",
+        "resp.ok",
+        "resp.json",
+        "resp.json",
+        "resp.json",
+        "os.environ.get",
+        "requests.put",
+        "json.dumps",
+        "res.json",
+        "os.environ.get",
+        "requests.put",
+        "json.dumps",
+        "res.json",
+        "os.environ",
+        "os.environ",
+        "requests.post",
+        "json.dumps",
+        "res.json",
+        "requests.get",
+        "get_res.json",
+        "update_res.json",
+        "os.environ",
+        "os.environ",
+        "requests.post",
+        "json.dumps",
+        "res.json",
+        "requests.get",
+        "get_res.json",
+        "update_res.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "os.environ",
+        "requests.get(request_url, headers=headers)",
+        "resp.ok",
+        "resp.json()",
+        "resp.json()",
+        "resp.json().get('builds', [])",
+        "os.environ",
+        "os.environ",
+        "requests.get(url, headers=headers)",
+        "resp.ok",
+        "resp.json()",
+        "resp.json()['state']",
+        "os.environ.get('FS_AUTH')",
+        "requests.put(foursight_url, data=json.dumps(payload), headers=headers)",
+        "json.dumps(payload)",
+        "res.json()",
+        "os.environ.get('FS_AUTH')",
+        "requests.put(url, data=json.dumps(data), headers=headers)",
+        "json.dumps(data)",
+        "res.json()",
+        "os.environ['Auth0Client']",
+        "os.environ['Auth0Secret']",
+        "requests.post('https://hms-dbmi.auth0.com/oauth/token', data=json.dumps(payload), headers=headers)",
+        "json.dumps(payload)",
+        "res.json()['access_token']",
+        "requests.get(client_url + '?fields=callbacks', headers=headers)",
+        "get_res.json()['callbacks']",
+        "update_res.json().get('callbacks')",
+        "os.environ['Auth0Client']",
+        "os.environ['Auth0Secret']",
+        "requests.post('https://hms-dbmi.auth0.com/oauth/token', data=json.dumps(payload), headers=headers)",
+        "json.dumps(payload)",
+        "res.json()['access_token']",
+        "requests.get(client_url + '?fields=callbacks', headers=headers)",
+        "get_res.json()['callbacks']",
+        "update_res.json().get('callbacks')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "resp.ok",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "resp.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "resp.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "resp.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "resp.ok",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "resp.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "resp.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.put",
+          "id": "send_http_put",
+          "description": "Sends HTTP PUT request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.put",
+          "id": "send_http_put",
+          "description": "Sends HTTP PUT request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "update_res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "update_res.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport json\nimport requests\n\n@obsolete\ndef is_travis_started(request_url):\n    if 'travis_key' not in os.environ:\n        raise Exception('Must have travis_key environment variable defined')\n    headers = {'Content-Type': 'application/json',\n               'Accept': 'application/json',\n               'Travis-API-Version': '3',\n               'User-Agent': 'tibanna/0.1.0',\n               'Authorization': 'token %s' % os.environ['travis_key']}\n    resp = requests.get(request_url, headers=headers)\n    if resp.ok:\n        logger.info(\"Travis request response (okay): %s\" % resp.json())\n        details = resp.json()\n        if len(resp.json().get('builds', [])) == 1:\n            is_ready = True\n    return is_ready, details\n\n@obsolete\ndef is_travis_finished(build_id):\n    if 'travis_key' not in os.environ:\n        raise Exception('Must have travis_key environment variable defined')\n    headers = {'Content-Type': 'application/json',\n               'Accept': 'application/json',\n               'Travis-API-Version': '3',\n               'User-Agent': 'tibanna/0.1.0',\n               'Authorization': 'token %s' % os.environ['travis_key']}\n    url = 'https://api.travis-ci.org/build/%s' % build_id\n    logger.info(\"Travis build url: %s\" % url)\n    resp = requests.get(url, headers=headers)\n    logger.info(\"Travis build response: %s\" % resp.text)\n    state = resp.json()['state']\n    if resp.ok and state in ['failed', 'errored']:\n        raise Exception('Build Failed')\n    elif resp.ok and state == 'passed':\n        is_ready = True\n        details = resp.json()\n    return is_ready, details\n\ndef create_foursight(dest_env, bs_url, es_url, fs_url=None):\n    if not bs_url.startswith('http'):\n        bs_url = 'http://' + bs_url\n    if not bs_url.endswith('/'):\n        bs_url += '/'\n    if ':80' in es_url:\n        es_url = remove_suffix(':80', es_url)\n    elif ':443' in es_url:\n        es_url = remove_suffix(':443', es_url)\n    if not es_url.startswith('http'):\n        es_url = 'https://' + es_url\n    if not es_url.endswith('/'):\n        es_url += '/'\n    if not fs_url:\n        fs_url = dest_env\n    if fs_url.startswith('fourfront-'):\n        fs_url = fs_url[len('fourfront-'):]\n    foursight_url = FOURSIGHT_URL + 'environments/' + fs_url\n    payload = {'fourfront': bs_url, 'es': es_url, 'ff_env': dest_env}\n    ff_auth = os.environ.get('FS_AUTH')\n    headers = {'content-type': 'application/json', 'Authorization': ff_auth}\n    res = requests.put(foursight_url, data=json.dumps(payload), headers=headers)\n    try:\n        return res.json()\n    except Exception as exc:\n        raise Exception('Error creating FS environ to %s with body %s. '\n                        'Exception: %s. Response text: %s'\n                        % (foursight_url, payload, exc, res.text))\n\ndef log_to_foursight(event, lambda_name='', overrides=None):\n    fs = event.get('_foursight')\n    if fs and fs.get('check'):\n        if overrides is not None and isinstance(overrides, dict):\n            fs.update(overrides)\n        full_output = fs.get('full_output', '%s started to run' % lambda_name)\n        brief_output = fs.get('brief_output')\n        summary = fs.get('summary', fs.get('log_desc'))\n        description = fs.get('description', fs.get('log_desc'))\n        status = fs.get('status', 'WARN')\n        data = {'status': status, 'summary': summary, 'description': description,\n                'full_output': full_output, 'brief_output': brief_output}\n        fs_auth = os.environ.get('FS_AUTH')\n        headers = {'content-type': \"application/json\", 'Authorization': fs_auth}\n        url = FOURSIGHT_URL + 'checks/' + fs['check']\n        res = requests.put(url, data=json.dumps(data), headers=headers)\n        PRINT('Foursight response from %s: %s' % (url, res.text))\n        try:\n            return res.json()\n        except Exception as exc:\n            raise Exception('Error putting FS check to %s with body %s. '\n                            'Exception: %s. Response text: %s'\n                            % (url, data, exc, res.text))\n\ndef auth0_client_update(url):\n    client = os.environ['Auth0Client']\n    secret = os.environ['Auth0Secret']\n    payload = {'grant_type': 'client_credentials',\n               'client_id': client,\n               'client_secret': secret,\n               'audience': 'https://hms-dbmi.auth0.com/api/v2/'}\n    headers = {'content-type': 'application/json'}\n    res = requests.post('https://hms-dbmi.auth0.com/oauth/token',\n                        data=json.dumps(payload),\n                        headers=headers)\n    jwt = res.json()['access_token']\n    client_url = 'https://hms-dbmi.auth0.com/api/v2/clients/%s' % client\n    headers['authorization'] = 'Bearer %s' % jwt\n    get_res = requests.get(client_url + '?fields=callbacks', headers=headers)\n    callbacks = get_res.json()['callbacks']\n    callbacks.append('http://' + url)\n    client_data = {'callbacks': callbacks}\n    update_res = requests.patch(client_url, data=json.dumps(client_data), headers=headers)\n    PRINT('auth0 callback urls are: %s' % update_res.json().get('callbacks'))\n\ndef auth0_client_remove(url):\n    client = os.environ['Auth0Client']\n    secret = os.environ['Auth0Secret']\n    payload = {'grant_type': 'client_credentials',\n               'client_id': client,\n               'client_secret': secret,\n               'audience': 'https://hms-dbmi.auth0.com/api/v2/'}\n    headers = {'content-type': 'application/json'}\n    res = requests.post('https://hms-dbmi.auth0.com/oauth/token',\n                        data=json.dumps(payload),\n                        headers=headers)\n    jwt = res.json()['access_token']\n    client_url = 'https://hms-dbmi.auth0.com/api/v2/clients/%s' % client\n    headers['authorization'] = 'Bearer %s' % jwt\n    get_res = requests.get(client_url + '?fields=callbacks', headers=headers)\n    callbacks = get_res.json()['callbacks']\n    full_url = 'http://' + url\n    try:\n        idx = callbacks.index(full_url)\n    except ValueError:\n        PRINT(full_url + ' Not in auth0 auth, doesn\\'t need to be removed')\n        return\n    if idx:\n        callbacks.pop(idx)\n    client_data = {'callbacks': callbacks}\n    update_res = requests.patch(client_url, data=json.dumps(client_data), headers=headers)\n    PRINT('auth0 callback urls are: %s' % update_res.json().get('callbacks'))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "dcicutils-8.18.3",
+      "total_matches": 12
+    }
+  }
+]

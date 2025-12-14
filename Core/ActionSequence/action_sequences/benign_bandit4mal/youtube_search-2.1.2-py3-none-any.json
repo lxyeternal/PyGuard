@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "youtube_search-2.1.2-py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/youtube_search-2.1.2-py3-none-any/youtube_search/__init__.py",
+    "line_number": "41",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "40\t                    res[\"id\"] = video_data.get(\"videoId\", None)\n41\t                    res[\"thumbnails\"] = [thumb.get(\"url\", None) for thumb in video_data.get(\"thumbnail\", {}).get(\"thumbnails\", [{}]) ]\n42\t                    res[\"title\"] = video_data.get(\"title\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)",
+    "code_snippet": "import requests\nimport urllib.parse\nimport json\n\n\nclass YoutubeSearch:\n    def __init__(self, search_terms: str, max_results=None):\n        self.search_terms = search_terms\n        self.max_results = max_results\n        self.videos = self._search()\n\n    def _search(self):\n        encoded_search = urllib.parse.quote_plus(self.search_terms)\n        BASE_URL = \"https://youtube.com\"\n        url = f\"{BASE_URL}/results?search_query={encoded_search}\"\n        response = requests.get(url).text\n        while \"ytInitialData\" not in response:\n            response = requests.get(url).text\n        results = self._parse_html(response)\n        if self.max_results is not None and len(results) > self.max_results:\n            return results[: self.max_results]\n        return results\n\n    def _parse_html(self, response):\n        results = []\n        start = (\n            response.index(\"ytInitialData\")\n            + len(\"ytInitialData\")\n            + 3\n        )\n        end = response.index(\"};\", start) + 1\n        json_str = response[start:end]\n        data = json.loads(json_str)\n\n        for contents in data[\"contents\"][\"twoColumnSearchResultsRenderer\"][\"primaryContents\"][\"sectionListRenderer\"][\"contents\"]:\n            for video in contents[\"itemSectionRenderer\"][\"contents\"]:\n                res = {}\n                if \"videoRenderer\" in video.keys():\n                    video_data = video.get(\"videoRenderer\", {})\n                    res[\"id\"] = video_data.get(\"videoId\", None)\n                    res[\"thumbnails\"] = [thumb.get(\"url\", None) for thumb in video_data.get(\"thumbnail\", {}).get(\"thumbnails\", [{}]) ]\n                    res[\"title\"] = video_data.get(\"title\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"long_desc\"] = video_data.get(\"descriptionSnippet\", {}).get(\"runs\", [{}])[0].get(\"text\", None)\n                    res[\"channel\"] = video_data.get(\"longBylineText\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"duration\"] = video_data.get(\"lengthText\", {}).get(\"simpleText\", 0)\n                    res[\"views\"] = video_data.get(\"viewCountText\", {}).get(\"simpleText\", 0)\n                    res[\"publish_time\"] = video_data.get(\"publishedTimeText\", {}).get(\"simpleText\", 0)\n                    res[\"url_suffix\"] = video_data.get(\"navigationEndpoint\", {}).get(\"commandMetadata\", {}).get(\"webCommandMetadata\", {}).get(\"url\", None)\n                    results.append(res)\n\n            if results:\n                return results\n        return results",
+    "pattern_analysis": {
+      "api_sequence": [
+        "urllib.parse.quote_plus",
+        "requests.get",
+        "requests.get",
+        "json.loads"
+      ],
+      "api_sequence_with_args": [
+        "urllib.parse.quote_plus(self.search_terms)",
+        "requests.get(url)",
+        "requests.get(url)",
+        "json.loads(json_str)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "urllib.parse.quote_plus",
+          "id": "percent_encode_url",
+          "description": "Percent-encodes bytes for use in URL",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import requests\nimport urllib.parse\nimport json\n\nclass YoutubeSearch:\n    def __init__(self, search_terms: str, max_results=None):\n        self.search_terms = search_terms\n        self.max_results = max_results\n        self.videos = self._search()\n\n    def _search(self):\n        encoded_search = urllib.parse.quote_plus(self.search_terms)\n        BASE_URL = \"https://youtube.com\"\n        url = f\"{BASE_URL}/results?search_query={encoded_search}\"\n        response = requests.get(url).text\n        while \"ytInitialData\" not in response:\n            response = requests.get(url).text\n        results = self._parse_html(response)\n        if self.max_results is not None and len(results) > self.max_results:\n            return results[: self.max_results]\n        return results\n\n    def _parse_html(self, response):\n        results = []\n        start = (\n            response.index(\"ytInitialData\")\n            + len(\"ytInitialData\")\n            + 3\n        )\n        end = response.index(\"};\", start) + 1\n        json_str = response[start:end]\n        data = json.loads(json_str)\n        # ... (rest omitted, not sensitive)\n"
+    }
+  }
+]

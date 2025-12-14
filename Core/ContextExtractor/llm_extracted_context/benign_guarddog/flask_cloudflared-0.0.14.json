@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "flask_cloudflared-0.0.14",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/flask_cloudflared-0.0.14.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "flask_cloudflared.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flask_cloudflared-0.0.14/flask_cloudflared-0.0.14/flask_cloudflared.py",
+    "line_number": "132",
+    "type_description": "shady-links",
+    "original_snippet": "tunnel_url = (re.search(\"(?P<url>https?:\\/\\/[^\\s]+.trycloudflare.com)\", metrics).group(\"url\"))",
+    "context_snippet": "import atexit\nimport requests\nimport subprocess\nimport tarfile\nimport tempfile\nimport shutil\nimport os\nimport platform\nimport time\nimport re\nfrom random import randint\nfrom threading import Timer\nfrom pathlib import Path\n\n# ... (CLOUDFLARED_CONFIG and helper functions omitted for brevity)\n\ndef _run_cloudflared(port, metrics_port, tunnel_id=None, config_path=None):\n    system, machine = platform.system(), platform.machine()\n    command = _get_command(system, machine)\n    cloudflared_path = str(Path(tempfile.gettempdir()))\n    if system == \"Darwin\":\n        _download_cloudflared(cloudflared_path, \"cloudflared-darwin-amd64.tgz\")\n        _extract_tarball(cloudflared_path, \"cloudflared-darwin-amd64.tgz\")\n    else:\n        _download_cloudflared(cloudflared_path, command)\n\n    executable = str(Path(cloudflared_path, command))\n    os.chmod(executable, 0o777)\n\n    cloudflared_command = [executable, 'tunnel', '--metrics', f'127.0.0.1:{metrics_port}']\n    if config_path:\n        cloudflared_command += ['--config', config_path, 'run']\n    elif tunnel_id:\n        cloudflared_command += ['--url', f'http://127.0.0.1:{port}', 'run', tunnel_id]\n    else:\n        cloudflared_command += ['--url', f'http://127.0.0.1:{port}']\n\n    if system == \"Darwin\" and machine == \"arm64\":\n        cloudflared = subprocess.Popen(['arch', '-x86_64'] + cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n    else:\n        cloudflared = subprocess.Popen(cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n\n    atexit.register(cloudflared.terminate)\n    localhost_url = f\"http://127.0.0.1:{metrics_port}/metrics\"\n\n    for _ in range(10):\n        try:\n            metrics = requests.get(localhost_url).text\n            if tunnel_id or config_path:\n                # If tunnel_id or config_path is provided, we check for cloudflared_tunnel_ha_connections, as no tunnel URL is available in the metrics\n                if re.search(\"cloudflared_tunnel_ha_connections\\s\\d\", metrics):\n                    # No tunnel URL is available in the metrics, so we return a generic text\n                    tunnel_url = \"preconfigured tunnel URL\"\n                    break\n            else:\n                # If neither tunnel_id nor config_path is provided, we check for the tunnel URL in the metrics\n                tunnel_url = (re.search(\"(?P<url>https?:\\/\\/[\\^\\s]+.trycloudflare.com)\", metrics).group(\"url\"))\n                break\n        except:\n            time.sleep(3)\n    else:\n        raise Exception(f\"! Can't connect to Cloudflare Edge\")\n\n    return tunnel_url",
+    "hash_value": "af28a6bbe878e8756cd95250ab797bbd",
+    "detection_index": 1
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "ipwhois-1.3.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "experimental.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ipwhois-1.3.0/ipwhois-1.3.0/ipwhois/experimental.py",
+    "line_number": "71",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "70\t        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n71\t        conn.settimeout(timeout)\n72\t        log.debug('ASN bulk query initiated.')",
+    "context_snippet": "def get_bulk_asn_whois(addresses=None, retry_count=3, timeout=120):\n    \"\"\"\n    The function for retrieving ASN information for multiple IP addresses from\n    Cymru via port 43/tcp (WHOIS).\n\n    Args:\n        addresses (:obj:`list` of :obj:`str`): IP addresses to lookup.\n        retry_count (:obj:`int`): The number of times to retry in case socket\n            errors, timeouts, connection resets, etc. are encountered.\n            Defaults to 3.\n        timeout (:obj:`int`): The default timeout for socket connections in\n            seconds. Defaults to 120.\n\n    Returns:\n        str: The raw ASN bulk data, new line separated.\n\n    Raises:\n        ValueError: addresses argument must be a list of IPv4/v6 address\n            strings.\n        ASNLookupError: The ASN bulk lookup failed.\n    \"\"\"\n\n    if not isinstance(addresses, list):\n\n        raise ValueError('addresses argument must be a list of IPv4/v6 '\n                         'address strings.')\n\n    try:\n\n        # Create the connection for the Cymru whois query.\n        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n        conn.settimeout(timeout)\n        log.debug('ASN bulk query initiated.')\n        conn.connect((CYMRU_WHOIS, 43))\n\n        # Query the Cymru whois server, and store the results.\n        conn.sendall((\n            ' -r -a -c -p -f begin\\n{0}\\nend'.format(\n                '\\n'.join(addresses))\n        ).encode())\n\n        data = ''\n        while True:\n\n            d = conn.recv(4096).decode()\n            data += d\n\n            if not d:\n\n                break\n\n        conn.close()\n\n        return str(data)\n\n    except (socket.timeout, socket.error) as e:  # pragma: no cover\n\n        log.debug('ASN bulk query socket error: {0}'.format(e))\n        if retry_count > 0:\n\n            log.debug('ASN bulk query retrying (count: {0})'.format(\n                str(retry_count)))\n            return get_bulk_asn_whois(addresses, retry_count - 1, timeout)\n\n        else:\n\n            raise ASNLookupError('ASN bulk lookup failed.')\n\n    except:  # pragma: no cover\n\n        raise ASNLookupError('ASN bulk lookup failed.')",
+    "hash_value": "7cea038521f60dbe60d1620de8c94bff"
+  }
+]

@@ -1,0 +1,88 @@
+[
+  {
+    "metadata": {
+      "package_name": "shrike-2.0.0rc2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "dask.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/shrike-2.0.0rc2/shrike-2.0.0rc2/shrike/distributed/dask.py",
+    "line_number": "128",
+    "type_description": "B803:gethostname",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "127\t        # create setup config\n128\t        self.head_address = socket.gethostbyname(socket.gethostname())\n129",
+    "code_snippet": "@experimental(message=EXPERIMENTAL_WARNING_MSG)\ndef setup_head_node(self):\n    \"\"\"Setup to run only on head node\"\"\"\n    self._log_info_publicly(EXPERIMENTAL_WARNING_MSG)\n    self._log_info_publicly(\n        f\"{self.__class__.__name__}.setup_head_node() called to set up HEAD node.\"\n    )\n    # create setup config\n    self.head_address = socket.gethostbyname(socket.gethostname())\n\n    # record what's needed to setup cluster nodes\n    self.setup_config_add_key(\"head_address\", self.head_address)\n\n    self.pid = os.fork()  # type: ignore\n    if self.pid > 0:\n        self.rank = \"0.1\"\n\n        async def run_scheduler():\n            async with Scheduler(\n                port=self.head_port, scheduler_file=\"scheduler.json\"\n            ) as scheduler:\n                await scheduler.finished()\n\n        asyncio.get_event_loop().run_until_complete(run_scheduler())\n        self._log_info_publicly(f\"[R{self.rank}]SCHEDULER IS OFFLINE\")\n        self.multinode_driver.finalize()\n        sys.exit(0)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "socket.gethostname",
+        "socket.gethostbyname",
+        "os.fork",
+        "asyncio.get_event_loop",
+        "asyncio.get_event_loop.run_until_complete",
+        "sys.exit"
+      ],
+      "api_sequence_with_args": [
+        "socket.gethostname()",
+        "socket.gethostbyname(socket.gethostname())",
+        "os.fork()",
+        "asyncio.get_event_loop()",
+        "asyncio.get_event_loop().run_until_complete(run_scheduler())",
+        "sys.exit(0)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "socket.gethostname",
+          "id": "get_hostname",
+          "description": "Retrieves current host name",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "socket.gethostbyname",
+          "id": "resolve_hostname",
+          "description": "Resolves host name to IPv4 address",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "domain_resolution"
+        },
+        {
+          "api_name": "os.fork",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "asyncio.get_event_loop",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "asyncio.get_event_loop.run_until_complete",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "@experimental(message=EXPERIMENTAL_WARNING_MSG)\ndef setup_head_node(self):\n    self.head_address = socket.gethostbyname(socket.gethostname())\n    self.setup_config_add_key(\"head_address\", self.head_address)\n    self.pid = os.fork()  # type: ignore\n    if self.pid > 0:\n        self.rank = \"0.1\"\n        async def run_scheduler():\n            async with Scheduler(\n                port=self.head_port, scheduler_file=\"scheduler.json\"\n            ) as scheduler:\n                await scheduler.finished()\n        asyncio.get_event_loop().run_until_complete(run_scheduler())\n        self._log_info_publicly(f\"[R{self.rank}]SCHEDULER IS OFFLINE\")\n        self.multinode_driver.finalize()\n        sys.exit(0)"
+    }
+  }
+]

@@ -1,0 +1,296 @@
+{
+  "metadata": {
+    "package_name": "androidviewclient-24",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/androidviewclient-24.1.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "culebron.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/androidviewclient-24.1.0/androidviewclient-24.1.0/src/com/dtmilano/android/culebron.py",
+      "line_number": "399",
+      "type_description": "B814:read",
+      "context_snippet": "def takeScreenshotAndShowItOnWindow(self):\n    \"\"\"\n    Takes the current screenshot and shows it on the main window.\n    It also:\n     - sizes the window\n     - create the canvas\n     - set the focus\n     - enable the events\n     - create widgets\n     - finds the targets (as explained in L{findTargets})\n     - hides the vignette (that could have been showed before)\n    \"\"\"\n\n    if PROFILE:\n        print(\"PROFILING: takeScreenshotAndShowItOnWindow()\", file=sys.stderr)\n        profileStart()\n\n    if DEBUG:\n        print(\"takeScreenshotAndShowItOnWindow()\", file=sys.stderr)\n    t0 = None\n    if self.vc and self.vc.uiAutomatorHelper:\n        if self.vc.uiAutomatorHelper:\n            if TIMING:\n                t0 = time.time()\n            try:\n                self.vc.uiAutomatorHelper.ui_device.wait_for_window_update()\n            except RuntimeError as e:\n                if DEBUG:\n                    print(f\"ERROR: {e} waiting for windows update\", file=sys.stderr)\n            if TIMING:\n                print(f\"# takeScreenshotAndShowItOnWindow: waiting for window update: {time.time() - t0:.2f}s\")\n                t0 = time.time()\n            self.vc.uiAutomatorHelper.ui_device.wait_for_idle()\n            if TIMING:\n                print(f\"# takeScreenshotAndShowItOnWindow: waiting for idle: {time.time() - t0:.2f}s\")\n        if TIMING:\n            t0 = time.time()\n        received = None\n        try:\n            received = self.vc.uiAutomatorHelper.ui_device.take_screenshot()\n        except Exception as e:\n            if \"Cannot get screenshot\" in str(e):\n                try:\n                    activity = self.vc.uiAutomatorHelper.device.get_top_activity_name()\n                except Exception:\n                    activity = \"Unknown\"\n                print(f\"⛔️ ERROR: Cannot get screenshot for {activity}\", file=sys.stderr)\n                return\n            else:\n                print(f\"ERROR: e={e} type={type(e)}\", file=sys.stderr)\n        stream = io.BytesIO(received.read())\n        if TIMING:\n            print(f\"# takeScreenshotAndShowItOnWindow: screenshot: {time.time() - t0:.2f}s\")\n        try:\n            self.unscaledScreenshot = Image.open(stream)\n        except IOError as ex:\n            print(ex, file=sys.stderr)\n            print(repr(stream))\n            sys.exit(1)\n    else:\n        self.unscaledScreenshot = self.device.takeSnapshot(reconnect=True)\n    self.image = self.unscaledScreenshot\n    (width, height) = self.image.size\n    if self.scale != 1:\n        scaledWidth = int(width * self.scale)\n        scaledHeight = int(height * self.scale)\n        self.image = self.image.resize((scaledWidth, scaledHeight), PIL.Image.LANCZOS)\n        (width, height) = self.image.size\n        if self.isDarwin and 14 < self.sdkVersion < 23:\n            if sys.version_info[0] < 3:\n                stream = io.StringIO()\n            else:\n                stream = io.BytesIO()\n            self.image.save(stream, 'GIF')\n            import base64\n            gif = base64.b64encode(stream.getvalue())\n            stream.close()\n    if self.canvas is None:\n        if DEBUG:\n            print(\"⬜️ Creating canvas\", width, 'x', height, file=sys.stderr)\n        self.placeholder.grid_forget()\n        self.canvas = tkinter.Canvas(self.mainFrame, width=width, height=height)\n        if DEBUG:\n            print(\"⬜️ canvas\", self.canvas, file=sys.stderr)\n        self.canvas.focus_set()\n        self.enableEvents()\n        self.createMessageArea(width, height)\n        self.createVignette(width, height)\n    if self.isDarwin and self.scale != 1 and 14 < self.sdkVersion < 23:\n        # Extremely weird Tkinter bug, I guess\n        # If the image was rotated and then resized if ImageTk.PhotoImage(self.image)\n        # is used as usual then the result is a completely transparent image and only\n        # the \"Please wait...\" is seen.\n        # Converting it to GIF seems to solve the problem\n        self.screenshot = tkinter.PhotoImage(data=gif)\n    else:\n        self.screenshot = ImageTk.PhotoImage(self.image)\n    if self.imageId is not None:\n        self.canvas.delete(self.imageId)\n    self.imageId = self.canvas.create_image(0, 0, anchor=tkinter.NW, image=self.screenshot, tag=\"screenshot\")\n    if DEBUG:\n        try:\n            print(\"⬜️ Grid info\", self.canvas.grid_info(), file=sys.stderr)\n        except:\n            print(\"⬜️ Exception getting grid info\", file=sys.stderr)\n    gridInfo = None\n    try:\n        gridInfo = self.canvas.grid_info()\n    except:\n        if DEBUG:\n            print(\"⬜️ Adding canvas to grid (1,1)\", file=sys.stderr)\n        self.canvas.grid(row=1, column=1, rowspan=4)\n    if not gridInfo:\n        self.canvas.grid(row=1, column=1, rowspan=4)\n    try:\n        self.findTargets()\n        self.hideVignette()\n        if self.autoScreenshots:\n            print(f'Taking screenshot {self.device.screenshot_number}', file=sys.stderr)\n            self.saveSnapshot(showDialog=False)\n\n    except Exception as ex:\n        print(\"⛔️ %s\" % ex, file=sys.stderr)\n    if DEBUG:\n        try:\n            self.printGridInfo()\n        except:\n            pass\n    if PROFILE:\n        profileEnd()",
+      "hash_value": "2fa14848f65b79886462a3eb45842133",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def takeScreenshotAndShowItOnWindow(self):\n    \"\"\"\n    Takes the current screenshot and shows it on the main window.\n    It also:\n     - sizes the window\n     - create the canvas\n     - set the focus\n     - enable the events\n     - create widgets\n     - finds the targets (as explained in L{findTargets})\n     - hides the vignette (that could have been showed before)\n    \"\"\"\n\n    if PROFILE:\n        print(\"PROFILING: takeScreenshotAndShowItOnWindow()\", file=sys.stderr)\n        profileStart()\n\n    if DEBUG:\n        print(\"takeScreenshotAndShowItOnWindow()\", file=sys.stderr)\n    t0 = None\n    if self.vc and self.vc.uiAutomatorHelper:\n        if self.vc.uiAutomatorHelper:\n            if TIMING:\n                t0 = time.time()\n            try:\n                self.vc.uiAutomatorHelper.ui_device.wait_for_window_update()\n            except RuntimeError as e:\n                if DEBUG:\n                    print(f\"ERROR: {e} waiting for windows update\", file=sys.stderr)\n            if TIMING:\n                print(f\"# takeScreenshotAndShowItOnWindow: waiting for window update: {time.time() - t0:.2f}s\")\n                t0 = time.time()\n            self.vc.uiAutomatorHelper.ui_device.wait_for_idle()\n            if TIMING:\n                print(f\"# takeScreenshotAndShowItOnWindow: waiting for idle: {time.time() - t0:.2f}s\")\n        if TIMING:\n            t0 = time.time()\n        received = None\n        try:\n            received = self.vc.uiAutomatorHelper.ui_device.take_screenshot()\n        except Exception as e:\n            if \"Cannot get screenshot\" in str(e):\n                try:\n                    activity = self.vc.uiAutomatorHelper.device.get_top_activity_name()\n                except Exception:\n                    activity = \"Unknown\"\n                print(f\"⛔️ ERROR: Cannot get screenshot for {activity}\", file=sys.stderr)\n                return\n            else:\n                print(f\"ERROR: e={e} type={type(e)}\", file=sys.stderr)\n        stream = io.BytesIO(received.read())\n        if TIMING:\n            print(f\"# takeScreenshotAndShowItOnWindow: screenshot: {time.time() - t0:.2f}s\")\n        try:\n            self.unscaledScreenshot = Image.open(stream)\n        except IOError as ex:\n            print(ex, file=sys.stderr)\n            print(repr(stream))\n            sys.exit(1)\n    else:\n        self.unscaledScreenshot = self.device.takeSnapshot(reconnect=True)\n    self.image = self.unscaledScreenshot\n    (width, height) = self.image.size\n    if self.scale != 1:\n        scaledWidth = int(width * self.scale)\n        scaledHeight = int(height * self.scale)\n        self.image = self.image.resize((scaledWidth, scaledHeight), PIL.Image.LANCZOS)\n        (width, height) = self.image.size\n        if self.isDarwin and 14 < self.sdkVersion < 23:\n            if sys.version_info[0] < 3:\n                stream = io.StringIO()\n            else:\n                stream = io.BytesIO()\n            self.image.save(stream, 'GIF')\n            import base64\n            gif = base64.b64encode(stream.getvalue())\n            stream.close()\n    if self.canvas is None:\n        if DEBUG:\n            print(\"⬜️ Creating canvas\", width, 'x', height, file=sys.stderr)\n        self.placeholder.grid_forget()\n        self.canvas = tkinter.Canvas(self.mainFrame, width=width, height=height)\n        if DEBUG:\n            print(\"⬜️ canvas\", self.canvas, file=sys.stderr)\n        self.canvas.focus_set()\n        self.enableEvents()\n        self.createMessageArea(width, height)\n        self.createVignette(width, height)\n    if self.isDarwin and self.scale != 1 and 14 < self.sdkVersion < 23:\n        # Extremely weird Tkinter bug, I guess\n        # If the image was rotated and then resized if ImageTk.PhotoImage(self.image)\n        # is used as usual then the result is a completely transparent image and only\n        # the \"Please wait...\" is seen.\n        # Converting it to GIF seems to solve the problem\n        self.screenshot = tkinter.PhotoImage(data=gif)\n    else:\n        self.screenshot = ImageTk.PhotoImage(self.image)\n    if self.imageId is not None:\n        self.canvas.delete(self.imageId)\n    self.imageId = self.canvas.create_image(0, 0, anchor=tkinter.NW, image=self.screenshot, tag=\"screenshot\")\n    if DEBUG:\n        try:\n            print(\"⬜️ Grid info\", self.canvas.grid_info(), file=sys.stderr)\n        except:\n            print(\"⬜️ Exception getting grid info\", file=sys.stderr)\n    gridInfo = None\n    try:\n        gridInfo = self.canvas.grid_info()\n    except:\n        if DEBUG:\n            print(\"⬜️ Adding canvas to grid (1,1)\", file=sys.stderr)\n        self.canvas.grid(row=1, column=1, rowspan=4)\n    if not gridInfo:\n        self.canvas.grid(row=1, column=1, rowspan=4)\n    try:\n        self.findTargets()\n        self.hideVignette()\n        if self.autoScreenshots:\n            print(f'Taking screenshot {self.device.screenshot_number}', file=sys.stderr)\n            self.saveSnapshot(showDialog=False)\n\n    except Exception as ex:\n        print(\"⛔️ %s\" % ex, file=sys.stderr)\n    if DEBUG:\n        try:\n            self.printGridInfo()\n        except:\n            pass\n    if PROFILE:\n        profileEnd()",
+          "triple_sequences": [
+            {
+              "action_api": "self.vc.uiAutomatorHelper.ui_device.wait_for_window_update()",
+              "action_description": "Waits for events",
+              "action_id": "wait_for_events",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "self.vc.uiAutomatorHelper.ui_device.wait_for_idle()",
+              "action_description": "Waits for events",
+              "action_id": "wait_for_events",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "self.vc.uiAutomatorHelper.ui_device.take_screenshot()",
+              "action_description": "Captures screenshot of screen",
+              "action_id": "capture_screen_region",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Capture screenshot",
+              "intention_id": "capture_screenshot"
+            },
+            {
+              "action_api": "received.read()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read screenshot file content",
+              "intention_id": "read_screenshot_file_content"
+            },
+            {
+              "action_api": "io.BytesIO()",
+              "action_description": "Creates in-memory bytes buffer from encoded string",
+              "action_id": "create_memory_bytes",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "Image.open()",
+              "action_description": "Opens image from in-memory bytes buffer",
+              "action_id": "open_image_buffer",
+              "object": "stream",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Open screenshot file",
+              "intention_id": "open_screenshot_file"
+            },
+            {
+              "action_api": "self.device.takeSnapshot()",
+              "action_description": "Captures screenshot of screen",
+              "action_id": "capture_screen_region",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Capture screenshot",
+              "intention_id": "capture_screenshot"
+            },
+            {
+              "action_api": "self.image.resize()",
+              "action_description": "Saves image to in-memory buffer",
+              "action_id": "save_image_buffer",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "io.StringIO()",
+              "action_description": "Creates in-memory bytes buffer from encoded string",
+              "action_id": "create_memory_bytes",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.image.save()",
+              "action_description": "Saves image to in-memory buffer",
+              "action_id": "save_image_buffer",
+              "object": "stream, 'GIF'",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Save screenshot to file",
+              "intention_id": "save_screenshot_file"
+            },
+            {
+              "action_api": "base64.b64encode()",
+              "action_description": "Encodes bytes to base64-encoded bytes",
+              "action_id": "encode_bytes_to_base64",
+              "object": "stream.getvalue()",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare base64-encoded data for transmission",
+              "intention_id": "prepare_base64_data_transmission"
+            },
+            {
+              "action_api": "stream.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "tkinter.Canvas()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "self.mainFrame, width=width, height=height",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.canvas.focus_set()",
+              "action_description": "Starts thread execution",
+              "action_id": "start_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.enableEvents()",
+              "action_description": "Waits for events",
+              "action_id": "wait_for_events",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "self.createMessageArea()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "width, height",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.createVignette()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "width, height",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "tkinter.PhotoImage()",
+              "action_description": "Opens image from in-memory bytes buffer",
+              "action_id": "open_image_buffer",
+              "object": "data=gif",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Open screenshot file",
+              "intention_id": "open_screenshot_file"
+            },
+            {
+              "action_api": "ImageTk.PhotoImage()",
+              "action_description": "Opens image from in-memory bytes buffer",
+              "action_id": "open_image_buffer",
+              "object": "self.image",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Open screenshot file",
+              "intention_id": "open_screenshot_file"
+            },
+            {
+              "action_api": "self.canvas.delete()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self.imageId",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "self.canvas.create_image()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "0, 0, anchor=tkinter.NW, image=self.screenshot, tag=\"screenshot\"",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.canvas.grid_info()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.canvas.grid()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "row=1, column=1, rowspan=4",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.findTargets()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.hideVignette()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.saveSnapshot()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "showDialog=False",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Save screenshot to file",
+              "intention_id": "save_screenshot_file"
+            },
+            {
+              "action_api": "self.printGridInfo()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

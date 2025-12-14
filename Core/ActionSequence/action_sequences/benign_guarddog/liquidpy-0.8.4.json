@@ -1,0 +1,282 @@
+[
+  {
+    "pyfile": "liquid.py",
+    "code_snippet": "import builtins\nfrom typing import Any, Callable, Mapping\nfrom jinja2 import (\n    Environment,\n    ChoiceLoader,\n    FileSystemLoader,\n)\n\nfrom .filters.standard import standard_filter_manager\nfrom .utils import PathType, PathTypeOrIter\n\nclass Liquid:\n    \"\"\"The entrance for the package\n\n    Examples:\n        >>> Liquid('{{a}}', from_file=False)\n        >>> Liquid('template.html')\n\n    Args:\n        template: The template string or path of the template file\n        env: The jinja environment\n        from_file: Whether `template` is a file path. If True, a\n            `FileSystemLoader` will be used in the `env`.\n        mode: The mode of the engine.\n            - standard: Most compatibility with the standard liquid engine\n            - jekyll: The jekyll-compatible mode\n            - shopify: The shopify-compatible mode\n            - wild: The liquid- and jinja-compatible mode\n        filter_with_colon: Whether enable to use colon to separate filter and\n            its arguments (i.e. `{{a | filter: arg}}`). If False, will\n            fallback to use parentheses (`{{a | filter(arg)}}`)\n        search_paths: The search paths for the template files.\n            This only supports specification of paths. If you need so specify\n            `encoding` and/or `followlinks`, you should use jinja's\n            `FileSystemLoader`\n        globals: Additional global values to be used to render the template\n        filters: Additional filters be to used to render the template\n        filters_as_globals: Whether also use filters as globals\n            Only works in wild mode\n        **kwargs: Other arguments for an jinja Environment construction and\n            configurations for extensions\n    \"\"\"\n\n    __slots__ = (\"env\", \"template\")\n\n    def __init__(\n        self,\n        template: PathType,\n        from_file: bool = None,\n        mode: str = None,\n        env: Environment = None,\n        filter_with_colon: bool = None,\n        search_paths: PathTypeOrIter = None,\n        globals: Mapping[str, Any] = None,\n        filters: Mapping[str, Callable] = None,\n        filters_as_globals: bool = None,\n        **kwargs: Any,\n    ) -> None:\n        \"\"\"Constructor\"\"\"\n        # default values\n        # fetch at runtime, so that they can be configured at importing\n        from .defaults import (\n            FROM_FILE,\n            MODE,\n            FILTER_WITH_COLON,\n            SEARCH_PATHS,\n            ENV_ARGS,\n            SHARED_GLOBALS,\n            FILTERS_AS_GLOBALS,\n        )\n\n        if from_file is None:\n            from_file = FROM_FILE\n        if mode is None:\n            mode = MODE\n        if filter_with_colon is None:\n            filter_with_colon = FILTER_WITH_COLON\n        if search_paths is None:\n            search_paths = SEARCH_PATHS\n        if filters_as_globals is None:\n            filters_as_globals = FILTERS_AS_GLOBALS\n\n        # split kwargs into arguments for Environment constructor and\n        # configurations for extensions\n        env_args = {}\n        ext_conf = {}\n        for key, val in kwargs.items():\n            if key in ENV_ARGS:\n                env_args[key] = val\n            else:\n                ext_conf[key] = val\n\n        loader = env_args.pop(\"loader\", None)\n        fsloader = FileSystemLoader(search_paths)  # type: ignore\n        if loader:\n            loader = ChoiceLoader([loader, fsloader])\n        else:\n            loader = fsloader\n\n        self.env = Environment(**env_args, loader=loader)\n        if env is not None:\n            self.env = env.overlay(**env_args, loader=loader)\n\n        self.env.extend(**ext_conf)\n        self.env.globals.update(SHARED_GLOBALS)\n\n        standard_filter_manager.update_to_env(self.env)\n        self.env.add_extension(\"jinja2.ext.loopcontrols\")\n        if filter_with_colon:\n            from .exts.filter_colon import FilterColonExtension\n\n            self.env.add_extension(FilterColonExtension)\n\n        if mode == \"wild\":\n            from .exts.wild import LiquidWildExtension\n            from .filters.wild import wild_filter_manager\n\n            self.env.add_extension(\"jinja2.ext.debug\")\n            self.env.add_extension(LiquidWildExtension)\n\n            bfilters = {\n                key: getattr(builtins, key)\n                for key in dir(builtins)\n                if not key.startswith(\"_\")\n                and callable(getattr(builtins, key))\n                and key\n                not in (\n                    \"copyright\",\n                    \"credits\",\n                    \"input\",\n                    \"help\",\n                    \"globals\",\n                    \"license\",\n                    \"locals\",\n                    \"memoryview\",\n                    \"object\",\n                    \"property\",\n                    \"staticmethod\",\n                    \"super\",\n                )\n                and not any(key_c.isupper() for key_c in key)\n            }\n            self.env.filters.update(bfilters)\n            wild_filter_manager.update_to_env(self.env)\n            self.env.globals.update(\n                {\n                    key: val\n                    for key, val in __builtins__.items()\n                    if not key.startswith(\"_\")\n                }\n            )\n            if filters_as_globals:\n                self.env.globals.update(standard_filter_manager.filters)\n                self.env.globals.update(wild_filter_manager.filters)\n\n        elif mode == \"jekyll\":\n            from .exts.front_matter import FrontMatterExtension\n            from .exts.jekyll import LiquidJekyllExtension\n            from .filters.jekyll import jekyll_filter_manager\n\n            jekyll_filter_manager.update_to_env(self.env)\n            self.env.add_extension(FrontMatterExtension)\n            self.env.add_extension(LiquidJekyllExtension)\n\n        elif mode == \"shopify\":\n            from .exts.shopify import LiquidShopifyExtension\n            from .filters.shopify import shopify_filter_manager\n\n            shopify_filter_manager.update_to_env(self.env)\n            self.env.add_extension(LiquidShopifyExtension)\n\n        else:  # standard\n            from .exts.standard import LiquidStandardExtension\n\n            self.env.add_extension(LiquidStandardExtension)\n\n        if filters:\n            self.env.filters.update(filters)\n\n        builtin_globals = {\n            \"int\": int,\n            \"float\": float,\n            \"str\": str,\n            \"bool\": bool\n        }\n        if globals:\n            builtin_globals.update(globals)\n        self.env.globals.update(builtin_globals)\n\n        if from_file:\n            # in case template is a PathLike\n            self.template = self.env.get_template(str(template))\n        else:\n            self.template = self.env.from_string(str(template))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "jinja2.FileSystemLoader",
+        "jinja2.ChoiceLoader",
+        "jinja2.Environment",
+        "jinja2.Environment.overlay",
+        "jinja2.Environment.extend",
+        "jinja2.Environment.globals.update",
+        "standard_filter_manager.update_to_env",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.filters.update",
+        "wild_filter_manager.update_to_env",
+        "jinja2.Environment.globals.update",
+        "jinja2.Environment.globals.update",
+        "jinja2.Environment.globals.update",
+        "jinja2.Environment.globals.update",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.add_extension",
+        "jekyll_filter_manager.update_to_env",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.add_extension",
+        "shopify_filter_manager.update_to_env",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.add_extension",
+        "jinja2.Environment.filters.update",
+        "jinja2.Environment.globals.update",
+        "jinja2.Environment.get_template",
+        "jinja2.Environment.from_string"
+      ],
+      "api_sequence_with_args": [
+        "jinja2.FileSystemLoader(search_paths)",
+        "jinja2.ChoiceLoader([loader, fsloader])",
+        "jinja2.Environment(**env_args, loader=loader)",
+        "jinja2.Environment.overlay(**env_args, loader=loader)",
+        "jinja2.Environment.extend(**ext_conf)",
+        "jinja2.Environment.globals.update(SHARED_GLOBALS)",
+        "standard_filter_manager.update_to_env(self.env)",
+        "jinja2.Environment.add_extension(\"jinja2.ext.loopcontrols\")",
+        "jinja2.Environment.add_extension(FilterColonExtension)",
+        "jinja2.Environment.add_extension(\"jinja2.ext.debug\")",
+        "jinja2.Environment.filters.update(bfilters)",
+        "wild_filter_manager.update_to_env(self.env)",
+        "jinja2.Environment.globals.update({key: val for key, val in __builtins__.items() if not key.startswith(\"_\")})",
+        "jinja2.Environment.globals.update(standard_filter_manager.filters)",
+        "jinja2.Environment.globals.update(wild_filter_manager.filters)",
+        "jinja2.Environment.add_extension(FrontMatterExtension)",
+        "jinja2.Environment.add_extension(LiquidJekyllExtension)",
+        "jekyll_filter_manager.update_to_env(self.env)",
+        "jinja2.Environment.add_extension(LiquidShopifyExtension)",
+        "shopify_filter_manager.update_to_env(self.env)",
+        "jinja2.Environment.add_extension(LiquidStandardExtension)",
+        "jinja2.Environment.filters.update(filters)",
+        "jinja2.Environment.globals.update(builtin_globals)",
+        "jinja2.Environment.get_template(str(template))",
+        "jinja2.Environment.from_string(str(template))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "jinja2.FileSystemLoader",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "jinja2.ChoiceLoader",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "jinja2.Environment",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.overlay",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.extend",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.globals.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "standard_filter_manager.update_to_env",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.filters.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "wild_filter_manager.update_to_env",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.globals.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.globals.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.globals.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jekyll_filter_manager.update_to_env",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "shopify_filter_manager.update_to_env",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.add_extension",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.filters.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.globals.update",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "jinja2.Environment.get_template",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "jinja2.Environment.from_string",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        }
+      ],
+      "contextual_code": "from jinja2 import Environment, ChoiceLoader, FileSystemLoader\n\nclass Liquid:\n    def __init__(\n        self,\n        template: PathType,\n        from_file: bool = None,\n        mode: str = None,\n        env: Environment = None,\n        filter_with_colon: bool = None,\n        search_paths: PathTypeOrIter = None,\n        globals: Mapping[str, Any] = None,\n        filters: Mapping[str, Callable] = None,\n        filters_as_globals: bool = None,\n        **kwargs: Any,\n    ) -> None:\n        from .defaults import (\n            FROM_FILE,\n            MODE,\n            FILTER_WITH_COLON,\n            SEARCH_PATHS,\n            ENV_ARGS,\n            SHARED_GLOBALS,\n            FILTERS_AS_GLOBALS,\n        )\n\n        if from_file is None:\n            from_file = FROM_FILE\n        if mode is None:\n            mode = MODE\n        if filter_with_colon is None:\n            filter_with_colon = FILTER_WITH_COLON\n        if search_paths is None:\n            search_paths = SEARCH_PATHS\n        if filters_as_globals is None:\n            filters_as_globals = FILTERS_AS_GLOBALS\n\n        env_args = {}\n        ext_conf = {}\n        for key, val in kwargs.items():\n            if key in ENV_ARGS:\n                env_args[key] = val\n            else:\n                ext_conf[key] = val\n\n        loader = env_args.pop(\"loader\", None)\n        fsloader = FileSystemLoader(search_paths)\n        if loader:\n            loader = ChoiceLoader([loader, fsloader])\n        else:\n            loader = fsloader\n\n        self.env = Environment(**env_args, loader=loader)\n        if env is not None:\n            self.env = env.overlay(**env_args, loader=loader)\n\n        self.env.extend(**ext_conf)\n        self.env.globals.update(SHARED_GLOBALS)\n\n        standard_filter_manager.update_to_env(self.env)\n        self.env.add_extension(\"jinja2.ext.loopcontrols\")\n        if filter_with_colon:\n            from .exts.filter_colon import FilterColonExtension\n            self.env.add_extension(FilterColonExtension)\n\n        if mode == \"wild\":\n            from .exts.wild import LiquidWildExtension\n            from .filters.wild import wild_filter_manager\n            self.env.add_extension(\"jinja2.ext.debug\")\n            self.env.add_extension(LiquidWildExtension)\n            bfilters = {\n                key: getattr(builtins, key)\n                for key in dir(builtins)\n                if not key.startswith(\"_\")\n                and callable(getattr(builtins, key))\n                and key\n                not in (\n                    \"copyright\",\n                    \"credits\",\n                    \"input\",\n                    \"help\",\n                    \"globals\",\n                    \"license\",\n                    \"locals\",\n                    \"memoryview\",\n                    \"object\",\n                    \"property\",\n                    \"staticmethod\",\n                    \"super\",\n                )\n                and not any(key_c.isupper() for key_c in key)\n            }\n            self.env.filters.update(bfilters)\n            wild_filter_manager.update_to_env(self.env)\n            self.env.globals.update(\n                {\n                    key: val\n                    for key, val in __builtins__.items()\n                    if not key.startswith(\"_\")\n                }\n            )\n            if filters_as_globals:\n                self.env.globals.update(standard_filter_manager.filters)\n                self.env.globals.update(wild_filter_manager.filters)\n\n        elif mode == \"jekyll\":\n            from .exts.front_matter import FrontMatterExtension\n            from .exts.jekyll import LiquidJekyllExtension\n            from .filters.jekyll import jekyll_filter_manager\n            jekyll_filter_manager.update_to_env(self.env)\n            self.env.add_extension(FrontMatterExtension)\n            self.env.add_extension(LiquidJekyllExtension)\n\n        elif mode == \"shopify\":\n            from .exts.shopify import LiquidShopifyExtension\n            from .filters.shopify import shopify_filter_manager\n            shopify_filter_manager.update_to_env(self.env)\n            self.env.add_extension(LiquidShopifyExtension)\n\n        else:  # standard\n            from .exts.standard import LiquidStandardExtension\n            self.env.add_extension(LiquidStandardExtension)\n\n        if filters:\n            self.env.filters.update(filters)\n\n        builtin_globals = {\n            \"int\": int,\n            \"float\": float,\n            \"str\": str,\n            \"bool\": bool\n        }\n        if globals:\n            builtin_globals.update(globals)\n        self.env.globals.update(builtin_globals)\n\n        if from_file:\n            self.template = self.env.get_template(str(template))\n        else:\n            self.template = self.env.from_string(str(template))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "liquidpy-0.8.4",
+      "total_matches": 2
+    }
+  }
+]

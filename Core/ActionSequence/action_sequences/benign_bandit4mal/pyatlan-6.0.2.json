@@ -1,0 +1,278 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyatlan-6.0.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "atlan.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyatlan-6.0.2/pyatlan-6.0.2/pyatlan/client/atlan.py",
+    "line_number": "546",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "545\t                    causes = error_info.get(\"causes\", [])\n546\t                    backend_error_id = error_info.get(\"errorId\")\n547",
+    "code_snippet": "def _call_api_internal(\n        self,\n        api,\n        path,\n        params,\n        binary_data=None,\n        download_file_path=None,\n        text_response=False,\n    ):\n        token = request_id_var.set(str(uuid.uuid4()))\n        try:\n            params[\"headers\"][\"X-Atlan-Request-Id\"] = request_id_var.get()\n            if binary_data:\n                response = self._session.request(\n                    api.method.value,\n                    path,\n                    data=binary_data,\n                    **params,\n                    timeout=(self.connect_timeout, self.read_timeout),\n                )\n            elif api.consumes == EVENT_STREAM and api.produces == EVENT_STREAM:\n                response = self._session.request(\n                    api.method.value,\n                    path,\n                    **params,\n                    stream=True,\n                    timeout=(self.connect_timeout, self.read_timeout),\n                )\n                if download_file_path:\n                    return self._handle_file_download(response.raw, download_file_path)\n            else:\n                response = self._session.request(\n                    api.method.value,\n                    path,\n                    **params,\n                    timeout=(self.connect_timeout, self.read_timeout),\n                )\n            if response is not None:\n                LOGGER.debug(\"HTTP Status: %s\", response.status_code)\n            if response is None:\n                return None\n\n            # Reset `has_retried` flag if:\n            # - SDK already attempted a 401 token refresh (`has_retried = True`)\n            # - and the current response status code is NOT 401\n            #\n            # Real-world scenario:\n            # - First 401 triggers `_handle_401_token_refresh`, setting `has_retried = True`\n            # - If the next response is also 401 → SDK returns 401 (won’t retry again)\n            # - But if the next response is != 401 (e.g. 403), and `has_retried = True`,\n            # then we should reset `has_retried = False` so that future 401s can trigger a new token refresh.\n            if (\n                self._401_tls.has_retried\n                and response.status_code\n                != ErrorCode.AUTHENTICATION_PASSTHROUGH.http_error_code\n            ):\n                self._401_tls.has_retried = False\n\n            if response.status_code == api.expected_status:\n                try:\n                    if (\n                        response.content is None\n                        or response.content == \"null\"\n                        or len(response.content) == 0\n                        or response.status_code == HTTPStatus.NO_CONTENT\n                    ):\n                        return None\n                    events = []\n                    if LOGGER.isEnabledFor(logging.DEBUG):\n                        LOGGER.debug(\n                            \"<== __call_api(%s,%s), result = %s\",\n                            vars(api),\n                            params,\n                            response,\n                        )\n                    if api.consumes == EVENT_STREAM and api.produces == EVENT_STREAM:\n                        for line in response.iter_lines(decode_unicode=True):\n                            if not line:\n                                continue\n                            if not line.startswith(\"data: \"):\n                                raise ErrorCode.UNABLE_TO_DESERIALIZE.exception_with_parameters(\n                                    line\n                                )\n                            events.append(json.loads(line.split(\"data: \")[1]))\n                    if text_response:\n                        response_ = response.text\n                    else:\n                        response_ = events if events else response.json()\n                    LOGGER.debug(\"response: %s\", response_)\n                    return response_\n                except (\n                    requests.exceptions.JSONDecodeError,\n                    json.decoder.JSONDecodeError,\n                ) as e:\n                    raise ErrorCode.JSON_ERROR.exception_with_parameters(\n                        response.text, response.status_code, str(e)\n                    ) from e\n            elif response.status_code == HTTPStatus.SERVICE_UNAVAILABLE:\n                LOGGER.error(\n                    \"Atlas Service unavailable. HTTP Status: %s\",\n                    HTTPStatus.SERVICE_UNAVAILABLE,\n                )\n\n                return None\n            else:\n                with contextlib.suppress(ValueError, json.decoder.JSONDecodeError):\n                    error_info = json.loads(response.text)\n                    error_code = (\n                        error_info.get(\"errorCode\", 0)\n                        or error_info.get(\"code\", 0)\n                        or error_info.get(\"status\")\n                    )\n                    error_message = error_info.get(\n                        \"errorMessage\", \"\"\n                    ) or error_info.get(\"message\", \"\")\n                    error_doc = (\n                        error_info.get(\"doc\")\n                        or error_info.get(\"errorDoc\")\n                        or error_info.get(\"errorDocument\")\n                        or error_info.get(\"errorDocumentation\")\n                    )\n                    error_cause = error_info.get(\"errorCause\", [])\n                    causes = error_info.get(\"causes\", [])\n                    backend_error_id = error_info.get(\"errorId\")\n\n                    # Handle the causes and format them for exception\n                    error_cause_details = [\n                        f\"ErrorType: {cause.get('errorType', 'Unknown')}, \"\n                        f\"Message: {cause.get('errorMessage', 'No additional information provided')}, \"\n                        f\"Location: {cause.get('location', 'Unknown location')}\"\n                        for cause in causes\n                    ]\n                    # Join the error cause details into a single string, separated by newlines\n                    error_cause_details_str = (\n                        \"\\n\".join(error_cause_details) if error_cause_details else \"\"\n                    )\n\n                    # Retry with impersonation (if _user_id is present)\n                    # on authentication failure (token may have expired)\n                    if (\n                        self._user_id\n                        and not self._401_tls.has_retried\n                        and response.status_code\n                        == ErrorCode.AUTHENTICATION_PASSTHROUGH.http_error_code\n                    ):\n                        try:\n                            LOGGER.debug(\"Starting 401 automatic token refresh.\")\n                            return self._handle_401_token_refresh(\n                                api,\n                                path,\n                                params,\n                                binary_data=binary_data,\n                                download_file_path=download_file_path,\n                                text_response=text_response,\n                            )\n                        except Exception as e:\n                            LOGGER.debug(\n                                \"API call failed after a successful 401 token refresh. Error details: %s\",\n                                e,\n                            )\n                            raise\n\n                    if error_code and error_message:\n                        error = ERROR_CODE_FOR_HTTP_STATUS.get(\n                            response.status_code, ErrorCode.ERROR_PASSTHROUGH\n                        )\n                        # Raise exception with error details and causes\n                        raise error.exception_with_parameters(\n                            error_code,\n                            error_message,\n                            error_cause_details_str,\n                            error_cause=error_cause,\n                            backend_error_id=backend_error_id,\n                            error_doc=error_doc,\n                        )\n                raise AtlanError(\n                    SimpleNamespace(\n                        http_error_code=response.status_code,\n                        error_id=f\"ATLAN-PYTHON-{response.status_code}-000\",\n                        error_message=response.text,\n                        user_action=ErrorCode.ERROR_PASSTHROUGH.user_action,\n                    )\n                )\n        finally:\n            request_id_var.reset(token)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "uuid.uuid4",
+        "str",
+        "request_id_var.set",
+        "request_id_var.get",
+        "self._session.request",
+        "LOGGER.debug",
+        "LOGGER.isEnabledFor",
+        "LOGGER.debug",
+        "response.iter_lines",
+        "json.loads",
+        "response.json",
+        "LOGGER.debug",
+        "requests.exceptions.JSONDecodeError",
+        "json.decoder.JSONDecodeError",
+        "ErrorCode.JSON_ERROR.exception_with_parameters",
+        "LOGGER.error",
+        "contextlib.suppress",
+        "json.loads",
+        "self._handle_401_token_refresh",
+        "LOGGER.debug",
+        "LOGGER.debug",
+        "ERROR_CODE_FOR_HTTP_STATUS.get",
+        "error.exception_with_parameters",
+        "AtlanError",
+        "request_id_var.reset"
+      ],
+      "api_sequence_with_args": [
+        "uuid.uuid4()",
+        "str(uuid.uuid4())",
+        "request_id_var.set(str(uuid.uuid4()))",
+        "request_id_var.get()",
+        "self._session.request(api.method.value, path, data=binary_data, **params, timeout=(self.connect_timeout, self.read_timeout))",
+        "LOGGER.debug(\"HTTP Status: %s\", response.status_code)",
+        "LOGGER.isEnabledFor(logging.DEBUG)",
+        "LOGGER.debug(\"<== __call_api(%s,%s), result = %s\", vars(api), params, response)",
+        "response.iter_lines(decode_unicode=True)",
+        "json.loads(line.split(\"data: \")[1])",
+        "response.json()",
+        "LOGGER.debug(\"response: %s\", response_)",
+        "requests.exceptions.JSONDecodeError",
+        "json.decoder.JSONDecodeError",
+        "ErrorCode.JSON_ERROR.exception_with_parameters(response.text, response.status_code, str(e))",
+        "LOGGER.error(\"Atlas Service unavailable. HTTP Status: %s\", HTTPStatus.SERVICE_UNAVAILABLE)",
+        "contextlib.suppress(ValueError, json.decoder.JSONDecodeError)",
+        "json.loads(response.text)",
+        "self._handle_401_token_refresh(api, path, params, binary_data=binary_data, download_file_path=download_file_path, text_response=text_response)",
+        "LOGGER.debug(\"Starting 401 automatic token refresh.\")",
+        "LOGGER.debug(\"API call failed after a successful 401 token refresh. Error details: %s\", e)",
+        "ERROR_CODE_FOR_HTTP_STATUS.get(response.status_code, ErrorCode.ERROR_PASSTHROUGH)",
+        "error.exception_with_parameters(error_code, error_message, error_cause_details_str, error_cause=error_cause, backend_error_id=backend_error_id, error_doc=error_doc)",
+        "AtlanError(SimpleNamespace(http_error_code=response.status_code, error_id=f\"ATLAN-PYTHON-{response.status_code}-000\", error_message=response.text, user_action=ErrorCode.ERROR_PASSTHROUGH.user_action))",
+        "request_id_var.reset(token)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "uuid.uuid4",
+          "id": "create_md5_hash",
+          "description": "Creates MD5 hash object from encoded hostname",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "str",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "request_id_var.set",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "request_id_var.get",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "self._session.request",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "LOGGER.debug",
+          "id": "log_debug",
+          "description": "Logs debug message",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "LOGGER.isEnabledFor",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "LOGGER.debug",
+          "id": "log_debug",
+          "description": "Logs debug message",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "response.iter_lines",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "LOGGER.debug",
+          "id": "log_debug",
+          "description": "Logs debug message",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "requests.exceptions.JSONDecodeError",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.decoder.JSONDecodeError",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "ErrorCode.JSON_ERROR.exception_with_parameters",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "LOGGER.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "contextlib.suppress",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self._handle_401_token_refresh",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "LOGGER.debug",
+          "id": "log_debug",
+          "description": "Logs debug message",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "LOGGER.debug",
+          "id": "log_debug",
+          "description": "Logs debug message",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "ERROR_CODE_FOR_HTTP_STATUS.get",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "error.exception_with_parameters",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "AtlanError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "request_id_var.reset",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        }
+      ],
+      "contextual_code": "def _call_api_internal(self, api, path, params, binary_data=None, download_file_path=None, text_response=False):\n    token = request_id_var.set(str(uuid.uuid4()))\n    try:\n        params[\"headers\"][\"X-Atlan-Request-Id\"] = request_id_var.get()\n        if binary_data:\n            response = self._session.request(api.method.value, path, data=binary_data, **params, timeout=(self.connect_timeout, self.read_timeout))\n        elif api.consumes == EVENT_STREAM and api.produces == EVENT_STREAM:\n            response = self._session.request(api.method.value, path, **params, stream=True, timeout=(self.connect_timeout, self.read_timeout))\n            if download_file_path:\n                return self._handle_file_download(response.raw, download_file_path)\n        else:\n            response = self._session.request(api.method.value, path, **params, timeout=(self.connect_timeout, self.read_timeout))\n        if response is not None:\n            LOGGER.debug(\"HTTP Status: %s\", response.status_code)\n        if response is None:\n            return None\n        if (self._401_tls.has_retried and response.status_code != ErrorCode.AUTHENTICATION_PASSTHROUGH.http_error_code):\n            self._401_tls.has_retried = False\n        if response.status_code == api.expected_status:\n            try:\n                if (response.content is None or response.content == \"null\" or len(response.content) == 0 or response.status_code == HTTPStatus.NO_CONTENT):\n                    return None\n                events = []\n                if LOGGER.isEnabledFor(logging.DEBUG):\n                    LOGGER.debug(\"<== __call_api(%s,%s), result = %s\", vars(api), params, response)\n                if api.consumes == EVENT_STREAM and api.produces == EVENT_STREAM:\n                    for line in response.iter_lines(decode_unicode=True):\n                        if not line:\n                            continue\n                        if not line.startswith(\"data: \"):\n                            raise ErrorCode.UNABLE_TO_DESERIALIZE.exception_with_parameters(line)\n                        events.append(json.loads(line.split(\"data: \")[1]))\n                if text_response:\n                    response_ = response.text\n                else:\n                    response_ = events if events else response.json()\n                LOGGER.debug(\"response: %s\", response_)\n                return response_\n            except (requests.exceptions.JSONDecodeError, json.decoder.JSONDecodeError) as e:\n                raise ErrorCode.JSON_ERROR.exception_with_parameters(response.text, response.status_code, str(e)) from e\n        elif response.status_code == HTTPStatus.SERVICE_UNAVAILABLE:\n            LOGGER.error(\"Atlas Service unavailable. HTTP Status: %s\", HTTPStatus.SERVICE_UNAVAILABLE)\n            return None\n        else:\n            with contextlib.suppress(ValueError, json.decoder.JSONDecodeError):\n                error_info = json.loads(response.text)\n                # ... error handling ...\n                if (self._user_id and not self._401_tls.has_retried and response.status_code == ErrorCode.AUTHENTICATION_PASSTHROUGH.http_error_code):\n                    try:\n                        LOGGER.debug(\"Starting 401 automatic token refresh.\")\n                        return self._handle_401_token_refresh(api, path, params, binary_data=binary_data, download_file_path=download_file_path, text_response=text_response)\n                    except Exception as e:\n                        LOGGER.debug(\"API call failed after a successful 401 token refresh. Error details: %s\", e)\n                        raise\n                if error_code and error_message:\n                    error = ERROR_CODE_FOR_HTTP_STATUS.get(response.status_code, ErrorCode.ERROR_PASSTHROUGH)\n                    raise error.exception_with_parameters(error_code, error_message, error_cause_details_str, error_cause=error_cause, backend_error_id=backend_error_id, error_doc=error_doc)\n            raise AtlanError(SimpleNamespace(http_error_code=response.status_code, error_id=f\"ATLAN-PYTHON-{response.status_code}-000\", error_message=response.text, user_action=ErrorCode.ERROR_PASSTHROUGH.user_action))\n    finally:\n        request_id_var.reset(token)"
+    }
+  }
+]

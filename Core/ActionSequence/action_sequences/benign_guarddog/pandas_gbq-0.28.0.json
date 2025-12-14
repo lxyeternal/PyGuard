@@ -1,0 +1,131 @@
+[
+  {
+    "pyfile": "gbq.py",
+    "code_snippet": "def _download_results(\n    self,\n    rows_iter,\n    max_results=None,\n    progress_bar_type=None,\n    user_dtypes=None,\n):\n    # No results are desired, so don't bother downloading anything.\n    if max_results == 0:\n        return None\n\n    if user_dtypes is None:\n        user_dtypes = {}\n\n    create_bqstorage_client = self.use_bqstorage_api\n    if max_results is not None:\n        create_bqstorage_client = False\n\n    # If we're downloading a large table, BigQuery DataFrames might be a\n    # better fit. Not all code paths will populate rows_iter._table, but\n    # if it's not populated that means we are working with a small result\n    # set.\n    if (table_ref := getattr(rows_iter, \"_table\", None)) is not None:\n        table = self.client.get_table(table_ref)\n        if (\n            isinstance((num_bytes := table.num_bytes), int)\n            and num_bytes > pandas_gbq.constants.BYTES_TO_RECOMMEND_BIGFRAMES\n        ):\n            num_gib = num_bytes / pandas_gbq.constants.BYTES_IN_GIB\n            warnings.warn(\n                f\"Recommendation: Your results are {num_gib:.1f} GiB. \"\n                \"Consider using BigQuery DataFrames (https://bit.ly/bigframes-intro)\"\n                \"to process large results with pandas compatible APIs with transparent SQL \"\n                \"pushdown to BigQuery engine. This provides an opportunity to save on costs \"\n                \"and improve performance. \"\n                \"Please reach out to bigframes-feedback@google.com with any \"\n                \"questions or concerns. To disable this message, run \"\n                \"warnings.simplefilter('ignore', category=pandas_gbq.exceptions.LargeResultsWarning)\",\n                category=pandas_gbq.exceptions.LargeResultsWarning,\n                # user's code\n                # -> read_gbq\n                # -> run_query\n                # -> download_results\n                stacklevel=4,\n            )\n\n    try:\n        schema_fields = [field.to_api_repr() for field in rows_iter.schema]\n        conversion_dtypes = _bqschema_to_nullsafe_dtypes(schema_fields)\n        conversion_dtypes.update(user_dtypes)\n        df = rows_iter.to_dataframe(\n            dtypes=conversion_dtypes,\n            progress_bar_type=progress_bar_type,\n            create_bqstorage_client=create_bqstorage_client,\n        )\n    except self.http_error as ex:\n        self.process_http_error(ex)\n\n    df = _finalize_dtypes(df, schema_fields)\n\n    logger.debug(\"Got {} rows.\\n\".format(rows_iter.total_rows))\n    return df\n\n# Data dependencies and relevant imports:\nimport warnings\nimport pandas_gbq.constants\nimport pandas_gbq.exceptions\n# The function uses: self.client, pandas_gbq.constants.BYTES_TO_RECOMMEND_BIGFRAMES, pandas_gbq.constants.BYTES_IN_GIB, pandas_gbq.exceptions.LargeResultsWarning, _bqschema_to_nullsafe_dtypes, _finalize_dtypes, logger\n# Helper functions used:\ndef _bqschema_to_nullsafe_dtypes(schema_fields):\n    import db_dtypes\n    dtype_map = {\n        \"FLOAT\": np.dtype(float),\n        \"INTEGER\": \"Int64\",\n        \"TIME\": db_dtypes.TimeDtype(),\n    }\n    if FEATURES.pandas_has_boolean_dtype:\n        dtype_map[\"BOOLEAN\"] = \"boolean\"\n    dtypes = {}\n    for field in schema_fields:\n        name = str(field[\"name\"])\n        if field[\"mode\"].upper() == \"REPEATED\":\n            dtypes[name] = \"object\"\n            continue\n        dtype = dtype_map.get(field[\"type\"].upper())\n        if dtype:\n            dtypes[name] = dtype\n    return dtypes\n\ndef _finalize_dtypes(\n    df: \"pandas.DataFrame\", schema_fields: Sequence[Dict[str, Any]]\n) -> \"pandas.DataFrame\":\n    import db_dtypes\n    import pandas.api.types\n    dtype_map = {\n        \"DATE\": db_dtypes.DateDtype(),\n        \"DATETIME\": \"datetime64[ns]\",\n        \"TIMESTAMP\": \"datetime64[ns]\",\n    }\n    for field in schema_fields:\n        if field[\"mode\"].upper() == \"REPEATED\":\n            continue\n        name = str(field[\"name\"])\n        dtype = dtype_map.get(field[\"type\"].upper())\n        if dtype and pandas.api.types.is_object_dtype(df[name]):\n            df[name] = df[name].astype(dtype, errors=\"ignore\")\n    df = pandas_gbq.timestamp.localize_df(df, schema_fields)\n    return df\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "getattr",
+        "self.client.get_table",
+        "isinstance",
+        "warnings.warn",
+        "rows_iter.schema.field.to_api_repr",
+        "_bqschema_to_nullsafe_dtypes",
+        "dict.update",
+        "rows_iter.to_dataframe",
+        "self.process_http_error",
+        "_finalize_dtypes",
+        "logger.debug"
+      ],
+      "api_sequence_with_args": [
+        "getattr(rows_iter, \"_table\", None)",
+        "self.client.get_table(table_ref)",
+        "isinstance(table.num_bytes, int)",
+        "warnings.warn(f\"Recommendation: Your results are {num_gib:.1f} GiB. ...\", category=pandas_gbq.exceptions.LargeResultsWarning, stacklevel=4)",
+        "[field.to_api_repr() for field in rows_iter.schema]",
+        "_bqschema_to_nullsafe_dtypes(schema_fields)",
+        "conversion_dtypes.update(user_dtypes)",
+        "rows_iter.to_dataframe(dtypes=conversion_dtypes, progress_bar_type=progress_bar_type, create_bqstorage_client=create_bqstorage_client)",
+        "self.process_http_error(ex)",
+        "_finalize_dtypes(df, schema_fields)",
+        "logger.debug(\"Got {} rows.\\n\".format(rows_iter.total_rows))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.client.get_table",
+          "id": "open_sqlite_db",
+          "description": "Opens SQLite database file",
+          "first_id": "persistence_stealth",
+          "second_id": "data_storage",
+          "third_id": "database_operations"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "warnings.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "field.to_api_repr",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "_bqschema_to_nullsafe_dtypes",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "dict.update",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "rows_iter.to_dataframe",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.process_http_error",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "_finalize_dtypes",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def _download_results(\n    self,\n    rows_iter,\n    max_results=None,\n    progress_bar_type=None,\n    user_dtypes=None,\n):\n    if max_results == 0:\n        return None\n\n    if user_dtypes is None:\n        user_dtypes = {}\n\n    create_bqstorage_client = self.use_bqstorage_api\n    if max_results is not None:\n        create_bqstorage_client = False\n\n    if (table_ref := getattr(rows_iter, \"_table\", None)) is not None:\n        table = self.client.get_table(table_ref)\n        if (\n            isinstance((num_bytes := table.num_bytes), int)\n            and num_bytes > pandas_gbq.constants.BYTES_TO_RECOMMEND_BIGFRAMES\n        ):\n            num_gib = num_bytes / pandas_gbq.constants.BYTES_IN_GIB\n            warnings.warn(\n                f\"Recommendation: Your results are {num_gib:.1f} GiB. ...\",\n                category=pandas_gbq.exceptions.LargeResultsWarning,\n                stacklevel=4,\n            )\n\n    try:\n        schema_fields = [field.to_api_repr() for field in rows_iter.schema]\n        conversion_dtypes = _bqschema_to_nullsafe_dtypes(schema_fields)\n        conversion_dtypes.update(user_dtypes)\n        df = rows_iter.to_dataframe(\n            dtypes=conversion_dtypes,\n            progress_bar_type=progress_bar_type,\n            create_bqstorage_client=create_bqstorage_client,\n        )\n    except self.http_error as ex:\n        self.process_http_error(ex)\n\n    df = _finalize_dtypes(df, schema_fields)\n\n    logger.debug(\"Got {} rows.\\n\".format(rows_iter.total_rows))\n    return df"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pandas_gbq-0.28.0",
+      "total_matches": 1
+    }
+  }
+]

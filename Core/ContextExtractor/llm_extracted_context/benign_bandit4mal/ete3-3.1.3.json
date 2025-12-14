@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "ete3-3.1.3",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "ete_evol.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ete3-3.1.3/ete3-3.1.3/ete3/tools/ete_evol.py",
+    "line_number": "655",
+    "type_description": "B828:signal",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "654\t    proc = None\n655\t    signal(SIGINT, clean_exit)\n656",
+    "context_snippet": "def local_run_model(tree, model_name, binary, ctrl_string='', **kwargs):\n    '''\n    local verison of model runner. Needed for multiprocessing pickling...\n    '''\n    def clean_exit(a, b):\n        if proc:\n            print(\"Killing process %s\" %proc)\n            proc.terminate()\n            proc.kill(-9)\n        exit(a, b)\n    proc = None\n    signal(SIGINT, clean_exit)\n\n    model_obj = Model(model_name, tree, **kwargs)\n    # dir_name = model_obj.name\n    fullpath = os.path.join (tree.workdir, name_model(tree, model_obj.name))\n    os.system(\"mkdir -p %s\" % fullpath)\n    # write tree file\n    tree._write_algn(fullpath + '/algn')\n    if model_obj.properties['exec'] == 'Slr':\n        tree.write(outfile=fullpath+'/tree', format=11)\n    else:\n        tree.write(outfile=fullpath+'/tree',\n                   format = (10 if model_obj.properties['allow_mark'] else 9))\n    # write algn file\n    if ctrl_string == '':\n        ctrl_string = model_obj.get_ctrl_string(fullpath+'/tmp.ctl')\n    else:\n        open(fullpath+'/tmp.ctl', 'w').write(ctrl_string)\n    hlddir = os.getcwd()\n    os.chdir(fullpath)\n\n    proc = Popen(\"%s tmp.ctl\" %binary, stdout=PIPE, stdin=PIPE, shell=True)\n    proc.stdin.write(b'\\n') # in case codeml/slr asks something\n    job, err = proc.communicate()\n    if err is not None or b'error' in job or b'Error' in job:\n        print((b\"ERROR: inside CodeML!!\\n\" + job).decode())\n        return (None, None)\n    os.chdir(hlddir)\n    return os.path.join(fullpath, 'out'), model_obj.name",
+    "hash_value": "2edfb1cc220830dbf07ec3d6e22db713"
+  },
+  {
+    "pyfile": "ete_build.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ete3-3.1.3/ete3-3.1.3/ete3/tools/ete_build.py",
+    "line_number": "641",
+    "type_description": "B812:system",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "640\t              GLOBALS[\"basedir\"]\n641\t            os.system(cmd)\n642\t        log.log(28, \"Deleting temporal data...\")",
+    "context_snippet": "def main(args):\n    \"\"\" Read and parse all configuration and command line options,\n    setup global variables and data, and initialize the master task of\n    all workflows. \"\"\"\n\n    global log\n    log = logging.getLogger(\"main\")\n\n    base_dir = GLOBALS[\"basedir\"]\n    ...\n    if not thread_errors:\n        if GLOBALS.get('_background_scheduler', None):\n            GLOBALS['_background_scheduler'].terminate()\n\n        if args.compress:\n            log.log(28, \"Compressing intermediate data...\")\n            cmd = \"cd %s && tar --remove-files -cf etebuild_data.tar tasks/ && gzip -f etebuild_data.tar; if [ -e etebuild.log ]; then gzip -f etebuild.log; fi;\" %\\\n              GLOBALS[\"basedir\"]\n            os.system(cmd)\n        log.log(28, \"Deleting temporal data...\")\n        cmd = \"cd %s && rm -rf tmp/\" %GLOBALS[\"basedir\"]\n        os.system(cmd)\n        cmd = \"cd %s && rm -rf input/\" %GLOBALS[\"basedir\"]\n        os.system(cmd)\n        GLOBALS[\"citator\"].show()\n    else:\n        raise DataError(\"Errors found in some tasks\")",
+    "hash_value": "81c2eaabbdcd31ee5c28a47e4b7c9e47"
+  }
+]

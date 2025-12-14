@@ -1,0 +1,101 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import distutils.command.build\nimport distutils.log\nimport os\nimport pathlib\nimport subprocess\nimport sys\nimport tempfile\nfrom sys import platform\nfrom sys import version_info\n\nclass BuildMemray(build_ext_orig):\n    def run(self):\n        self.build_js_files()\n        self.build_libbacktrace()\n        super().run()\n\n    def announce_and_run(self, command, **kwargs):\n        self.announce(\n            \"executing command: `{}`\".format(\" \".join(command)),\n            level=distutils.log.INFO,\n        )\n        subprocess.run(command, check=True, **kwargs)\n\n    def build_libbacktrace(self):\n        archive_location = LIBBACKTRACE_LIBDIR / \"libbacktrace.a\"\n\n        if archive_location.exists():\n            return\n\n        if not LIBBACKTRACE_LOCATION.exists():\n            self.announce_and_run(\n                [f\"{LIBBACKTRACE_LOCATION.parent / 'regenerate_libbacktrace.sh'}\"],\n                cwd=LIBBACKTRACE_LOCATION.parent,\n            )\n\n        configure_cmd = [\n            f\"{LIBBACKTRACE_LOCATION}/configure\",\n            \"--with-pic\",\n            \"--prefix\",\n            f\"{LIBBACKTRACE_LOCATION}/install\",\n            \"--includedir\",\n            f\"{LIBBACKTRACE_LOCATION}/install/include/libbacktrace\",\n        ]\n        libbacktrace_target = os.getenv(\"MEMRAY_LIBBACKTRACE_TARGET\")\n        if libbacktrace_target is not None:\n            configure_cmd.extend([\"--host\", libbacktrace_target])\n\n        with tempfile.TemporaryDirectory() as tmpdirname:\n            self.announce_and_run(\n                configure_cmd,\n                cwd=tmpdirname,\n            )\n            self.announce_and_run([\"make\", \"-j\"], cwd=tmpdirname)\n            self.announce_and_run([\"make\", \"install\"], cwd=tmpdirname)\n\n    def build_js_files(self):\n        if any(ASSETS_LOCATION.glob(\"*.js\")):\n            return\n\n        self.announce_and_run([\"npm\", \"install\"])\n        self.announce_and_run([\"npm\", \"run-script\", \"build\"])\n\n# Data dependencies and relevant globals:\n# - subprocess: imported at top\n# - distutils.log: imported at top\n# - LIBBACKTRACE_LIBDIR, LIBBACKTRACE_LOCATION, ASSETS_LOCATION: defined at module level\n# - os, tempfile, pathlib: imported at top\n# - build_ext_orig: imported at top\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "tempfile.TemporaryDirectory",
+        "subprocess.run",
+        "subprocess.run",
+        "subprocess.run",
+        "ASSETS_LOCATION.glob",
+        "subprocess.run",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv(\"MEMRAY_LIBBACKTRACE_TARGET\")",
+        "tempfile.TemporaryDirectory()",
+        "subprocess.run(configure_cmd, cwd=tmpdirname)",
+        "subprocess.run([\"make\", \"-j\"], cwd=tmpdirname)",
+        "subprocess.run([\"make\", \"install\"], cwd=tmpdirname)",
+        "ASSETS_LOCATION.glob(\"*.js\")",
+        "subprocess.run([\"npm\", \"install\"])",
+        "subprocess.run([\"npm\", \"run-script\", \"build\"])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "tempfile.TemporaryDirectory",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "ASSETS_LOCATION.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nimport tempfile\n\nclass BuildMemray(build_ext_orig):\n    def announce_and_run(self, command, **kwargs):\n        self.announce(\n            \"executing command: `{}`\".format(\" \".join(command)),\n            level=distutils.log.INFO,\n        )\n        subprocess.run(command, check=True, **kwargs)\n\n    def build_libbacktrace(self):\n        archive_location = LIBBACKTRACE_LIBDIR / \"libbacktrace.a\"\n\n        if archive_location.exists():\n            return\n\n        if not LIBBACKTRACE_LOCATION.exists():\n            self.announce_and_run(\n                [f\"{LIBBACKTRACE_LOCATION.parent / 'regenerate_libbacktrace.sh'}\"],\n                cwd=LIBBACKTRACE_LOCATION.parent,\n            )\n\n        configure_cmd = [\n            f\"{LIBBACKTRACE_LOCATION}/configure\",\n            \"--with-pic\",\n            \"--prefix\",\n            f\"{LIBBACKTRACE_LOCATION}/install\",\n            \"--includedir\",\n            f\"{LIBBACKTRACE_LOCATION}/install/include/libbacktrace\",\n        ]\n        libbacktrace_target = os.getenv(\"MEMRAY_LIBBACKTRACE_TARGET\")\n        if libbacktrace_target is not None:\n            configure_cmd.extend([\"--host\", libbacktrace_target])\n\n        with tempfile.TemporaryDirectory() as tmpdirname:\n            self.announce_and_run(\n                configure_cmd,\n                cwd=tmpdirname,\n            )\n            self.announce_and_run([\"make\", \"-j\"], cwd=tmpdirname)\n            self.announce_and_run([\"make\", \"install\"], cwd=tmpdirname)\n\n    def build_js_files(self):\n        if any(ASSETS_LOCATION.glob(\"*.js\")):\n            return\n\n        self.announce_and_run([\"npm\", \"install\"])\n        self.announce_and_run([\"npm\", \"run-script\", \"build\"])"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "memray-1.17.0",
+      "total_matches": 1
+    }
+  }
+]

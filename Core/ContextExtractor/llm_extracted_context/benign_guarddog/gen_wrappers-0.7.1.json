@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "gen_wrappers-0.7.1",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/gen_wrappers-0.7.1.txt",
+      "total_matches": 3
+    }
+  },
+  {
+    "pyfile": "creator_cmfy.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/gen_wrappers-0.7.1/gen_wrappers-0.7.1/creator/cmfy/creator_cmfy.py",
+    "line_number": "49",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.post(url, data=data, headers=headers)",
+    "context_snippet": "    async def create(self, params: Union[CmfyWorkflow, CmfyWorkflowFcus]) -> ResponseCmfy:\n        cmfy_port = os.environ.get(\"PORT_CMFY\", 8889)\n        url = f\"http://localhost:{cmfy_port}/prompt\"\n        workflow = json.loads(params.workflow_json)\n        loaded_model, is_flux, model_type = await self.get_model_from_workflow(workflow)\n        if model_type == \"checkpoint\" and loaded_model is not None:\n            self._check_loaded_model(loaded_model)\n        logger.debug(f\"CMFY data: {workflow}\")\n        # Send a POST to cmfy_url with the workflow json\n        # The response will be JSON string with the below format\n        response_json = {}\n        try:\n            headers = {'Content-Type': 'application/json'}\n            data = {\"prompt\": workflow}\n            data = json.dumps(data).encode('utf-8')\n            response = requests.post(url, data=data, headers=headers)\n            logger.debug(f\"CMFY response: {response}, {response.text}, {response.json()}\")\n            # If we have a 422 here, print what the unprocessable entity is\n            if response.status_code == 422:\n                logger.warning(f\"Unprocessable entity: {response.text}\")\n            response.raise_for_status()\n            response_json = response.json()\n        except Exception as e:\n            logger.error(f\"Error creating prompt: {e}\")\n            return ResponseCmfy.error(f\"Error creating prompt: {e} ({response_json})\")\n        # {\"prompt_id\": \"f57c69ee-f4ed-4866-b5a4-4072c17c36a8\", \"number\": 2, \"node_errors\": {}}\n        prompt_id = response_json.get(\"prompt_id\", None)\n        logger.debug(f\"Prompt ID: {prompt_id}\")\n        if prompt_id is None:\n            return ResponseCmfy.error(f\"Error creating prompt: {response_json}\")\n        status_count = 0\n        response = await self.get_status(prompt_id)\n        status = response.status\n        while status != JobStatus.FINISHED and status != JobStatus.FAILED and status_count < 10:\n            await asyncio.sleep(1)\n            response = await self.get_status(prompt_id)\n            status = response.status\n            status_count += 1\n        if status == JobStatus.FINISHED:\n            response_data = response.output\n            logger.info(f\"Success, returning response with {len(data)} images\")\n            return ResponseCmfy.success(response_data, prompt_id)\n        return ResponseCmfy.error(\"Error creating prompt\")",
+    "hash_value": "e82ac952556c431681bba47db8585d49",
+    "detection_index": 1
+  }
+]

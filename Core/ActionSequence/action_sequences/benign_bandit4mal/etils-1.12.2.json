@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "etils-1.12.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "tree_utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/etils-1.12.2/etils-1.12.2/etils/etree/tree_utils.py",
+    "line_number": "79",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "78\n79\t    with concurrent.futures.ThreadPoolExecutor(\n80\t        max_workers=num_threads\n81\t    ) as executor:",
+    "code_snippet": "def parallel_map(\n      self,\n      map_fn: Callable[..., _Tout],  # Callable[[_Tin0, _Tin1,...], Tout]\n      *trees: Tree[_Tin],  # _Tin0, _Tin1,...\n      num_threads: Optional[int] = None,\n      progress_bar: bool = False,\n      is_leaf: Optional[LeafFn] = None,\n  ) -> Tree[_Tout]:\n    \"\"\"Same as `tree.map_structure` but apply `map_fn` in parallel.\n\n    Args:\n      map_fn: Worker function\n      *trees: Nested input to pass to the `map_fn`\n      num_threads: Number of workers (default to CPU count * 5)\n      progress_bar: If True, display a progression bar.\n      is_leaf: Don't recurse into leaf if `is_leaf(node)` is `True`\n\n    Returns:\n      The nested structure after `map_fn` has been applied.\n    \"\"\"\n    # TODO(epot): Allow nesting `parallel_map` while keeping max num threads\n    # constant. How to avoid dead locks ?\n\n    with concurrent.futures.ThreadPoolExecutor(\n        max_workers=num_threads\n    ) as executor:\n      launch_worker = functools.partial(executor.submit, map_fn)\n      futures = self.backend.map(launch_worker, *trees, is_leaf=is_leaf)\n\n      leaves, _ = self.backend.flatten(futures, is_leaf=is_leaf)\n\n      itr = concurrent.futures.as_completed(leaves)\n      if progress_bar:\n        itr = etqdm.tqdm(itr, total=len(leaves))\n\n      for f in itr:  # Propagate exception to main thread.\n        if f.exception():\n          raise f.exception()\n\n    return self.backend.map(lambda f: f.result(), futures)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "concurrent.futures.ThreadPoolExecutor",
+        "concurrent.futures.ThreadPoolExecutor.submit",
+        "self.backend.map",
+        "self.backend.flatten",
+        "concurrent.futures.as_completed",
+        "etqdm.tqdm",
+        "concurrent.futures.Future.exception",
+        "concurrent.futures.Future.exception",
+        "concurrent.futures.Future.result",
+        "self.backend.map"
+      ],
+      "api_sequence_with_args": [
+        "concurrent.futures.ThreadPoolExecutor(max_workers=num_threads)",
+        "concurrent.futures.ThreadPoolExecutor.submit(map_fn, ...)",
+        "self.backend.map(launch_worker, *trees, is_leaf=is_leaf)",
+        "self.backend.flatten(futures, is_leaf=is_leaf)",
+        "concurrent.futures.as_completed(leaves)",
+        "etqdm.tqdm(itr, total=len(leaves))",
+        "f.exception()",
+        "f.exception()",
+        "f.result()",
+        "self.backend.map(lambda f: f.result(), futures)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "concurrent.futures.ThreadPoolExecutor",
+          "id": "init_thread_pool",
+          "description": "Initializes thread pool executor with specified worker count",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "concurrent.futures.ThreadPoolExecutor.submit",
+          "id": "submit_thread_function",
+          "description": "Submits function to thread pool for execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "self.backend.map",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "self.backend.flatten",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "concurrent.futures.as_completed",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "etqdm.tqdm",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "concurrent.futures.Future.exception",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "concurrent.futures.Future.exception",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "concurrent.futures.Future.result",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.backend.map",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        }
+      ],
+      "contextual_code": "with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:\n    launch_worker = functools.partial(executor.submit, map_fn)\n    futures = self.backend.map(launch_worker, *trees, is_leaf=is_leaf)\n    leaves, _ = self.backend.flatten(futures, is_leaf=is_leaf)\n    itr = concurrent.futures.as_completed(leaves)\n    if progress_bar:\n        itr = etqdm.tqdm(itr, total=len(leaves))\n    for f in itr:\n        if f.exception():\n            raise f.exception()\nreturn self.backend.map(lambda f: f.result(), futures)"
+    }
+  }
+]

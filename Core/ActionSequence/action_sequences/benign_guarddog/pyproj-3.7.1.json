@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport platform\nimport re\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nPROJ_VERSION_SEARCH = re.compile(r\".*Rel\\.\\s+(?P<version>\\d+\\.\\d+\\.\\d+).*\")\nVERSION_SEARCH = re.compile(r\".*(?P<version>\\d+\\.\\d+\\.\\d+).*\")\n\ndef _parse_version(version: str) -> tuple[int, int, int]:\n    \"\"\"Convert a version string to a tuple of integers.\"\"\"\n    match = VERSION_SEARCH.search(version)\n    if not match:\n        raise SystemExit(\n            f\"PROJ version unable to be determined from {version}. \"\n            \"Please set the PROJ_VERSION environment variable.\"\n        )\n    return tuple(\n        int(ver) for ver in match.groupdict()[\"version\"].split(\".\", maxsplit=2)\n    )\n\ndef get_proj_version(proj_dir: Path) -> tuple[int, int, int]:\n    \"\"\"\n    Determine PROJ version.\n\n    Prefer PROJ_VERSION environment variable.\n    If PROJ_VERSION is not set, try to determine the version from the PROJ executable.\n    \"\"\"\n    proj_version = os.environ.get(\"PROJ_VERSION\")\n    if proj_version:\n        return _parse_version(proj_version)\n    proj = proj_dir / \"bin\" / \"proj\"\n    proj_ver = subprocess.check_output(str(proj), stderr=subprocess.STDOUT).decode(\n        \"ascii\"\n    )\n    match = PROJ_VERSION_SEARCH.search(proj_ver)\n    if not match:\n        raise SystemExit(\n            \"PROJ version unable to be determined. \"\n            \"Please set the PROJ_VERSION environment variable.\"\n        )\n    return _parse_version(match.groupdict()[\"version\"])\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.check_output",
+        "subprocess.STDOUT",
+        "str",
+        "re.compile",
+        "re.compile",
+        "re.Pattern.search"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"PROJ_VERSION\")",
+        "subprocess.check_output(str(proj), stderr=subprocess.STDOUT)",
+        "subprocess.STDOUT",
+        "str(proj)",
+        "re.compile(r\".*Rel\\.\\s+(?P<version>\\d+\\.\\d+\\.\\d+).*\")",
+        "re.compile(r\".*(?P<version>\\d+\\.\\d+\\.\\d+).*\")",
+        "re.Pattern.search(version)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.STDOUT",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "str",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "re.compile",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.compile",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.Pattern.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        }
+      ],
+      "contextual_code": "import os\nimport re\nimport subprocess\nfrom pathlib import Path\n\nPROJ_VERSION_SEARCH = re.compile(r\".*Rel\\.\\s+(?P<version>\\d+\\.\\d+\\.\\d+).*\")\nVERSION_SEARCH = re.compile(r\".*(?P<version>\\d+\\.\\d+\\.\\d+).*\")\n\ndef _parse_version(version: str) -> tuple[int, int, int]:\n    match = VERSION_SEARCH.search(version)\n    if not match:\n        raise SystemExit(\n            f\"PROJ version unable to be determined from {version}. \"\n            \"Please set the PROJ_VERSION environment variable.\"\n        )\n    return tuple(\n        int(ver) for ver in match.groupdict()[\"version\"].split(\".\", maxsplit=2)\n    )\n\ndef get_proj_version(proj_dir: Path) -> tuple[int, int, int]:\n    proj_version = os.environ.get(\"PROJ_VERSION\")\n    if proj_version:\n        return _parse_version(proj_version)\n    proj = proj_dir / \"bin\" / \"proj\"\n    proj_ver = subprocess.check_output(str(proj), stderr=subprocess.STDOUT).decode(\n        \"ascii\"\n    )\n    match = PROJ_VERSION_SEARCH.search(proj_ver)\n    if not match:\n        raise SystemExit(\n            \"PROJ version unable to be determined. \"\n            \"Please set the PROJ_VERSION environment variable.\"\n        )\n    return _parse_version(match.groupdict()[\"version\"])"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyproj-3.7.1",
+      "total_matches": 1
+    }
+  }
+]

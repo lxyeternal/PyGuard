@@ -1,0 +1,106 @@
+{
+  "metadata": {
+    "package_name": "etils-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/etils-1.12.2.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "tree_utils.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/etils-1.12.2/etils-1.12.2/etils/etree/tree_utils.py",
+      "line_number": "79",
+      "type_description": "B840:executor",
+      "context_snippet": "def parallel_map(\n      self,\n      map_fn: Callable[..., _Tout],  # Callable[[_Tin0, _Tin1,...], Tout]\n      *trees: Tree[_Tin],  # _Tin0, _Tin1,...\n      num_threads: Optional[int] = None,\n      progress_bar: bool = False,\n      is_leaf: Optional[LeafFn] = None,\n  ) -> Tree[_Tout]:\n    \"\"\"Same as `tree.map_structure` but apply `map_fn` in parallel.\n\n    Args:\n      map_fn: Worker function\n      *trees: Nested input to pass to the `map_fn`\n      num_threads: Number of workers (default to CPU count * 5)\n      progress_bar: If True, display a progression bar.\n      is_leaf: Don't recurse into leaf if `is_leaf(node)` is `True`\n\n    Returns:\n      The nested structure after `map_fn` has been applied.\n    \"\"\"\n    # TODO(epot): Allow nesting `parallel_map` while keeping max num threads\n    # constant. How to avoid dead locks ?\n\n    with concurrent.futures.ThreadPoolExecutor(\n        max_workers=num_threads\n    ) as executor:\n      launch_worker = functools.partial(executor.submit, map_fn)\n      futures = self.backend.map(launch_worker, *trees, is_leaf=is_leaf)\n\n      leaves, _ = self.backend.flatten(futures, is_leaf=is_leaf)\n\n      itr = concurrent.futures.as_completed(leaves)\n      if progress_bar:\n        itr = etqdm.tqdm(itr, total=len(leaves))\n\n      for f in itr:  # Propagate exception to main thread.\n        if f.exception():\n          raise f.exception()\n\n    return self.backend.map(lambda f: f.result(), futures)",
+      "hash_value": "0eefdbb26307900255064198a31d9dd5",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def parallel_map(\n      self,\n      map_fn: Callable[..., _Tout],  # Callable[[_Tin0, _Tin1,...], Tout]\n      *trees: Tree[_Tin],  # _Tin0, _Tin1,...\n      num_threads: Optional[int] = None,\n      progress_bar: bool = False,\n      is_leaf: Optional[LeafFn] = None,\n  ) -> Tree[_Tout]:\n    \"\"\"Same as `tree.map_structure` but apply `map_fn` in parallel.\n\n    Args:\n      map_fn: Worker function\n      *trees: Nested input to pass to the `map_fn`\n      num_threads: Number of workers (default to CPU count * 5)\n      progress_bar: If True, display a progression bar.\n      is_leaf: Don't recurse into leaf if `is_leaf(node)` is `True`\n\n    Returns:\n      The nested structure after `map_fn` has been applied.\n    \"\"\"\n    # TODO(epot): Allow nesting `parallel_map` while keeping max num threads\n    # constant. How to avoid dead locks ?\n\n    with concurrent.futures.ThreadPoolExecutor(\n        max_workers=num_threads\n    ) as executor:\n      launch_worker = functools.partial(executor.submit, map_fn)\n      futures = self.backend.map(launch_worker, *trees, is_leaf=is_leaf)\n\n      leaves, _ = self.backend.flatten(futures, is_leaf=is_leaf)\n\n      itr = concurrent.futures.as_completed(leaves)\n      if progress_bar:\n        itr = etqdm.tqdm(itr, total=len(leaves))\n\n      for f in itr:  # Propagate exception to main thread.\n        if f.exception():\n          raise f.exception()\n\n    return self.backend.map(lambda f: f.result(), futures)",
+          "triple_sequences": [
+            {
+              "action_api": "concurrent.futures.ThreadPoolExecutor()",
+              "action_description": "Initializes thread pool executor",
+              "action_id": "init_thread_pool",
+              "object": "max_workers=num_threads",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Concurrent execution preparation",
+              "intention_id": "concurrent_execution_preparation"
+            },
+            {
+              "action_api": "executor.submit()",
+              "action_description": "Submits function to thread pool",
+              "action_id": "submit_thread_function",
+              "object": "map_fn",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Run function in thread pool",
+              "intention_id": "run_function_thread_pool"
+            },
+            {
+              "action_api": "self.backend.map()",
+              "action_description": "Submits function to thread pool",
+              "action_id": "submit_thread_function",
+              "object": "launch_worker, *trees, is_leaf=is_leaf",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Run function in thread pool",
+              "intention_id": "run_function_thread_pool"
+            },
+            {
+              "action_api": "self.backend.flatten()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "futures, is_leaf=is_leaf",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "concurrent.futures.as_completed()",
+              "action_description": "Iterates over response content in chunks",
+              "action_id": "iterate_response_chunks",
+              "object": "leaves",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "etqdm.tqdm()",
+              "action_description": "Waits for thread to finish execution",
+              "action_id": "wait_thread",
+              "object": "itr, total=len(leaves)",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "f.exception()",
+              "action_description": "Handles socket timeout exception",
+              "action_id": "handle_socket_timeout",
+              "object": "f",
+              "object_description": "Exception type name",
+              "object_id": "exception_type",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "self.backend.map()",
+              "action_description": "Submits function to thread pool",
+              "action_id": "submit_thread_function",
+              "object": "lambda f: f.result(), futures",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

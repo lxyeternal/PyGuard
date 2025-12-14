@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "package_name": "snowflake_core-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/snowflake_core-1.3.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "api_client.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/snowflake_core-1.3.0/snowflake_core-1.3.0/src/snowflake/core/cortex/inference_service/_generated/api_client.py",
+      "line_number": "563",
+      "type_description": "B820:get",
+      "context_snippet": "def request_with_retry(self,\n                       root,\n                       method,\n                       url,\n                       query_params=None,\n                       headers=None,\n                       post_params=None,\n                       body=None,\n                       _preload_content=True,\n                       _request_timeout=None):\n    \"\"\"Response time by default one hour.\"\"\"\n    enter_timing = time.time()\n    response_data = self.request(root,\n                                 method,\n                                 url,\n                                 query_params=query_params,\n                                 headers=headers,\n                                 post_params=post_params,\n                                 body=body,\n                                 _preload_content=_preload_content,\n                                 _request_timeout=_request_timeout)\n\n    if not root.parameters(\n    ).should_retry_request or response_data.status not in rest.RETRY_STATUS_CODES:\n        return response_data\n\n    logger.info(\n        f\"Request Status {response_data.status} ({snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)}) Retrying...\"\n    )\n    # Query retry support\n    result_endpoint = response_data.getheader('Location')\n    if response_data.status == 202 and result_endpoint is None:\n        raise InvalidResponseError(\n            f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} result endpoint is missing\"\n        )\n\n    if _request_timeout is None:\n        _request_timeout = snowflake.core._http_requests.DEFAULT_RETRY_TIMEOUT_SECONDS\n    wait_for_results_timeout = enter_timing + _request_timeout\n\n    exponential_wait_time = 1  # wait time increases exponentially, 30% more everytime\n    while True:\n        time_remaining = wait_for_results_timeout - time.time()\n        if time_remaining <= 0:\n            break\n        # Full Jitter\n        # ref: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/\n        # Take max(1, wait_time) to avoid making too many requests in a short period\n        wait_time = max(\n            1,\n            random.randint(0,\n                           int(min(exponential_wait_time,\n                                   time_remaining))))\n\n        if response_data.status in rest.RETRY_STATUS_CODES:\n            logger.info(\n                f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} detected. Sleeping for {wait_time} seconds before checking again\"\n            )\n\n            time.sleep(wait_time)\n\n            new_url = url\n            if response_data.status == 202:\n                new_url = self.configuration.host + result_endpoint\n                method = \"GET\"\n\n            response_data = self.request(\n                root,\n                method,\n                new_url,\n                query_params=query_params,\n                headers=headers,\n                post_params=post_params,\n                body=body,\n                _preload_content=_preload_content,\n                _request_timeout=max(time_remaining - wait_time, 1)\n                # request_timeout can never be zero\n            )\n        else:\n            logger.info(\n                f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} query completed\"\n            )\n            return response_data\n\n        exponential_wait_time *= 1.3\n\n    raise RetryTimeoutError(\n        f\"{response_data.status} {snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} query timeout\"\n    )",
+      "hash_value": "b0a7fca946d6c9040ee9ef8acd931f66",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def request_with_retry(self,\n                       root,\n                       method,\n                       url,\n                       query_params=None,\n                       headers=None,\n                       post_params=None,\n                       body=None,\n                       _preload_content=True,\n                       _request_timeout=None):\n    \"\"\"Response time by default one hour.\"\"\"\n    enter_timing = time.time()\n    response_data = self.request(root,\n                                 method,\n                                 url,\n                                 query_params=query_params,\n                                 headers=headers,\n                                 post_params=post_params,\n                                 body=body,\n                                 _preload_content=_preload_content,\n                                 _request_timeout=_request_timeout)\n\n    if not root.parameters(\n    ).should_retry_request or response_data.status not in rest.RETRY_STATUS_CODES:\n        return response_data\n\n    logger.info(\n        f\"Request Status {response_data.status} ({snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)}) Retrying...\"\n    )\n    # Query retry support\n    result_endpoint = response_data.getheader('Location')\n    if response_data.status == 202 and result_endpoint is None:\n        raise InvalidResponseError(\n            f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} result endpoint is missing\"\n        )\n\n    if _request_timeout is None:\n        _request_timeout = snowflake.core._http_requests.DEFAULT_RETRY_TIMEOUT_SECONDS\n    wait_for_results_timeout = enter_timing + _request_timeout\n\n    exponential_wait_time = 1  # wait time increases exponentially, 30% more everytime\n    while True:\n        time_remaining = wait_for_results_timeout - time.time()\n        if time_remaining <= 0:\n            break\n        # Full Jitter\n        # ref: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/\n        # Take max(1, wait_time) to avoid making too many requests in a short period\n        wait_time = max(\n            1,\n            random.randint(0,\n                           int(min(exponential_wait_time,\n                                   time_remaining))))\n\n        if response_data.status in rest.RETRY_STATUS_CODES:\n            logger.info(\n                f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} detected. Sleeping for {wait_time} seconds before checking again\"\n            )\n\n            time.sleep(wait_time)\n\n            new_url = url\n            if response_data.status == 202:\n                new_url = self.configuration.host + result_endpoint\n                method = \"GET\"\n\n            response_data = self.request(\n                root,\n                method,\n                new_url,\n                query_params=query_params,\n                headers=headers,\n                post_params=post_params,\n                body=body,\n                _preload_content=_preload_content,\n                _request_timeout=max(time_remaining - wait_time, 1)\n                # request_timeout can never be zero\n            )\n        else:\n            logger.info(\n                f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} query completed\"\n            )\n            return response_data\n\n        exponential_wait_time *= 1.3\n\n    raise RetryTimeoutError(\n        f\"{response_data.status} {snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} query timeout\"\n    )",
+          "triple_sequences": [
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "self.request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "root, method, url, query_params=query_params, headers=headers, post_params=post_params, body=body, _preload_content=_preload_content, _request_timeout=_request_timeout",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"Request Status {response_data.status} ({snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)}) Retrying...\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "response_data.getheader()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "'Location'",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "random.randint()",
+              "action_description": "Generate random integer",
+              "action_id": "generate_random_integer",
+              "object": "0, int(min(exponential_wait_time, time_remaining))",
+              "object_description": "Random string",
+              "object_id": "random_string",
+              "intention_description": "Generate random number",
+              "intention_id": "generate_random_number"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} detected. Sleeping for {wait_time} seconds before checking again\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "time.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "wait_time",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "self.request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "root, method, new_url, query_params=query_params, headers=headers, post_params=post_params, body=body, _preload_content=_preload_content, _request_timeout=max(time_remaining - wait_time, 1)",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"{snowflake.core._http_requests.STATUS_CODES_MAPPING.get(response_data.status)} query completed\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

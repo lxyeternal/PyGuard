@@ -1,0 +1,118 @@
+[
+  {
+    "metadata": {
+      "package_name": "flytekit-1.16.0b6",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "auth_client.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flytekit-1.16.0b6/flytekit-1.16.0b6/flytekit/clients/auth/auth_client.py",
+    "line_number": "370",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "369\n370\t            server.handle_request(q)\n371\t            server.server_close()",
+    "code_snippet": "def get_creds_from_remote(self) -> Credentials:\n    \"\"\"\n    This is the entrypoint method. It will kickoff the full authentication\n    flow and trigger a web-browser to retrieve credentials. Because this\n    needs to open a port on localhost and may be called from a\n    multithreaded context (e.g. pyflyte register), this call may block\n    multiple threads and return a cached result for up to 60 seconds.\n    \"\"\"\n    # In the absence of globally-set token values, initiate the token request flow\n    with self._lock:\n        # Clear cache if it's been more than 60 seconds since the last check\n        cache_ttl_s = 60\n        if self._cached_credentials_ts is not None and self._cached_credentials_ts + cache_ttl_s < time.monotonic():\n            self._cached_credentials = None\n\n        if self._cached_credentials is not None:\n            return self._cached_credentials\n        q = Queue()\n\n        # First prepare the callback server in the background\n        server = self._create_callback_server()\n\n        self._request_authorization_code()\n\n        server.handle_request(q)\n        server.server_close()\n\n        # Send the call to request the authorization code in the background\n\n        # Request the access token once the auth code has been received.\n        auth_code = q.get()\n        self._cached_credentials = self._request_access_token(auth_code)\n        self._cached_credentials_ts = time.monotonic()\n        return self._cached_credentials",
+    "pattern_analysis": {
+      "api_sequence": [
+        "time.monotonic",
+        "Queue",
+        "self._create_callback_server",
+        "self._request_authorization_code",
+        "server.handle_request",
+        "server.server_close",
+        "Queue.get",
+        "self._request_access_token",
+        "time.monotonic"
+      ],
+      "api_sequence_with_args": [
+        "time.monotonic()",
+        "Queue()",
+        "self._create_callback_server()",
+        "self._request_authorization_code()",
+        "server.handle_request(q)",
+        "server.server_close()",
+        "q.get()",
+        "self._request_access_token(auth_code)",
+        "time.monotonic()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "time.monotonic",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "Queue",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "self._create_callback_server",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "self._request_authorization_code",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "server.handle_request",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "server.server_close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "Queue.get",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "self._request_access_token",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "time.monotonic",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "def get_creds_from_remote(self) -> Credentials:\n    with self._lock:\n        cache_ttl_s = 60\n        if self._cached_credentials_ts is not None and self._cached_credentials_ts + cache_ttl_s < time.monotonic():\n            self._cached_credentials = None\n\n        if self._cached_credentials is not None:\n            return self._cached_credentials\n        q = Queue()\n\n        server = self._create_callback_server()\n        self._request_authorization_code()\n        server.handle_request(q)\n        server.server_close()\n\n        auth_code = q.get()\n        self._cached_credentials = self._request_access_token(auth_code)\n        self._cached_credentials_ts = time.monotonic()\n        return self._cached_credentials"
+    }
+  }
+]

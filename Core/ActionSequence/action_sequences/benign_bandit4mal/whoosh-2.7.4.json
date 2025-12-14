@@ -1,0 +1,308 @@
+[
+  {
+    "metadata": {
+      "package_name": "whoosh-2.7.4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "compound.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/whoosh-2.7.4/Whoosh-2.7.4/src/whoosh/filedb/compound.py",
+    "line_number": "319",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "318\t                offset = self._dbfile.tell()\n319\t                self._dbfile.write(bio.getvalue()[:buflen])\n320\t                self._dbfile.write(inbytes)",
+    "code_snippet": "class CompoundWriter(object):\n    def __init__(self, tempstorage, buffersize=32 * 1024):\n        assert isinstance(buffersize, int)\n        self._tempstorage = tempstorage\n        self._tempname = \"%s.ctmp\" % random_name()\n        self._temp = tempstorage.create_file(self._tempname, mode=\"w+b\")\n        self._buffersize = buffersize\n        self._streams = {}\n\n    def create_file(self, name):\n        ss = self.SubStream(self._temp, self._buffersize)\n        self._streams[name] = ss\n        return StructFile(ss)\n\n    def _readback(self):\n        temp = self._temp\n        for name, substream in self._streams.items():\n            substream.close()\n\n            def gen():\n                for f, offset, length in substream.blocks:\n                    if f is None:\n                        f = temp\n                    f.seek(offset)\n                    yield f.read(length)\n\n            yield (name, gen)\n        temp.close()\n        self._tempstorage.delete_file(self._tempname)\n\n    def save_as_compound(self, dbfile):\n        basepos = dbfile.tell()\n        dbfile.write_long(0)  # Directory offset\n        dbfile.write_int(0)  # Directory length\n\n        directory = {}\n        for name, blocks in self._readback():\n            filestart = dbfile.tell()\n            for block in blocks():\n                dbfile.write(block)\n            directory[name] = {\"offset\": filestart,\n                               \"length\": dbfile.tell() - filestart}\n\n        CompoundStorage.write_dir(dbfile, basepos, directory)\n\n    def save_as_files(self, storage, name_fn):\n        for name, blocks in self._readback():\n            f = storage.create_file(name_fn(name))\n            for block in blocks():\n                f.write(block)\n            f.close()\n\n    class SubStream(object):\n        def __init__(self, dbfile, buffersize):\n            self._dbfile = dbfile\n            self._buffersize = buffersize\n            self._buffer = BytesIO()\n            self.blocks = []\n\n        def tell(self):\n            return sum(b[2] for b in self.blocks) + self._buffer.tell()\n\n        def write(self, inbytes):\n            bio = self._buffer\n            buflen = bio.tell()\n            length = buflen + len(inbytes)\n            if length >= self._buffersize:\n                offset = self._dbfile.tell()\n                self._dbfile.write(bio.getvalue()[:buflen])\n                self._dbfile.write(inbytes)\n\n                self.blocks.append((None, offset, length))\n                self._buffer.seek(0)\n            else:\n                bio.write(inbytes)\n\n        def close(self):\n            bio = self._buffer\n            length = bio.tell()\n            if length:\n                self.blocks.append((bio, 0, length))",
+    "pattern_analysis": {
+      "api_sequence": [
+        "random_name",
+        "tempstorage.create_file",
+        "StructFile",
+        "substream.close",
+        "f.seek",
+        "f.read",
+        "temp.close",
+        "self._tempstorage.delete_file",
+        "dbfile.tell",
+        "dbfile.write_long",
+        "dbfile.write_int",
+        "self._readback",
+        "dbfile.tell",
+        "dbfile.write",
+        "dbfile.tell",
+        "CompoundStorage.write_dir",
+        "self._readback",
+        "storage.create_file",
+        "f.write",
+        "f.close",
+        "BytesIO",
+        "bio.tell",
+        "self._dbfile.tell",
+        "self._dbfile.write",
+        "self._dbfile.write",
+        "self._buffer.seek",
+        "bio.write",
+        "bio.tell"
+      ],
+      "api_sequence_with_args": [
+        "random_name()",
+        "tempstorage.create_file(self._tempname, mode=\"w+b\")",
+        "StructFile(ss)",
+        "substream.close()",
+        "f.seek(offset)",
+        "f.read(length)",
+        "temp.close()",
+        "self._tempstorage.delete_file(self._tempname)",
+        "dbfile.tell()",
+        "dbfile.write_long(0)",
+        "dbfile.write_int(0)",
+        "self._readback()",
+        "dbfile.tell()",
+        "dbfile.write(block)",
+        "dbfile.tell()",
+        "CompoundStorage.write_dir(dbfile, basepos, directory)",
+        "self._readback()",
+        "storage.create_file(name_fn(name))",
+        "f.write(block)",
+        "f.close()",
+        "BytesIO()",
+        "bio.tell()",
+        "self._dbfile.tell()",
+        "self._dbfile.write(bio.getvalue()[:buflen])",
+        "self._dbfile.write(inbytes)",
+        "self._buffer.seek(0)",
+        "bio.write(inbytes)",
+        "bio.tell()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "random_name",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "tempstorage.create_file",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "StructFile",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "substream.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "f.seek",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "f.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "temp.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "self._tempstorage.delete_file",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "dbfile.tell",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "dbfile.write_long",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "dbfile.write_int",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self._readback",
+          "id": "exfiltrate_folder",
+          "description": "Recursively processes folder for file exfiltration",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "dbfile.tell",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "dbfile.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "dbfile.tell",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "CompoundStorage.write_dir",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self._readback",
+          "id": "exfiltrate_folder",
+          "description": "Recursively processes folder for file exfiltration",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "storage.create_file",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "f.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "f.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "bio.tell",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self._dbfile.tell",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self._dbfile.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self._dbfile.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self._buffer.seek",
+          "id": "move_buffer_pointer",
+          "description": "Moves buffer pointer to start",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "bio.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "bio.tell",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "class CompoundWriter(object):\n    def __init__(self, tempstorage, buffersize=32 * 1024):\n        self._tempstorage = tempstorage\n        self._tempname = \"%s.ctmp\" % random_name()\n        self._temp = tempstorage.create_file(self._tempname, mode=\"w+b\")\n        self._buffersize = buffersize\n        self._streams = {}\n\n    def create_file(self, name):\n        ss = self.SubStream(self._temp, self._buffersize)\n        self._streams[name] = ss\n        return StructFile(ss)\n\n    def _readback(self):\n        temp = self._temp\n        for name, substream in self._streams.items():\n            substream.close()\n            def gen():\n                for f, offset, length in substream.blocks:\n                    if f is None:\n                        f = temp\n                    f.seek(offset)\n                    yield f.read(length)\n            yield (name, gen)\n        temp.close()\n        self._tempstorage.delete_file(self._tempname)\n\n    def save_as_compound(self, dbfile):\n        basepos = dbfile.tell()\n        dbfile.write_long(0)  # Directory offset\n        dbfile.write_int(0)  # Directory length\n        directory = {}\n        for name, blocks in self._readback():\n            filestart = dbfile.tell()\n            for block in blocks():\n                dbfile.write(block)\n            directory[name] = {\"offset\": filestart,\n                               \"length\": dbfile.tell() - filestart}\n        CompoundStorage.write_dir(dbfile, basepos, directory)\n\n    def save_as_files(self, storage, name_fn):\n        for name, blocks in self._readback():\n            f = storage.create_file(name_fn(name))\n            for block in blocks():\n                f.write(block)\n            f.close()\n\n    class SubStream(object):\n        def __init__(self, dbfile, buffersize):\n            self._dbfile = dbfile\n            self._buffersize = buffersize\n            self._buffer = BytesIO()\n            self.blocks = []\n\n        def tell(self):\n            return sum(b[2] for b in self.blocks) + self._buffer.tell()\n\n        def write(self, inbytes):\n            bio = self._buffer\n            buflen = bio.tell()\n            length = buflen + len(inbytes)\n            if length >= self._buffersize:\n                offset = self._dbfile.tell()\n                self._dbfile.write(bio.getvalue()[:buflen])\n                self._dbfile.write(inbytes)\n                self.blocks.append((None, offset, length))\n                self._buffer.seek(0)\n            else:\n                bio.write(inbytes)\n\n        def close(self):\n            bio = self._buffer\n            length = bio.tell()\n            if length:\n                self.blocks.append((bio, 0, length))"
+    }
+  }
+]

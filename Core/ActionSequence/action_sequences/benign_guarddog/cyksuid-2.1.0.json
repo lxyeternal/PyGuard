@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\nimport sys\nimport warnings\nfrom typing import Any, Dict, List, Optional, Tuple, Union, cast\n\nclass BuildExt(build_ext.build_ext):\n    ...\n    def test_supports_compile_arg(self, comm: Union[str, List[str]]) -> bool:\n        if not hasattr(self.compiler, \"compiler_cxx\"):\n            return False\n        if not isinstance(comm, list):\n            comm = [comm]\n\n        is_supported = False\n\n        try:\n            if not isinstance(self.compiler.compiler_cxx, list):\n                cmd = list(self.compiler.compiler_cxx)\n            else:\n                cmd = self.compiler.compiler_cxx\n        except Exception as e:\n            print(\"Error: could not get compiler_cxx: %s\" % e)\n            cmd = self.compiler.compiler_cxx\n\n        print(\"--- Checking compiler support for option '%s'\" % \" \".join(comm), end=\"\")\n        fname = \"cyksuid_compiler_testing.cpp\"\n        try:\n            with open(fname, \"w\") as ftest:\n                ftest.write(\"int main(int argc, char**argv) {return 0;}\\n\")\n\n            val_good = subprocess.call(cmd + [fname])\n            val = subprocess.call(cmd + comm + [fname])\n            is_supported = val == val_good\n        except Exception:\n            is_supported = False\n        finally:\n            try:\n                os.remove(fname)\n            except Exception:\n                pass\n        print(\" ... %s\" % (\"yes\" if is_supported else \"no\"))\n        return is_supported\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "subprocess.call",
+        "subprocess.call",
+        "os.remove"
+      ],
+      "api_sequence_with_args": [
+        "open(fname, \"w\")",
+        "subprocess.call(cmd + [fname])",
+        "subprocess.call(cmd + comm + [fname])",
+        "os.remove(fname)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "def test_supports_compile_arg(self, comm: Union[str, List[str]]) -> bool:\n    ...\n    fname = \"cyksuid_compiler_testing.cpp\"\n    try:\n        with open(fname, \"w\") as ftest:\n            ftest.write(\"int main(int argc, char**argv) {return 0;}\\n\")\n\n        val_good = subprocess.call(cmd + [fname])\n        val = subprocess.call(cmd + comm + [fname])\n        is_supported = val == val_good\n    except Exception:\n        is_supported = False\n    finally:\n        try:\n            os.remove(fname)\n        except Exception:\n            pass"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "cyksuid-2.1.0",
+      "total_matches": 2
+    }
+  }
+]

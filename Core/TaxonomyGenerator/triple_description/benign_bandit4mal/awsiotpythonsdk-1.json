@@ -1,0 +1,146 @@
+{
+  "metadata": {
+    "package_name": "awsiotpythonsdk-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/awsiotpythonsdk-1.5.4.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "client.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/awsiotpythonsdk-1.5.4/AWSIoTPythonSDK-1.5.4/AWSIoTPythonSDK/core/protocol/paho/client.py",
+      "line_number": "1592",
+      "type_description": "B809:recv",
+      "context_snippet": "def _packet_read(self):\n    # This gets called if pselect() indicates that there is network data\n    # available - ie. at least one byte.  What we do depends on what data we\n    # already have.\n    # If we've not got a command, attempt to read one and save it. This should\n    # always work because it's only a single byte.\n    # Then try to read the remaining length. This may fail because it is may\n    # be more than one byte - will need to save data pending next read if it\n    # does fail.\n    # Then try to read the remaining payload, where 'payload' here means the\n    # combined variable header and actual payload. This is the most likely to\n    # fail due to longer length, so save current data and current position.\n    # After all data is read, send to _mqtt_handle_packet() to deal with.\n    # Finally, free the memory and reset everything to starting conditions.\n    if self._in_packet['command'] == 0:\n        try:\n            if self._ssl:\n                command = self._ssl.read(1)\n            else:\n                command = self._sock.recv(1)\n        except socket.error as err:\n            if self._ssl and (err.errno == ssl.SSL_ERROR_WANT_READ or err.errno == ssl.SSL_ERROR_WANT_WRITE):\n                return MQTT_ERR_AGAIN\n            if err.errno == EAGAIN:\n                return MQTT_ERR_AGAIN\n            print(err)\n            return 1\n        else:\n            if len(command) == 0:\n                return 1\n            command = struct.unpack(\"!B\", command)\n            self._in_packet['command'] = command[0]\n\n    if self._in_packet['have_remaining'] == 0:\n        # Read remaining\n        # Algorithm for decoding taken from pseudo code at\n        # http://publib.boulder.ibm.com/infocenter/wmbhelp/v6r0m0/topic/com.ibm.etools.mft.doc/ac10870_.htm\n        while True:\n            try:\n                if self._ssl:\n                    byte = self._ssl.read(1)\n                else:\n                    byte = self._sock.recv(1)\n            except socket.error as err:\n                if self._ssl and (err.errno == ssl.SSL_ERROR_WANT_READ or err.errno == ssl.SSL_ERROR_WANT_WRITE):\n                    return MQTT_ERR_AGAIN\n                if err.errno == EAGAIN:\n                    return MQTT_ERR_AGAIN\n                print(err)\n                return 1\n            else:\n                byte = struct.unpack(\"!B\", byte)\n                byte = byte[0]\n                self._in_packet['remaining_count'].append(byte)\n                # Max 4 bytes length for remaining length as defined by protocol.\n                 # Anything more likely means a broken/malicious client.\n                if len(self._in_packet['remaining_count']) > 4:\n                    return MQTT_ERR_PROTOCOL\n\n                self._in_packet['remaining_length'] = self._in_packet['remaining_length'] + (byte & 127)*self._in_packet['remaining_mult']\n                self._in_packet['remaining_mult'] = self._in_packet['remaining_mult'] * 128\n\n            if (byte & 128) == 0:\n                break\n\n        self._in_packet['have_remaining'] = 1\n        self._in_packet['to_process'] = self._in_packet['remaining_length']\n\n    while self._in_packet['to_process'] > 0:\n        try:\n            if self._ssl:\n                data = self._ssl.read(self._in_packet['to_process'])\n            else:\n                data = self._sock.recv(self._in_packet['to_process'])\n        except socket.error as err:\n            if self._ssl and (err.errno == ssl.SSL_ERROR_WANT_READ or err.errno == ssl.SSL_ERROR_WANT_WRITE):\n                return MQTT_ERR_AGAIN\n            if err.errno == EAGAIN:\n                return MQTT_ERR_AGAIN\n            print(err)\n            return 1\n        else:\n            self._in_packet['to_process'] = self._in_packet['to_process'] - len(data)\n            self._in_packet['packet'] = self._in_packet['packet'] + data\n\n    # All data for this packet is read.\n    self._in_packet['pos'] = 0\n    rc = self._packet_handle()\n\n    # Free data and reset values\n    self._in_packet = dict(\n        command=0,\n        have_remaining=0,\n        remaining_count=[],\n        remaining_mult=1,\n        remaining_length=0,\n        packet=b\"\",\n        to_process=0,\n        pos=0)\n\n    self._msgtime_mutex.acquire()\n    self._last_msg_in = time.time()\n    self._msgtime_mutex.release()\n    return rc",
+      "hash_value": "ed3fb1df25a2df765ffc3b8f92cb618b",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def _packet_read(self):\n    # This gets called if pselect() indicates that there is network data\n    # available - ie. at least one byte.  What we do depends on what data we\n    # already have.\n    # If we've not got a command, attempt to read one and save it. This should\n    # always work because it's only a single byte.\n    # Then try to read the remaining length. This may fail because it is may\n    # be more than one byte - will need to save data pending next read if it\n    # does fail.\n    # Then try to read the remaining payload, where 'payload' here means the\n    # combined variable header and actual payload. This is the most likely to\n    # fail due to longer length, so save current data and current position.\n    # After all data is read, send to _mqtt_handle_packet() to deal with.\n    # Finally, free the memory and reset everything to starting conditions.\n    if self._in_packet['command'] == 0:\n        try:\n            if self._ssl:\n                command = self._ssl.read(1)\n            else:\n                command = self._sock.recv(1)\n        except socket.error as err:\n            if self._ssl and (err.errno == ssl.SSL_ERROR_WANT_READ or err.errno == ssl.SSL_ERROR_WANT_WRITE):\n                return MQTT_ERR_AGAIN\n            if err.errno == EAGAIN:\n                return MQTT_ERR_AGAIN\n            print(err)\n            return 1\n        else:\n            if len(command) == 0:\n                return 1\n            command = struct.unpack(\"!B\", command)\n            self._in_packet['command'] = command[0]\n\n    if self._in_packet['have_remaining'] == 0:\n        # Read remaining\n        # Algorithm for decoding taken from pseudo code at\n        # http://publib.boulder.ibm.com/infocenter/wmbhelp/v6r0m0/topic/com.ibm.etools.mft.doc/ac10870_.htm\n        while True:\n            try:\n                if self._ssl:\n                    byte = self._ssl.read(1)\n                else:\n                    byte = self._sock.recv(1)\n            except socket.error as err:\n                if self._ssl and (err.errno == ssl.SSL_ERROR_WANT_READ or err.errno == ssl.SSL_ERROR_WANT_WRITE):\n                    return MQTT_ERR_AGAIN\n                if err.errno == EAGAIN:\n                    return MQTT_ERR_AGAIN\n                print(err)\n                return 1\n            else:\n                byte = struct.unpack(\"!B\", byte)\n                byte = byte[0]\n                self._in_packet['remaining_count'].append(byte)\n                # Max 4 bytes length for remaining length as defined by protocol.\n                 # Anything more likely means a broken/malicious client.\n                if len(self._in_packet['remaining_count']) > 4:\n                    return MQTT_ERR_PROTOCOL\n\n                self._in_packet['remaining_length'] = self._in_packet['remaining_length'] + (byte & 127)*self._in_packet['remaining_mult']\n                self._in_packet['remaining_mult'] = self._in_packet['remaining_mult'] * 128\n\n            if (byte & 128) == 0:\n                break\n\n        self._in_packet['have_remaining'] = 1\n        self._in_packet['to_process'] = self._in_packet['remaining_length']\n\n    while self._in_packet['to_process'] > 0:\n        try:\n            if self._ssl:\n                data = self._ssl.read(self._in_packet['to_process'])\n            else:\n                data = self._sock.recv(self._in_packet['to_process'])\n        except socket.error as err:\n            if self._ssl and (err.errno == ssl.SSL_ERROR_WANT_READ or err.errno == ssl.SSL_ERROR_WANT_WRITE):\n                return MQTT_ERR_AGAIN\n            if err.errno == EAGAIN:\n                return MQTT_ERR_AGAIN\n            print(err)\n            return 1\n        else:\n            self._in_packet['to_process'] = self._in_packet['to_process'] - len(data)\n            self._in_packet['packet'] = self._in_packet['packet'] + data\n\n    # All data for this packet is read.\n    self._in_packet['pos'] = 0\n    rc = self._packet_handle()\n\n    # Free data and reset values\n    self._in_packet = dict(\n        command=0,\n        have_remaining=0,\n        remaining_count=[],\n        remaining_mult=1,\n        remaining_length=0,\n        packet=b\"\",\n        to_process=0,\n        pos=0)\n\n    self._msgtime_mutex.acquire()\n    self._last_msg_in = time.time()\n    self._msgtime_mutex.release()\n    return rc",
+          "triple_sequences": [
+            {
+              "action_api": "self._ssl.read(1)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "self._sock.recv(1)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "struct.unpack(\"!B\", command)",
+              "action_description": "Unpacks values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "\"!B\", command",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Prepare character processing",
+              "intention_id": "prepare_character_processing"
+            },
+            {
+              "action_api": "self._ssl.read(1)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "self._sock.recv(1)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "struct.unpack(\"!B\", byte)",
+              "action_description": "Unpacks values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "\"!B\", byte",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Prepare character processing",
+              "intention_id": "prepare_character_processing"
+            },
+            {
+              "action_api": "self._ssl.read(self._in_packet['to_process'])",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "self._in_packet['to_process']",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "self._sock.recv(self._in_packet['to_process'])",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "self._in_packet['to_process']",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "self._packet_handle()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "self._msgtime_mutex.acquire()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "self._msgtime_mutex.release()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

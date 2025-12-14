@@ -1,0 +1,226 @@
+{
+  "metadata": {
+    "package_name": "ophyd-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ophyd-1.10.5.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "sim.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ophyd-1.10.5/ophyd-1.10.5/ophyd/sim.py",
+      "line_number": "706",
+      "type_description": "B814:read",
+      "context_snippet": "class Syn2DGauss(Device):\n    \"\"\"\n    Evaluate a point on a Gaussian based on the value of a motor.\n\n    Parameters\n    ----------\n    name : str\n        The name of the detector\n    motor0 : SynAxis\n        The 'x' coordinate of the 2-D gaussian blob\n    motor_field0 : str\n        The name field of the motor. Should be the key in motor0.describe()\n    motor1 : SynAxis\n        The 'y' coordinate of the 2-D gaussian blob\n    motor_field1 : str\n        The name field of the motor. Should be the key in motor1.describe()\n    center : iterable, optional\n        The center of the gaussian blob\n        Defaults to (0,0)\n    Imax : float, optional\n        The intensity at `center`\n        Defaults to 1\n    sigma : float, optional\n        Standard deviation for gaussian blob\n        Defaults to 1\n    noise : {'poisson', 'uniform', None}, optional\n        Add noise to the gaussian peak..\n        Defaults to None\n    noise_multiplier : float, optional\n        Only relevant for 'uniform' noise. Multiply the random amount of\n        noise by 'noise_multiplier'\n        Defaults to 1\n    random_state : numpy random state object, optional\n        np.random.RandomState(0), to generate random number with given seed\n\n    Example\n    -------\n    motor = SynAxis(name='motor')\n    det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)\n    \"\"\"\n\n    val = Cpt(SynSignal, kind=\"hinted\")\n    Imax = Cpt(Signal, value=10, kind=\"config\")\n    center = Cpt(Signal, value=0, kind=\"config\")\n    sigma = Cpt(Signal, value=1, kind=\"config\")\n    noise = Cpt(\n        EnumSignal,\n        value=\"none\",\n        kind=\"config\",\n        enum_strings=(\"none\", \"poisson\", \"uniform\"),\n    )\n    noise_multiplier = Cpt(Signal, value=1, kind=\"config\")\n\n    def _compute(self):\n        x = self._motor0.read()[self._motor_field0][\"value\"]\n        y = self._motor1.read()[self._motor_field1][\"value\"]\n        m = np.array([x, y])\n        Imax = self.Imax.get()\n        center = self.center.get()\n        sigma = self.sigma.get()\n        noise = self.noise.get()\n        noise_multiplier = self.noise_multiplier.get()\n        v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma**2))\n        if noise == \"poisson\":\n            v = int(self.random_state.poisson(np.round(v), 1))\n        elif noise == \"uniform\":\n            v += self.random_state.uniform(-1, 1) * noise_multiplier\n        return v\n\n    def __init__(\n        self,\n        name,\n        motor0,\n        motor_field0,\n        motor1,\n        motor_field1,\n        center,\n        Imax,\n        sigma=1,\n        noise=\"none\",\n        noise_multiplier=1,\n        random_state=None,\n        **kwargs,\n    ):\n        super().__init__(name=name, **kwargs)\n        self._motor0 = motor0\n        self._motor1 = motor1\n        self._motor_field0 = motor_field0\n        self._motor_field1 = motor_field1\n        self.center.put(center)\n        self.Imax.put(Imax)\n        self.sigma.put(sigma)\n        self.noise.put(noise)\n        self.noise_multiplier.put(noise_multiplier)\n\n        if random_state is None:\n            random_state = np.random\n        self.random_state = random_state\n        self.val.name = self.name\n        self.val.sim_set_func(self._compute)\n\n        self.trigger()\n\n    def trigger(self, *args, **kwargs):\n        return self.val.trigger(*args, **kwargs)\n",
+      "hash_value": "9c260d5b3e27c45ebd793853fc6cd56d",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "class Syn2DGauss(Device):\n    \"\"\"\n    Evaluate a point on a Gaussian based on the value of a motor.\n\n    Parameters\n    ----------\n    name : str\n        The name of the detector\n    motor0 : SynAxis\n        The 'x' coordinate of the 2-D gaussian blob\n    motor_field0 : str\n        The name field of the motor. Should be the key in motor0.describe()\n    motor1 : SynAxis\n        The 'y' coordinate of the 2-D gaussian blob\n    motor_field1 : str\n        The name field of the motor. Should be the key in motor1.describe()\n    center : iterable, optional\n        The center of the gaussian blob\n        Defaults to (0,0)\n    Imax : float, optional\n        The intensity at `center`\n        Defaults to 1\n    sigma : float, optional\n        Standard deviation for gaussian blob\n        Defaults to 1\n    noise : {'poisson', 'uniform', None}, optional\n        Add noise to the gaussian peak..\n        Defaults to None\n    noise_multiplier : float, optional\n        Only relevant for 'uniform' noise. Multiply the random amount of\n        noise by 'noise_multiplier'\n        Defaults to 1\n    random_state : numpy random state object, optional\n        np.random.RandomState(0), to generate random number with given seed\n\n    Example\n    -------\n    motor = SynAxis(name='motor')\n    det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)\n    \"\"\"\n\n    val = Cpt(SynSignal, kind=\"hinted\")\n    Imax = Cpt(Signal, value=10, kind=\"config\")\n    center = Cpt(Signal, value=0, kind=\"config\")\n    sigma = Cpt(Signal, value=1, kind=\"config\")\n    noise = Cpt(\n        EnumSignal,\n        value=\"none\",\n        kind=\"config\",\n        enum_strings=(\"none\", \"poisson\", \"uniform\"),\n    )\n    noise_multiplier = Cpt(Signal, value=1, kind=\"config\")\n\n    def _compute(self):\n        x = self._motor0.read()[self._motor_field0][\"value\"]\n        y = self._motor1.read()[self._motor_field1][\"value\"]\n        m = np.array([x, y])\n        Imax = self.Imax.get()\n        center = self.center.get()\n        sigma = self.sigma.get()\n        noise = self.noise.get()\n        noise_multiplier = self.noise_multiplier.get()\n        v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma**2))\n        if noise == \"poisson\":\n            v = int(self.random_state.poisson(np.round(v), 1))\n        elif noise == \"uniform\":\n            v += self.random_state.uniform(-1, 1) * noise_multiplier\n        return v\n\n    def __init__(\n        self,\n        name,\n        motor0,\n        motor_field0,\n        motor1,\n        motor_field1,\n        center,\n        Imax,\n        sigma=1,\n        noise=\"none\",\n        noise_multiplier=1,\n        random_state=None,\n        **kwargs,\n    ):\n        super().__init__(name=name, **kwargs)\n        self._motor0 = motor0\n        self._motor1 = motor1\n        self._motor_field0 = motor_field0\n        self._motor_field1 = motor_field1\n        self.center.put(center)\n        self.Imax.put(Imax)\n        self.sigma.put(sigma)\n        self.noise.put(noise)\n        self.noise_multiplier.put(noise_multiplier)\n\n        if random_state is None:\n            random_state = np.random\n        self.random_state = random_state\n        self.val.name = self.name\n        self.val.sim_set_func(self._compute)\n\n        self.trigger()\n\n    def trigger(self, *args, **kwargs):\n        return self.val.trigger(*args, **kwargs)\n",
+          "triple_sequences": [
+            {
+              "action_api": "self._motor0.read()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "self._motor0",
+              "object_description": "User process",
+              "object_id": "user_process",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self._motor1.read()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "self._motor1",
+              "object_description": "User process",
+              "object_id": "user_process",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "np.array([x, y])",
+              "action_description": "Packs values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "[x, y]",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.Imax.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self.Imax",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.center.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self.center",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.sigma.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self.sigma",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.noise.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self.noise",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.noise_multiplier.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self.noise_multiplier",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "np.exp(-np.sum((m - center) ** 2) / (2 * sigma**2))",
+              "action_description": "Generate product of sequence",
+              "action_id": "generate_sequence_product",
+              "object": "(m - center) ** 2",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.random_state.poisson(np.round(v), 1)",
+              "action_description": "Generate random number",
+              "action_id": "generate_random_number",
+              "object": "np.round(v), 1",
+              "object_description": "Random string",
+              "object_id": "random_string",
+              "intention_description": "Generate random number",
+              "intention_id": "generate_random_number"
+            },
+            {
+              "action_api": "self.random_state.uniform(-1, 1)",
+              "action_description": "Generate random number",
+              "action_id": "generate_random_number",
+              "object": "-1, 1",
+              "object_description": "Random string",
+              "object_id": "random_string",
+              "intention_description": "Generate random number",
+              "intention_id": "generate_random_number"
+            },
+            {
+              "action_api": "super().__init__()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "name=name, **kwargs",
+              "object_description": "Username string",
+              "object_id": "username_string",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.center.put(center)",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "center",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.Imax.put(Imax)",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "Imax",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.sigma.put(sigma)",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "sigma",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.noise.put(noise)",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "noise",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.noise_multiplier.put(noise_multiplier)",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "noise_multiplier",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self.val.sim_set_func(self._compute)",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "self._compute",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.trigger()",
+              "action_description": "Runs the Discord bot with provided token",
+              "action_id": "run_discord_bot",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            },
+            {
+              "action_api": "self.val.trigger(*args, **kwargs)",
+              "action_description": "Runs the Discord bot with provided token",
+              "action_id": "run_discord_bot",
+              "object": "*args, **kwargs",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

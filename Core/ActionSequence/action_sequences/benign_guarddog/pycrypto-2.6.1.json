@@ -1,0 +1,101 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os, sys, re\nimport struct\n\nclass PCTBuildExt (build_ext):\n    def __read_autoconf(self, filename):\n        rx_define = re.compile(r\"\"\"^#define (\\S+) (?:(\\d+)|(\".*\"))$\"\"\")\n\n        result = {}\n        f = open(filename, \"r\")\n        try:\n            config_lines = f.read().replace(\"\\r\\n\", \"\\n\").split(\"\\n\")\n            for line in config_lines:\n                m = rx_define.search(line)\n                if not m: continue\n                sym = m.group(1)\n                n = m.group(2)\n                s = m.group(3)\n                if n:\n                    result[sym] = int(n)\n                elif s:\n                    result[sym] = eval(s)     # XXX - hack to unescape C-style string\n                else:\n                    continue\n        finally:\n            f.close()\n        return result\n\nclass PCTBuildConfigure(Command):\n    description = \"Generate config.h using ./configure (autoconf)\"\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        if not os.path.exists(\"config.status\"):\n            if os.system(\"chmod 0755 configure\") != 0:\n                raise RuntimeError(\"chmod error\")\n            cmd = \"sh configure\"    # we use \"sh\" here so that it'll work on mingw32 with standard python.org binaries\n            if self.verbose < 1:\n                cmd += \" -q\"\n            if os.system(cmd) != 0:\n                raise RuntimeError(\"autoconf error\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "re.compile",
+        "file.read",
+        "file.close",
+        "eval",
+        "os.path.exists",
+        "os.system",
+        "os.system"
+      ],
+      "api_sequence_with_args": [
+        "open(filename, \"r\")",
+        "re.compile(r\"^#define (\\S+) (?:(\\d+)|(\".*\"))$\")",
+        "f.read()",
+        "f.close()",
+        "eval(s)",
+        "os.path.exists(\"config.status\")",
+        "os.system(\"chmod 0755 configure\")",
+        "os.system(cmd)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.compile",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "file.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "eval",
+          "id": "eval_python_expr",
+          "description": "Evaluates string as Python expression",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import os, sys, re\n\nclass PCTBuildExt (build_ext):\n    def __read_autoconf(self, filename):\n        rx_define = re.compile(r\"\"\"^#define (\\S+) (?:(\\d+)|(\".*\"))$\"\"\")\n        result = {}\n        f = open(filename, \"r\")\n        try:\n            config_lines = f.read().replace(\"\\r\\n\", \"\\n\").split(\"\\n\")\n            for line in config_lines:\n                m = rx_define.search(line)\n                if not m: continue\n                sym = m.group(1)\n                n = m.group(2)\n                s = m.group(3)\n                if n:\n                    result[sym] = int(n)\n                elif s:\n                    result[sym] = eval(s)     # XXX - hack to unescape C-style string\n                else:\n                    continue\n        finally:\n            f.close()\n        return result\n\nclass PCTBuildConfigure(Command):\n    def run(self):\n        if not os.path.exists(\"config.status\"):\n            if os.system(\"chmod 0755 configure\") != 0:\n                raise RuntimeError(\"chmod error\")\n            cmd = \"sh configure\"\n            if self.verbose < 1:\n                cmd += \" -q\"\n            if os.system(cmd) != 0:\n                raise RuntimeError(\"autoconf error\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pycrypto-2.6.1",
+      "total_matches": 3
+    }
+  }
+]

@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "cherrypy-18.10.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "plugins.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/cherrypy-18.10.0/cherrypy-18.10.0/cherrypy/process/plugins.py",
+    "line_number": "296",
+    "type_description": "B811:getuid",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "295\t            if pwd:\n296\t                name = pwd.getpwuid(os.getuid())[0]\n297\t            if grp:",
+    "code_snippet": "def start(self):\n    # uid/gid\n    def current_ids():\n        \"\"\"Return the current (uid, gid) if available.\"\"\"\n        name, group = None, None\n        if pwd:\n            name = pwd.getpwuid(os.getuid())[0]\n        if grp:\n            group = grp.getgrgid(os.getgid())[0]\n        return name, group\n\n    if self.finalized:\n        if not (self.uid is None and self.gid is None):\n            self.bus.log('Already running as uid: %r gid: %r' %\n                         current_ids())\n    else:\n        if self.uid is None and self.gid is None:\n            if pwd or grp:\n                self.bus.log('uid/gid not set', level=30)\n        else:\n            self.bus.log('Started as uid: %r gid: %r' % current_ids())\n            if self.gid is not None:\n                os.setgid(self.gid)\n                os.setgroups([])\n            if self.uid is not None:\n                os.setuid(self.uid)\n            self.bus.log('Running as uid: %r gid: %r' % current_ids())\n\n    # umask\n    if self.finalized:\n        if self.umask is not None:\n            self.bus.log('umask already set to: %03o' % self.umask)\n    else:\n        if self.umask is None:\n            self.bus.log('umask not set', level=30)\n        else:\n            old_umask = os.umask(self.umask)\n            self.bus.log('umask old: %03o, new: %03o' %\n                         (old_umask, self.umask))\n\n    self.finalized = True\n# This is slightly higher than the priority for server.start\n# in order to facilitate the most common use: starting on a low\n# port (which requires root) and then dropping to another user.\nstart.priority = 77",
+    "pattern_analysis": {
+      "api_sequence": [
+        "pwd.getpwuid",
+        "os.getuid",
+        "grp.getgrgid",
+        "os.getgid",
+        "os.setgid",
+        "os.setgroups",
+        "os.setuid",
+        "os.umask"
+      ],
+      "api_sequence_with_args": [
+        "pwd.getpwuid(os.getuid())",
+        "os.getuid()",
+        "grp.getgrgid(os.getgid())",
+        "os.getgid()",
+        "os.setgid(self.gid)",
+        "os.setgroups([])",
+        "os.setuid(self.uid)",
+        "os.umask(self.umask)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pwd.getpwuid",
+          "id": "get_username",
+          "description": "Retrieves current user's login name",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.getuid",
+          "id": "get_username",
+          "description": "Retrieves current user's login name",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "grp.getgrgid",
+          "id": "get_group_name",
+          "description": "Retrieves group name for specified group id",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "os.getgid",
+          "id": "get_group_name",
+          "description": "Retrieves group name for specified group id",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "os.setgid",
+          "id": "adjust_process_privilege",
+          "description": "Adjusts process privilege for system operation",
+          "first_id": "system_operations",
+          "second_id": "system_privilege_operations",
+          "third_id": "privilege_management"
+        },
+        {
+          "api_name": "os.setgroups",
+          "id": "adjust_process_privilege",
+          "description": "Adjusts process privilege for system operation",
+          "first_id": "system_operations",
+          "second_id": "system_privilege_operations",
+          "third_id": "privilege_management"
+        },
+        {
+          "api_name": "os.setuid",
+          "id": "adjust_process_privilege",
+          "description": "Adjusts process privilege for system operation",
+          "first_id": "system_operations",
+          "second_id": "system_privilege_operations",
+          "third_id": "privilege_management"
+        },
+        {
+          "api_name": "os.umask",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        }
+      ],
+      "contextual_code": "def start(self):\n    def current_ids():\n        name, group = None, None\n        if pwd:\n            name = pwd.getpwuid(os.getuid())[0]\n        if grp:\n            group = grp.getgrgid(os.getgid())[0]\n        return name, group\n\n    if self.finalized:\n        if not (self.uid is None and self.gid is None):\n            self.bus.log('Already running as uid: %r gid: %r' % current_ids())\n    else:\n        if self.uid is None and self.gid is None:\n            if pwd or grp:\n                self.bus.log('uid/gid not set', level=30)\n        else:\n            self.bus.log('Started as uid: %r gid: %r' % current_ids())\n            if self.gid is not None:\n                os.setgid(self.gid)\n                os.setgroups([])\n            if self.uid is not None:\n                os.setuid(self.uid)\n            self.bus.log('Running as uid: %r gid: %r' % current_ids())\n\n    if self.finalized:\n        if self.umask is not None:\n            self.bus.log('umask already set to: %03o' % self.umask)\n    else:\n        if self.umask is None:\n            self.bus.log('umask not set', level=30)\n        else:\n            old_umask = os.umask(self.umask)\n            self.bus.log('umask old: %03o, new: %03o' % (old_umask, self.umask))"
+    }
+  }
+]

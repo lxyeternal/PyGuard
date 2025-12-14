@@ -1,0 +1,715 @@
+[
+  {
+    "pyfile": "app.py",
+    "code_snippet": "# Relevant imports and global variables\nimport os\nfrom platformio.project.helpers import get_default_projects_dir\n\nDEFAULT_SETTINGS = {\n    \"check_platformio_interval\": {\n        \"description\": \"Check for the new PlatformIO Core interval (days)\",\n        \"value\": 7,\n    },\n    \"check_prune_system_threshold\": {\n        \"description\": \"Check for pruning unnecessary data threshold (megabytes)\",\n        \"value\": 1024,\n    },\n    \"enable_cache\": {\n        \"description\": \"Enable caching for HTTP API requests\",\n        \"value\": True,\n    },\n    \"enable_telemetry\": {\n        \"description\": (\"Telemetry service <https://bit.ly/pio-telemetry> (Yes/No)\"),\n        \"value\": True,\n    },\n    \"force_verbose\": {\n        \"description\": \"Force verbose output when processing environments\",\n        \"value\": False,\n    },\n    \"projects_dir\": {\n        \"description\": \"Default location for PlatformIO projects (PlatformIO Home)\",\n        \"value\": get_default_projects_dir(),\n        \"validator\": projects_dir_validate,\n    },\n    \"enable_proxy_strict_ssl\": {\n        \"description\": \"Verify the proxy server certificate against the list of supplied CAs\",\n        \"value\": True,\n    },\n}\n\ndef projects_dir_validate(projects_dir):\n    assert os.path.isdir(projects_dir)\n    return os.path.abspath(projects_dir)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.isdir",
+        "os.path.abspath"
+      ],
+      "api_sequence_with_args": [
+        "os.path.isdir(projects_dir)",
+        "os.path.abspath(projects_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "import os\n\ndef projects_dir_validate(projects_dir):\n    assert os.path.isdir(projects_dir)\n    return os.path.abspath(projects_dir)"
+    }
+  },
+  {
+    "pyfile": "piolib.py",
+    "code_snippet": "def ConfigureProjectLibBuilder(env):\n    _pm_storage = {}\n\n    def _get_lib_license(pkg):\n        storage_dir = os.path.dirname(os.path.dirname(pkg.path))\n        if storage_dir not in _pm_storage:\n            _pm_storage[storage_dir] = LibraryPackageManager(storage_dir)\n        try:\n            return (_pm_storage[storage_dir].load_manifest(pkg) or {}).get(\"license\")\n        except MissingPackageManifestError:\n            pass\n        return None\n\n    def _correct_found_libs(lib_builders):\n        # build full dependency graph\n        found_lbs = [lb for lb in lib_builders if lb.is_dependent]\n        for lb in lib_builders:\n            if lb in found_lbs:\n                lb.search_deps_recursive(lb.get_search_files())\n        # refill found libs after recursive search\n        found_lbs = [lb for lb in lib_builders if lb.is_dependent]\n        for lb in lib_builders:\n            for deplb in lb.depbuilders[:]:\n                if deplb not in found_lbs:\n                    lb.depbuilders.remove(deplb)\n\n    def _print_deps_tree(root, level=0):\n        margin = \"|   \" * (level)\n        for lb in root.depbuilders:\n            title = lb.name\n            pkg = PackageItem(lb.path)\n            if pkg.metadata:\n                title += \" @ %s\" % pkg.metadata.version\n            elif lb.version:\n                title += \" @ %s\" % lb.version\n            click.echo(\"%s|-- %s\" % (margin, title), nl=False)\n            if int(ARGUMENTS.get(\"PIOVERBOSE\", 0)):\n                click.echo(\n                    \" (License: %s, \" % (_get_lib_license(pkg) or \"Unknown\"), nl=False\n                )\n                if pkg.metadata and pkg.metadata.spec.external:\n                    click.echo(\"URI: %s, \" % pkg.metadata.spec.uri, nl=False)\n                click.echo(\"Path: %s\" % lb.path, nl=False)\n                click.echo(\")\", nl=False)\n            click.echo(\"\")\n            if lb.verbose and lb.depbuilders:\n                _print_deps_tree(lb, level + 1)\n\n    project = ProjectAsLibBuilder(env, \"$PROJECT_DIR\")\n\n    if \"test\" in env[\"BUILD_TYPE\"]:\n        project.env.ConfigureTestTarget()\n\n    ldf_mode = LibBuilderBase.lib_ldf_mode.fget(project)  # pylint: disable=no-member\n\n    click.echo(\"LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf\")\n    click.echo(\n        \"LDF Modes: Finder ~ %s, Compatibility ~ %s\"\n        % (ldf_mode, project.lib_compat_mode)\n    )\n\n    project.install_dependencies()\n\n    lib_builders = env.GetLibBuilders()\n    click.echo(\"Found %d compatible libraries\" % len(lib_builders))\n\n    click.echo(\"Scanning dependencies...\")\n    project.search_deps_recursive()\n\n    if ldf_mode.startswith(\"chain\") and project.depbuilders:\n        _correct_found_libs(lib_builders)\n\n    if project.depbuilders:\n        click.echo(\"Dependency Graph\")\n        _print_deps_tree(project)\n    else:\n        click.echo(\"No dependencies\")\n\n    return project\n\n# Relevant imports and dependencies\nimport click\nfrom SCons.Script import ARGUMENTS\nfrom platformio.package.manager.library import LibraryPackageManager\nfrom platformio.package.exception import MissingPackageManifestError\nfrom platformio.package.meta import PackageItem\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.dirname",
+        "LibraryPackageManager",
+        "LibraryPackageManager.load_manifest",
+        "dict.get",
+        "click.echo",
+        "click.echo",
+        "click.echo",
+        "click.echo",
+        "click.echo",
+        "click.echo",
+        "click.echo"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(pkg.path)",
+        "os.path.dirname(os.path.dirname(pkg.path))",
+        "LibraryPackageManager(storage_dir)",
+        "_pm_storage[storage_dir].load_manifest(pkg)",
+        "dict.get(\"license\")",
+        "click.echo(\"%s|-- %s\" % (margin, title), nl=False)",
+        "click.echo(\" (License: %s, \" % (_get_lib_license(pkg) or \"Unknown\"), nl=False)",
+        "click.echo(\"URI: %s, \" % pkg.metadata.spec.uri, nl=False)",
+        "click.echo(\"Path: %s\" % lb.path, nl=False)",
+        "click.echo(\")\", nl=False)",
+        "click.echo(\"\")",
+        "click.echo(\"LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf\")",
+        "click.echo(\"LDF Modes: Finder ~ %s, Compatibility ~ %s\" % (ldf_mode, project.lib_compat_mode))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "LibraryPackageManager",
+          "id": "init_grabber_class",
+          "description": "Instantiates Grabber class",
+          "first_id": "data_exfiltration",
+          "second_id": "exfiltration_component_initialization",
+          "third_id": "exfiltration_component_creation"
+        },
+        {
+          "api_name": "LibraryPackageManager.load_manifest",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "dict.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def _get_lib_license(pkg):\n    storage_dir = os.path.dirname(os.path.dirname(pkg.path))\n    if storage_dir not in _pm_storage:\n        _pm_storage[storage_dir] = LibraryPackageManager(storage_dir)\n    try:\n        return (_pm_storage[storage_dir].load_manifest(pkg) or {}).get(\"license\")\n    except MissingPackageManifestError:\n        pass\n    return None\n\ndef _print_deps_tree(root, level=0):\n    margin = \"|   \" * (level)\n    for lb in root.depbuilders:\n        title = lb.name\n        pkg = PackageItem(lb.path)\n        if pkg.metadata:\n            title += \" @ %s\" % pkg.metadata.version\n        elif lb.version:\n            title += \" @ %s\" % lb.version\n        click.echo(\"%s|-- %s\" % (margin, title), nl=False)\n        if int(ARGUMENTS.get(\"PIOVERBOSE\", 0)):\n            click.echo(\n                \" (License: %s, \" % (_get_lib_license(pkg) or \"Unknown\"), nl=False\n            )\n            if pkg.metadata and pkg.metadata.spec.external:\n                click.echo(\"URI: %s, \" % pkg.metadata.spec.uri, nl=False)\n            click.echo(\"Path: %s\" % lb.path, nl=False)\n            click.echo(\")\", nl=False)\n        click.echo(\"\")\n        if lb.verbose and lb.depbuilders:\n            _print_deps_tree(lb, level + 1)\n\nclick.echo(\"LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf\")\nclick.echo(\n    \"LDF Modes: Finder ~ %s, Compatibility ~ %s\"\n    % (ldf_mode, project.lib_compat_mode)\n)"
+    }
+  },
+  {
+    "pyfile": "gdb.py",
+    "code_snippet": "import os\nimport signal\nimport time\n\nfrom platformio import telemetry\nfrom platformio.compat import aio_get_running_loop, is_bytes\nfrom platformio.debug import helpers\nfrom platformio.debug.exception import DebugInitError\nfrom platformio.debug.process.client import DebugClientProcess\n\nclass GDBClientProcess(DebugClientProcess):\n    PIO_SRC_NAME = \".pioinit\"\n    INIT_COMPLETED_BANNER = \"PlatformIO: Initialization completed\"\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        self._target_is_running = False\n        self._errors_buffer = b\"\"\n\n    async def run(self, extra_args):  # pylint: disable=arguments-differ\n        await super().run()\n\n        self.generate_init_script(os.path.join(self.working_dir, self.PIO_SRC_NAME))\n        gdb_path = self.debug_config.client_executable_path or \"gdb\"\n        # start GDB client\n        args = [\n            gdb_path,\n            \"-q\",\n            \"--directory\",\n            self.working_dir,\n            \"--directory\",\n            self.project_dir,\n            \"-l\",\n            \"10\",\n        ]\n        args.extend(list(extra_args or []))\n        gdb_data_dir = self._get_data_dir(gdb_path)\n        if gdb_data_dir:\n            args.extend([\"--data-directory\", gdb_data_dir])\n        args.append(self.debug_config.program_path)\n\n        await self.spawn(*args, cwd=self.project_dir, wait_until_exit=True)\n\n    @staticmethod\n    def _get_data_dir(gdb_path):\n        if \"msp430\" in gdb_path:\n            return None\n        gdb_data_dir = os.path.abspath(\n            os.path.join(os.path.dirname(gdb_path), \"..\", \"share\", \"gdb\")\n        )\n        return gdb_data_dir if os.path.isdir(gdb_data_dir) else None\n\n    def generate_init_script(self, dst):\n        # default GDB init commands depending on debug tool\n        commands = self.debug_config.get_init_script(\"gdb\").split(\"\\n\")\n\n        if self.debug_config.init_cmds:\n            commands = self.debug_config.init_cmds\n        commands.extend(self.debug_config.extra_cmds)\n\n        if not any(\"define pio_reset_run_target\" in cmd for cmd in commands):\n            commands = [\n                \"define pio_reset_run_target\",\n                \"   echo Warning! Undefined pio_reset_run_target command\\\\n\",\n                \"   monitor reset\",\n                \"end\",\n            ] + commands\n        if not any(\"define pio_reset_halt_target\" in cmd for cmd in commands):\n            commands = [\n                \"define pio_reset_halt_target\",\n                \"   echo Warning! Undefined pio_reset_halt_target command\\\\n\",\n                \"   monitor reset halt\",\n                \"end\",\n            ] + commands\n        if not any(\"define pio_restart_target\" in cmd for cmd in commands):\n            commands += [\n                \"define pio_restart_target\",\n                \"   pio_reset_halt_target\",\n                \"   $INIT_BREAK\",\n                \"   %s\" % (\"continue\" if self.debug_config.init_break else \"next\"),\n                \"end\",\n            ]\n\n        banner = [\n            \"echo PlatformIO Unified Debugger -> https://bit.ly/pio-debug\\\\n\",\n            \"echo PlatformIO: debug_tool = %s\\\\n\" % self.debug_config.tool_name,\n            \"echo PlatformIO: Initializing remote target...\\\\n\",\n        ]\n        footer = [\"echo %s\\\\n\" % self.INIT_COMPLETED_BANNER]\n        commands = banner + commands + footer\n\n        with open(dst, mode=\"w\", encoding=\"utf8\") as fp:\n            fp.write(\"\\n\".join(self.debug_config.reveal_patterns(commands)))\n\n    def stdin_data_received(self, data):\n        super().stdin_data_received(data)\n        if b\"-exec-run\" in data:\n            if self._target_is_running:\n                token, _ = data.split(b\"-\", 1)\n                self.stdout_data_received(token + b\"^running\\n\")\n                return\n            if self.debug_config.platform.is_embedded():\n                data = data.replace(b\"-exec-run\", b\"-exec-continue\")\n\n        if b\"-exec-continue\" in data:\n            self._target_is_running = True\n        if b\"-gdb-exit\" in data or data.strip() in (b\"q\", b\"quit\"):\n            # Allow terminating via SIGINT/CTRL+C\n            signal.signal(signal.SIGINT, signal.default_int_handler)\n            self.transport.get_pipe_transport(0).write(b\"pio_reset_run_target\\n\")\n        self.transport.get_pipe_transport(0).write(data)\n\n    def stdout_data_received(self, data):\n        super().stdout_data_received(data)\n        self._handle_error(data)\n        # go to init break automatically\n        if self.INIT_COMPLETED_BANNER.encode() in data:\n            telemetry.log_debug_started(self.debug_config)\n            self._auto_exec_continue()\n\n    def console_log(self, msg):\n        if helpers.is_gdbmi_mode():\n            msg = helpers.escape_gdbmi_stream(\"~\", msg)\n        self.stdout_data_received(msg if is_bytes(msg) else msg.encode())\n\n    def _auto_exec_continue(self):\n        auto_exec_delay = 0.5  # in seconds\n        if self._last_activity > (time.time() - auto_exec_delay):\n            aio_get_running_loop().call_later(0.1, self._auto_exec_continue)\n            return\n\n        if not self.debug_config.init_break or self._target_is_running:\n            return\n\n        self.console_log(\n            \"PlatformIO: Resume the execution to `debug_init_break = %s`\\n\"\n            % self.debug_config.init_break\n        )\n        self.console_log(\n            \"PlatformIO: More configuration options -> https://bit.ly/pio-debug\\n\"\n        )\n        if self.debug_config.platform.is_embedded():\n            self.transport.get_pipe_transport(0).write(\n                b\"0-exec-continue\\n\" if helpers.is_gdbmi_mode() else b\"continue\\n\"\n            )\n        else:\n            self.transport.get_pipe_transport(0).write(\n                b\"0-exec-run\\n\" if helpers.is_gdbmi_mode() else b\"run\\n\"\n            )\n        self._target_is_running = True\n\n    def stderr_data_received(self, data):\n        super().stderr_data_received(data)\n        self._handle_error(data)\n\n    def _handle_error(self, data):\n        self._errors_buffer = (self._errors_buffer + data)[-8192:]  # keep last 8 KBytes\n        if not (\n            self.PIO_SRC_NAME.encode() in self._errors_buffer\n            and b\"Error in sourced\" in self._errors_buffer\n        ):\n            return\n        telemetry.log_debug_exception(\n            DebugInitError(self._errors_buffer.decode()), self.debug_config\n        )\n        self.transport.close()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.isdir",
+        "open",
+        "signal.signal",
+        "signal.default_int_handler",
+        "time.time",
+        "telemetry.log_debug_started",
+        "telemetry.log_debug_exception"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(self.working_dir, self.PIO_SRC_NAME)",
+        "os.path.abspath(os.path.join(os.path.dirname(gdb_path), \"..\", \"share\", \"gdb\"))",
+        "os.path.dirname(gdb_path)",
+        "os.path.join(os.path.dirname(gdb_path), \"..\", \"share\", \"gdb\")",
+        "os.path.isdir(gdb_data_dir)",
+        "open(dst, mode=\"w\", encoding=\"utf8\")",
+        "signal.signal(signal.SIGINT, signal.default_int_handler)",
+        "signal.default_int_handler",
+        "time.time()",
+        "telemetry.log_debug_started(self.debug_config)",
+        "telemetry.log_debug_exception(DebugInitError(self._errors_buffer.decode()), self.debug_config)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "signal.default_int_handler",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "telemetry.log_debug_started",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "telemetry.log_debug_exception",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import os\nimport signal\nimport time\nfrom platformio import telemetry\n\nclass GDBClientProcess(DebugClientProcess):\n    def run(self, extra_args):\n        ...\n        self.generate_init_script(os.path.join(self.working_dir, self.PIO_SRC_NAME))\n        ...\n    @staticmethod\n    def _get_data_dir(gdb_path):\n        ...\n        gdb_data_dir = os.path.abspath(\n            os.path.join(os.path.dirname(gdb_path), \"..\", \"share\", \"gdb\")\n        )\n        return gdb_data_dir if os.path.isdir(gdb_data_dir) else None\n\n    def generate_init_script(self, dst):\n        ...\n        with open(dst, mode=\"w\", encoding=\"utf8\") as fp:\n            fp.write(\"\\n\".join(self.debug_config.reveal_patterns(commands)))\n\n    def stdin_data_received(self, data):\n        ...\n        if b\"-gdb-exit\" in data or data.strip() in (b\"q\", b\"quit\"):\n            signal.signal(signal.SIGINT, signal.default_int_handler)\n            self.transport.get_pipe_transport(0).write(b\"pio_reset_run_target\\n\")\n        ...\n\n    def _auto_exec_continue(self):\n        auto_exec_delay = 0.5  # in seconds\n        if self._last_activity > (time.time() - auto_exec_delay):\n            aio_get_running_loop().call_later(0.1, self._auto_exec_continue)\n            return\n        ...\n        if self.debug_config.platform.is_embedded():\n            self.transport.get_pipe_transport(0).write(\n                b\"0-exec-continue\\n\" if helpers.is_gdbmi_mode() else b\"continue\\n\"\n            )\n        else:\n            self.transport.get_pipe_transport(0).write(\n                b\"0-exec-run\\n\" if helpers.is_gdbmi_mode() else b\"run\\n\"\n            )\n        self._target_is_running = True\n\n    def stdout_data_received(self, data):\n        ...\n        if self.INIT_COMPLETED_BANNER.encode() in data:\n            telemetry.log_debug_started(self.debug_config)\n            self._auto_exec_continue()\n\n    def _handle_error(self, data):\n        ...\n        if not (\n            self.PIO_SRC_NAME.encode() in self._errors_buffer\n            and b\"Error in sourced\" in self._errors_buffer\n        ):\n            return\n        telemetry.log_debug_exception(\n            DebugInitError(self._errors_buffer.decode()), self.debug_config\n        )\n        self.transport.close()"
+    }
+  },
+  {
+    "pyfile": "terminal.py",
+    "code_snippet": "import click\nimport serial\nfrom serial.tools import miniterm\n\ndef print_terminal_settings(terminal):\n    click.echo(\n        \"--- Terminal on {p.name} | \"\n        \"{p.baudrate} {p.bytesize}-{p.parity}-{p.stopbits}\".format(p=terminal.serial)\n    )\n    click.echo(\n        \"--- Available filters and text transformations: %s\"\n        % \", \".join(get_available_filters())\n    )\n    click.echo(\"--- More details at https://bit.ly/pio-monitor-filters\")\n    click.echo(\n        \"--- Quit: {} | Menu: {} | Help: {} followed by {}\".format(\n            miniterm.key_description(terminal.exit_character),\n            miniterm.key_description(terminal.menu_character),\n            miniterm.key_description(terminal.menu_character),\n            miniterm.key_description(\"\\x08\"),\n        )\n    )\n\ndef get_available_filters():\n    return sorted(miniterm.TRANSFORMATIONS.keys())",
+    "pattern_analysis": {
+      "api_sequence": [
+        "miniterm.TRANSFORMATIONS.keys",
+        "sorted",
+        "click.echo",
+        "miniterm.key_description",
+        "miniterm.key_description",
+        "miniterm.key_description",
+        "miniterm.key_description",
+        "click.echo",
+        "click.echo",
+        "click.echo"
+      ],
+      "api_sequence_with_args": [
+        "miniterm.TRANSFORMATIONS.keys()",
+        "sorted(miniterm.TRANSFORMATIONS.keys())",
+        "click.echo(\"--- Terminal on {p.name} | {p.baudrate} {p.bytesize}-{p.parity}-{p.stopbits}\".format(p=terminal.serial))",
+        "miniterm.key_description(terminal.exit_character)",
+        "miniterm.key_description(terminal.menu_character)",
+        "miniterm.key_description(terminal.menu_character)",
+        "miniterm.key_description(\"\\x08\")",
+        "click.echo(\"--- Available filters and text transformations: %s\" % \", \".join(get_available_filters()))",
+        "click.echo(\"--- More details at https://bit.ly/pio-monitor-filters\")",
+        "click.echo(\"--- Quit: {} | Menu: {} | Help: {} followed by {}\".format(miniterm.key_description(terminal.exit_character), miniterm.key_description(terminal.menu_character), miniterm.key_description(terminal.menu_character), miniterm.key_description(\"\\x08\")))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "miniterm.TRANSFORMATIONS.keys",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sorted",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "miniterm.key_description",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "miniterm.key_description",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "miniterm.key_description",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "miniterm.key_description",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def get_available_filters():\n    return sorted(miniterm.TRANSFORMATIONS.keys())\n\ndef print_terminal_settings(terminal):\n    click.echo(\n        \"--- Terminal on {p.name} | \"\n        \"{p.baudrate} {p.bytesize}-{p.parity}-{p.stopbits}\".format(p=terminal.serial)\n    )\n    click.echo(\n        \"--- Available filters and text transformations: %s\"\n        % \", \".join(get_available_filters())\n    )\n    click.echo(\"--- More details at https://bit.ly/pio-monitor-filters\")\n    click.echo(\n        \"--- Quit: {} | Menu: {} | Help: {} followed by {}\".format(\n            miniterm.key_description(terminal.exit_character),\n            miniterm.key_description(terminal.menu_character),\n            miniterm.key_description(terminal.menu_character),\n            miniterm.key_description(\"\\x08\"),\n        )\n    )"
+    }
+  },
+  {
+    "pyfile": "_download.py",
+    "code_snippet": "import hashlib\nimport logging\nimport os\nimport tempfile\nimport time\n\nimport click\n\nfrom platformio import app, compat, util\nfrom platformio.package.download import FileDownloader\nfrom platformio.package.lockfile import LockFile\n\nclass PackageManagerDownloadMixin:\n    DOWNLOAD_CACHE_EXPIRE = 86400 * 30  # keep package in a local cache for 1 month\n\n    def compute_download_path(self, *args):\n        request_hash = hashlib.new(\"sha1\")\n        for arg in args:\n            request_hash.update(compat.hashlib_encode_data(arg))\n        dl_path = os.path.join(self.get_download_dir(), request_hash.hexdigest())\n        return dl_path\n\n    def get_download_usagedb_path(self):\n        return os.path.join(self.get_download_dir(), \"usage.db\")\n\n    def set_download_utime(self, path, utime=None):\n        with app.State(self.get_download_usagedb_path(), lock=True) as state:\n            state[os.path.basename(path)] = int(time.time() if not utime else utime)\n\n    @util.memoized(DOWNLOAD_CACHE_EXPIRE)\n    def cleanup_expired_downloads(self, _=None):\n        with app.State(self.get_download_usagedb_path(), lock=True) as state:\n            # remove outdated\n            for fname in list(state.keys()):\n                if state[fname] > (time.time() - self.DOWNLOAD_CACHE_EXPIRE):\n                    continue\n                del state[fname]\n                dl_path = os.path.join(self.get_download_dir(), fname)\n                if os.path.isfile(dl_path):\n                    os.remove(dl_path)\n\n    def download(self, url, checksum=None):\n        silent = not self.log.isEnabledFor(logging.INFO)\n        dl_path = self.compute_download_path(url, checksum or \"\")\n        if os.path.isfile(dl_path):\n            self.set_download_utime(dl_path)\n            return dl_path\n\n        with_progress = not app.is_disabled_progressbar()\n        tmp_fd, tmp_path = tempfile.mkstemp(dir=self.get_download_dir())\n        try:\n            with LockFile(dl_path):\n                try:\n                    fd = FileDownloader(url)\n                    fd.set_destination(tmp_path)\n                    fd.start(with_progress=with_progress, silent=silent)\n                except IOError as exc:\n                    raise_error = not silent\n                    if with_progress:\n                        try:\n                            fd = FileDownloader(url)\n                            fd.set_destination(tmp_path)\n                            fd.start(with_progress=False, silent=silent)\n                        except IOError:\n                            raise_error = True\n                    if raise_error:\n                        self.log.error(\n                            click.style(\n                                \"Error: Please read https://bit.ly/package-manager-ioerror\",\n                                fg=\"red\",\n                            )\n                        )\n                        raise exc\n            if checksum:\n                fd.verify(checksum)\n            os.close(tmp_fd)\n            os.rename(tmp_path, dl_path)\n        finally:\n            if os.path.isfile(tmp_path):\n                os.close(tmp_fd)\n                os.remove(tmp_path)\n\n        assert os.path.isfile(dl_path)\n        self.set_download_utime(dl_path)\n        return dl_path",
+    "pattern_analysis": {
+      "api_sequence": [
+        "hashlib.new",
+        "compat.hashlib_encode_data",
+        "hashlib.update",
+        "os.path.join",
+        "self.get_download_dir",
+        "request_hash.hexdigest",
+        "os.path.join",
+        "self.get_download_dir",
+        "os.path.basename",
+        "time.time",
+        "app.State",
+        "os.path.join",
+        "self.get_download_dir",
+        "os.path.basename",
+        "time.time",
+        "app.State",
+        "os.path.join",
+        "self.get_download_dir",
+        "os.path.isfile",
+        "os.remove",
+        "os.path.isfile",
+        "os.remove",
+        "os.path.isfile",
+        "os.close",
+        "os.rename",
+        "os.path.isfile",
+        "os.close",
+        "os.remove",
+        "os.path.isfile"
+      ],
+      "api_sequence_with_args": [
+        "hashlib.new(\"sha1\")",
+        "compat.hashlib_encode_data(arg)",
+        "request_hash.update(compat.hashlib_encode_data(arg))",
+        "os.path.join(self.get_download_dir(), request_hash.hexdigest())",
+        "self.get_download_dir()",
+        "request_hash.hexdigest()",
+        "os.path.join(self.get_download_dir(), \"usage.db\")",
+        "self.get_download_dir()",
+        "os.path.basename(path)",
+        "time.time()",
+        "app.State(self.get_download_usagedb_path(), lock=True)",
+        "os.path.join(self.get_download_dir(), fname)",
+        "self.get_download_dir()",
+        "os.path.basename(path)",
+        "time.time()",
+        "app.State(self.get_download_usagedb_path(), lock=True)",
+        "os.path.join(self.get_download_dir(), fname)",
+        "os.path.isfile(dl_path)",
+        "os.remove(dl_path)",
+        "os.path.isfile(dl_path)",
+        "os.remove(dl_path)",
+        "os.path.isfile(tmp_path)",
+        "os.close(tmp_fd)",
+        "os.rename(tmp_path, dl_path)",
+        "os.path.isfile(tmp_path)",
+        "os.close(tmp_fd)",
+        "os.remove(tmp_path)",
+        "os.path.isfile(dl_path)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "hashlib.new",
+          "id": "create_sha1_hash",
+          "description": "Creates SHA-1 hash object from encoded string",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "compat.hashlib_encode_data",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "hashlib.update",
+          "id": "create_sha1_hash",
+          "description": "Creates SHA-1 hash object from encoded string",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.get_download_dir",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "request_hash.hexdigest",
+          "id": "get_sha1_digest",
+          "description": "Returns hexadecimal digest of SHA-1 hash",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_value_retrieval"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.get_download_dir",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "app.State",
+          "id": "open_sqlite_db",
+          "description": "Opens SQLite database file",
+          "first_id": "persistence_stealth",
+          "second_id": "data_storage",
+          "third_id": "database_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.get_download_dir",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "app.State",
+          "id": "open_sqlite_db",
+          "description": "Opens SQLite database file",
+          "first_id": "persistence_stealth",
+          "second_id": "data_storage",
+          "third_id": "database_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.rename",
+          "id": "rename_file",
+          "description": "Renames file or moves it to new location",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "import hashlib\nimport os\nimport tempfile\nimport time\nfrom platformio import app, compat, util\nfrom platformio.package.download import FileDownloader\nfrom platformio.package.lockfile import LockFile\n\nclass PackageManagerDownloadMixin:\n    DOWNLOAD_CACHE_EXPIRE = 86400 * 30  # keep package in a local cache for 1 month\n\n    def compute_download_path(self, *args):\n        request_hash = hashlib.new(\"sha1\")\n        for arg in args:\n            request_hash.update(compat.hashlib_encode_data(arg))\n        dl_path = os.path.join(self.get_download_dir(), request_hash.hexdigest())\n        return dl_path\n\n    def get_download_usagedb_path(self):\n        return os.path.join(self.get_download_dir(), \"usage.db\")\n\n    def set_download_utime(self, path, utime=None):\n        with app.State(self.get_download_usagedb_path(), lock=True) as state:\n            state[os.path.basename(path)] = int(time.time() if not utime else utime)\n\n    @util.memoized(DOWNLOAD_CACHE_EXPIRE)\n    def cleanup_expired_downloads(self, _=None):\n        with app.State(self.get_download_usagedb_path(), lock=True) as state:\n            for fname in list(state.keys()):\n                if state[fname] > (time.time() - self.DOWNLOAD_CACHE_EXPIRE):\n                    continue\n                del state[fname]\n                dl_path = os.path.join(self.get_download_dir(), fname)\n                if os.path.isfile(dl_path):\n                    os.remove(dl_path)\n\n    def download(self, url, checksum=None):\n        dl_path = self.compute_download_path(url, checksum or \"\")\n        if os.path.isfile(dl_path):\n            self.set_download_utime(dl_path)\n            return dl_path\n        tmp_fd, tmp_path = tempfile.mkstemp(dir=self.get_download_dir())\n        try:\n            with LockFile(dl_path):\n                try:\n                    fd = FileDownloader(url)\n                    fd.set_destination(tmp_path)\n                    fd.start(with_progress=True, silent=False)\n                except IOError as exc:\n                    pass\n            if checksum:\n                fd.verify(checksum)\n            os.close(tmp_fd)\n            os.rename(tmp_path, dl_path)\n        finally:\n            if os.path.isfile(tmp_path):\n                os.close(tmp_fd)\n                os.remove(tmp_path)\n        assert os.path.isfile(dl_path)\n        self.set_download_utime(dl_path)\n        return dl_path"
+    }
+  },
+  {
+    "pyfile": "unpack.py",
+    "code_snippet": "import os\nimport sys\nfrom tarfile import open as tarfile_open\nfrom time import mktime\nfrom zipfile import ZipFile\n\nimport click\n\nfrom platformio import fs\nfrom platformio.compat import is_terminal\nfrom platformio.package.exception import PackageException\n\n\nclass ExtractArchiveItemError(PackageException):\n    MESSAGE = (\n        \"Could not extract `{0}` to `{1}`. Try to disable antivirus \"\n        \"tool or check this solution -> https://bit.ly/faq-package-manager\"\n    )\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": ""
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "platformio-6.1.18",
+      "total_matches": 7
+    }
+  }
+]

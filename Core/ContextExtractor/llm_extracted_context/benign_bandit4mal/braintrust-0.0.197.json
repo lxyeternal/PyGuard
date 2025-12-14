@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "braintrust-0.0.197",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "logger.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/braintrust-0.0.197/braintrust-0.0.197/src/braintrust/logger.py",
+    "line_number": "765",
+    "type_description": "B822:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "764\t                    for batch in batch_set:\n765\t                        self._submit_logs_request(batch)\n766",
+    "context_snippet": "    def flush(self, batch_size: Optional[int] = None):\n        if batch_size is None:\n            batch_size = self.default_batch_size\n\n        # We cannot have multiple threads flushing in parallel, because the\n        # order of published elements would be undefined.\n        with self.flush_lock:\n            # Drain the queue.\n            wrapped_items = []\n            try:\n                for _ in range(self.queue.qsize()):\n                    wrapped_items.append(self.queue.get_nowait())\n            except queue.Empty:\n                pass\n\n            all_items, attachments = self._unwrap_lazy_values(wrapped_items)\n            if len(all_items) == 0:\n                return\n\n            # Construct batches of records to flush in parallel and in sequence.\n            all_items_str = [[bt_dumps(item) for item in bucket] for bucket in all_items]\n            batch_sets = batch_items(\n                items=all_items_str, batch_max_num_items=batch_size, batch_max_num_bytes=self.max_request_size // 2\n            )\n            for batch_set in batch_sets:\n                post_promises = []\n                try:\n                    post_promises = [\n                        HTTP_REQUEST_THREAD_POOL.submit(self._submit_logs_request, batch) for batch in batch_set\n                    ]\n                except RuntimeError:\n                    # If the thread pool has shut down, e.g. because the process\n                    # is terminating, run the requests the old fashioned way.\n                    for batch in batch_set:\n                        self._submit_logs_request(batch)\n\n                concurrent.futures.wait(post_promises)\n                # Raise any exceptions from the promises as one group.\n                post_promise_exceptions = [e for e in (f.exception() for f in post_promises) if e is not None]\n                if post_promise_exceptions:\n                    raise exceptiongroup.BaseExceptionGroup(\n                        f\"Encountered the following errors while logging:\", post_promise_exceptions\n                    )\n\n            attachment_errors: List[Exception] = []\n            for attachment in attachments:\n                try:\n                    result = attachment.upload()\n                    if result[\"upload_status\"] == \"error\":\n                        raise RuntimeError(result.get(\"error_message\"))\n                except Exception as e:\n                    attachment_errors.append(e)\n\n            if len(attachment_errors) == 1:\n                raise attachment_errors[0]\n            elif len(attachment_errors) > 1:\n                raise exceptiongroup.ExceptionGroup(\n                    \"Encountered errors while uploading attachments\",\n                    attachment_errors,\n                )",
+    "hash_value": "a8a4bc0690015fada9ca25a0ed47815e"
+  }
+]

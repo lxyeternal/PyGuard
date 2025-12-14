@@ -1,0 +1,505 @@
+[
+  {
+    "metadata": {
+      "package_name": "anyio-4.9.0",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "_tempfile.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/src/anyio/_core/_tempfile.py",
+    "line_number": "419",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "418\t            await checkpoint_if_cancelled()\n419\t            result = self._fp.write(b)\n420\t            await self._check()",
+    "code_snippet": "async def write(self, b: ReadableBuffer | str) -> int:\n    \"\"\"\n    Asynchronously write data to the spooled temporary file.\n\n    If the file has not yet been rolled over, the data is written synchronously,\n    and a rollover is triggered if the size exceeds the maximum size.\n\n    :param s: The data to write.\n    :return: The number of bytes written.\n    :raises RuntimeError: If the underlying file is not initialized.\n\n    \"\"\"\n    if not self._rolled:\n        await checkpoint_if_cancelled()\n        result = self._fp.write(b)\n        await self._check()\n        return result\n\n    return await super().write(b)  # type: ignore[misc]",
+    "pattern_analysis": {
+      "api_sequence": [
+        "checkpoint_if_cancelled",
+        "_fp.write",
+        "_check",
+        "super().write"
+      ],
+      "api_sequence_with_args": [
+        "checkpoint_if_cancelled()",
+        "_fp.write(b)",
+        "_check()",
+        "super().write(b)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "checkpoint_if_cancelled",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "_fp.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "_check",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "super().write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "async def write(self, b: ReadableBuffer | str) -> int:\n    if not self._rolled:\n        await checkpoint_if_cancelled()\n        result = self._fp.write(b)\n        await self._check()\n        return result\n    return await super().write(b)  # type: ignore[misc]"
+    }
+  },
+  {
+    "pyfile": "_trio.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/src/anyio/_backends/_trio.py",
+    "line_number": "311",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "310\t            if self._stdout:\n311\t                await self._stdout.aclose()\n312\t            if self._stderr:",
+    "code_snippet": "class Process(abc.Process):\n    _process: trio.Process\n    _stdin: abc.ByteSendStream | None\n    _stdout: abc.ByteReceiveStream | None\n    _stderr: abc.ByteReceiveStream | None\n\n    async def aclose(self) -> None:\n        with CancelScope(shield=True):\n            if self._stdin:\n                await self._stdin.aclose()\n            if self._stdout:\n                await self._stdout.aclose()\n            if self._stderr:\n                await self._stderr.aclose()\n\n        try:\n            await self.wait()\n        except BaseException:\n            self.kill()\n            with CancelScope(shield=True):\n                await self.wait()\n            raise\n\n    async def wait(self) -> int:\n        return await self._process.wait()\n\n    def terminate(self) -> None:\n        self._process.terminate()\n\n    def kill(self) -> None:\n        self._process.kill()\n\n    def send_signal(self, signal: Signals) -> None:\n        self._process.send_signal(signal)\n\n    @property\n    def pid(self) -> int:\n        return self._process.pid\n\n    @property\n    def returncode(self) -> int | None:\n        return self._process.returncode\n\n    @property\n    def stdin(self) -> abc.ByteSendStream | None:\n        return self._stdin\n\n    @property\n    def stdout(self) -> abc.ByteReceiveStream | None:\n        return self._stdout\n\n    @property\n    def stderr(self) -> abc.ByteReceiveStream | None:\n        return self._stderr",
+    "pattern_analysis": {
+      "api_sequence": [
+        "trio.Process.wait",
+        "trio.Process.terminate",
+        "trio.Process.kill",
+        "trio.Process.send_signal"
+      ],
+      "api_sequence_with_args": [
+        "trio.Process.wait()",
+        "trio.Process.terminate()",
+        "trio.Process.kill()",
+        "trio.Process.send_signal(signal)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "trio.Process.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "trio.Process.terminate",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "trio.Process.kill",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "trio.Process.send_signal",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "class Process(abc.Process):\n    _process: trio.Process\n    ...\n    async def aclose(self) -> None:\n        with CancelScope(shield=True):\n            if self._stdin:\n                await self._stdin.aclose()\n            if self._stdout:\n                await self._stdout.aclose()\n            if self._stderr:\n                await self._stderr.aclose()\n        try:\n            await self.wait()  # trio.Process.wait()\n        except BaseException:\n            self.kill()        # trio.Process.kill()\n            with CancelScope(shield=True):\n                await self.wait()  # trio.Process.wait()\n            raise\n\n    async def wait(self) -> int:\n        return await self._process.wait()  # trio.Process.wait()\n\n    def terminate(self) -> None:\n        self._process.terminate()  # trio.Process.terminate()\n\n    def kill(self) -> None:\n        self._process.kill()  # trio.Process.kill()\n\n    def send_signal(self, signal: Signals) -> None:\n        self._process.send_signal(signal)  # trio.Process.send_signal(signal)"
+    }
+  },
+  {
+    "pyfile": "test_sockets.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/tests/test_sockets.py",
+    "line_number": "539",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "538\t        with socket.socket(family, socket.SOCK_STREAM) as server_sock:\n539\t            server_sock.settimeout(1)\n540\t            server_sock.bind((\"localhost\", 0))",
+    "code_snippet": "@pytest.mark.parametrize(\"anyio_backend\", asyncio_params)\nasync def test_unretrieved_future_exception_server_crash(\n    self, family: AnyIPAddressFamily, caplog: LogCaptureFixture\n) -> None:\n    \"\"\"\n    Test that there won't be any leftover Futures that don't get their exceptions\n    retrieved.\n\n    See https://github.com/encode/httpcore/issues/382 for details.\n    \"\"\"\n\n    def serve() -> None:\n        sock, addr = server_sock.accept()\n        event.wait(3)\n        sock.close()\n        del sock\n        gc.collect()\n\n    with socket.socket(family, socket.SOCK_STREAM) as server_sock:\n        server_sock.settimeout(1)\n        server_sock.bind((\"localhost\", 0))\n        server_sock.listen()\n        server_addr = server_sock.getsockname()[:2]\n        event = threading.Event()\n        thread = Thread(target=serve)\n        thread.start()\n        async with await connect_tcp(*server_addr) as stream:\n            await stream.send(b\"GET\")\n            event.set()\n            with pytest.raises(BrokenResourceError):\n                await stream.receive()\n\n        thread.join()\n        gc.collect()\n        caplog_text = \"\\n\".join(\n            msg\n            for msg in caplog.messages\n            if not re.search(\"took [0-9.]+ seconds\", msg)\n        )\n        assert not caplog_text",
+    "pattern_analysis": {
+      "api_sequence": [
+        "socket.socket",
+        "socket.socket.settimeout",
+        "socket.socket.bind",
+        "socket.socket.listen",
+        "socket.socket.getsockname",
+        "threading.Event",
+        "threading.Thread",
+        "threading.Thread.start",
+        "socket.socket.accept",
+        "threading.Event.wait",
+        "socket.socket.close",
+        "gc.collect",
+        "connect_tcp",
+        "stream.send",
+        "threading.Event.set",
+        "pytest.raises",
+        "stream.receive",
+        "threading.Thread.join",
+        "gc.collect",
+        "re.search"
+      ],
+      "api_sequence_with_args": [
+        "socket.socket(family, socket.SOCK_STREAM)",
+        "socket.socket.settimeout(1)",
+        "socket.socket.bind((\"localhost\", 0))",
+        "socket.socket.listen()",
+        "socket.socket.getsockname()[:2]",
+        "threading.Event()",
+        "threading.Thread(target=serve)",
+        "threading.Thread.start()",
+        "server_sock.accept()",
+        "event.wait(3)",
+        "sock.close()",
+        "gc.collect()",
+        "connect_tcp(*server_addr)",
+        "stream.send(b\"GET\")",
+        "event.set()",
+        "pytest.raises(BrokenResourceError)",
+        "stream.receive()",
+        "thread.join()",
+        "gc.collect()",
+        "re.search(\"took [0-9.]+ seconds\", msg)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "socket.socket",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "socket.socket.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "socket.socket.bind",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.listen",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.getsockname",
+          "id": "get_socket_local_addr",
+          "description": "Retrieves local address of the socket",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "threading.Event",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "threading.Thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "threading.Thread.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "socket.socket.accept",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "threading.Event.wait",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "gc.collect",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "connect_tcp",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "stream.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "threading.Event.set",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "pytest.raises",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "stream.receive",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "threading.Thread.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "gc.collect",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        }
+      ],
+      "contextual_code": "import socket\nimport threading\nimport gc\nimport re\n\n# ...\n\ndef serve():\n    sock, addr = server_sock.accept()\n    event.wait(3)\n    sock.close()\n    del sock\n    gc.collect()\n\nwith socket.socket(family, socket.SOCK_STREAM) as server_sock:\n    server_sock.settimeout(1)\n    server_sock.bind((\"localhost\", 0))\n    server_sock.listen()\n    server_addr = server_sock.getsockname()[:2]\n    event = threading.Event()\n    thread = threading.Thread(target=serve)\n    thread.start()\n    async with await connect_tcp(*server_addr) as stream:\n        await stream.send(b\"GET\")\n        event.set()\n        with pytest.raises(BrokenResourceError):\n            await stream.receive()\n    thread.join()\n    gc.collect()\n    caplog_text = \"\\n\".join(\n        msg\n        for msg in caplog.messages\n        if not re.search(\"took [0-9.]+ seconds\", msg)\n    )\n    assert not caplog_text"
+    }
+  },
+  {
+    "pyfile": "test_tls.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/tests/streams/test_tls.py",
+    "line_number": "222",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "221\t        )\n222\t        server_sock.settimeout(1)\n223\t        server_sock.bind((\"127.0.0.1\", 0))",
+    "code_snippet": "class TestTLSStream:\n    async def test_send_receive(\n        self, server_context: ssl.SSLContext, client_context: ssl.SSLContext\n    ) -> None:\n        def serve_sync() -> None:\n            conn, addr = server_sock.accept()\n            conn.settimeout(1)\n            data = conn.recv(10)\n            conn.send(data[::-1])\n            conn.close()\n\n        server_sock = server_context.wrap_socket(\n            socket.socket(), server_side=True, suppress_ragged_eofs=False\n        )\n        server_sock.settimeout(1)\n        server_sock.bind((\"127.0.0.1\", 0))\n        server_sock.listen()\n        server_thread = Thread(target=serve_sync)\n        server_thread.start()\n\n        async with await connect_tcp(*server_sock.getsockname()) as stream:\n            wrapper = await TLSStream.wrap(\n                stream, hostname=\"localhost\", ssl_context=client_context\n            )\n            await wrapper.send(b\"hello\")\n            response = await wrapper.receive()\n\n        server_thread.join()\n        server_sock.close()\n        assert response == b\"olleh\"",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ssl.SSLContext.wrap_socket",
+        "socket.socket",
+        "socket.socket.settimeout",
+        "socket.socket.bind",
+        "socket.socket.listen",
+        "Thread",
+        "Thread.start",
+        "socket.socket.accept",
+        "socket.socket.settimeout",
+        "socket.socket.recv",
+        "socket.socket.send",
+        "socket.socket.close",
+        "Thread.join",
+        "socket.socket.close"
+      ],
+      "api_sequence_with_args": [
+        "ssl.SSLContext.wrap_socket(socket.socket(), server_side=True, suppress_ragged_eofs=False)",
+        "socket.socket()",
+        "socket.socket.settimeout(1)",
+        "socket.socket.bind((\"127.0.0.1\", 0))",
+        "socket.socket.listen()",
+        "Thread(target=serve_sync)",
+        "Thread.start()",
+        "socket.socket.accept()",
+        "socket.socket.settimeout(1)",
+        "socket.socket.recv(10)",
+        "socket.socket.send(data[::-1])",
+        "socket.socket.close()",
+        "Thread.join()",
+        "socket.socket.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ssl.SSLContext.wrap_socket",
+          "id": "wrap_socket_ssl",
+          "description": "Wraps socket for SSL/TLS communication",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "socket.socket.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "socket.socket.bind",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.listen",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "Thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "Thread.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "socket.socket.accept",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "socket.socket.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "Thread.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def serve_sync() -> None:\n    conn, addr = server_sock.accept()\n    conn.settimeout(1)\n    data = conn.recv(10)\n    conn.send(data[::-1])\n    conn.close()\n\nserver_sock = server_context.wrap_socket(\n    socket.socket(), server_side=True, suppress_ragged_eofs=False\n)\nserver_sock.settimeout(1)\nserver_sock.bind((\"127.0.0.1\", 0))\nserver_sock.listen()\nserver_thread = Thread(target=serve_sync)\nserver_thread.start()\n# ...\nserver_thread.join()\nserver_sock.close()"
+    }
+  }
+]

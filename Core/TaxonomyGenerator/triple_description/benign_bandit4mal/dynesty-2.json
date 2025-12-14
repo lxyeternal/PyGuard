@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "package_name": "dynesty-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/dynesty-2.1.5.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "test_resume.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dynesty-2.1.5/dynesty-2.1.5/tests/test_resume.py",
+      "line_number": "163",
+      "type_description": "B838:process",
+      "context_snippet": "@pytest.mark.parametrize(\"dynamic,delay_frac,with_pool,dyn_pool\",\n                         itertools.chain(\n                             itertools.product([False, True],\n                                               [.2, .5, .75, .9], [False],\n                                               [False]),\n                             itertools.product([False, True], [.5], [True],\n                                               [False]),\n                             [[True, .5, True, True]]))\n@pytest.mark.xdist_group(name=\"resume_group\")\ndef test_resume(dynamic, delay_frac, with_pool, dyn_pool):\n    \"\"\"\n    Test we can interrupt and resume nested runs\n    Note that I used xdist_group here in order to guarantee that if all the\n    tests are run in parallel, this one is executed in one thread because\n    I want to only use one getlogz() call.\n    \"\"\"\n    fname = get_fname(inspect.currentframe().f_code.co_name)\n\n    save_every = 1\n    cache_dt, cache_logz = getlogz(fname, save_every)\n    if with_pool:\n        npool = 2\n    else:\n        npool = None\n    curdt, curlogz = [_[dynamic, with_pool] for _ in [cache_dt, cache_logz]]\n    save_every = min(save_every, curdt / 10)\n    curdt *= delay_frac\n    try:\n        fit_proc = mp.Process(target=fit_main,\n                              args=(fname, dynamic, save_every, npool,\n                                    dyn_pool))\n        fit_proc.start()\n        res = fit_proc.join(curdt)\n        # proceed to terminate after curdt seconds\n        if res is None:\n            print('terminating', file=sys.stderr)\n            fit_proc.terminate()\n            if np.allclose(delay_frac, .2) and not os.path.exists(fname):\n                warnings.warn(\n                    \"The checkpoint file was not created I'm skipping the test\"\n                )\n                return\n\n            with (NullContextManager() if npool is None else\n                  (dynesty.pool.Pool(npool, like, ptform)\n                   if dyn_pool else mp.Pool(npool))) as pool:\n                blob = fit_resume(fname, dynamic, curlogz, pool=pool)\n                if with_pool:\n                    # the expectation is we ran in 2 pids before\n                    # and 2 pids after\n                    nexpected = 4\n                else:\n                    nexpected = 2\n                assert (len(np.unique(blob)) in [1, nexpected])\n                # I allow 1 in order to allow cases where the\n                # sampling is done before interruption\n        else:\n            assert res == 0\n    finally:\n        try:\n            os.unlink(fname)\n        except:  # noqa\n            pass\n        try:\n            os.unlink(fname + '.tmp')\n        except:  # noqa\n            pass",
+      "hash_value": "3d192df939e27d0be5f12f7ef3cde00a",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "@pytest.mark.parametrize(\"dynamic,delay_frac,with_pool,dyn_pool\",\n                         itertools.chain(\n                             itertools.product([False, True],\n                                               [.2, .5, .75, .9], [False],\n                                               [False]),\n                             itertools.product([False, True], [.5], [True],\n                                               [False]),\n                             [[True, .5, True, True]]))\n@pytest.mark.xdist_group(name=\"resume_group\")\ndef test_resume(dynamic, delay_frac, with_pool, dyn_pool):\n    \"\"\"\n    Test we can interrupt and resume nested runs\n    Note that I used xdist_group here in order to guarantee that if all the\n    tests are run in parallel, this one is executed in one thread because\n    I want to only use one getlogz() call.\n    \"\"\"\n    fname = get_fname(inspect.currentframe().f_code.co_name)\n\n    save_every = 1\n    cache_dt, cache_logz = getlogz(fname, save_every)\n    if with_pool:\n        npool = 2\n    else:\n        npool = None\n    curdt, curlogz = [_[dynamic, with_pool] for _ in [cache_dt, cache_logz]]\n    save_every = min(save_every, curdt / 10)\n    curdt *= delay_frac\n    try:\n        fit_proc = mp.Process(target=fit_main,\n                              args=(fname, dynamic, save_every, npool,\n                                    dyn_pool))\n        fit_proc.start()\n        res = fit_proc.join(curdt)\n        # proceed to terminate after curdt seconds\n        if res is None:\n            print('terminating', file=sys.stderr)\n            fit_proc.terminate()\n            if np.allclose(delay_frac, .2) and not os.path.exists(fname):\n                warnings.warn(\n                    \"The checkpoint file was not created I'm skipping the test\"\n                )\n                return\n\n            with (NullContextManager() if npool is None else\n                  (dynesty.pool.Pool(npool, like, ptform)\n                   if dyn_pool else mp.Pool(npool))) as pool:\n                blob = fit_resume(fname, dynamic, curlogz, pool=pool)\n                if with_pool:\n                    # the expectation is we ran in 2 pids before\n                    # and 2 pids after\n                    nexpected = 4\n                else:\n                    nexpected = 2\n                assert (len(np.unique(blob)) in [1, nexpected])\n                # I allow 1 in order to allow cases where the\n                # sampling is done before interruption\n        else:\n            assert res == 0\n    finally:\n        try:\n            os.unlink(fname)\n        except:  # noqa\n            pass\n        try:\n            os.unlink(fname + '.tmp')\n        except:  # noqa\n            pass",
+          "triple_sequences": [
+            {
+              "action_api": "get_fname()",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "inspect.currentframe().f_code.co_name",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "getlogz()",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "fname, save_every",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "mp.Process()",
+              "action_description": "Creates child process",
+              "action_id": "create_child_process",
+              "object": "target=fit_main, args=(fname, dynamic, save_every, npool, dyn_pool)",
+              "object_description": "Thread target and arguments",
+              "object_id": "thread_target_arguments",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "fit_proc.start()",
+              "action_description": "Starts thread execution",
+              "action_id": "start_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "fit_proc.join()",
+              "action_description": "Waits for thread to finish execution",
+              "action_id": "wait_thread",
+              "object": "curdt",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "fit_proc.terminate()",
+              "action_description": "Terminates the process",
+              "action_id": "terminate_process",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Terminate process",
+              "intention_id": "terminate_process"
+            },
+            {
+              "action_api": "np.allclose()",
+              "action_description": "Generate product of sequence",
+              "action_id": "generate_sequence_product",
+              "object": "delay_frac, .2",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Generate product of sequence",
+              "intention_id": "generate_sequence_product"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "fname",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "warnings.warn()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "\"The checkpoint file was not created I'm skipping the test\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "NullContextManager()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Concurrent execution preparation",
+              "intention_id": "concurrent_execution_preparation"
+            },
+            {
+              "action_api": "dynesty.pool.Pool()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "npool, like, ptform",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Concurrent execution preparation",
+              "intention_id": "concurrent_execution_preparation"
+            },
+            {
+              "action_api": "mp.Pool()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "npool",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Concurrent execution preparation",
+              "intention_id": "concurrent_execution_preparation"
+            },
+            {
+              "action_api": "fit_resume()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "fname, dynamic, curlogz, pool=pool",
+              "object_description": "Thread target and arguments",
+              "object_id": "thread_target_arguments",
+              "intention_description": "Run function in thread pool",
+              "intention_id": "run_function_thread_pool"
+            },
+            {
+              "action_api": "np.unique()",
+              "action_description": "Generate product of sequence",
+              "action_id": "generate_sequence_product",
+              "object": "blob",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Generate product of sequence",
+              "intention_id": "generate_sequence_product"
+            },
+            {
+              "action_api": "os.unlink()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "fname",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "os.unlink()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "fname + '.tmp'",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

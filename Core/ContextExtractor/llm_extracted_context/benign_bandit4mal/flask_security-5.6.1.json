@@ -1,0 +1,53 @@
+[
+  {
+    "metadata": {
+      "package_name": "flask_security-5.6.1",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_context_processors.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flask_security-5.6.1/flask_security-5.6.1/tests/test_context_processors.py",
+    "line_number": "222",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "221\t    us_authenticate(client)\n222\t    response = client.get(\"us-setup\")\n223\t    assert b\"CUSTOM UNIFIED SIGNIN SETUP\" in response.data",
+    "context_snippet": "@pytest.mark.unified_signin()\n@pytest.mark.settings(\n    us_setup_template=\"custom_security/us_setup.html\",\n    us_signin_template=\"custom_security/us_signin.html\",\n    us_verify_template=\"custom_security/us_verify.html\",\n)\ndef test_unified_signin_context_processors(client, app):\n    @app.security.context_processor\n    def default_ctx_processor():\n        return {\"global\": \"global\"}\n\n    @app.security.us_signin_context_processor\n    def signin_ctx():\n        return {\"foo\": \"signin\"}\n\n    # signin template is used in 3 places (TODO test POST us-send-code)\n    response = client.get(\"/us-signin\")\n    assert b\"CUSTOM UNIFIED SIGN IN\" in response.data\n    assert b\"global\" in response.data\n    assert b\"signin\" in response.data\n\n    response = client.post(\"/us-signin/send-code\")\n    assert b\"CUSTOM UNIFIED SIGN IN\" in response.data\n    assert b\"global\" in response.data\n    assert b\"signin\" in response.data\n\n    @app.security.us_setup_context_processor\n    def setup_ctx():\n        return {\"foo\": \"setup\"}\n\n    us_authenticate(client)\n    response = client.get(\"us-setup\")\n    assert b\"CUSTOM UNIFIED SIGNIN SETUP\" in response.data\n    assert b\"global\" in response.data\n    assert b\"setup\" in response.data\n\n    response = client.post(\"us-setup\", data=dict(chosen_method=\"sms\", phone=\"555-1212\"))\n    assert b\"CUSTOM UNIFIED SIGNIN SETUP\" in response.data\n    assert b\"global\" in response.data\n    assert b\"setup\" in response.data\n\n    @app.security.us_verify_context_processor\n    def verify_ctx():\n        return {\"foo\": \"setup\"}\n\n    us_authenticate(client)\n    response = client.get(\"us-verify\")\n    assert b\"CUSTOM UNIFIED VERIFY\" in response.data\n    assert b\"global\" in response.data\n    assert b\"setup\" in response.data\n\n    response = client.post(\n        \"us-verify\", data=dict(chosen_method=\"sms\", phone=\"555-1212\")\n    )\n    assert b\"CUSTOM UNIFIED VERIFY\" in response.data\n    assert b\"global\" in response.data\n    assert b\"setup\" in response.data\n",
+    "hash_value": "4083797e04e5c9e4fa7acd1e9d66b2c1"
+  },
+  {
+    "pyfile": "test_two_factor.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flask_security-5.6.1/flask_security-5.6.1/tests/test_two_factor.py",
+    "line_number": "947",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "946\t    # Validate token - this should complete 2FA setup\n947\t    response = client_nc.post(\n948\t        f\"/tf-setup/{state_token}\", json=dict(code=code), headers=headers\n949\t    )",
+    "context_snippet": "def test_opt_in_nc(app, client_nc, get_message):\n    \"\"\"\n    Test tf-setup without cookies\n    \"\"\"\n    response = json_authenticate(client_nc, \"jill@lp.com\")\n    assert response.status_code == 200\n    token = response.json[\"response\"][\"user\"][\"authentication_token\"]\n    headers = {\"Authentication-Token\": token, \"Accept\": \"application/json\"}\n\n    sms_sender = SmsSenderFactory.createSender(\"test\")\n    data = dict(setup=\"sms\", phone=\"+442083661177\")\n    response = client_nc.post(\"/tf-setup\", json=data, headers=headers)\n    assert response.status_code == 200\n    state_token = response.json[\"response\"][\"tf_state_token\"]\n    assert sms_sender.get_count() == 1\n    code = sms_sender.messages[0].split()[-1]\n\n    # send bad token\n    response = client_nc.post(\n        \"/tf-setup/not-a-token\", json=dict(code=code), headers=headers\n    )\n    assert response.status_code == 400\n    assert response.json[\"response\"][\"errors\"][0].encode(\"utf-8\") == get_message(\n        \"API_ERROR\"\n    )\n\n    # send bad code\n    response = client_nc.post(\n        f\"/tf-setup/{state_token}\", json=dict(code=12345), headers=headers\n    )\n    assert response.status_code == 400\n    assert response.json[\"response\"][\"errors\"][0].encode(\"utf-8\") == get_message(\n        \"TWO_FACTOR_INVALID_TOKEN\"\n    )\n\n    # Validate token - this should complete 2FA setup\n    @tf_profile_changed.connect_via(app)\n    def pc(sender, user, method, **kwargs):\n        assert method == \"sms\"\n        assert user.tf_phone_number == \"+442083661177\"\n\n    response = client_nc.post(\n        f\"/tf-setup/{state_token}\", json=dict(code=code), headers=headers\n    )\n    assert response.status_code == 200\n\n    response = client_nc.get(\"/tf-setup\", headers=headers)\n    assert response.json[\"response\"][\"tf_method\"] == \"sms\"\n    assert response.json[\"response\"][\"tf_phone_number\"] == \"+442083661177\"",
+    "hash_value": "948de7a9dd3fb11e46a54855e75fbc3c"
+  },
+  {
+    "pyfile": "test_passwordless.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flask_security-5.6.1/flask_security-5.6.1/tests/test_passwordless.py",
+    "line_number": "119",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "118\t        with freeze_time(date.today() + timedelta(days=-1)):\n119\t            client.post(\"/login\", data=dict(email=e), follow_redirects=True)\n120",
+    "context_snippet": "@pytest.mark.settings(login_within=\"1 milliseconds\")\ndef test_expired_login_token(client, app, get_message):\n    e = \"matt@lp.com\"\n    with capture_passwordless_login_requests() as requests:\n        # Note that we need relatively new-ish date since session cookies also expire.\n        with freeze_time(date.today() + timedelta(days=-1)):\n            client.post(\"/login\", data=dict(email=e), follow_redirects=True)\n\n    token = requests[0][\"login_token\"]\n    user = requests[0][\"user\"]\n\n    response = client.get(\"/login/\" + token, follow_redirects=True)\n    assert (\n        get_message(\"LOGIN_EXPIRED\", within=\"1 milliseconds\", email=user.email)\n        in response.data\n    )",
+    "hash_value": "37a96d338ac4ddab8cd5403c9fa011c1"
+  },
+  {
+    "pyfile": "test_recoverable.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flask_security-5.6.1/flask_security-5.6.1/tests/test_recoverable.py",
+    "line_number": "386",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "385\t    with capture_reset_password_requests() as requests:\n386\t        client.post(\"/reset\", data=dict(email=\"joe@lp.com\"), follow_redirects=True)\n387",
+    "context_snippet": "@pytest.mark.settings(reset_password_within=\"1 milliseconds\")\ndef test_expired_reset_token(client, get_message):\n    # Note that we need relatively new-ish date since session cookies also expire.\n    with freeze_time(date.today() + timedelta(days=-1)):\n        with capture_reset_password_requests() as requests:\n            client.post(\"/reset\", data=dict(email=\"joe@lp.com\"), follow_redirects=True)\n\n    user = requests[0][\"user\"]\n    token = requests[0][\"token\"]\n\n    with capture_flashes() as flashes:\n        msg = get_message(\n            \"PASSWORD_RESET_EXPIRED\", within=\"1 milliseconds\", email=user.email\n        )\n\n        # Test getting reset form with expired token\n        response = client.get(\"/reset/\" + token, follow_redirects=True)\n        assert msg in response.data\n\n        # Test trying to reset password with expired token\n        response = client.post(\n            \"/reset/\" + token,\n            data={\"password\": \"newpassword\", \"password_confirm\": \"newpassword\"},\n            follow_redirects=True,\n        )\n\n        assert msg in response.data\n    assert len(flashes) == 2",
+    "hash_value": "8539564e7daf3b92b5e985812ff8100d"
+  }
+]

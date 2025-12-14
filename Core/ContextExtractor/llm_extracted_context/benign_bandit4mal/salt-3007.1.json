@@ -1,0 +1,64 @@
+[
+  {
+    "metadata": {
+      "package_name": "salt-3007.1",
+      "total_matches": 5,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "ssh_py_shim.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/salt-3007.1/salt-3007.1/salt/client/ssh/ssh_py_shim.py",
+    "line_number": "331",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "330\t    if not os.path.isfile(salt_call_path):\n331\t        sys.stderr.write('ERROR: thin is missing \"{0}\"\\n'.format(salt_call_path))\n332\t        need_deployment()",
+    "context_snippet": "def main(argv):  # pylint: disable=W0613\n    \"\"\"\n    Main program body\n    \"\"\"\n    thin_path = os.path.join(OPTIONS.saltdir, THIN_ARCHIVE)\n    if os.path.isfile(thin_path):\n        if OPTIONS.checksum != get_hash(thin_path, OPTIONS.hashfunc):\n            need_deployment()\n        unpack_thin(thin_path)\n        # Salt thin now is available to use\n    else:\n        if not sys.platform.startswith(\"win\"):\n            scpstat = subprocess.Popen([\"/bin/sh\", \"-c\", \"command -v scp\"]).wait()\n            if scpstat != 0:\n                sys.exit(EX_SCP_NOT_FOUND)\n\n        if os.path.exists(OPTIONS.saltdir) and not os.path.isdir(OPTIONS.saltdir):\n            sys.stderr.write(\n                'ERROR: salt path \"{0}\" exists but is not a directory\\n'.format(\n                    OPTIONS.saltdir\n                )\n            )\n            sys.exit(EX_CANTCREAT)\n\n        if not os.path.exists(OPTIONS.saltdir):\n            need_deployment()\n\n        code_checksum_path = os.path.normpath(\n            os.path.join(OPTIONS.saltdir, \"code-checksum\")\n        )\n        if not os.path.exists(code_checksum_path) or not os.path.isfile(\n            code_checksum_path\n        ):\n            sys.stderr.write(\n                \"WARNING: Unable to locate current code checksum: {0}.\\n\".format(\n                    code_checksum_path\n                )\n            )\n            need_deployment()\n        with open(code_checksum_path, \"r\", encoding=\"utf-8\") as vpo:\n            cur_code_cs = vpo.readline().strip()\n        if cur_code_cs != OPTIONS.code_checksum:\n            sys.stderr.write(\n                \"WARNING: current code checksum {0} is different to {1}.\\n\".format(\n                    cur_code_cs, OPTIONS.code_checksum\n                )\n            )\n            need_deployment()\n        # Salt thin exists and is up-to-date - fall through and use it\n\n    salt_call_path = os.path.join(OPTIONS.saltdir, \"salt-call\")\n    if not os.path.isfile(salt_call_path):\n        sys.stderr.write('ERROR: thin is missing \"{0}\"\\n'.format(salt_call_path))\n        need_deployment()\n\n    with open(os.path.join(OPTIONS.saltdir, \"minion\"), \"w\", encoding=\"utf-8\") as config:\n        config.write(OPTIONS.config + \"\\n\")\n    if OPTIONS.ext_mods:\n        ext_path = os.path.join(OPTIONS.saltdir, EXT_ARCHIVE)\n        if os.path.exists(ext_path):\n            unpack_ext(ext_path)\n        else:\n            version_path = os.path.join(OPTIONS.saltdir, \"ext_version\")\n            if not os.path.exists(version_path) or not os.path.isfile(version_path):\n                need_ext()\n            with open(version_path, \"r\", encoding=\"utf-8\") as vpo:\n                cur_version = vpo.readline().strip()\n            if cur_version != OPTIONS.ext_mods:\n                need_ext()\n    # Fix parameter passing issue\n    if len(ARGS) == 1:\n        argv_prepared = ARGS[0].split()\n    else:\n        argv_prepared = ARGS\n\n    salt_argv = [\n        get_executable(),\n        salt_call_path,\n        \"--retcode-passthrough\",\n        \"--local\",\n        \"--metadata\",\n        \"--out\",\n        \"json\",\n        \"-l\",\n        \"quiet\",\n        \"-c\",\n        OPTIONS.saltdir,\n    ]\n\n    try:\n        if argv_prepared[-1].startswith(\"--no-parse=\"):\n            salt_argv.append(argv_prepared.pop(-1))\n    except (IndexError, TypeError):\n        pass\n\n    salt_argv.append(\"--\")\n    salt_argv.extend(argv_prepared)\n\n    sys.stderr.write(\"SALT_ARGV: {0}\\n\".format(salt_argv))\n\n    # Only emit the delimiter on *both* stdout and stderr when completely successful.\n    # Yes, the flush() is necessary.\n    sys.stdout.write(OPTIONS.delimiter + \"\\n\")\n    sys.stdout.flush()\n    if not OPTIONS.tty:\n        sys.stderr.write(OPTIONS.delimiter + \"\\n\")\n        sys.stderr.flush()\n    if OPTIONS.cmd_umask is not None:\n        old_umask = os.umask(OPTIONS.cmd_umask)  # pylint: disable=blacklisted-function\n    if OPTIONS.tty:\n        proc = subprocess.Popen(\n            salt_argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE\n        )\n        # Returns bytes instead of string on python 3\n        stdout, _ = proc.communicate()\n        sys.stdout.write(\n            stdout.decode(encoding=get_system_encoding(), errors=\"replace\")\n        )\n        sys.stdout.flush()\n        retcode = proc.returncode\n        if OPTIONS.wipe:\n            shutil.rmtree(OPTIONS.saltdir)\n    elif OPTIONS.wipe:\n        retcode = subprocess.call(salt_argv)\n        shutil.rmtree(OPTIONS.saltdir)\n    else:\n        retcode = subprocess.call(salt_argv)\n    if OPTIONS.cmd_umask is not None:\n        os.umask(old_umask)  # pylint: disable=blacklisted-function\n    return retcode",
+    "hash_value": "15f2999ea212ccc4b08d188bfd6d296f"
+  },
+  {
+    "pyfile": "test_file.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/salt-3007.1/salt-3007.1/tests/pytests/functional/states/test_file.py",
+    "line_number": "77",
+    "type_description": "B827:httpserver",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "76\t    handler = functools.partial(RequestHandler, directory=directory)\n77\t    s = http.server.HTTPServer((\"127.0.0.1\", port), handler)\n78\t    s.serve_forever()",
+    "context_snippet": "def serve(port=8000, directory=None):\n    \"\"\"\n    Function to serve a directory via http.server\n    \"\"\"\n    handler = functools.partial(RequestHandler, directory=directory)\n    s = http.server.HTTPServer((\"127.0.0.1\", port), handler)\n    s.serve_forever()",
+    "hash_value": "7f4d4bb028183a85a8dba72f1387bf4d"
+  },
+  {
+    "pyfile": "test_loader.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/salt-3007.1/salt-3007.1/tests/unit/test_loader.py",
+    "line_number": "1591",
+    "type_description": "B843:compile_file",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1590\t        compileall.compile_file(self.module_file, quiet=1, optimize=1)\n1591\t        compileall.compile_file(self.module_file, quiet=1, optimize=2)\n1592",
+    "context_snippet": "def _byte_compile(self):\n    compileall.compile_file(self.module_file, quiet=1, optimize=0)\n    compileall.compile_file(self.module_file, quiet=1, optimize=1)\n    compileall.compile_file(self.module_file, quiet=1, optimize=2)",
+    "hash_value": "1499b2cad1eac863625f97dfbbd99b31"
+  },
+  {
+    "pyfile": "websockets.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/salt-3007.1/salt-3007.1/salt/netapi/rest_cherrypy/tools/websockets.py",
+    "line_number": "55",
+    "type_description": "B805:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "54\t        if message.data.decode(\"utf-8\") == \"websocket client ready\":\n55\t            self.pipe.send(message)\n56\t        self.send(\"server received message\", False)",
+    "context_snippet": "class SynchronizingWebsocket(WebSocket):\n    \"\"\"\n    Class to handle requests sent to this websocket connection.\n    Each instance of this class represents a Salt websocket connection.\n    Waits to receive a ``ready`` message from the client.\n    Calls send on its end of the pipe to signal to the sender on receipt\n    of ``ready``.\n\n    This class also kicks off initial information probing jobs when clients\n    initially connect. These jobs help gather information about minions, jobs,\n    and documentation.\n    \"\"\"\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n\n        # This pipe needs to represent the parent end of a pipe.\n        # Clients need to ensure that the pipe assigned to ``self.pipe`` is\n        # the ``parent end`` of a\n        # `pipe <https://docs.python.org/2/library/multiprocessing.html#exchanging-objects-between-processes>`_.\n        self.pipe = None\n\n        # The token that we can use to make API calls.\n        # There are times when we would like to kick off jobs,\n        # examples include trying to obtain minions connected.\n        self.token = None\n\n        # Options represent ``salt`` options defined in the configs.\n        self.opts = None\n\n    def received_message(self, message):\n        \"\"\"\n        Checks if the client has sent a ready message.\n        A ready message causes ``send()`` to be called on the\n        ``parent end`` of the pipe.\n\n        Clients need to ensure that the pipe assigned to ``self.pipe`` is\n        the ``parent end`` of a pipe.\n\n        This ensures completion of the underlying websocket connection\n        and can be used to synchronize parallel senders.\n        \"\"\"\n        if message.data.decode(\"utf-8\") == \"websocket client ready\":\n            self.pipe.send(message)\n        self.send(\"server received message\", False)\n",
+    "hash_value": "46a15939cb4ec76dfa5dd95cc418651e"
+  },
+  {
+    "pyfile": "cloud.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/salt-3007.1/salt-3007.1/salt/utils/cloud.py",
+    "line_number": "2091",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2090\t        while proc.has_unread_data:\n2091\t            stdout, stderr = proc.recv()\n2092\t            if stdout and SSH_PASSWORD_PROMP_RE.search(stdout):",
+    "context_snippet": "def _exec_ssh_cmd(cmd, error_msg=None, allow_failure=False, **kwargs):\n    if error_msg is None:\n        error_msg = \"A wrong password has been issued while establishing ssh session.\"\n    password_retries = kwargs.get(\"password_retries\", 3)\n    try:\n        stdout, stderr = None, None\n        proc = salt.utils.vt.Terminal(\n            cmd,\n            shell=True,\n            log_stdout=True,\n            log_stderr=True,\n            stream_stdout=kwargs.get(\"display_ssh_output\", True),\n            stream_stderr=kwargs.get(\"display_ssh_output\", True),\n        )\n        sent_password = 0\n        while proc.has_unread_data:\n            stdout, stderr = proc.recv()\n            if stdout and SSH_PASSWORD_PROMP_RE.search(stdout):\n                # if authenticating with an SSH key and 'sudo' is found\n                # in the password prompt\n                if (\n                    \"key_filename\" in kwargs\n                    and kwargs[\"key_filename\"]\n                    and SSH_PASSWORD_PROMP_SUDO_RE.search(stdout)\n                ):\n                    proc.sendline(kwargs[\"sudo_password\"])\n                # elif authenticating via password and haven't exhausted our\n                # password_retires\n                elif kwargs.get(\"password\", None) and (\n                    sent_password < password_retries\n                ):\n                    sent_password += 1\n                    proc.sendline(kwargs[\"password\"])\n                # else raise an error as we are not authenticating properly\n                #  * not authenticating with an SSH key\n                #  * not authenticating with a Password\n                else:\n                    raise SaltCloudPasswordError(error_msg)\n            # 0.0125 is really too fast on some systems\n            time.sleep(0.5)\n        if proc.exitstatus != 0 and allow_failure is False:\n            raise SaltCloudSystemExit(\n                f\"Command '{cmd}' failed. Exit code: {proc.exitstatus}\"\n            )\n        return proc.exitstatus\n    except salt.utils.vt.TerminalException as err:\n        trace = traceback.format_exc()\n        log.error(error_msg.format(cmd, err, trace))\n    finally:\n        proc.close(terminate=True, kill=True)\n    # Signal an error\n    return 1",
+    "hash_value": "6043485a04dbdc7c69112098a4b5b57b"
+  }
+]

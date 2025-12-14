@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "img2pdf-0.6.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "img2pdf_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/img2pdf-0.6.0/img2pdf-0.6.0/src/img2pdf_test.py",
+    "line_number": "349",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "348\t        block = b\"IEND\"\n349\t        f.write(struct.pack(\">I\", 0) + block + struct.pack(\">I\", zlib.crc32(block)))\n350",
+    "context_snippet": "def write_png(data, path, bitdepth, colortype, palette=None, iccp=None):\n    with open(str(path), \"wb\") as f:\n        f.write(b\"\\x89PNG\\r\\n\\x1A\\n\")\n        # PNG image type        Colour type Allowed bit depths\n        # Greyscale             0           1, 2, 4, 8, 16\n        # Truecolour            2           8, 16\n        # Indexed-colour        3           1, 2, 4, 8\n        # Greyscale with alpha  4           8, 16\n        # Truecolour with alpha 6           8, 16\n        block = b\"IHDR\" + struct.pack(\n            \">IIBBBBB\",\n            data.shape[1],  # width\n            data.shape[0],  # height\n            bitdepth,  # bitdepth\n            colortype,  # colortype\n            0,  # compression\n            0,  # filtertype\n            0,  # interlaced\n        )\n        f.write(\n            struct.pack(\">I\", len(block) - 4)\n            + block\n            + struct.pack(\">I\", zlib.crc32(block))\n        )\n        if iccp is not None:\n            with open(iccp, \"rb\") as infh:\n                iccdata = infh.read()\n            block = b\"iCCP\"\n            block += b\"icc\\0\"  # arbitrary profile name\n            block += b\"\\0\"  # compression method (deflate)\n            block += zlib.compress(iccdata)\n            f.write(\n                struct.pack(\">I\", len(block) - 4)\n                + block\n                + struct.pack(\">I\", zlib.crc32(block))\n            )\n        if palette is not None:\n            block = b\"PLTE\"\n            for col in palette:\n                block += struct.pack(\">BBB\", col[0], col[1], col[2])\n            f.write(\n                struct.pack(\">I\", len(block) - 4)\n                + block\n                + struct.pack(\">I\", zlib.crc32(block))\n            )\n        raw = b\"\"\n        for y in range(data.shape[0]):\n            raw += b\"\\0\"\n            if bitdepth == 16:\n                raw += data[y].astype(\">u2\").tobytes()\n            elif bitdepth == 8:\n                raw += data[y].astype(\">u1\").tobytes()\n            elif bitdepth in [4, 2, 1]:\n                valsperbyte = 8 // bitdepth\n                for x in range(0, data.shape[1], valsperbyte):\n                    val = 0\n                    for j in range(valsperbyte):\n                        if x + j >= data.shape[1]:\n                            break\n                        val |= (data[y, x + j].astype(\">u2\") & (2**bitdepth - 1)) << (\n                            (valsperbyte - j - 1) * bitdepth\n                        )\n                    raw += struct.pack(\">B\", val)\n            else:\n                raise Exception()\n        compressed = compress(raw)\n        block = b\"IDAT\" + compressed\n        f.write(\n            struct.pack(\">I\", len(compressed))\n            + block\n            + struct.pack(\">I\", zlib.crc32(block))\n        )\n        block = b\"IEND\"\n        f.write(struct.pack(\">I\", 0) + block + struct.pack(\">I\", zlib.crc32(block)))\n",
+    "hash_value": "bcf896f8ae882c972b0ef4117da9ee8f"
+  }
+]

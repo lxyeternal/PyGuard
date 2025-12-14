@@ -1,0 +1,195 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import glob\nimport logging\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nfrom setuptools import setup\nfrom setuptools.command.build_py import build_py\nfrom setuptools.command.sdist import sdist\n\nlog = logging.getLogger(__name__)\n\n# are we building from the repository or from a source distribution?\nROOT_DIR = os.path.dirname(os.path.realpath(__file__))\nLIBS_DIR = os.path.join(ROOT_DIR, 'unicorn', 'lib')\nHEADERS_DIR = os.path.join(ROOT_DIR, 'unicorn', 'include')\nSRC_DIR = os.path.join(ROOT_DIR, 'src')\nUC_DIR = SRC_DIR if os.path.exists(SRC_DIR) else os.path.join(ROOT_DIR, '../..')\nBUILD_DIR = os.path.join(UC_DIR, 'build_python')\n\nif sys.platform == 'darwin':\n    LIBRARY_FILE = \"libunicorn.2.dylib\"\n    STATIC_LIBRARY_FILE = \"libunicorn.a\"\nelif sys.platform in ('win32', 'cygwin'):\n    LIBRARY_FILE = \"unicorn.dll\"\n    STATIC_LIBRARY_FILE = \"unicorn.lib\"\nelse:\n    LIBRARY_FILE = \"libunicorn.so.2\"\n    STATIC_LIBRARY_FILE = \"libunicorn.a\"\n\n\ndef clean_bins():\n    shutil.rmtree(LIBS_DIR, ignore_errors=True)\n    shutil.rmtree(HEADERS_DIR, ignore_errors=True)\n\n\ndef build_libraries():\n    \"\"\"\n    Prepare the unicorn directory for a binary distribution or installation.\n    Builds shared libraries and copies header files.\n\n    Will use a src/ dir if one exists in the current directory, otherwise assumes it's in the repo\n    \"\"\"\n    clean_bins()\n    os.mkdir(HEADERS_DIR)\n    os.mkdir(LIBS_DIR)\n\n    # copy public headers\n    shutil.copytree(os.path.join(UC_DIR, 'include', 'unicorn'), os.path.join(HEADERS_DIR, 'unicorn'))\n\n    # check if a prebuilt library exists and if so, use it instead of building\n    if os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE)):\n        shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE), LIBS_DIR)\n        if STATIC_LIBRARY_FILE is not None and os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE)):\n            shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE), LIBS_DIR)\n        return\n\n    # otherwise, build\n    if not os.path.exists(BUILD_DIR):\n        os.mkdir(BUILD_DIR)\n\n    has_msbuild = shutil.which('msbuild') is not None\n    conf = 'Debug' if int(os.getenv('DEBUG', 0)) else 'Release'\n    cmake_args = ['cmake', '-B', BUILD_DIR, \"-DCMAKE_BUILD_TYPE=\" + conf, \"-DUNICORN_BUILD_TESTS=off\"]\n    if os.getenv(\"UNICORN_TRACER\"):\n        cmake_args += [\"-DUNICORN_TRACER=on\"]\n    if conf == 'Debug':\n        cmake_args += [\"-DUNICORN_LOGGING=on\"]\n\n    if has_msbuild and sys.platform == 'win32':\n        generators = os.getenv('GENERATORS') or 'Visual Studio 16 2019'\n        plat = 'Win32' if platform.architecture()[0] == '32bit' else 'x64'\n        cmake_args += ['-G', generators, \"-A\", plat]\n        subprocess.check_call(cmake_args, cwd=UC_DIR)\n        subprocess.check_call(['msbuild', 'unicorn.sln', '-m', '-p:Platform=' + plat, '-p:Configuration=' + conf],\n                              cwd=BUILD_DIR)\n\n        obj_dir = os.path.join(BUILD_DIR, conf)\n        shutil.copy(os.path.join(obj_dir, LIBRARY_FILE), LIBS_DIR)\n        shutil.copy(os.path.join(obj_dir, STATIC_LIBRARY_FILE), LIBS_DIR)\n    else:\n        cmake_args += ['-S', UC_DIR]\n        subprocess.check_call(cmake_args, cwd=UC_DIR)\n        threads = os.getenv(\"THREADS\", \"4\")\n        subprocess.check_call([\"cmake\", \"--build\", \".\", \"-j\" + threads], cwd=BUILD_DIR)\n\n        shutil.copy(os.path.join(BUILD_DIR, LIBRARY_FILE), LIBS_DIR)\n        shutil.copy(os.path.join(BUILD_DIR, STATIC_LIBRARY_FILE), LIBS_DIR)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.realpath",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "shutil.rmtree",
+        "shutil.rmtree",
+        "os.mkdir",
+        "os.mkdir",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copytree",
+        "os.path.exists",
+        "os.path.join",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "shutil.copy",
+        "shutil.copy",
+        "os.path.exists",
+        "os.mkdir",
+        "shutil.which",
+        "os.getenv",
+        "os.getenv",
+        "os.getenv",
+        "platform.architecture",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "shutil.copy"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(os.path.realpath(__file__))",
+        "os.path.realpath(__file__)",
+        "os.path.join(ROOT_DIR, 'unicorn', 'lib')",
+        "os.path.join(ROOT_DIR, 'unicorn', 'include')",
+        "os.path.join(ROOT_DIR, 'src')",
+        "os.path.join(ROOT_DIR, '../..')",
+        "os.path.exists(SRC_DIR)",
+        "os.path.join(UC_DIR, 'build_python')",
+        "os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE)",
+        "os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE)",
+        "os.path.join(UC_DIR, 'include', 'unicorn')",
+        "os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE))",
+        "os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE)",
+        "os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE))",
+        "shutil.rmtree(LIBS_DIR, ignore_errors=True)",
+        "shutil.rmtree(HEADERS_DIR, ignore_errors=True)",
+        "os.mkdir(HEADERS_DIR)",
+        "os.mkdir(LIBS_DIR)",
+        "os.path.join(UC_DIR, 'include', 'unicorn')",
+        "os.path.join(HEADERS_DIR, 'unicorn')",
+        "shutil.copytree(os.path.join(UC_DIR, 'include', 'unicorn'), os.path.join(HEADERS_DIR, 'unicorn'))",
+        "os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE))",
+        "os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE)",
+        "shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE), LIBS_DIR)",
+        "os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE)",
+        "os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE))",
+        "shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE), LIBS_DIR)",
+        "os.path.exists(BUILD_DIR)",
+        "os.mkdir(BUILD_DIR)",
+        "shutil.which('msbuild')",
+        "os.getenv('DEBUG', 0)",
+        "os.getenv('UNICORN_TRACER')",
+        "os.getenv('GENERATORS')",
+        "platform.architecture()[0]",
+        "os.path.join(BUILD_DIR, conf)",
+        "os.path.join(obj_dir, LIBRARY_FILE)",
+        "shutil.copy(os.path.join(obj_dir, LIBRARY_FILE), LIBS_DIR)",
+        "shutil.copy(os.path.join(obj_dir, STATIC_LIBRARY_FILE), LIBS_DIR)",
+        "os.path.join(BUILD_DIR, LIBRARY_FILE)",
+        "os.path.join(BUILD_DIR, STATIC_LIBRARY_FILE)",
+        "shutil.copy(os.path.join(BUILD_DIR, LIBRARY_FILE), LIBS_DIR)",
+        "shutil.copy(os.path.join(BUILD_DIR, STATIC_LIBRARY_FILE), LIBS_DIR)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "exec_setuptools_install",
+          "description": "Executes setuptools installation procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "platform.architecture",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        }
+      ],
+      "contextual_code": "import os\nimport platform\nimport shutil\nimport subprocess\nimport sys\n\nROOT_DIR = os.path.dirname(os.path.realpath(__file__))\nLIBS_DIR = os.path.join(ROOT_DIR, 'unicorn', 'lib')\nHEADERS_DIR = os.path.join(ROOT_DIR, 'unicorn', 'include')\nSRC_DIR = os.path.join(ROOT_DIR, 'src')\nUC_DIR = SRC_DIR if os.path.exists(SRC_DIR) else os.path.join(ROOT_DIR, '../..')\nBUILD_DIR = os.path.join(UC_DIR, 'build_python')\n\ndef clean_bins():\n    shutil.rmtree(LIBS_DIR, ignore_errors=True)\n    shutil.rmtree(HEADERS_DIR, ignore_errors=True)\n\ndef build_libraries():\n    clean_bins()\n    os.mkdir(HEADERS_DIR)\n    os.mkdir(LIBS_DIR)\n    shutil.copytree(os.path.join(UC_DIR, 'include', 'unicorn'), os.path.join(HEADERS_DIR, 'unicorn'))\n    if os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE)):\n        shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE), LIBS_DIR)\n        if STATIC_LIBRARY_FILE is not None and os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE)):\n            shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE), LIBS_DIR)\n        return\n    if not os.path.exists(BUILD_DIR):\n        os.mkdir(BUILD_DIR)\n    has_msbuild = shutil.which('msbuild') is not None\n    conf = 'Debug' if int(os.getenv('DEBUG', 0)) else 'Release'\n    if has_msbuild and sys.platform == 'win32':\n        plat = 'Win32' if platform.architecture()[0] == '32bit' else 'x64'\n        obj_dir = os.path.join(BUILD_DIR, conf)\n        shutil.copy(os.path.join(obj_dir, LIBRARY_FILE), LIBS_DIR)\n        shutil.copy(os.path.join(obj_dir, STATIC_LIBRARY_FILE), LIBS_DIR)\n    else:\n        shutil.copy(os.path.join(BUILD_DIR, LIBRARY_FILE), LIBS_DIR)\n        shutil.copy(os.path.join(BUILD_DIR, STATIC_LIBRARY_FILE), LIBS_DIR)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "unicorn-2.1.3",
+      "total_matches": 1
+    }
+  }
+]

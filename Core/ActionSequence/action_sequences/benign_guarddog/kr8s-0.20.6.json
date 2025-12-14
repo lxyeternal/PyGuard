@@ -1,0 +1,73 @@
+[
+  {
+    "pyfile": "update-kubernetes.py",
+    "code_snippet": "import json\nimport os\nimport re\nimport urllib.request\nfrom datetime import datetime\nfrom pathlib import Path\n\nfrom ruamel.yaml import YAML\n\nyaml = YAML(typ=\"rt\")\nyaml.width = 2**16\nyaml.preserve_quotes = True\nyaml.indent(mapping=2, sequence=4, offset=2)\n\nDATE_FORMAT = \"%Y-%m-%d\"\n\n\ndef get_kubernetes_oss_versions():\n    print(\n        \"Loading Kubernetes versions from https://endoflife.date/api/kubernetes.json...\"\n    )\n    with urllib.request.urlopen(\"https://endoflife.date/api/kubernetes.json\") as url:\n        data = json.load(url)\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"latest_version\": x[\"latest\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n\n\ndef get_azure_aks_versions():\n    url = \"https://endoflife.date/api/azure-kubernetes-service.json\"\n    print(f\"Loading Azure AKS versions from {url}...\")\n    with urllib.request.urlopen(url) as payload:\n        data = json.load(payload)\n\n        # Workaround for https://github.com/kr8s-org/kr8s/issues/514\n        # Ensure that the `eol` date is the original date and the`lts` date is the extended date.\n        for x in data:\n            if \"lts\" in x and x[\"lts\"]:\n                x[\"eol\"], x[\"lts\"] = sorted([x[\"eol\"], x[\"lts\"]])\n\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n\n\ndef get_amazon_eks_versions():\n    url = \"https://endoflife.date/api/amazon-eks.json\"\n    print(f\"Loading Amazon EKS versions from {url}...\")\n    with urllib.request.urlopen(url) as payload:\n        data = json.load(payload)\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n\n\ndef get_google_kubernetes_engine_versions():\n    url = \"https://endoflife.date/api/google-kubernetes-engine.json\"\n    print(f\"Loading Google Kubernetes Engine versions from {url}...\")\n    with urllib.request.urlopen(url) as payload:\n        data = json.load(payload)\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "urllib.request.urlopen",
+        "json.load",
+        "datetime.strptime",
+        "datetime.now"
+      ],
+      "api_sequence_with_args": [
+        "urllib.request.urlopen('https://endoflife.date/api/kubernetes.json')",
+        "json.load(url)",
+        "datetime.strptime(x['eol'], DATE_FORMAT)",
+        "datetime.now()",
+        "urllib.request.urlopen(url)",
+        "json.load(payload)",
+        "datetime.strptime(x['eol'], DATE_FORMAT)",
+        "datetime.now()",
+        "urllib.request.urlopen(url)",
+        "json.load(payload)",
+        "datetime.strptime(x['eol'], DATE_FORMAT)",
+        "datetime.now()",
+        "urllib.request.urlopen(url)",
+        "json.load(payload)",
+        "datetime.strptime(x['eol'], DATE_FORMAT)",
+        "datetime.now()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "urllib.request.urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "datetime.strptime",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "datetime.now",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "import json\nimport urllib.request\nfrom datetime import datetime\n\nDATE_FORMAT = \"%Y-%m-%d\"\n\ndef get_kubernetes_oss_versions():\n    with urllib.request.urlopen(\"https://endoflife.date/api/kubernetes.json\") as url:\n        data = json.load(url)\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"latest_version\": x[\"latest\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n\ndef get_azure_aks_versions():\n    url = \"https://endoflife.date/api/azure-kubernetes-service.json\"\n    with urllib.request.urlopen(url) as payload:\n        data = json.load(payload)\n        for x in data:\n            if \"lts\" in x and x[\"lts\"]:\n                x[\"eol\"], x[\"lts\"] = sorted([x[\"eol\"], x[\"lts\"]])\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n\ndef get_amazon_eks_versions():\n    url = \"https://endoflife.date/api/amazon-eks.json\"\n    with urllib.request.urlopen(url) as payload:\n        data = json.load(payload)\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data\n\ndef get_google_kubernetes_engine_versions():\n    url = \"https://endoflife.date/api/google-kubernetes-engine.json\"\n    with urllib.request.urlopen(url) as payload:\n        data = json.load(payload)\n        data = [\n            {\n                \"cycle\": x[\"cycle\"],\n                \"eol\": datetime.strptime(x[\"eol\"], DATE_FORMAT),\n            }\n            for x in data\n            if datetime.strptime(x[\"eol\"], DATE_FORMAT) > datetime.now()\n        ]\n        data.sort(key=lambda x: x[\"eol\"], reverse=True)\n    return data"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "kr8s-0.20.6",
+      "total_matches": 5
+    }
+  }
+]

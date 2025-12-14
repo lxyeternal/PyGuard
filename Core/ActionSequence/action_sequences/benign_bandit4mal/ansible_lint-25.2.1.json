@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "ansible_lint-25.2.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "runner.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible_lint-25.2.1/ansible_lint-25.2.1/src/ansiblelint/runner.py",
+    "line_number": "660",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "659\t        with open(cfs_quota_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n660\t            cpu_quota_us = fh.read().strip()\n661\t        with open(cfs_period_fname, encoding=\"utf-8\") as fh:  # pragma: no cover",
+    "code_snippet": "@cache\ndef threads() -> int:\n    \"\"\"Determine how many threads to use.\n\n    Inside containers we want to respect limits imposed.\n\n    When present /sys/fs/cgroup/cpu.max can contain something like:\n    $ podman/docker run -it --rm --cpus 1.5 ubuntu:latest cat /sys/fs/cgroup/cpu.max\n    150000 100000\n    # \"max 100000\" is returned when no limits are set.\n\n    See: https://github.com/python/cpython/issues/80235\n    See: https://github.com/python/cpython/issues/70879\n    \"\"\"\n    os_cpu_count = multiprocessing.cpu_count()\n    # Cgroup CPU bandwidth limit available in Linux since 2.6 kernel\n\n    cpu_max_fname = \"/sys/fs/cgroup/cpu.max\"\n    cfs_quota_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_quota_us\"\n    cfs_period_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_period_us\"\n    if os.path.exists(cpu_max_fname):\n        # cgroup v2\n        # https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html\n        with open(cpu_max_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_quota_us, cpu_period_us = fh.read().strip().split()\n    elif os.path.exists(cfs_quota_fname) and os.path.exists(cfs_period_fname):\n        # cgroup v1\n        # https://www.kernel.org/doc/html/latest/scheduler/sched-bwc.html#management\n        with open(cfs_quota_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_quota_us = fh.read().strip()\n        with open(cfs_period_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_period_us = fh.read().strip()\n    else:\n        # No Cgroup CPU bandwidth limit (e.g. non-Linux platform)\n        cpu_quota_us = \"max\"\n        cpu_period_us = \"100000\"  # unused, for consistency with default values\n\n    if cpu_quota_us == \"max\":\n        # No active Cgroup quota on a Cgroup-capable platform\n        return os_cpu_count\n    cpu_quota_us_int = int(cpu_quota_us)\n    cpu_period_us_int = int(cpu_period_us)\n    if cpu_quota_us_int > 0 and cpu_period_us_int > 0:\n        return math.ceil(cpu_quota_us_int / cpu_period_us_int)\n    # Setting a negative cpu_quota_us value is a valid way to disable\n    # cgroup CPU bandwidth limits\n    return os_cpu_count\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "multiprocessing.cpu_count",
+        "os.path.exists",
+        "open",
+        "open.read",
+        "os.path.exists",
+        "os.path.exists",
+        "open",
+        "open.read",
+        "open",
+        "open.read"
+      ],
+      "api_sequence_with_args": [
+        "multiprocessing.cpu_count()",
+        "os.path.exists(cpu_max_fname)",
+        "open(cpu_max_fname, encoding=\"utf-8\")",
+        "open(cpu_max_fname, encoding=\"utf-8\").read()",
+        "os.path.exists(cfs_quota_fname)",
+        "os.path.exists(cfs_period_fname)",
+        "open(cfs_quota_fname, encoding=\"utf-8\")",
+        "open(cfs_quota_fname, encoding=\"utf-8\").read()",
+        "open(cfs_period_fname, encoding=\"utf-8\")",
+        "open(cfs_period_fname, encoding=\"utf-8\").read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "def threads() -> int:\n    os_cpu_count = multiprocessing.cpu_count()\n    cpu_max_fname = \"/sys/fs/cgroup/cpu.max\"\n    cfs_quota_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_quota_us\"\n    cfs_period_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_period_us\"\n    if os.path.exists(cpu_max_fname):\n        with open(cpu_max_fname, encoding=\"utf-8\") as fh:\n            cpu_quota_us, cpu_period_us = fh.read().strip().split()\n    elif os.path.exists(cfs_quota_fname) and os.path.exists(cfs_period_fname):\n        with open(cfs_quota_fname, encoding=\"utf-8\") as fh:\n            cpu_quota_us = fh.read().strip()\n        with open(cfs_period_fname, encoding=\"utf-8\") as fh:\n            cpu_period_us = fh.read().strip()\n    else:\n        cpu_quota_us = \"max\"\n        cpu_period_us = \"100000\""
+    }
+  }
+]

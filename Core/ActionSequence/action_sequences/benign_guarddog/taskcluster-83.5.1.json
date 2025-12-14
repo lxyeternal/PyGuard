@@ -1,0 +1,105 @@
+[
+  {
+    "pyfile": "helper.py",
+    "code_snippet": "import os\nimport datetime\nfrom datetime import timezone\nimport logging\nimport requests\nfrom taskcluster.utils import stringDate\n\nlogger = logging.getLogger(__name__)\n\ndef upload_artifact(queue_service, artifact_path, content, content_type, ttl):\n    \"\"\"\n    DEPRECATED. Do not use.\n    \"\"\"\n    task_id = os.environ.get(\"TASK_ID\")\n    run_id = os.environ.get(\"RUN_ID\")\n    proxy = os.environ.get(\"TASKCLUSTER_PROXY_URL\")\n    assert task_id and run_id and proxy, \"Can only run in Taskcluster tasks with proxy\"\n    # Contet can be str or bytes\n    assert isinstance(content, str) or isinstance(content, bytes)\n    assert isinstance(ttl, datetime.timedelta)\n\n    # Create S3 artifact on Taskcluster\n    resp = queue_service.createArtifact(\n        task_id,\n        run_id,\n        artifact_path,\n        {\n            \"storageType\": \"s3\",\n            \"expires\": stringDate(datetime.datetime.now(timezone.utc) + ttl),\n            \"contentType\": content_type,\n        },\n    )\n    assert resp[\"storageType\"] == \"s3\", \"Not an s3 storage\"\n    assert \"putUrl\" in resp, \"Missing putUrl\"\n    assert \"contentType\" in resp, \"Missing contentType\"\n\n    # Push the artifact on storage service\n    headers = {\"Content-Type\": resp[\"contentType\"]}\n    push = requests.put(url=resp[\"putUrl\"], headers=headers, data=content)\n    push.raise_for_status()\n\n    # Build the absolute url\n    return \"/api/queue/v1/task/{task_id}/runs/{run_id}/artifacts/{path}\".format(\n        task_id=task_id,\n        run_id=run_id,\n        path=artifact_path,\n    )\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "isinstance",
+        "isinstance",
+        "queue_service.createArtifact",
+        "stringDate",
+        "datetime.datetime.now",
+        "requests.put",
+        "requests.put.raise_for_status"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"TASK_ID\")",
+        "os.environ.get(\"RUN_ID\")",
+        "os.environ.get(\"TASKCLUSTER_PROXY_URL\")",
+        "isinstance(content, str)",
+        "isinstance(content, bytes)",
+        "queue_service.createArtifact(task_id, run_id, artifact_path, {\"storageType\": \"s3\", \"expires\": stringDate(datetime.datetime.now(timezone.utc) + ttl), \"contentType\": content_type})",
+        "stringDate(datetime.datetime.now(timezone.utc) + ttl)",
+        "datetime.datetime.now(timezone.utc)",
+        "requests.put(url=resp[\"putUrl\"], headers=headers, data=content)",
+        "requests.put.raise_for_status()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "queue_service.createArtifact",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "stringDate",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "datetime.datetime.now",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "requests.put",
+          "id": "send_http_put",
+          "description": "Sends HTTP PUT request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.put.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport datetime\nfrom datetime import timezone\nimport requests\nfrom taskcluster.utils import stringDate\n\ndef upload_artifact(queue_service, artifact_path, content, content_type, ttl):\n    task_id = os.environ.get(\"TASK_ID\")\n    run_id = os.environ.get(\"RUN_ID\")\n    proxy = os.environ.get(\"TASKCLUSTER_PROXY_URL\")\n    assert task_id and run_id and proxy, \"Can only run in Taskcluster tasks with proxy\"\n    assert isinstance(content, str) or isinstance(content, bytes)\n    assert isinstance(ttl, datetime.timedelta)\n\n    resp = queue_service.createArtifact(\n        task_id,\n        run_id,\n        artifact_path,\n        {\n            \"storageType\": \"s3\",\n            \"expires\": stringDate(datetime.datetime.now(timezone.utc) + ttl),\n            \"contentType\": content_type,\n        },\n    )\n    assert resp[\"storageType\"] == \"s3\", \"Not an s3 storage\"\n    assert \"putUrl\" in resp, \"Missing putUrl\"\n    assert \"contentType\" in resp, \"Missing contentType\"\n\n    headers = {\"Content-Type\": resp[\"contentType\"]}\n    push = requests.put(url=resp[\"putUrl\"], headers=headers, data=content)\n    push.raise_for_status()\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "taskcluster-83.5.1",
+      "total_matches": 1
+    }
+  }
+]

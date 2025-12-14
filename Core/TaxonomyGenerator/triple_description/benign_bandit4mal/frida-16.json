@@ -1,0 +1,156 @@
+{
+  "metadata": {
+    "package_name": "frida-16",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/frida-16.7.10.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "deps.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/frida-16.7.10/frida-16.7.10/releng/deps.py",
+      "line_number": "243",
+      "type_description": "B818:urlopen",
+      "context_snippet": "def roll(bundle: Bundle,\n         build_machine: MachineSpec,\n         host_machine: MachineSpec,\n         activate: bool,\n         post: Optional[Path]):\n    params = load_dependency_parameters()\n    version = params.deps_version\n\n    if activate and bundle == Bundle.SDK:\n        configure_bootstrap_version(version)\n\n    (public_url, filename) = compute_bundle_parameters(bundle, host_machine, version)\n\n    # First do a quick check to avoid hitting S3 in most cases.\n    request = urllib.request.Request(public_url)\n    request.get_method = lambda: \"HEAD\"\n    try:\n        with urllib.request.urlopen(request) as r:\n            return\n    except urllib.request.HTTPError as e:\n        if e.code != 404:\n            raise CommandError(\"network error\") from e\n\n    s3_url = \"s3://build.frida.re/deps/{version}/{filename}\".format(version=version, filename=filename)\n\n    # We will most likely need to build, but let's check S3 to be certain.\n    r = subprocess.run([\"aws\", \"s3\", \"ls\", s3_url], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding=\"utf-8\")\n    if r.returncode == 0:\n        return\n    if r.returncode != 1:\n        raise CommandError(f\"unable to access S3: {r.stdout.strip()}\")\n\n    artifact = build(bundle, build_machine, host_machine)\n\n    if post is not None:\n        post_script = RELENG_DIR / post\n        if not post_script.exists():\n            raise CommandError(\"post-processing script not found\")\n\n        subprocess.run([\n                           sys.executable, post_script,\n                           \"--bundle=\" + bundle.name.lower(),\n                           \"--host=\" + host_machine.identifier,\n                           \"--artifact=\" + str(artifact),\n                           \"--version=\" + version,\n                       ],\n                       check=True)\n\n    subprocess.run([\"aws\", \"s3\", \"cp\", artifact, s3_url], check=True)\n\n    # Use the shell for Windows compatibility, where npm generates a .bat script.\n    subprocess.run(\"cfcli purge \" + public_url, shell=True, check=True)\n\n    if activate and bundle == Bundle.TOOLCHAIN:\n        configure_bootstrap_version(version)",
+      "hash_value": "3a41c6caa14898c34cd2896ef4a3db3f",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def roll(bundle: Bundle,\n         build_machine: MachineSpec,\n         host_machine: MachineSpec,\n         activate: bool,\n         post: Optional[Path]):\n    params = load_dependency_parameters()\n    version = params.deps_version\n\n    if activate and bundle == Bundle.SDK:\n        configure_bootstrap_version(version)\n\n    (public_url, filename) = compute_bundle_parameters(bundle, host_machine, version)\n\n    # First do a quick check to avoid hitting S3 in most cases.\n    request = urllib.request.Request(public_url)\n    request.get_method = lambda: \"HEAD\"\n    try:\n        with urllib.request.urlopen(request) as r:\n            return\n    except urllib.request.HTTPError as e:\n        if e.code != 404:\n            raise CommandError(\"network error\") from e\n\n    s3_url = \"s3://build.frida.re/deps/{version}/{filename}\".format(version=version, filename=filename)\n\n    # We will most likely need to build, but let's check S3 to be certain.\n    r = subprocess.run([\"aws\", \"s3\", \"ls\", s3_url], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding=\"utf-8\")\n    if r.returncode == 0:\n        return\n    if r.returncode != 1:\n        raise CommandError(f\"unable to access S3: {r.stdout.strip()}\")\n\n    artifact = build(bundle, build_machine, host_machine)\n\n    if post is not None:\n        post_script = RELENG_DIR / post\n        if not post_script.exists():\n            raise CommandError(\"post-processing script not found\")\n\n        subprocess.run([\n                           sys.executable, post_script,\n                           \"--bundle=\" + bundle.name.lower(),\n                           \"--host=\" + host_machine.identifier,\n                           \"--artifact=\" + str(artifact),\n                           \"--version=\" + version,\n                       ],\n                       check=True)\n\n    subprocess.run([\"aws\", \"s3\", \"cp\", artifact, s3_url], check=True)\n\n    # Use the shell for Windows compatibility, where npm generates a .bat script.\n    subprocess.run(\"cfcli purge \" + public_url, shell=True, check=True)\n\n    if activate and bundle == Bundle.TOOLCHAIN:\n        configure_bootstrap_version(version)",
+          "triple_sequences": [
+            {
+              "action_api": "load_dependency_parameters()",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "configure_bootstrap_version()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "version",
+              "object_description": "Version string",
+              "object_id": "",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "compute_bundle_parameters()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "bundle, host_machine, version",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "urllib.request.Request()",
+              "action_description": "Creates HTTP request object with specified URL, data, and headers",
+              "action_id": "create_http_request",
+              "object": "public_url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "request.get_method",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "lambda: \"HEAD\"",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "urllib.request.urlopen()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "request",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"aws\", \"s3\", \"ls\", s3_url]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "build()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "bundle, build_machine, host_machine",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "post_script.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "post_script",
+              "object_description": "Script file path",
+              "object_id": "script_file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[sys.executable, post_script, \"--bundle=\" + bundle.name.lower(), \"--host=\" + host_machine.identifier, \"--artifact=\" + str(artifact), \"--version=\" + version]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"aws\", \"s3\", \"cp\", artifact, s3_url]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "\"cfcli purge \" + public_url",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "configure_bootstrap_version()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "version",
+              "object_description": "Version string",
+              "object_id": "",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

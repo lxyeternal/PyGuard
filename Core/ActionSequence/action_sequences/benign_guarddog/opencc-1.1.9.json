@@ -1,0 +1,387 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport posixpath\nimport platform\nimport re\nimport shutil\nimport sys\n\nfrom distutils import sysconfig\nimport setuptools\nfrom setuptools.command import build_ext\n\nHERE = os.path.dirname(os.path.abspath(__file__))\n\nIS_WINDOWS = sys.platform.startswith(\"win\")\n\nclass BuildBazelExtension(build_ext.build_ext):\n    \"\"\"A command that runs Bazel to build a C/C++ extension.\"\"\"\n\n    def run(self):\n        for ext in self.extensions:\n            self.bazel_build(ext)\n        build_ext.build_ext.run(self)\n\n    def bazel_build(self, ext):\n        \"\"\"Runs the bazel build to create the package.\"\"\"\n        with open(\"WORKSPACE\", \"r\") as workspace:\n            workspace_contents = workspace.read()\n\n        with open(\"WORKSPACE\", \"w\") as workspace:\n            workspace.write(\n                re.sub(\n                    r'(?<=path = \").*(?=\",  # May be overwritten by setup\\\\.py\\\\.)',\n                    sysconfig.get_python_inc().replace(os.path.sep, posixpath.sep),\n                    workspace_contents,\n                )\n            )\n\n        if not os.path.exists(self.build_temp):\n            os.makedirs(self.build_temp)\n\n        bazel_argv = [\n            \"bazel\",\n            \"build\",\n            ext.bazel_target,\n            \"--symlink_prefix=\" + os.path.join(self.build_temp, \"bazel-\"),\n            \"--compilation_mode=\" + (\"dbg\" if self.debug else \"opt\"),\n        ]\n\n        if IS_WINDOWS:\n            # Link with python*.lib.\n            for library_dir in self.library_dirs:\n                bazel_argv.append(\"--linkopt=/LIBPATH:\" + library_dir)\n        elif sys.platform == \"darwin\" and platform.machine() == \"x86_64\":\n            bazel_argv.append(\"--macos_minimum_os=10.9\")\n\n            # ARCHFLAGS is always set by cibuildwheel before macOS wheel builds.\n            archflags = os.getenv(\"ARCHFLAGS\", \"\")\n            if \"arm64\" in archflags:\n                bazel_argv.append(\"--cpu=darwin_arm64\")\n                bazel_argv.append(\"--macos_cpus=arm64\")\n\n        self.spawn(bazel_argv)\n\n        shared_lib_suffix = '.dll' if IS_WINDOWS else '.so'\n        ext_bazel_bin_path = os.path.join(\n            self.build_temp, 'bazel-bin',\n            ext.relpath, ext.target_name + shared_lib_suffix)\n\n        ext_dest_path = self.get_ext_fullpath(ext.name)\n        ext_dest_dir = os.path.dirname(ext_dest_path)\n        if not os.path.exists(ext_dest_dir):\n            os.makedirs(ext_dest_dir)\n        shutil.copyfile(ext_bazel_bin_path, ext_dest_path)\n\n        # explicitly call `bazel shutdown` for graceful exit\n        self.spawn([\"bazel\", \"shutdown\"])\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.dirname",
+        "open",
+        "open",
+        "re.sub",
+        "sysconfig.get_python_inc",
+        "os.path.sep",
+        "posixpath.sep",
+        "os.path.exists",
+        "os.makedirs",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.makedirs",
+        "shutil.copyfile"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(__file__)",
+        "os.path.dirname(os.path.abspath(__file__))",
+        "open(\"WORKSPACE\", \"r\")",
+        "open(\"WORKSPACE\", \"w\")",
+        "re.sub(r'(?<=path = \").*(?=\",  # May be overwritten by setup\\.py\\.)', sysconfig.get_python_inc().replace(os.path.sep, posixpath.sep), workspace_contents)",
+        "sysconfig.get_python_inc()",
+        "os.path.sep",
+        "posixpath.sep",
+        "os.path.exists(self.build_temp)",
+        "os.makedirs(self.build_temp)",
+        "os.path.join(self.build_temp, \"bazel-\")",
+        "os.path.join(self.build_temp, 'bazel-bin', ext.relpath, ext.target_name + shared_lib_suffix)",
+        "os.path.join(ext_dest_path)",
+        "os.path.exists(ext_dest_dir)",
+        "os.makedirs(ext_dest_dir)",
+        "shutil.copyfile(ext_bazel_bin_path, ext_dest_path)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.sub",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "sysconfig.get_python_inc",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.path.sep",
+          "id": "get_os_path_sep",
+          "description": "Retrieves operating system path separator",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "posixpath.sep",
+          "id": "get_os_path_sep",
+          "description": "Retrieves operating system path separator",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "HERE = os.path.dirname(os.path.abspath(__file__))\n\nclass BuildBazelExtension(build_ext.build_ext):\n    def bazel_build(self, ext):\n        with open(\"WORKSPACE\", \"r\") as workspace:\n            workspace_contents = workspace.read()\n\n        with open(\"WORKSPACE\", \"w\") as workspace:\n            workspace.write(\n                re.sub(\n                    r'(?<=path = \").*(?=\",  # May be overwritten by setup\\.py\\.)',\n                    sysconfig.get_python_inc().replace(os.path.sep, posixpath.sep),\n                    workspace_contents,\n                )\n            )\n\n        if not os.path.exists(self.build_temp):\n            os.makedirs(self.build_temp)\n\n        bazel_argv = [\n            \"bazel\",\n            \"build\",\n            ext.bazel_target,\n            \"--symlink_prefix=\" + os.path.join(self.build_temp, \"bazel-\"),\n            \"--compilation_mode=\" + (\"dbg\" if self.debug else \"opt\"),\n        ]\n\n        shared_lib_suffix = '.dll' if IS_WINDOWS else '.so'\n        ext_bazel_bin_path = os.path.join(\n            self.build_temp, 'bazel-bin',\n            ext.relpath, ext.target_name + shared_lib_suffix)\n\n        ext_dest_path = self.get_ext_fullpath(ext.name)\n        ext_dest_dir = os.path.dirname(ext_dest_path)\n        if not os.path.exists(ext_dest_dir):\n            os.makedirs(ext_dest_dir)\n        shutil.copyfile(ext_bazel_bin_path, ext_dest_path)"
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# Imports relevant to the flagged line\nimport contextlib\nimport os\nimport re\nimport shutil\nimport string\nimport subprocess\nimport sys\nfrom collections.abc import Generator\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\n\n# Global variables and constants used by the flagged line\nDIR = Path(__file__).parent.absolute()\n\ndef get_and_replace(filename: Path, binary: bool = False, **opts: str) -> bytes | str:\n    if binary:\n        contents = filename.read_bytes()\n        return string.Template(contents.decode()).substitute(opts).encode()\n\n    return string.Template(filename.read_text()).substitute(opts)\n\n# Context manager used in the flagged block\n@contextlib.contextmanager\ndef remove_output(*sources: str) -> Generator[None, None, None]:\n    try:\n        yield\n    finally:\n        for src in sources:\n            shutil.rmtree(src)\n\n# Immediate block containing the flagged line (with at least 10 lines before and after)\nwith remove_output(\"pybind11/include\", \"pybind11/share\"):\n    # Generate the files if they are not present.\n    with TemporaryDirectory() as tmpdir:\n        cmd = [\"cmake\", \"-S\", \".\", \"-B\", tmpdir] + [\n            \"-DCMAKE_INSTALL_PREFIX=pybind11\",\n            \"-DBUILD_TESTING=OFF\",\n            \"-DPYBIND11_NOPYTHON=ON\",\n            \"-Dprefix_for_pc_file=${pcfiledir}/../../\",\n        ]\n        if \"CMAKE_ARGS\" in os.environ:\n            fcommand = [\n                c\n                for c in os.environ[\"CMAKE_ARGS\"].split()\n                if \"DCMAKE_INSTALL_PREFIX\" not in c\n            ]\n            cmd += fcommand\n        subprocess.run(cmd, check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)\n        subprocess.run(\n            [\"cmake\", \"--install\", tmpdir],\n            check=True,\n            cwd=DIR,\n            stdout=sys.stdout,\n            stderr=sys.stderr,\n        )\n\n    txt = get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)\n    code = compile(txt, setup_py, \"exec\")\n    exec(code, {\"SDist\": SDist})\n\n# Data dependencies for the flagged line:\n# - cmd: constructed in the block above\n# - DIR: global variable defined at the top\n# - sys.stdout, sys.stderr: imported from sys\n# - subprocess: imported at the top\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "shutil.rmtree",
+        "TemporaryDirectory",
+        "os.environ",
+        "subprocess.run",
+        "subprocess.run",
+        "get_and_replace",
+        "compile",
+        "exec"
+      ],
+      "api_sequence_with_args": [
+        "shutil.rmtree(src)",
+        "TemporaryDirectory()",
+        "os.environ",
+        "subprocess.run(cmd, check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)",
+        "subprocess.run([\"cmake\", \"--install\", tmpdir], check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)",
+        "get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)",
+        "compile(txt, setup_py, \"exec\")",
+        "exec(code, {\"SDist\": SDist})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "TemporaryDirectory",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "get_and_replace",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import contextlib\nimport os\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\n\nDIR = Path(__file__).parent.absolute()\n\ndef get_and_replace(filename: Path, binary: bool = False, **opts: str) -> bytes | str:\n    if binary:\n        contents = filename.read_bytes()\n        return string.Template(contents.decode()).substitute(opts).encode()\n    return string.Template(filename.read_text()).substitute(opts)\n\n@contextlib.contextmanager\ndef remove_output(*sources: str):\n    try:\n        yield\n    finally:\n        for src in sources:\n            shutil.rmtree(src)\n\nwith remove_output(\"pybind11/include\", \"pybind11/share\"):\n    with TemporaryDirectory() as tmpdir:\n        cmd = [\"cmake\", \"-S\", \".\", \"-B\", tmpdir] + [\n            \"-DCMAKE_INSTALL_PREFIX=pybind11\",\n            \"-DBUILD_TESTING=OFF\",\n            \"-DPYBIND11_NOPYTHON=ON\",\n            \"-Dprefix_for_pc_file=${pcfiledir}/../../\",\n        ]\n        if \"CMAKE_ARGS\" in os.environ:\n            fcommand = [\n                c\n                for c in os.environ[\"CMAKE_ARGS\"].split()\n                if \"DCMAKE_INSTALL_PREFIX\" not in c\n            ]\n            cmd += fcommand\n        subprocess.run(cmd, check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)\n        subprocess.run(\n            [\"cmake\", \"--install\", tmpdir],\n            check=True,\n            cwd=DIR,\n            stdout=sys.stdout,\n            stderr=sys.stderr,\n        )\n\n    txt = get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)\n    code = compile(txt, setup_py, \"exec\")\n    exec(code, {\"SDist\": SDist})"
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport re\nimport subprocess\nimport sys\nimport warnings\n\n_this_dir = os.path.dirname(os.path.abspath(__file__))\n_build_dir = os.path.join(_this_dir, 'build', 'python')\n\ndef build_libopencc(output_path):\n    print('building libopencc into %s' % _build_dir)\n\n    is_windows = sys.platform == 'win32'\n\n    # Make build directories\n    os.makedirs(_build_dir, exist_ok=True)\n\n    # Configure\n    cmake_args = [\n        '-DBUILD_DOCUMENTATION:BOOL=OFF',\n        '-DBUILD_SHARED_LIBS:BOOL=OFF',\n        '-DENABLE_GTEST:BOOL=OFF',\n        '-DENABLE_BENCHMARK:BOOL=OFF',\n        '-DBUILD_PYTHON:BOOL=ON',\n        '-DCMAKE_BUILD_TYPE=Release',\n        '-DCMAKE_INSTALL_PREFIX={}'.format(output_path),\n        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}'.format(output_path),\n        '-DPYTHON_EXECUTABLE={}'.format(sys.executable),\n    ]\n\n    if is_windows:\n        cmake_args += \\\n            ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={}'.format(output_path)]\n        if sys.maxsize > 2**32:\n            cmake_args += ['-A', 'x64']\n\n    cmd = ['cmake', '-B', _build_dir] + cmake_args\n    errno = subprocess.call(cmd)\n    assert errno == 0, 'Configure failed'\n\n    # Build\n    cmd = [\n        'cmake', '--build', _build_dir,\n        '--config', 'Release',\n        '--target', 'install'\n    ]\n    errno = subprocess.call(cmd)\n    assert errno == 0, 'Build failed'\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "sys.platform",
+        "os.makedirs",
+        "os.path.join",
+        "sys.executable",
+        "sys.maxsize",
+        "subprocess.call",
+        "subprocess.call"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(__file__)",
+        "os.path.dirname(os.path.abspath(__file__))",
+        "os.path.join(_this_dir, 'build', 'python')",
+        "sys.platform",
+        "os.makedirs(_build_dir, exist_ok=True)",
+        "os.path.join(_this_dir, 'build', 'python')",
+        "sys.executable",
+        "sys.maxsize",
+        "subprocess.call(cmd)",
+        "subprocess.call(cmd)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.maxsize",
+          "id": "get_os_info",
+          "description": "Retrieves operating system information",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nimport sys\n\n_this_dir = os.path.dirname(os.path.abspath(__file__))\n_build_dir = os.path.join(_this_dir, 'build', 'python')\n\ndef build_libopencc(output_path):\n    is_windows = sys.platform == 'win32'\n    os.makedirs(_build_dir, exist_ok=True)\n    cmake_args = [\n        '-DBUILD_DOCUMENTATION:BOOL=OFF',\n        '-DBUILD_SHARED_LIBS:BOOL=OFF',\n        '-DENABLE_GTEST:BOOL=OFF',\n        '-DENABLE_BENCHMARK:BOOL=OFF',\n        '-DBUILD_PYTHON:BOOL=ON',\n        '-DCMAKE_BUILD_TYPE=Release',\n        '-DCMAKE_INSTALL_PREFIX={}'.format(output_path),\n        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}'.format(output_path),\n        '-DPYTHON_EXECUTABLE={}'.format(sys.executable),\n    ]\n    if is_windows:\n        cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={}'.format(output_path)]\n        if sys.maxsize > 2**32:\n            cmake_args += ['-A', 'x64']\n    cmd = ['cmake', '-B', _build_dir] + cmake_args\n    errno = subprocess.call(cmd)\n    assert errno == 0, 'Configure failed'\n    cmd = [\n        'cmake', '--build', _build_dir,\n        '--config', 'Release',\n        '--target', 'install'\n    ]\n    errno = subprocess.call(cmd)\n    assert errno == 0, 'Build failed'"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "opencc-1.1.9",
+      "total_matches": 5
+    }
+  }
+]

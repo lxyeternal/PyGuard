@@ -1,0 +1,375 @@
+{
+  "metadata": {
+    "package_name": "ncnn-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/ncnn-1.0.20241226.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "setup.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ncnn-1.0.20241226/ncnn-1.0.20241226/setup.py",
+      "line_number": "183",
+      "type_description": "cmd-overwrite",
+      "context_snippet": "import io\nimport os\nimport sys\nimport time\nimport re\nimport subprocess\n\nfrom setuptools import setup, find_packages, Extension\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.install import install\n\n\ndef find_version():\n    with io.open(\"CMakeLists.txt\", encoding=\"utf8\") as f:\n        version_file = f.read()\n\n    version_major = re.findall(r\"NCNN_VERSION_MAJOR (.+?)\", version_file)\n    version_minor = re.findall(r\"NCNN_VERSION_MINOR (.+?)\", version_file)\n\n    if version_major and version_minor:\n        ncnn_version = time.strftime(\"%Y%m%d\", time.localtime())\n\n        return version_major[0] + \".\" + version_minor[0] + \".\" + ncnn_version\n    raise RuntimeError(\"Unable to find version string.\")\n\n# Parse environment variables\nVulkan_LIBRARY = os.environ.get(\"Vulkan_LIBRARY\", \"\")\nCMAKE_TOOLCHAIN_FILE = os.environ.get(\"CMAKE_TOOLCHAIN_FILE\", \"\")\nPLATFORM = os.environ.get(\"PLATFORM\", \"\")\nARCHS = os.environ.get(\"ARCHS\", \"\")\nDEPLOYMENT_TARGET = os.environ.get(\"DEPLOYMENT_TARGET\", \"\")\nOpenMP_C_FLAGS = os.environ.get(\"OpenMP_C_FLAGS\", \"\")\nOpenMP_CXX_FLAGS = os.environ.get(\"OpenMP_CXX_FLAGS\", \"\")\nOpenMP_C_LIB_NAMES = os.environ.get(\"OpenMP_C_LIB_NAMES\", \"\")\nOpenMP_CXX_LIB_NAMES = os.environ.get(\"OpenMP_CXX_LIB_NAMES\", \"\")\nOpenMP_libomp_LIBRARY = os.environ.get(\"OpenMP_libomp_LIBRARY\", \"\")\nENABLE_BITCODE = os.environ.get(\"ENABLE_BITCODE\", \"\")\nENABLE_ARC = os.environ.get(\"ENABLE_ARC\", \"\")\nENABLE_VISIBILITY = os.environ.get(\"ENABLE_VISIBILITY\", \"\")\n\n# Parse variables from command line with setup.py install\nclass InstallCommand(install):\n    user_options = install.user_options + [\n        ('vulkan=', None, 'Enable the usage of Vulkan.'),\n    ]\n    def initialize_options(self):\n        install.initialize_options(self)\n        self.vulkan = None\n\n    def finalize_options(self):\n        install.finalize_options(self)\n\n    def run(self):\n        install.run(self)\n\n# Convert distutils Windows platform specifiers to CMake -A arguments\nPLAT_TO_CMAKE = {\n    \"win32\": \"Win32\",\n    \"win-amd64\": \"x64\",\n    \"win-arm32\": \"ARM\",\n    \"win-arm64\": \"ARM64\",\n}\n\n# A CMakeExtension needs a sourcedir instead of a file list.\n# The name must be the _single_ output extension from the CMake build.\n# If you need multiple extensions, see scikit-build.\nclass CMakeExtension(Extension):\n    def __init__(self, name, sourcedir=\"\"):\n        Extension.__init__(self, name, sources=[])\n        self.sourcedir = os.path.abspath(sourcedir)\n\n\nclass CMakeBuild(build_ext):\n    def build_extension(self, ext):\n        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))\n        extdir = os.path.join(extdir, \"ncnn\")\n\n        # required for auto-detection of auxiliary \"native\" libs\n        if not extdir.endswith(os.path.sep):\n            extdir += os.path.sep\n\n        cfg = \"Debug\" if self.debug else \"Release\"\n\n        # CMake lets you override the generator - we need to check this.\n        # Can be set with Conda-Build, for example.\n        cmake_generator = os.environ.get(\"CMAKE_GENERATOR\", \"\")\n\n        # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON\n        # EXAMPLE_VERSION_INFO shows you how to pass a value into the C++ code\n        # from Python.\n        cmake_args = [\n            \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}\".format(extdir),\n            \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={}\".format(extdir),\n            \"-DPYTHON_EXECUTABLE={}\".format(sys.executable),\n            \"-DCMAKE_BUILD_TYPE={}\".format(cfg),  # not used on MSVC, but no harm\n            \"-DNCNN_PYTHON=ON\",\n            \"-DNCNN_VULKAN=ON\",\n            \"-DNCNN_DISABLE_RTTI=OFF\",\n            \"-DNCNN_DISABLE_EXCEPTION=OFF\",\n            \"-DNCNN_BUILD_BENCHMARK=OFF\",\n            \"-DNCNN_BUILD_EXAMPLES=OFF\",\n            \"-DNCNN_BUILD_TOOLS=OFF\",\n        ]\n        if Vulkan_LIBRARY != \"\":\n            cmake_args.append(\"-DVulkan_LIBRARY=\" + Vulkan_LIBRARY)\n        if CMAKE_TOOLCHAIN_FILE != \"\":\n            cmake_args.append(\"-DCMAKE_TOOLCHAIN_FILE=\" + CMAKE_TOOLCHAIN_FILE)\n        if PLATFORM != \"\":\n            cmake_args.append(\"-DPLATFORM=\" + PLATFORM)\n        if ARCHS != \"\":\n            cmake_args.append(\"-DARCHS=\" + ARCHS)\n        if DEPLOYMENT_TARGET != \"\":\n            cmake_args.append(\"-DDEPLOYMENT_TARGET=\" + DEPLOYMENT_TARGET)\n        if OpenMP_C_FLAGS != \"\":\n            cmake_args.append(\"-DOpenMP_C_FLAGS=\" + OpenMP_C_FLAGS)\n        if OpenMP_CXX_FLAGS != \"\":\n            cmake_args.append(\"-DOpenMP_CXX_FLAGS=\" + OpenMP_CXX_FLAGS)\n        if OpenMP_C_LIB_NAMES != \"\":\n            cmake_args.append(\"-DOpenMP_C_LIB_NAMES=\" + OpenMP_C_LIB_NAMES)\n        if OpenMP_CXX_LIB_NAMES != \"\":\n            cmake_args.append(\"-DOpenMP_CXX_LIB_NAMES=\" + OpenMP_CXX_LIB_NAMES)\n        if OpenMP_libomp_LIBRARY != \"\":\n            cmake_args.append(\"-DOpenMP_libomp_LIBRARY=\" + OpenMP_libomp_LIBRARY)\n        if ENABLE_BITCODE != \"\":\n            cmake_args.append(\"-DENABLE_BITCODE=\" + ENABLE_BITCODE)\n        if ENABLE_ARC != \"\":\n            cmake_args.append(\"-DENABLE_ARC=\" + ENABLE_ARC)\n        if ENABLE_VISIBILITY != \"\":\n            cmake_args.append(\"-DENABLE_VISIBILITY=\" + ENABLE_VISIBILITY)\n\n        build_args = []\n\n        if self.compiler.compiler_type == \"msvc\":\n            # Single config generators are handled \"normally\"\n            single_config = any(x in cmake_generator for x in {\"NMake\", \"Ninja\"})\n\n            # CMake allows an arch-in-generator style for backward compatibility\n            contains_arch = any(x in cmake_generator for x in {\"ARM\", \"Win64\"})\n\n            # Specify the arch if using MSVC generator, but only if it doesn't\n            # contain a backward-compatibility arch spec already in the\n            # generator name.\n            if not single_config and not contains_arch:\n                cmake_args += [\"-A\", PLAT_TO_CMAKE[self.plat_name]]\n\n            # Multi-config generators have a different way to specify configs\n            if not single_config:\n                cmake_args += [\n                    \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}\".format(cfg.upper(), extdir)\n                ]\n                build_args += [\"--config\", cfg]\n\n        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level\n        # across all generators.\n        if \"CMAKE_BUILD_PARALLEL_LEVEL\" not in os.environ:\n            # self.parallel is a Python 3 only way to set parallel jobs by hand\n            # using -j in the build_ext call, not supported by pip or PyPA-build.\n            if hasattr(self, \"parallel\") and self.parallel:\n                # CMake 3.12+ only.\n                build_args += [\"-j{}\".format(self.parallel)]\n            else:\n                build_args += [\"-j4\"]\n\n        if not os.path.exists(self.build_temp):\n            os.makedirs(self.build_temp)\n\n        subprocess.check_call(\n            [\"cmake\", ext.sourcedir] + cmake_args, cwd=self.build_temp\n        )\n        subprocess.check_call(\n            [\"cmake\", \"--build\", \".\"] + build_args, cwd=self.build_temp\n        )\n\n\nif sys.version_info < (3, 0):\n    sys.exit(\"Sorry, Python < 3.0 is not supported\")\n\nrequirements = [\"numpy\", \"tqdm\", \"requests\", \"portalocker\", \"opencv-python\"]\n\nwith io.open(\"README.md\", encoding=\"utf-8\") as h:\n    long_description = h.read()\n\nsetup(\n    name=\"ncnn\",\n    version=find_version(),\n    author=\"nihui\",\n    author_email=\"nihuini@tencent.com\",\n    maintainer=\"caishanli\",\n    maintainer_email=\"caishanli25@gmail.com\",\n    description=\"ncnn is a high-performance neural network inference framework optimized for the mobile platform\",\n    long_description=long_description,\n    long_description_content_type=\"text/markdown\",\n    url=\"https://github.com/Tencent/ncnn\",\n    classifiers=[\n        \"Programming Language :: C++\",\n        \"Programming Language :: Python :: 3\",\n        \"Programming Language :: Python :: 3.6\",\n        \"Programming Language :: Python :: 3.7\",\n        \"Programming Language :: Python :: 3.8\",\n        \"Programming Language :: Python :: 3.9\",\n        \"Programming Language :: Python :: 3.10\",\n        \"License :: OSI Approved :: BSD License\",\n        \"Operating System :: OS Independent\",\n    ],\n    license=\"BSD-3\",\n    python_requires=\">=3.5\",\n    packages=find_packages(\"python\"),\n    package_dir={\"\": \"python\"},\n    install_requires=requirements,\n    ext_modules=[CMakeExtension(\"ncnn\")],\n    cmdclass={'install': InstallCommand, \"build_ext\": CMakeBuild},\n)\n",
+      "hash_value": "5bed1701638d5b950e389ae846657643",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "import io\nimport os\nimport sys\nimport time\nimport re\nimport subprocess\n\nfrom setuptools import setup, find_packages, Extension\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.install import install\n\n\ndef find_version():\n    with io.open(\"CMakeLists.txt\", encoding=\"utf8\") as f:\n        version_file = f.read()\n\n    version_major = re.findall(r\"NCNN_VERSION_MAJOR (.+?)\", version_file)\n    version_minor = re.findall(r\"NCNN_VERSION_MINOR (.+?)\", version_file)\n\n    if version_major and version_minor:\n        ncnn_version = time.strftime(\"%Y%m%d\", time.localtime())\n\n        return version_major[0] + \".\" + version_minor[0] + \".\" + ncnn_version\n    raise RuntimeError(\"Unable to find version string.\")\n\n# Parse environment variables\nVulkan_LIBRARY = os.environ.get(\"Vulkan_LIBRARY\", \"\")\nCMAKE_TOOLCHAIN_FILE = os.environ.get(\"CMAKE_TOOLCHAIN_FILE\", \"\")\nPLATFORM = os.environ.get(\"PLATFORM\", \"\")\nARCHS = os.environ.get(\"ARCHS\", \"\")\nDEPLOYMENT_TARGET = os.environ.get(\"DEPLOYMENT_TARGET\", \"\")\nOpenMP_C_FLAGS = os.environ.get(\"OpenMP_C_FLAGS\", \"\")\nOpenMP_CXX_FLAGS = os.environ.get(\"OpenMP_CXX_FLAGS\", \"\")\nOpenMP_C_LIB_NAMES = os.environ.get(\"OpenMP_C_LIB_NAMES\", \"\")\nOpenMP_CXX_LIB_NAMES = os.environ.get(\"OpenMP_CXX_LIB_NAMES\", \"\")\nOpenMP_libomp_LIBRARY = os.environ.get(\"OpenMP_libomp_LIBRARY\", \"\")\nENABLE_BITCODE = os.environ.get(\"ENABLE_BITCODE\", \"\")\nENABLE_ARC = os.environ.get(\"ENABLE_ARC\", \"\")\nENABLE_VISIBILITY = os.environ.get(\"ENABLE_VISIBILITY\", \"\")\n\n# Parse variables from command line with setup.py install\nclass InstallCommand(install):\n    user_options = install.user_options + [\n        ('vulkan=', None, 'Enable the usage of Vulkan.'),\n    ]\n    def initialize_options(self):\n        install.initialize_options(self)\n        self.vulkan = None\n\n    def finalize_options(self):\n        install.finalize_options(self)\n\n    def run(self):\n        install.run(self)\n\n# Convert distutils Windows platform specifiers to CMake -A arguments\nPLAT_TO_CMAKE = {\n    \"win32\": \"Win32\",\n    \"win-amd64\": \"x64\",\n    \"win-arm32\": \"ARM\",\n    \"win-arm64\": \"ARM64\",\n}\n\n# A CMakeExtension needs a sourcedir instead of a file list.\n# The name must be the _single_ output extension from the CMake build.\n# If you need multiple extensions, see scikit-build.\nclass CMakeExtension(Extension):\n    def __init__(self, name, sourcedir=\"\"):\n        Extension.__init__(self, name, sources=[])\n        self.sourcedir = os.path.abspath(sourcedir)\n\n\nclass CMakeBuild(build_ext):\n    def build_extension(self, ext):\n        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))\n        extdir = os.path.join(extdir, \"ncnn\")\n\n        # required for auto-detection of auxiliary \"native\" libs\n        if not extdir.endswith(os.path.sep):\n            extdir += os.path.sep\n\n        cfg = \"Debug\" if self.debug else \"Release\"\n\n        # CMake lets you override the generator - we need to check this.\n        # Can be set with Conda-Build, for example.\n        cmake_generator = os.environ.get(\"CMAKE_GENERATOR\", \"\")\n\n        # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON\n        # EXAMPLE_VERSION_INFO shows you how to pass a value into the C++ code\n        # from Python.\n        cmake_args = [\n            \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}\".format(extdir),\n            \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={}\".format(extdir),\n            \"-DPYTHON_EXECUTABLE={}\".format(sys.executable),\n            \"-DCMAKE_BUILD_TYPE={}\".format(cfg),  # not used on MSVC, but no harm\n            \"-DNCNN_PYTHON=ON\",\n            \"-DNCNN_VULKAN=ON\",\n            \"-DNCNN_DISABLE_RTTI=OFF\",\n            \"-DNCNN_DISABLE_EXCEPTION=OFF\",\n            \"-DNCNN_BUILD_BENCHMARK=OFF\",\n            \"-DNCNN_BUILD_EXAMPLES=OFF\",\n            \"-DNCNN_BUILD_TOOLS=OFF\",\n        ]\n        if Vulkan_LIBRARY != \"\":\n            cmake_args.append(\"-DVulkan_LIBRARY=\" + Vulkan_LIBRARY)\n        if CMAKE_TOOLCHAIN_FILE != \"\":\n            cmake_args.append(\"-DCMAKE_TOOLCHAIN_FILE=\" + CMAKE_TOOLCHAIN_FILE)\n        if PLATFORM != \"\":\n            cmake_args.append(\"-DPLATFORM=\" + PLATFORM)\n        if ARCHS != \"\":\n            cmake_args.append(\"-DARCHS=\" + ARCHS)\n        if DEPLOYMENT_TARGET != \"\":\n            cmake_args.append(\"-DDEPLOYMENT_TARGET=\" + DEPLOYMENT_TARGET)\n        if OpenMP_C_FLAGS != \"\":\n            cmake_args.append(\"-DOpenMP_C_FLAGS=\" + OpenMP_C_FLAGS)\n        if OpenMP_CXX_FLAGS != \"\":\n            cmake_args.append(\"-DOpenMP_CXX_FLAGS=\" + OpenMP_CXX_FLAGS)\n        if OpenMP_C_LIB_NAMES != \"\":\n            cmake_args.append(\"-DOpenMP_C_LIB_NAMES=\" + OpenMP_C_LIB_NAMES)\n        if OpenMP_CXX_LIB_NAMES != \"\":\n            cmake_args.append(\"-DOpenMP_CXX_LIB_NAMES=\" + OpenMP_CXX_LIB_NAMES)\n        if OpenMP_libomp_LIBRARY != \"\":\n            cmake_args.append(\"-DOpenMP_libomp_LIBRARY=\" + OpenMP_libomp_LIBRARY)\n        if ENABLE_BITCODE != \"\":\n            cmake_args.append(\"-DENABLE_BITCODE=\" + ENABLE_BITCODE)\n        if ENABLE_ARC != \"\":\n            cmake_args.append(\"-DENABLE_ARC=\" + ENABLE_ARC)\n        if ENABLE_VISIBILITY != \"\":\n            cmake_args.append(\"-DENABLE_VISIBILITY=\" + ENABLE_VISIBILITY)\n\n        build_args = []\n\n        if self.compiler.compiler_type == \"msvc\":\n            # Single config generators are handled \"normally\"\n            single_config = any(x in cmake_generator for x in {\"NMake\", \"Ninja\"})\n\n            # CMake allows an arch-in-generator style for backward compatibility\n            contains_arch = any(x in cmake_generator for x in {\"ARM\", \"Win64\"})\n\n            # Specify the arch if using MSVC generator, but only if it doesn't\n            # contain a backward-compatibility arch spec already in the\n            # generator name.\n            if not single_config and not contains_arch:\n                cmake_args += [\"-A\", PLAT_TO_CMAKE[self.plat_name]]\n\n            # Multi-config generators have a different way to specify configs\n            if not single_config:\n                cmake_args += [\n                    \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}\".format(cfg.upper(), extdir)\n                ]\n                build_args += [\"--config\", cfg]\n\n        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level\n        # across all generators.\n        if \"CMAKE_BUILD_PARALLEL_LEVEL\" not in os.environ:\n            # self.parallel is a Python 3 only way to set parallel jobs by hand\n            # using -j in the build_ext call, not supported by pip or PyPA-build.\n            if hasattr(self, \"parallel\") and self.parallel:\n                # CMake 3.12+ only.\n                build_args += [\"-j{}\".format(self.parallel)]\n            else:\n                build_args += [\"-j4\"]\n\n        if not os.path.exists(self.build_temp):\n            os.makedirs(self.build_temp)\n\n        subprocess.check_call(\n            [\"cmake\", ext.sourcedir] + cmake_args, cwd=self.build_temp\n        )\n        subprocess.check_call(\n            [\"cmake\", \"--build\", \".\"] + build_args, cwd=self.build_temp\n        )\n\n\nif sys.version_info < (3, 0):\n    sys.exit(\"Sorry, Python < 3.0 is not supported\")\n\nrequirements = [\"numpy\", \"tqdm\", \"requests\", \"portalocker\", \"opencv-python\"]\n\nwith io.open(\"README.md\", encoding=\"utf-8\") as h:\n    long_description = h.read()\n\nsetup(\n    name=\"ncnn\",\n    version=find_version(),\n    author=\"nihui\",\n    author_email=\"nihuini@tencent.com\",\n    maintainer=\"caishanli\",\n    maintainer_email=\"caishanli25@gmail.com\",\n    description=\"ncnn is a high-performance neural network inference framework optimized for the mobile platform\",\n    long_description=long_description,\n    long_description_content_type=\"text/markdown\",\n    url=\"https://github.com/Tencent/ncnn\",\n    classifiers=[\n        \"Programming Language :: C++\",\n        \"Programming Language :: Python :: 3\",\n        \"Programming Language :: Python :: 3.6\",\n        \"Programming Language :: Python :: 3.7\",\n        \"Programming Language :: Python :: 3.8\",\n        \"Programming Language :: Python :: 3.9\",\n        \"Programming Language :: Python :: 3.10\",\n        \"License :: OSI Approved :: BSD License\",\n        \"Operating System :: OS Independent\",\n    ],\n    license=\"BSD-3\",\n    python_requires=\">=3.5\",\n    packages=find_packages(\"python\"),\n    package_dir={\"\": \"python\"},\n    install_requires=requirements,\n    ext_modules=[CMakeExtension(\"ncnn\")],\n    cmdclass={'install': InstallCommand, \"build_ext\": CMakeBuild},\n)\n",
+          "triple_sequences": [
+            {
+              "action_api": "io.open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "\"CMakeLists.txt\", encoding=\"utf8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "re.findall()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r\"NCNN_VERSION_MAJOR (.+?)\", version_file",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "re.findall()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r\"NCNN_VERSION_MINOR (.+?)\", version_file",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "time.strftime()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "\"%Y%m%d\", time.localtime()",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"Vulkan_LIBRARY\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"CMAKE_TOOLCHAIN_FILE\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"PLATFORM\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"ARCHS\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"DEPLOYMENT_TARGET\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"OpenMP_C_FLAGS\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"OpenMP_CXX_FLAGS\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"OpenMP_C_LIB_NAMES\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"OpenMP_CXX_LIB_NAMES\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"OpenMP_libomp_LIBRARY\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"ENABLE_BITCODE\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"ENABLE_ARC\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"ENABLE_VISIBILITY\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.path.abspath()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "sourcedir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "os.path.abspath()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "os.path.dirname(self.get_ext_fullpath(ext.name))",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "extdir, \"ncnn\"",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.sep",
+              "action_description": "Retrieves operating system path separator",
+              "action_id": "get_os_path_sep",
+              "object": "",
+              "object_description": "Directory path separator",
+              "object_id": "directory_separator",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"CMAKE_GENERATOR\", \"\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "sys.executable",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "",
+              "object_description": "Python command",
+              "object_id": "python_command",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "hasattr()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "self, \"parallel\"",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine presence of required module",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "self.build_temp",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.makedirs()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "self.build_temp",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "subprocess.check_call()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"cmake\", ext.sourcedir] + cmake_args, cwd=self.build_temp",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "subprocess.check_call()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "[\"cmake\", \"--build\", \".\"] + build_args, cwd=self.build_temp",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "sys.version_info",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "",
+              "object_description": "Python command",
+              "object_id": "python_command",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "sys.exit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "\"Sorry, Python < 3.0 is not supported\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "io.open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "\"README.md\", encoding=\"utf-8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "find_packages()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "\"python\"",
+              "object_description": "Program directory",
+              "object_id": "program_directory",
+              "intention_description": "List files in directory",
+              "intention_id": "list_directory_files"
+            },
+            {
+              "action_api": "setup()",
+              "action_description": "Executes setuptools installation procedure",
+              "action_id": "exec_setuptools_install",
+              "object": "name=\"ncnn\", ...",
+              "object_description": "Python code string",
+              "object_id": "python_code_string",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

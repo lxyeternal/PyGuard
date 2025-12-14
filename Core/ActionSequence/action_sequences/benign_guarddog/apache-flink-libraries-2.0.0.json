@@ -1,0 +1,853 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import glob\nimport io\nimport os\nimport platform\nimport subprocess\nimport sys\nfrom shutil import copytree, copy, rmtree\n\nfrom setuptools import setup\nfrom xml.etree import ElementTree as ET\n\ndef remove_if_exists(file_path):\n    if os.path.exists(file_path):\n        if os.path.islink(file_path) or os.path.isfile(file_path):\n            os.remove(file_path)\n        else:\n            assert os.path.isdir(file_path)\n            rmtree(file_path)\n\ndef find_file_path(pattern):\n    files = glob.glob(pattern)\n    if len(files) < 1:\n        print(\"Failed to find the file %s.\" % pattern)\n        exit(-1)\n    if len(files) > 1:\n        print(\"The file pattern %s is ambiguous: %s\" % (pattern, files))\n        exit(-1)\n    return files[0]\n\nin_flink_source = os.path.isfile(\"../../flink-runtime/src/main/java/org/apache/flink/streaming\"\n                                 \"/api/environment/StreamExecutionEnvironment.java\")\nthis_directory = os.path.abspath(os.path.dirname(__file__))\npyflink_directory = os.path.join(this_directory, \"pyflink\")\nif in_flink_source:\n    remove_if_exists(pyflink_directory)\n    os.mkdir(pyflink_directory)\n    version_file = os.path.join(this_directory, '../pyflink/version.py')\nelse:\n    version_file = os.path.join(this_directory, 'pyflink/version.py')\n\ntry:\n    exec(open(version_file).read())\nexcept IOError:\n    print(\"Failed to load PyFlink version file for packaging. \" +\n          \"'%s' not found!\" % version_file,\n          file=sys.stderr)\n    sys.exit(-1)\nVERSION = __version__  # noqa\n\nwith io.open(os.path.join(this_directory, 'README.md'), 'r', encoding='utf-8') as f:\n    long_description = f.read()\n\nTEMP_PATH = \"deps\"\n\nLIB_TEMP_PATH = os.path.join(TEMP_PATH, \"lib\")\nOPT_TEMP_PATH = os.path.join(TEMP_PATH, \"opt\")\nCONF_TEMP_PATH = os.path.join(TEMP_PATH, \"conf\")\nLICENSES_TEMP_PATH = os.path.join(TEMP_PATH, \"licenses\")\nPLUGINS_TEMP_PATH = os.path.join(TEMP_PATH, \"plugins\")\nSCRIPTS_TEMP_PATH = os.path.join(TEMP_PATH, \"bin\")\n\nLICENSE_FILE_TEMP_PATH = os.path.join(this_directory, \"LICENSE\")\nNOTICE_FILE_TEMP_PATH = os.path.join(this_directory, \"NOTICE\")\nREADME_FILE_TEMP_PATH = os.path.join(\"pyflink\", \"README.txt\")\nVERSION_FILE_TEMP_PATH = os.path.join(\"pyflink\", \"version.py\")\n\n# Due to changes in FLINK-14008, the licenses directory and NOTICE file may not exist in\n# build-target folder. Just ignore them in this case.\nexist_licenses = None\ntry:\n    if in_flink_source:\n\n        try:\n            os.mkdir(TEMP_PATH)\n        except:\n            print(\"Temp path for symlink to parent already exists {0}\".format(TEMP_PATH),\n                  file=sys.stderr)\n            sys.exit(-1)\n        flink_version = ET.parse(\"../../pom.xml\").getroot().find(\n            'POM:version',\n            namespaces={\n                'POM': 'http://maven.apache.org/POM/4.0.0'\n            }).text\n        if not flink_version:\n            print(\"Not able to get flink version\", file=sys.stderr)\n            sys.exit(-1)\n        print(\"Detected flink version: {0}\".format(flink_version))\n        FLINK_HOME = os.path.abspath(\n            \"../../flink-dist/target/flink-%s-bin/flink-%s\" % (flink_version, flink_version))\n\n        incorrect_invocation_message = \"\"\"\nIf you are installing pyflink from flink source, you must first build Flink and\nrun sdist.\n\n    To build Flink with maven you can run:\n      mvn -DskipTests clean package\n    Building the source dist is done in the flink-python directory:\n      cd flink-python\n      cd apache-flink-libraries\n      python setup.py sdist\n      pip install dist/*.tar.gz\"\"\"\n\n        LIB_PATH = os.path.join(FLINK_HOME, \"lib\")\n        OPT_PATH = os.path.join(FLINK_HOME, \"opt\")\n        OPT_PYTHON_JAR_NAME = os.path.basename(\n            find_file_path(os.path.join(OPT_PATH, \"flink-python*.jar\")))\n        OPT_SQL_CLIENT_JAR_NAME = os.path.basename(\n            find_file_path(os.path.join(OPT_PATH, \"flink-sql-client*.jar\")))\n        LICENSES_PATH = os.path.join(FLINK_HOME, \"licenses\")\n        PLUGINS_PATH = os.path.join(FLINK_HOME, \"plugins\")\n        SCRIPTS_PATH = os.path.join(FLINK_HOME, \"bin\")\n\n        LICENSE_FILE_PATH = os.path.join(FLINK_HOME, \"LICENSE\")\n        README_FILE_PATH = os.path.join(FLINK_HOME, \"README.txt\")\n        VERSION_FILE_PATH = os.path.join(this_directory, \"../pyflink/version.py\")\n        exist_licenses = os.path.exists(LICENSES_PATH)\n\n        if not os.path.isdir(LIB_PATH):\n            print(incorrect_invocation_message, file=sys.stderr)\n            sys.exit(-1)\n\n        try:\n            os.symlink(LIB_PATH, LIB_TEMP_PATH)\n            support_symlinks = True\n        except BaseException:  # pylint: disable=broad-except\n            support_symlinks = False\n\n        os.mkdir(OPT_TEMP_PATH)\n        if support_symlinks:\n            os.symlink(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME),\n                       os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))\n            os.symlink(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME),\n                       os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))\n            os.symlink(PLUGINS_PATH, PLUGINS_TEMP_PATH)\n            os.symlink(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)\n            os.symlink(README_FILE_PATH, README_FILE_TEMP_PATH)\n            os.symlink(VERSION_FILE_PATH, VERSION_FILE_TEMP_PATH)\n        else:\n            copytree(LIB_PATH, LIB_TEMP_PATH)\n            copy(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME),\n                 os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))\n            copy(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME),\n                 os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))\n            copytree(PLUGINS_PATH, PLUGINS_TEMP_PATH)\n            copy(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)\n            copy(README_FILE_PATH, README_FILE_TEMP_PATH)\n            copy(VERSION_FILE_PATH, VERSION_FILE_TEMP_PATH)\n\n        os.mkdir(SCRIPTS_TEMP_PATH)\n        bin_jars = glob.glob(os.path.join(SCRIPTS_PATH, \"*.jar\"))\n        for bin_jar in bin_jars:\n            copy(bin_jar, os.path.join(SCRIPTS_TEMP_PATH, os.path.basename(bin_jar)))\n\n        if exist_licenses and platform.system() != \"Windows\":\n            # regenerate the licenses directory and NOTICE file as we only copy part of the\n            # flink binary distribution.\n            collect_licenses_file_sh = os.path.abspath(os.path.join(\n                this_directory, \"..\", \"..\", \"tools\", \"releasing\", \"collect_license_files.sh\"))\n            subprocess.check_output([collect_licenses_file_sh, TEMP_PATH, TEMP_PATH])\n            # move the NOTICE file to the root of the package\n            GENERATED_NOTICE_FILE_PATH = os.path.join(TEMP_PATH, \"NOTICE\")\n            os.rename(GENERATED_NOTICE_FILE_PATH, NOTICE_FILE_TEMP_PATH)\n    else:\n        if not os.path.isdir(LIB_TEMP_PATH) or not os.path.isdir(OPT_TEMP_PATH):\n            print(\"The flink core files are not found. Please make sure your installation package \"\n                  \"is complete, or do this in the flink-python directory of the flink source \"\n                  \"directory.\")\n            sys.exit(-1)\n        exist_licenses = os.path.exists(LICENSES_TEMP_PATH)\n\n    PACKAGES = ['pyflink',\n                'pyflink.bin',\n                'pyflink.lib',\n                'pyflink.opt',\n                'pyflink.plugins']\n\n    PACKAGE_DIR = {\n        'pyflink.bin': TEMP_PATH + '/bin',\n        'pyflink.lib': TEMP_PATH + '/lib',\n        'pyflink.opt': TEMP_PATH + '/opt',\n        'pyflink.plugins': TEMP_PATH + '/plugins'}\n\n    PACKAGE_DATA = {\n        'pyflink': ['README.txt', 'version.py'],\n        'pyflink.bin': ['*.jar'],\n        'pyflink.lib': ['*.jar'],\n        'pyflink.opt': ['*.*', '*/*'],\n        'pyflink.plugins': ['*', '*/*']}\n\n    if exist_licenses and platform.system() != \"Windows\":\n        PACKAGES.append('pyflink.licenses')\n        PACKAGE_DIR['pyflink.licenses'] = TEMP_PATH + '/licenses'\n        PACKAGE_DATA['pyflink.licenses'] = ['*']\n\n    setup(\n        name='apache-flink-libraries',\n        version=VERSION,\n        packages=PACKAGES,\n        include_package_data=True,\n        package_dir=PACKAGE_DIR,\n        package_data=PACKAGE_DATA,\n        url='https://flink.apache.org',\n        license='https://www.apache.org/licenses/LICENSE-2.0',\n        author='Apache Software Foundation',\n        author_email='dev@flink.apache.org',\n        python_requires='>=3.8',\n        description='Apache Flink Libraries',\n        long_description=long_description,\n        long_description_content_type='text/markdown',\n        classifiers=[\n            'Development Status :: 5 - Production/Stable',\n            'License :: OSI Approved :: Apache Software License',\n            'Programming Language :: Python :: 3.8',\n            'Programming Language :: Python :: 3.9',\n            'Programming Language :: Python :: 3.10',\n            'Programming Language :: Python :: 3.11'],\n    )\nfinally:\n    if in_flink_source:\n        remove_if_exists(TEMP_PATH)\n        remove_if_exists(LICENSE_FILE_TEMP_PATH)\n        remove_if_exists(NOTICE_FILE_TEMP_PATH)\n        remove_if_exists(README_FILE_TEMP_PATH)\n        remove_if_exists(VERSION_FILE_TEMP_PATH)\n        remove_if_exists(pyflink_directory)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "os.path.islink",
+        "os.path.isfile",
+        "os.remove",
+        "os.path.isdir",
+        "shutil.rmtree",
+        "glob.glob",
+        "os.path.isfile",
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.isdir",
+        "os.mkdir",
+        "xml.etree.ElementTree.parse",
+        "os.path.abspath",
+        "os.path.join",
+        "os.path.join",
+        "os.path.basename",
+        "find_file_path",
+        "os.path.join",
+        "os.path.basename",
+        "find_file_path",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.isdir",
+        "os.symlink",
+        "os.mkdir",
+        "os.symlink",
+        "os.path.join",
+        "os.path.join",
+        "os.symlink",
+        "os.path.join",
+        "os.path.join",
+        "os.symlink",
+        "os.path.join",
+        "os.path.join",
+        "os.symlink",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copytree",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copytree",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy",
+        "os.path.join",
+        "os.path.join",
+        "os.mkdir",
+        "os.path.join",
+        "glob.glob",
+        "os.path.join",
+        "os.path.basename",
+        "shutil.copy",
+        "platform.system",
+        "subprocess.check_output",
+        "os.path.abspath",
+        "os.path.join",
+        "os.path.join",
+        "os.rename",
+        "os.path.isdir",
+        "os.path.isdir",
+        "os.path.exists",
+        "platform.system",
+        "setuptools.setup",
+        "remove_if_exists",
+        "remove_if_exists",
+        "remove_if_exists",
+        "remove_if_exists",
+        "remove_if_exists",
+        "remove_if_exists"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists(file_path)",
+        "os.path.islink(file_path)",
+        "os.path.isfile(file_path)",
+        "os.remove(file_path)",
+        "os.path.isdir(file_path)",
+        "shutil.rmtree(file_path)",
+        "glob.glob(pattern)",
+        "os.path.isfile(\"../../flink-runtime/src/main/java/org/apache/flink/streaming/api/environment/StreamExecutionEnvironment.java\")",
+        "os.path.abspath(os.path.dirname(__file__))",
+        "os.path.dirname(__file__)",
+        "os.path.join(this_directory, \"pyflink\")",
+        "os.path.join(this_directory, '../pyflink/version.py')",
+        "os.path.exists(LICENSES_PATH)",
+        "os.path.isdir(LIB_PATH)",
+        "os.mkdir(TEMP_PATH)",
+        "xml.etree.ElementTree.parse(\"../../pom.xml\")",
+        "os.path.abspath(os.path.join(this_directory, \"..\", \"..\", \"tools\", \"releasing\", \"collect_license_files.sh\"))",
+        "os.path.join(OPT_PATH, \"flink-python*.jar\")",
+        "os.path.basename(find_file_path(os.path.join(OPT_PATH, \"flink-python*.jar\")))",
+        "find_file_path(os.path.join(OPT_PATH, \"flink-python*.jar\"))",
+        "os.path.join(OPT_PATH, \"flink-sql-client*.jar\")",
+        "os.path.basename(find_file_path(os.path.join(OPT_PATH, \"flink-sql-client*.jar\")))",
+        "find_file_path(os.path.join(OPT_PATH, \"flink-sql-client*.jar\"))",
+        "os.path.join(FLINK_HOME, \"licenses\")",
+        "os.path.join(FLINK_HOME, \"plugins\")",
+        "os.path.join(FLINK_HOME, \"bin\")",
+        "os.path.exists(LICENSES_PATH)",
+        "os.path.isdir(LIB_PATH)",
+        "os.symlink(LIB_PATH, LIB_TEMP_PATH)",
+        "os.mkdir(OPT_TEMP_PATH)",
+        "os.symlink(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME), os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))",
+        "os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME)",
+        "os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME)",
+        "os.symlink(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME), os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))",
+        "os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME)",
+        "os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME)",
+        "os.symlink(PLUGINS_PATH, PLUGINS_TEMP_PATH)",
+        "os.symlink(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)",
+        "os.symlink(README_FILE_PATH, README_FILE_TEMP_PATH)",
+        "os.symlink(VERSION_FILE_PATH, VERSION_FILE_TEMP_PATH)",
+        "shutil.copytree(LIB_PATH, LIB_TEMP_PATH)",
+        "os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME)",
+        "os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME)",
+        "shutil.copy(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME), os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))",
+        "os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME)",
+        "os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME)",
+        "shutil.copy(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME), os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))",
+        "shutil.copytree(PLUGINS_PATH, PLUGINS_TEMP_PATH)",
+        "shutil.copy(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)",
+        "shutil.copy(README_FILE_PATH, README_FILE_TEMP_PATH)",
+        "shutil.copy(VERSION_FILE_PATH, VERSION_FILE_TEMP_PATH)",
+        "os.mkdir(SCRIPTS_TEMP_PATH)",
+        "os.path.join(SCRIPTS_PATH, \"*.jar\")",
+        "glob.glob(os.path.join(SCRIPTS_PATH, \"*.jar\"))",
+        "os.path.join(SCRIPTS_TEMP_PATH, os.path.basename(bin_jar))",
+        "shutil.copy(bin_jar, os.path.join(SCRIPTS_TEMP_PATH, os.path.basename(bin_jar)))",
+        "platform.system()",
+        "subprocess.check_output([collect_licenses_file_sh, TEMP_PATH, TEMP_PATH])",
+        "os.path.abspath(os.path.join(this_directory, \"..\", \"..\", \"tools\", \"releasing\", \"collect_license_files.sh\"))",
+        "os.path.join(TEMP_PATH, \"NOTICE\")",
+        "os.path.join(\"pyflink\", \"README.txt\")",
+        "os.rename(GENERATED_NOTICE_FILE_PATH, NOTICE_FILE_TEMP_PATH)",
+        "os.path.isdir(LIB_TEMP_PATH)",
+        "os.path.isdir(OPT_TEMP_PATH)",
+        "os.path.exists(LICENSES_TEMP_PATH)",
+        "platform.system()",
+        "setuptools.setup(...)",
+        "remove_if_exists(TEMP_PATH)",
+        "remove_if_exists(LICENSE_FILE_TEMP_PATH)",
+        "remove_if_exists(NOTICE_FILE_TEMP_PATH)",
+        "remove_if_exists(README_FILE_TEMP_PATH)",
+        "remove_if_exists(VERSION_FILE_TEMP_PATH)",
+        "remove_if_exists(pyflink_directory)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.islink",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "xml.etree.ElementTree.parse",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "find_file_path",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "find_file_path",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.symlink",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.symlink",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.symlink",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.symlink",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.symlink",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.rename",
+          "id": "rename_file",
+          "description": "Renames file or moves it to new location",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "setuptools.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "remove_if_exists",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "remove_if_exists",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "remove_if_exists",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "remove_if_exists",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "remove_if_exists",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "remove_if_exists",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "import glob\nimport os\nimport platform\nimport subprocess\nfrom shutil import copytree, copy, rmtree\nfrom setuptools import setup\nfrom xml.etree import ElementTree as ET\n\ndef remove_if_exists(file_path):\n    if os.path.exists(file_path):\n        if os.path.islink(file_path) or os.path.isfile(file_path):\n            os.remove(file_path)\n        else:\n            assert os.path.isdir(file_path)\n            rmtree(file_path)\n\ndef find_file_path(pattern):\n    files = glob.glob(pattern)\n    if len(files) < 1:\n        exit(-1)\n    if len(files) > 1:\n        exit(-1)\n    return files[0]\n\nin_flink_source = os.path.isfile(\"../../flink-runtime/src/main/java/org/apache/flink/streaming/api/environment/StreamExecutionEnvironment.java\")\nthis_directory = os.path.abspath(os.path.dirname(__file__))\npyflink_directory = os.path.join(this_directory, \"pyflink\")\nif in_flink_source:\n    remove_if_exists(pyflink_directory)\n    os.mkdir(pyflink_directory)\n    version_file = os.path.join(this_directory, '../pyflink/version.py')\nelse:\n    version_file = os.path.join(this_directory, 'pyflink/version.py')\n\ntry:\n    exec(open(version_file).read())\nexcept IOError:\n    sys.exit(-1)\nVERSION = __version__  # noqa\n\nwith io.open(os.path.join(this_directory, 'README.md'), 'r', encoding='utf-8') as f:\n    long_description = f.read()\n\nTEMP_PATH = \"deps\"\nLIB_TEMP_PATH = os.path.join(TEMP_PATH, \"lib\")\nOPT_TEMP_PATH = os.path.join(TEMP_PATH, \"opt\")\nCONF_TEMP_PATH = os.path.join(TEMP_PATH, \"conf\")\nLICENSES_TEMP_PATH = os.path.join(TEMP_PATH, \"licenses\")\nPLUGINS_TEMP_PATH = os.path.join(TEMP_PATH, \"plugins\")\nSCRIPTS_TEMP_PATH = os.path.join(TEMP_PATH, \"bin\")\nLICENSE_FILE_TEMP_PATH = os.path.join(this_directory, \"LICENSE\")\nNOTICE_FILE_TEMP_PATH = os.path.join(this_directory, \"NOTICE\")\nREADME_FILE_TEMP_PATH = os.path.join(\"pyflink\", \"README.txt\")\nVERSION_FILE_TEMP_PATH = os.path.join(\"pyflink\", \"version.py\")\n\nexist_licenses = None\ntry:\n    if in_flink_source:\n        try:\n            os.mkdir(TEMP_PATH)\n        except:\n            sys.exit(-1)\n        flink_version = ET.parse(\"../../pom.xml\").getroot().find(\n            'POM:version',\n            namespaces={\n                'POM': 'http://maven.apache.org/POM/4.0.0'\n            }).text\n        FLINK_HOME = os.path.abspath(\n            \"../../flink-dist/target/flink-%s-bin/flink-%s\" % (flink_version, flink_version))\n        LIB_PATH = os.path.join(FLINK_HOME, \"lib\")\n        OPT_PATH = os.path.join(FLINK_HOME, \"opt\")\n        OPT_PYTHON_JAR_NAME = os.path.basename(\n            find_file_path(os.path.join(OPT_PATH, \"flink-python*.jar\")))\n        OPT_SQL_CLIENT_JAR_NAME = os.path.basename(\n            find_file_path(os.path.join(OPT_PATH, \"flink-sql-client*.jar\")))\n        LICENSES_PATH = os.path.join(FLINK_HOME, \"licenses\")\n        PLUGINS_PATH = os.path.join(FLINK_HOME, \"plugins\")\n        SCRIPTS_PATH = os.path.join(FLINK_HOME, \"bin\")\n        LICENSE_FILE_PATH = os.path.join(FLINK_HOME, \"LICENSE\")\n        README_FILE_PATH = os.path.join(FLINK_HOME, \"README.txt\")\n        VERSION_FILE_PATH = os.path.join(this_directory, \"../pyflink/version.py\")\n        exist_licenses = os.path.exists(LICENSES_PATH)\n        if not os.path.isdir(LIB_PATH):\n            sys.exit(-1)\n        try:\n            os.symlink(LIB_PATH, LIB_TEMP_PATH)\n            support_symlinks = True\n        except BaseException:\n            support_symlinks = False\n        os.mkdir(OPT_TEMP_PATH)\n        if support_symlinks:\n            os.symlink(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME),\n                       os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))\n            os.symlink(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME),\n                       os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))\n            os.symlink(PLUGINS_PATH, PLUGINS_TEMP_PATH)\n            os.symlink(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)\n            os.symlink(README_FILE_PATH, README_FILE_TEMP_PATH)\n            os.symlink(VERSION_FILE_PATH, VERSION_FILE_TEMP_PATH)\n        else:\n            copytree(LIB_PATH, LIB_TEMP_PATH)\n            copy(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME),\n                 os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))\n            copy(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME),\n                 os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))\n            copytree(PLUGINS_PATH, PLUGINS_TEMP_PATH)\n            copy(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)\n            copy(README_FILE_PATH, README_FILE_TEMP_PATH)\n            copy(VERSION_FILE_PATH, VERSION_FILE_TEMP_PATH)\n        os.mkdir(SCRIPTS_TEMP_PATH)\n        bin_jars = glob.glob(os.path.join(SCRIPTS_PATH, \"*.jar\"))\n        for bin_jar in bin_jars:\n            copy(bin_jar, os.path.join(SCRIPTS_TEMP_PATH, os.path.basename(bin_jar)))\n        if exist_licenses and platform.system() != \"Windows\":\n            collect_licenses_file_sh = os.path.abspath(os.path.join(\n                this_directory, \"..\", \"..\", \"tools\", \"releasing\", \"collect_license_files.sh\"))\n            subprocess.check_output([collect_licenses_file_sh, TEMP_PATH, TEMP_PATH])\n            GENERATED_NOTICE_FILE_PATH = os.path.join(TEMP_PATH, \"NOTICE\")\n            os.rename(GENERATED_NOTICE_FILE_PATH, NOTICE_FILE_TEMP_PATH)\n    else:\n        if not os.path.isdir(LIB_TEMP_PATH) or not os.path.isdir(OPT_TEMP_PATH):\n            sys.exit(-1)\n        exist_licenses = os.path.exists(LICENSES_TEMP_PATH)\n    if exist_licenses and platform.system() != \"Windows\":\n        pass\n    setup(\n        name='apache-flink-libraries',\n        version=VERSION,\n        packages=PACKAGES,\n        include_package_data=True,\n        package_dir=PACKAGE_DIR,\n        package_data=PACKAGE_DATA,\n        url='https://flink.apache.org',\n        license='https://www.apache.org/licenses/LICENSE-2.0',\n        author='Apache Software Foundation',\n        author_email='dev@flink.apache.org',\n        python_requires='>=3.8',\n        description='Apache Flink Libraries',\n        long_description=long_description,\n        long_description_content_type='text/markdown',\n        classifiers=[\n            'Development Status :: 5 - Production/Stable',\n            'License :: OSI Approved :: Apache Software License',\n            'Programming Language :: Python :: 3.8',\n            'Programming Language :: Python :: 3.9',\n            'Programming Language :: Python :: 3.10',\n            'Programming Language :: Python :: 3.11'],\n    )\nfinally:\n    if in_flink_source:\n        remove_if_exists(TEMP_PATH)\n        remove_if_exists(LICENSE_FILE_TEMP_PATH)\n        remove_if_exists(NOTICE_FILE_TEMP_PATH)\n        remove_if_exists(README_FILE_TEMP_PATH)\n        remove_if_exists(VERSION_FILE_TEMP_PATH)\n        remove_if_exists(pyflink_directory)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "apache-flink-libraries-2.0.0",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "package_name": "oauth2client-4",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/oauth2client-4.1.3.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "client.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/oauth2client-4.1.3/oauth2client-4.1.3/oauth2client/client.py",
+      "line_number": "778",
+      "type_description": "B825:request",
+      "context_snippet": "def _do_refresh_request(self, http):\n    \"\"\"Refresh the access_token using the refresh_token.\n\n    Args:\n        http: an object to be used to make HTTP requests.\n\n    Raises:\n        HttpAccessTokenRefreshError: When the refresh fails.\n    \"\"\"\n    body = self._generate_refresh_request_body()\n    headers = self._generate_refresh_request_headers()\n\n    logger.info('Refreshing access_token')\n    resp, content = transport.request(\n        http, self.token_uri, method='POST',\n        body=body, headers=headers)\n    content = _helpers._from_bytes(content)\n    if resp.status == http_client.OK:\n        d = json.loads(content)\n        self.token_response = d\n        self.access_token = d['access_token']\n        self.refresh_token = d.get('refresh_token', self.refresh_token)\n        if 'expires_in' in d:\n            delta = datetime.timedelta(seconds=int(d['expires_in']))\n            self.token_expiry = delta + _UTCNOW()\n        else:\n            self.token_expiry = None\n        if 'id_token' in d:\n            self.id_token = _extract_id_token(d['id_token'])\n            self.id_token_jwt = d['id_token']\n        else:\n            self.id_token = None\n            self.id_token_jwt = None\n        # On temporary refresh errors, the user does not actually have to\n        # re-authorize, so we unflag here.\n        self.invalid = False\n        if self.store:\n            self.store.locked_put(self)\n    else:\n        # An {'error':...} response body means the token is expired or\n        # revoked, so we flag the credentials as such.\n        logger.info('Failed to retrieve access token: %s', content)\n        error_msg = 'Invalid response {0}.'.format(resp.status)\n        try:\n            d = json.loads(content)\n            if 'error' in d:\n                error_msg = d['error']\n                if 'error_description' in d:\n                    error_msg += ': ' + d['error_description']\n                self.invalid = True\n                if self.store is not None:\n                    self.store.locked_put(self)\n        except (TypeError, ValueError):\n            pass\n        raise HttpAccessTokenRefreshError(error_msg, status=resp.status)",
+      "hash_value": "c818e1a175345a480b4ddf32834daead",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def _do_refresh_request(self, http):\n    \"\"\"Refresh the access_token using the refresh_token.\n\n    Args:\n        http: an object to be used to make HTTP requests.\n\n    Raises:\n        HttpAccessTokenRefreshError: When the refresh fails.\n    \"\"\"\n    body = self._generate_refresh_request_body()\n    headers = self._generate_refresh_request_headers()\n\n    logger.info('Refreshing access_token')\n    resp, content = transport.request(\n        http, self.token_uri, method='POST',\n        body=body, headers=headers)\n    content = _helpers._from_bytes(content)\n    if resp.status == http_client.OK:\n        d = json.loads(content)\n        self.token_response = d\n        self.access_token = d['access_token']\n        self.refresh_token = d.get('refresh_token', self.refresh_token)\n        if 'expires_in' in d:\n            delta = datetime.timedelta(seconds=int(d['expires_in']))\n            self.token_expiry = delta + _UTCNOW()\n        else:\n            self.token_expiry = None\n        if 'id_token' in d:\n            self.id_token = _extract_id_token(d['id_token'])\n            self.id_token_jwt = d['id_token']\n        else:\n            self.id_token = None\n            self.id_token_jwt = None\n        # On temporary refresh errors, the user does not actually have to\n        # re-authorize, so we unflag here.\n        self.invalid = False\n        if self.store:\n            self.store.locked_put(self)\n    else:\n        # An {'error':...} response body means the token is expired or\n        # revoked, so we flag the credentials as such.\n        logger.info('Failed to retrieve access token: %s', content)\n        error_msg = 'Invalid response {0}.'.format(resp.status)\n        try:\n            d = json.loads(content)\n            if 'error' in d:\n                error_msg = d['error']\n                if 'error_description' in d:\n                    error_msg += ': ' + d['error_description']\n                self.invalid = True\n                if self.store is not None:\n                    self.store.locked_put(self)\n        except (TypeError, ValueError):\n            pass\n        raise HttpAccessTokenRefreshError(error_msg, status=resp.status)",
+          "triple_sequences": [
+            {
+              "action_api": "transport.request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "http, self.token_uri, method='POST', body=body, headers=headers",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "_helpers._from_bytes()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "content",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "content",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "self.store.locked_put()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "self",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "'Refreshing access_token'",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "'Failed to retrieve access token: %s', content",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "raise HttpAccessTokenRefreshError()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "error_msg, status=resp.status",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

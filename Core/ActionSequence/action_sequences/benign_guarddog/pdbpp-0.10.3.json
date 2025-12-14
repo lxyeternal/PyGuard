@@ -1,0 +1,111 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "from __future__ import print_function\n\nimport io\nimport os.path\nfrom distutils.core import Command\n\nfrom setuptools import setup\nfrom setuptools.command.install import install\n\nPTH_HACK_FNAME = 'pdbpp_hijack_pdb.pth'\n\nreadme_path = os.path.join(os.path.dirname(__file__), 'README.rst')\nchangelog_path = os.path.join(os.path.dirname(__file__), 'CHANGELOG')\n\nreadme = io.open(readme_path, encoding='utf-8').read()\nchangelog = io.open(changelog_path, encoding='utf-8').read()\n\nlong_description = readme + '\\n\\n' + changelog\n\n\nclass install_with_pth(install):\n    sub_commands = install.sub_commands + [\n        ('install_pth_hack', lambda self:\n            self.single_version_externally_managed)\n    ]\n\n\nclass install_pth_hack(Command):\n    user_options = [\n        ('install-dir=', 'd', \"directory to install to\"),\n    ]\n\n    @property\n    def target(self):\n        return os.path.join(self.install_dir, PTH_HACK_FNAME)\n\n    def get_outputs(self):\n        return [self.target]\n\n    def initialize_options(self):\n        self.install_dir = None\n\n    def finalize_options(self):\n        self.set_undefined_options(\n            'install', ('install_lib', 'install_dir'))\n\n    def run(self):\n        with open(PTH_HACK_FNAME) as infp:\n            with open(self.target, 'w') as outfp:\n                outfp.write(infp.read())\n\n\nsetup(\n    name='pdbpp',\n    use_scm_version=True,\n    author='Antonio Cuni',\n    author_email='anto.cuni@gmail.com',\n    py_modules=['pdb', '_pdbpp_path_hack.pdb'],\n    url='http://github.com/antocuni/pdb',\n    license='BSD',\n    platforms=['unix', 'linux', 'osx', 'cygwin', 'win32'],\n    description='pdb++, a drop-in replacement for pdb',\n    long_description=long_description,\n    keywords='pdb debugger tab color completion',\n    classifiers=[\n        'Development Status :: 4 - Beta',\n        'Environment :: Console',\n        'Intended Audience :: Developers',\n        'License :: OSI Approved :: BSD License',\n        'Operating System :: POSIX',\n        'Programming Language :: Python :: 2',\n        'Programming Language :: Python :: 2.7',\n        'Programming Language :: Python :: 3',\n        'Programming Language :: Python :: 3.2',\n        'Programming Language :: Python :: 3.3',\n        'Programming Language :: Python :: 3.4',\n        'Programming Language :: Python :: 3.5',\n        'Programming Language :: Python :: 3.6',\n        'Programming Language :: Python :: Implementation :: CPython',\n        'Programming Language :: Python :: Implementation :: PyPy',\n        'Programming Language :: Python',\n        'Topic :: Utilities',\n        'Topic :: Software Development :: Debuggers',\n    ],\n    install_requires=[\n        \"fancycompleter>=0.8\",\n        \"wmctrl\",\n        \"pygments\",\n    ],\n    extras_require={\n        'funcsigs': [\"funcsigs\"],\n        'testing': [\n            'funcsigs',\n            'pytest',\n        ],\n    },\n    setup_requires=['setuptools_scm'],\n    cmdclass={\n        'install': install_with_pth,\n        'install_pth_hack': install_pth_hack,\n    }\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.join",
+        "io.open",
+        "io.open",
+        "os.path.join",
+        "open",
+        "open",
+        "open.read",
+        "open.write"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(__file__)",
+        "os.path.join(os.path.dirname(__file__), 'README.rst')",
+        "io.open(readme_path, encoding='utf-8')",
+        "io.open(changelog_path, encoding='utf-8')",
+        "os.path.join(self.install_dir, PTH_HACK_FNAME)",
+        "open(PTH_HACK_FNAME)",
+        "open(self.target, 'w')",
+        "infp.read()",
+        "outfp.write(infp.read())"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "io.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import io\nimport os.path\n\nPTH_HACK_FNAME = 'pdbpp_hijack_pdb.pth'\n\nreadme_path = os.path.join(os.path.dirname(__file__), 'README.rst')\nchangelog_path = os.path.join(os.path.dirname(__file__), 'CHANGELOG')\n\nreadme = io.open(readme_path, encoding='utf-8').read()\nchangelog = io.open(changelog_path, encoding='utf-8').read()\n\nclass install_pth_hack(Command):\n    user_options = [\n        ('install-dir=', 'd', \"directory to install to\"),\n    ]\n\n    @property\n    def target(self):\n        return os.path.join(self.install_dir, PTH_HACK_FNAME)\n\n    def run(self):\n        with open(PTH_HACK_FNAME) as infp:\n            with open(self.target, 'w') as outfp:\n                outfp.write(infp.read())"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pdbpp-0.10.3",
+      "total_matches": 1
+    }
+  }
+]

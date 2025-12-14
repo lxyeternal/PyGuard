@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import ast\nimport contextlib\nimport glob\nimport os\nimport shutil\nimport subprocess\nimport sys\nimport tarfile\nimport re\n\nfrom setuptools import setup, Command\nfrom setuptools.command import egg_info\n\nVERSION = \"11.0\"\n\nBASE_REQUIRES = [\"pyobjc-core==\" + VERSION]\n\ndef framework_requires(include_all=False):\n    if sys.platform != \"darwin\":\n        raise SystemExit(\"ERROR: Requires macOS to install or build\")\n\n    result = []\n\n    for name, introduced, removed in FRAMEWORK_WRAPPERS:\n        marker = []\n        if introduced is not None:\n            marker.append(f'platform_release>=\"{MACOS_TO_DARWIN[introduced]}\"')\n\n        if removed is not None:\n            marker.append(f'platform_release<\"{MACOS_TO_DARWIN[removed]}\"')\n\n        if marker:\n            marker = \";{}\".format(\" and \".join(marker))\n        else:\n            marker = \"\"\n\n        if include_all:\n            result.append(f\"pyobjc-framework-{name}=={VERSION}\")\n        else:\n            result.append(f\"pyobjc-framework-{name}=={VERSION}{marker}\")\n\n    return result\n\nLONG_DESCRIPTION = \"\"\"\nPyObjC is a bridge between Python and Objective-C.  It allows full\nfeatured Cocoa applications to be written in pure Python.  It is also\neasy to use other frameworks containing Objective-C class libraries\nfrom Python and to mix in Objective-C, C and C++ source.\n\nThis package is a pseudo-package that will install all pyobjc related\npackages (that is, pyobjc-core as well as wrappers for frameworks on\nmacOS)\n\nProject links\n-------------\n\n* `Documentation <https://pyobjc.readthedocs.io/en/latest/>`_\n* `Issue Tracker <https://github.com/ronaldoussoren/pyobjc/issues>`_\n* `Repository <https://github.com/ronaldoussoren/pyobjc/>`_\n\"\"\"\n\nCLASSIFIERS = list(\n    filter(\n        None,\n        \"\"\"\nDevelopment Status :: 5 - Production/Stable\nEnvironment :: Console\nEnvironment :: MacOS X :: Cocoa\nIntended Audience :: Developers\nLicense :: OSI Approved :: MIT License\nNatural Language :: English\nOperating System :: MacOS :: MacOS X\nProgramming Language :: Python\nProgramming Language :: Python :: 3\nProgramming Language :: Python :: 3.9\nProgramming Language :: Python :: 3.10\nProgramming Language :: Python :: 3.11\nProgramming Language :: Python :: 3.12\nProgramming Language :: Python :: 3.13\nProgramming Language :: Objective C\nTopic :: Software Development :: Libraries :: Python Modules\nTopic :: Software Development :: User Interfaces\n\"\"\".splitlines(),\n    )\n)\n\nsetup(\n    name=\"pyobjc\",\n    version=VERSION,\n    description=\"Python<->ObjC Interoperability Module\",\n    long_description=LONG_DESCRIPTION,\n    long_description_content_type=\"text/x-rst; charset=UTF-8\",\n    author=\"Ronald Oussoren\",\n    author_email=\"pyobjc-dev@lists.sourceforge.net\",\n    url=\"https://github.com/ronaldoussoren/pyobjc\",\n    platforms=[\"macOS\"],\n    packages=[],\n    install_requires=BASE_REQUIRES + framework_requires(),\n    extras_require={\n        \"allbindings\": BASE_REQUIRES + framework_requires(include_all=True)\n    },\n    python_requires=\">=3.9\",\n    setup_requires=[],\n    classifiers=CLASSIFIERS,\n    license=\"MIT License\",\n    zip_safe=True,\n    # workaround for setuptools 0.6b4 bug\n    dependency_links=[],\n    keywords=[\"Objective-C\", \"bridge\", \"Cocoa\"],\n    cmdclass={\"test\": oc_test, \"egg_info\": oc_egg_info},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.platform",
+        "setuptools.setup",
+        "framework_requires",
+        "framework_requires"
+      ],
+      "api_sequence_with_args": [
+        "sys.platform",
+        "setuptools.setup(name=\"pyobjc\", version=VERSION, description=\"Python<->ObjC Interoperability Module\", long_description=LONG_DESCRIPTION, long_description_content_type=\"text/x-rst; charset=UTF-8\", author=\"Ronald Oussoren\", author_email=\"pyobjc-dev@lists.sourceforge.net\", url=\"https://github.com/ronaldoussoren/pyobjc\", platforms=[\"macOS\"], packages=[], install_requires=BASE_REQUIRES + framework_requires(), extras_require={\"allbindings\": BASE_REQUIRES + framework_requires(include_all=True)}, python_requires=\">=3.9\", setup_requires=[], classifiers=CLASSIFIERS, license=\"MIT License\", zip_safe=True, dependency_links=[], keywords=[\"Objective-C\", \"bridge\", \"Cocoa\"], cmdclass={\"test\": oc_test, \"egg_info\": oc_egg_info})",
+        "framework_requires()",
+        "framework_requires(include_all=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.platform",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "setuptools.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "framework_requires",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "framework_requires",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        }
+      ],
+      "contextual_code": "def framework_requires(include_all=False):\n    if sys.platform != \"darwin\":\n        raise SystemExit(\"ERROR: Requires macOS to install or build\")\n    # ...\n    return result\n\nsetup(\n    name=\"pyobjc\",\n    version=VERSION,\n    # ...\n    install_requires=BASE_REQUIRES + framework_requires(),\n    extras_require={\n        \"allbindings\": BASE_REQUIRES + framework_requires(include_all=True)\n    },\n    # ...\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyobjc-11.0",
+      "total_matches": 1
+    }
+  }
+]

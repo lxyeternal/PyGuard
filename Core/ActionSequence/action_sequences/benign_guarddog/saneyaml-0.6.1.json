@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "utils_dejacode.py",
+    "code_snippet": "import requests\nimport os\n\nDEJACODE_API_KEY = os.environ.get(\"DEJACODE_API_KEY\", \"\")\nDEJACODE_API_URL = os.environ.get(\"DEJACODE_API_URL\", \"\")\n\nDEJACODE_API_URL_PACKAGES = f\"{DEJACODE_API_URL}packages/\"\nDEJACODE_API_HEADERS = {\n    \"Authorization\": \"Token {}\".format(DEJACODE_API_KEY),\n    \"Accept\": \"application/json; indent=4\",\n}\n\ndef can_do_api_calls():\n    if not DEJACODE_API_KEY and DEJACODE_API_URL:\n        print(\"DejaCode DEJACODE_API_KEY and DEJACODE_API_URL not configured. Doing nothing\")\n        return False\n    else:\n        return True\n\ndef fetch_dejacode_packages(params):\n    \"\"\"\n    Return a list of package data mappings calling the package API with using\n    `params` or an empty list.\n    \"\"\"\n    if not can_do_api_calls():\n        return []\n\n    response = requests.get(\n        DEJACODE_API_URL_PACKAGES,\n        params=params,\n        headers=DEJACODE_API_HEADERS,\n    )\n\n    return response.json()[\"results\"]\n\ndef get_package_data(distribution):\n    \"\"\"\n    Return a mapping of package data or None for a Distribution `distribution`.\n    \"\"\"\n    results = fetch_dejacode_packages(distribution.identifiers())\n\n    len_results = len(results)\n\n    if len_results == 1:\n        return results[0]\n\n    elif len_results > 1:\n        print(f\"More than 1 entry exists, review at: {DEJACODE_API_URL_PACKAGES}\")\n    else:\n        print(\"Could not find package:\", distribution.download_url)\n\ndef create_dejacode_package(distribution):\n    \"\"\"\n    Create a new DejaCode Package a Distribution `distribution`.\n    Return the new or existing package data.\n    \"\"\"\n    if not can_do_api_calls():\n        return\n\n    existing_package_data = get_package_data(distribution)\n    if existing_package_data:\n        return existing_package_data\n\n    print(f\"Creating new DejaCode package for: {distribution}\")\n\n    new_package_payload = {\n        # Trigger data collection, scan, and purl\n        \"collect_data\": 1,\n    }\n\n    fields_to_carry_over = [\n        \"download_url\" \"type\",\n        \"namespace\",\n        \"name\",\n        \"version\",\n        \"qualifiers\",\n        \"subpath\",\n        \"license_expression\",\n        \"copyright\",\n        \"description\",\n        \"homepage_url\",\n        \"primary_language\",\n        \"notice_text\",\n    ]\n\n    for field in fields_to_carry_over:\n        value = getattr(distribution, field, None)\n        if value:\n            new_package_payload[field] = value\n\n    response = requests.post(\n        DEJACODE_API_URL_PACKAGES,\n        data=new_package_payload,\n        headers=DEJACODE_API_HEADERS,\n    )\n    new_package_data = response.json()\n    if response.status_code != 201:\n        raise Exception(f\"Error, cannot create package for: {distribution}\")\n\n    print(f'New Package created at: {new_package_data[\"absolute_url\"]}')\n    return new_package_data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "os.environ.get",
+        "requests.get",
+        "requests.get",
+        "requests.post"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"DEJACODE_API_KEY\", \"\")",
+        "os.environ.get(\"DEJACODE_API_URL\", \"\")",
+        "requests.get(DEJACODE_API_URL_PACKAGES, params=params, headers=DEJACODE_API_HEADERS)",
+        "requests.get(DEJACODE_API_URL_PACKAGES, params=distribution.identifiers(), headers=DEJACODE_API_HEADERS)",
+        "requests.post(DEJACODE_API_URL_PACKAGES, data=new_package_payload, headers=DEJACODE_API_HEADERS)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "import requests\nimport os\n\nDEJACODE_API_KEY = os.environ.get(\"DEJACODE_API_KEY\", \"\")\nDEJACODE_API_URL = os.environ.get(\"DEJACODE_API_URL\", \"\")\n\nDEJACODE_API_URL_PACKAGES = f\"{DEJACODE_API_URL}packages/\"\nDEJACODE_API_HEADERS = {\n    \"Authorization\": \"Token {}\".format(DEJACODE_API_KEY),\n    \"Accept\": \"application/json; indent=4\",\n}\n\ndef fetch_dejacode_packages(params):\n    if not can_do_api_calls():\n        return []\n    response = requests.get(\n        DEJACODE_API_URL_PACKAGES,\n        params=params,\n        headers=DEJACODE_API_HEADERS,\n    )\n    return response.json()[\"results\"]\n\ndef get_package_data(distribution):\n    results = fetch_dejacode_packages(distribution.identifiers())\n    len_results = len(results)\n    if len_results == 1:\n        return results[0]\n    elif len_results > 1:\n        print(f\"More than 1 entry exists, review at: {DEJACODE_API_URL_PACKAGES}\")\n    else:\n        print(\"Could not find package:\", distribution.download_url)\n\ndef create_dejacode_package(distribution):\n    if not can_do_api_calls():\n        return\n    existing_package_data = get_package_data(distribution)\n    if existing_package_data:\n        return existing_package_data\n    print(f\"Creating new DejaCode package for: {distribution}\")\n    new_package_payload = {\n        \"collect_data\": 1,\n    }\n    fields_to_carry_over = [\n        \"download_url\" \"type\",\n        \"namespace\",\n        \"name\",\n        \"version\",\n        \"qualifiers\",\n        \"subpath\",\n        \"license_expression\",\n        \"copyright\",\n        \"description\",\n        \"homepage_url\",\n        \"primary_language\",\n        \"notice_text\",\n    ]\n    for field in fields_to_carry_over:\n        value = getattr(distribution, field, None)\n        if value:\n            new_package_payload[field] = value\n    response = requests.post(\n        DEJACODE_API_URL_PACKAGES,\n        data=new_package_payload,\n        headers=DEJACODE_API_HEADERS,\n    )\n    new_package_data = response.json()\n    if response.status_code != 201:\n        raise Exception(f\"Error, cannot create package for: {distribution}\")\n    print(f'New Package created at: {new_package_data[\"absolute_url\"]}')\n    return new_package_data"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "saneyaml-0.6.1",
+      "total_matches": 2
+    }
+  }
+]

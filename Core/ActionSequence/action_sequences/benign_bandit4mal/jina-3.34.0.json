@@ -1,0 +1,148 @@
+[
+  {
+    "metadata": {
+      "package_name": "jina-3.34.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "asyncio.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/jina-3.34.0/jina-3.34.0/jina/serve/runtimes/asyncio.py",
+    "line_number": "215",
+    "type_description": "B827:httpserver",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "214\n215\t            return AzureHTTPServer(\n216\t                name=self.args.name,\n217\t                runtime_args=self.args,\n218\t                req_handler_cls=self.req_handler_cls,\n219\t                proxy=getattr(self.args, 'proxy', None),\n220\t                uvicorn_kwargs=getattr(self.args, 'uvicorn_kwargs', None),\n221\t                ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n222\t                ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n223\t                cors=getattr(self.args, 'cors', None),\n224\t                is_cancel=self.is_cancel,\n225\t            )",
+    "code_snippet": "def _get_server(self):\n    # construct server type based on protocol (and potentially req handler class to keep backwards compatibility)\n    from jina.enums import ProtocolType, ProviderType\n\n    if self.req_handler_cls.__name__ == 'GatewayRequestHandler':\n        self.timeout_send = self.args.timeout_send\n        if self.timeout_send:\n            self.timeout_send /= 1e3  # convert ms to seconds\n        if not self.args.port:\n            self.args.port = random_ports(len(self.args.protocol))\n        _set_gateway_uses(\n            self.args, gateway_load_balancer=self.gateway_load_balancer\n        )\n        uses_with = self.args.uses_with or {}\n        non_defaults = ArgNamespace.get_non_defaults_args(\n            self.args, set_gateway_parser()\n        )\n        if 'title' not in non_defaults:\n            uses_with['title'] = self.args.title\n        if 'description' not in non_defaults:\n            uses_with['description'] = self.args.description\n        if 'no_debug_endpoints' not in non_defaults:\n            uses_with['no_debug_endpoints'] = self.args.no_debug_endpoints\n        if 'no_crud_endpoints' not in non_defaults:\n            uses_with['no_crud_endpoints'] = self.args.no_crud_endpoints\n        if 'expose_endpoints' not in non_defaults:\n            uses_with['expose_endpoints'] = self.args.expose_endpoints\n        if 'expose_graphql_endpoint' not in non_defaults:\n            uses_with['expose_graphql_endpoint'] = self.args.expose_graphql_endpoint\n        if 'cors' not in non_defaults:\n            uses_with['cors'] = self.args.cors\n        server = BaseGateway.load_config(\n            self.args.uses,\n            uses_with=dict(\n                **non_defaults,\n                **uses_with,\n            ),\n            uses_metas={},\n            runtime_args={  # these are not parsed to the yaml config file but are pass directly during init\n                **vars(self.args),\n                'default_port': getattr(self.args, 'default_port', False),\n                'gateway_load_balancer': self.gateway_load_balancer,\n                'timeout_send': self.timeout_send,\n            },\n            py_modules=self.args.py_modules,\n            extra_search_paths=self.args.extra_search_paths,\n        )\n        if isinstance(server, BaseServer):\n            server.is_cancel = self.is_cancel\n        return server\n    elif (\n        hasattr(self.args, 'provider')\n        and self.args.provider == ProviderType.SAGEMAKER\n    ):\n        from jina.serve.runtimes.servers.http import SagemakerHTTPServer\n\n        return SagemakerHTTPServer(\n            name=self.args.name,\n            runtime_args=self.args,\n            req_handler_cls=self.req_handler_cls,\n            proxy=getattr(self.args, 'proxy', None),\n            uvicorn_kwargs=getattr(self.args, 'uvicorn_kwargs', None),\n            ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n            ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n            cors=getattr(self.args, 'cors', None),\n            is_cancel=self.is_cancel,\n        )\n    elif (\n        hasattr(self.args, 'provider')\n        and self.args.provider == ProviderType.AZURE\n    ):\n        from jina.serve.runtimes.servers.http import AzureHTTPServer\n\n        return AzureHTTPServer(\n            name=self.args.name,\n            runtime_args=self.args,\n            req_handler_cls=self.req_handler_cls,\n            proxy=getattr(self.args, 'proxy', None),\n            uvicorn_kwargs=getattr(self.args, 'uvicorn_kwargs', None),\n            ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n            ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n            cors=getattr(self.args, 'cors', None),\n            is_cancel=self.is_cancel,\n        )\n    elif not hasattr(self.args, 'protocol') or (\n        len(self.args.protocol) == 1 and self.args.protocol[0] == ProtocolType.GRPC\n    ):\n        from jina.serve.runtimes.servers.grpc import GRPCServer\n\n        return GRPCServer(\n            name=self.args.name,\n            runtime_args=self.args,\n            req_handler_cls=self.req_handler_cls,\n            grpc_server_options=self.args.grpc_server_options,\n            ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n            ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n            proxy=getattr(self.args, 'proxy', None),\n        )\n\n    elif (\n        len(self.args.protocol) == 1 and self.args.protocol[0] == ProtocolType.HTTP\n    ):\n        from jina.serve.runtimes.servers.http import (\n            HTTPServer,  # we need a concrete implementation of this\n        )\n\n        return HTTPServer(\n            name=self.args.name,\n            runtime_args=self.args,\n            req_handler_cls=self.req_handler_cls,\n            proxy=getattr(self.args, 'proxy', None),\n            uvicorn_kwargs=getattr(self.args, 'uvicorn_kwargs', None),\n            ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n            ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n            cors=getattr(self.args, 'cors', None),\n            is_cancel=self.is_cancel,\n        )\n    elif (\n        len(self.args.protocol) == 1\n        and self.args.protocol[0] == ProtocolType.WEBSOCKET\n    ):\n        from jina.serve.runtimes.servers.websocket import (\n            WebSocketServer,  # we need a concrete implementation of this\n        )\n\n        return WebSocketServer(\n            name=self.args.name,\n            runtime_args=self.args,\n            req_handler_cls=self.req_handler_cls,\n            proxy=getattr(self.args, 'proxy', None),\n            uvicorn_kwargs=getattr(self.args, 'uvicorn_kwargs', None),\n            ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n            ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n            is_cancel=self.is_cancel,\n        )\n    elif len(self.args.protocol) > 1:\n        from jina.serve.runtimes.servers.composite import (\n            CompositeServer,  # we need a concrete implementation of this\n        )\n\n        return CompositeServer(\n            name=self.args.name,\n            runtime_args=self.args,\n            req_handler_cls=self.req_handler_cls,\n            ssl_keyfile=getattr(self.args, 'ssl_keyfile', None),\n            ssl_certfile=getattr(self.args, 'ssl_certfile', None),\n            is_cancel=self.is_cancel,\n        )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "random_ports",
+        "ArgNamespace.get_non_defaults_args",
+        "set_gateway_parser",
+        "BaseGateway.load_config",
+        "isinstance",
+        "getattr",
+        "getattr",
+        "getattr",
+        "getattr",
+        "getattr",
+        "getattr",
+        "getattr"
+      ],
+      "api_sequence_with_args": [
+        "random_ports(len(self.args.protocol))",
+        "ArgNamespace.get_non_defaults_args(self.args, set_gateway_parser())",
+        "set_gateway_parser()",
+        "BaseGateway.load_config(self.args.uses, uses_with=dict(**non_defaults, **uses_with), uses_metas={}, runtime_args={**vars(self.args), 'default_port': getattr(self.args, 'default_port', False), 'gateway_load_balancer': self.gateway_load_balancer, 'timeout_send': self.timeout_send}, py_modules=self.args.py_modules, extra_search_paths=self.args.extra_search_paths)",
+        "isinstance(server, BaseServer)",
+        "getattr(self.args, 'proxy', None)",
+        "getattr(self.args, 'uvicorn_kwargs', None)",
+        "getattr(self.args, 'ssl_keyfile', None)",
+        "getattr(self.args, 'ssl_certfile', None)",
+        "getattr(self.args, 'cors', None)",
+        "getattr(self.args, 'ssl_keyfile', None)",
+        "getattr(self.args, 'ssl_certfile', None)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "random_ports",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "ArgNamespace.get_non_defaults_args",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "set_gateway_parser",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "BaseGateway.load_config",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "if not self.args.port:\n    self.args.port = random_ports(len(self.args.protocol))\nnon_defaults = ArgNamespace.get_non_defaults_args(self.args, set_gateway_parser())\nserver = BaseGateway.load_config(\n    self.args.uses,\n    uses_with=dict(\n        **non_defaults,\n        **uses_with,\n    ),\n    uses_metas={},\n    runtime_args={\n        **vars(self.args),\n        'default_port': getattr(self.args, 'default_port', False),\n        'gateway_load_balancer': self.gateway_load_balancer,\n        'timeout_send': self.timeout_send,\n    },\n    py_modules=self.args.py_modules,\n    extra_search_paths=self.args.extra_search_paths,\n)\nif isinstance(server, BaseServer):\n    server.is_cancel = self.is_cancel\n# ...\ngetattr(self.args, 'proxy', None)\ngetattr(self.args, 'uvicorn_kwargs', None)\ngetattr(self.args, 'ssl_keyfile', None)\ngetattr(self.args, 'ssl_certfile', None)\ngetattr(self.args, 'cors', None)\ngetattr(self.args, 'ssl_keyfile', None)\ngetattr(self.args, 'ssl_certfile', None)"
+    }
+  }
+]

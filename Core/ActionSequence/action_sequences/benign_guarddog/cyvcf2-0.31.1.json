@@ -1,0 +1,321 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import ctypes\nimport glob\nimport os\nimport platform\nimport shutil\nimport sys\nimport subprocess\n\ndef build_htslib(htslib_configure_options, static_mode):\n    current_directory = os.getcwd()\n    os.chdir(os.path.join(current_directory, \"htslib\"))\n\n    if os.path.exists(\"config.status\"):\n        print(\"# cyvcf2: config.status exists, skip configure htslib\")\n    else:\n        subprocess.run([\"autoreconf\", \"-i\"], check=True)\n\n        configure_args = [\"./configure\"]\n        if static_mode:\n            configure_args.append(\"CFLAGS=-fPIC\")\n        if htslib_configure_options:\n            configure_args.extend(htslib_configure_options.split())\n\n        subprocess.run(configure_args, check=True)\n    subprocess.run([\"make\"], check=True)\n\n    os.chdir(current_directory)\n\ndef pre_sdist():\n    current_directory = os.getcwd()\n    os.chdir(os.path.join(current_directory, \"htslib\"))\n\n    # generate version.h\n    subprocess.run([\"make\", \"htscodecs/htscodecs/version.h\"], check=True)\n\n    # remove redundant file\n    redudant_files = [\"htscodecs.mk\"]\n    for redudant_file in redudant_files:\n        if os.path.exists(redudant_file):\n            os.remove(redudant_file)\n\n    os.chdir(current_directory)\n\nclass clean_ext(Command):\n    description = \"clean up Cython temporary files and htslib build files\"\n    user_options = []\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        print(\"cleaning build files\")\n        if os.path.exists(\"build\"):\n            shutil.rmtree(\"build\")\n\n        if os.path.exists(\"cyvcf2.egg-info\"):\n            shutil.rmtree(\"cyvcf2.egg-info\")\n\n        print(\"cleaning Cython temporary files\")\n        cyvcf2_c_path = os.path.join(\"cyvcf2\", \"cyvcf2.c\")\n        if os.path.exists(cyvcf2_c_path):\n            os.remove(cyvcf2_c_path)\n\n        lib_files = glob.glob(\"cyvcf2/cyvcf2.cpython-*\")\n        for file in lib_files:\n            os.remove(file)\n\n        if platform.system() != \"Windows\":\n            print(\"cleaning htslib build files\")\n            current_directory = os.getcwd()\n            os.chdir(os.path.join(current_directory, \"htslib\"))\n            subprocess.run([\"make\", \"distclean\"], check=True)\n            os.chdir(current_directory)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getcwd",
+        "os.path.join",
+        "os.chdir",
+        "os.path.exists",
+        "subprocess.run",
+        "subprocess.run",
+        "subprocess.run",
+        "os.chdir",
+        "os.getcwd",
+        "os.path.join",
+        "os.chdir",
+        "subprocess.run",
+        "os.path.exists",
+        "os.remove",
+        "os.chdir",
+        "os.path.exists",
+        "shutil.rmtree",
+        "os.path.exists",
+        "shutil.rmtree",
+        "os.path.join",
+        "os.path.exists",
+        "os.remove",
+        "glob.glob",
+        "os.remove",
+        "platform.system",
+        "os.getcwd",
+        "os.path.join",
+        "os.chdir",
+        "subprocess.run",
+        "os.chdir"
+      ],
+      "api_sequence_with_args": [
+        "os.getcwd()",
+        "os.path.join(current_directory, \"htslib\")",
+        "os.chdir(os.path.join(current_directory, \"htslib\"))",
+        "os.path.exists(\"config.status\")",
+        "subprocess.run([\"autoreconf\", \"-i\"], check=True)",
+        "subprocess.run(configure_args, check=True)",
+        "subprocess.run([\"make\"], check=True)",
+        "os.chdir(current_directory)",
+        "os.getcwd()",
+        "os.path.join(current_directory, \"htslib\")",
+        "os.chdir(os.path.join(current_directory, \"htslib\"))",
+        "subprocess.run([\"make\", \"htscodecs/htscodecs/version.h\"], check=True)",
+        "os.path.exists(redudant_file)",
+        "os.remove(redudant_file)",
+        "os.chdir(current_directory)",
+        "os.path.exists(\"build\")",
+        "shutil.rmtree(\"build\")",
+        "os.path.exists(\"cyvcf2.egg-info\")",
+        "shutil.rmtree(\"cyvcf2.egg-info\")",
+        "os.path.join(\"cyvcf2\", \"cyvcf2.c\")",
+        "os.path.exists(cyvcf2_c_path)",
+        "os.remove(cyvcf2_c_path)",
+        "glob.glob(\"cyvcf2/cyvcf2.cpython-*\")",
+        "os.remove(file)",
+        "platform.system()",
+        "os.getcwd()",
+        "os.path.join(current_directory, \"htslib\")",
+        "os.chdir(os.path.join(current_directory, \"htslib\"))",
+        "subprocess.run([\"make\", \"distclean\"], check=True)",
+        "os.chdir(current_directory)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\nimport glob\nimport platform\nimport shutil\nimport subprocess\n\ndef build_htslib(htslib_configure_options, static_mode):\n    current_directory = os.getcwd()\n    os.chdir(os.path.join(current_directory, \"htslib\"))\n\n    if os.path.exists(\"config.status\"):\n        print(\"# cyvcf2: config.status exists, skip configure htslib\")\n    else:\n        subprocess.run([\"autoreconf\", \"-i\"], check=True)\n\n        configure_args = [\"./configure\"]\n        if static_mode:\n            configure_args.append(\"CFLAGS=-fPIC\")\n        if htslib_configure_options:\n            configure_args.extend(htslib_configure_options.split())\n\n        subprocess.run(configure_args, check=True)\n    subprocess.run([\"make\"], check=True)\n    os.chdir(current_directory)\n\ndef pre_sdist():\n    current_directory = os.getcwd()\n    os.chdir(os.path.join(current_directory, \"htslib\"))\n\n    subprocess.run([\"make\", \"htscodecs/htscodecs/version.h\"], check=True)\n\n    redudant_files = [\"htscodecs.mk\"]\n    for redudant_file in redudant_files:\n        if os.path.exists(redudant_file):\n            os.remove(redudant_file)\n\n    os.chdir(current_directory)\n\nclass clean_ext(Command):\n    def run(self):\n        print(\"cleaning build files\")\n        if os.path.exists(\"build\"):\n            shutil.rmtree(\"build\")\n\n        if os.path.exists(\"cyvcf2.egg-info\"):\n            shutil.rmtree(\"cyvcf2.egg-info\")\n\n        print(\"cleaning Cython temporary files\")\n        cyvcf2_c_path = os.path.join(\"cyvcf2\", \"cyvcf2.c\")\n        if os.path.exists(cyvcf2_c_path):\n            os.remove(cyvcf2_c_path)\n\n        lib_files = glob.glob(\"cyvcf2/cyvcf2.cpython-*\")\n        for file in lib_files:\n            os.remove(file)\n\n        if platform.system() != \"Windows\":\n            print(\"cleaning htslib build files\")\n            current_directory = os.getcwd()\n            os.chdir(os.path.join(current_directory, \"htslib\"))\n            subprocess.run([\"make\", \"distclean\"], check=True)\n            os.chdir(current_directory)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "cyvcf2-0.31.1",
+      "total_matches": 5
+    }
+  }
+]

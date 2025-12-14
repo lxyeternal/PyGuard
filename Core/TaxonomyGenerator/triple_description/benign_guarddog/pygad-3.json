@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "package_name": "pygad-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/pygad-3.4.0.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "parent_selection.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pygad-3.4.0/pygad-3.4.0/pygad/utils/parent_selection.py",
+      "line_number": "384",
+      "type_description": "obfuscation",
+      "context_snippet": "    def nsga2_selection(self,\n                        fitness,\n                        num_parents\n                        ):\n\n        \"\"\"\n        Select the parents using the Non-Dominated Sorting Genetic Algorithm II (NSGA-II). \n        The selection is done using non-dominated sorting and crowding distance.\n        Using non-dominated sorting, the solutions are distributed across pareto fronts. The fronts are given the indices 0, 1, 2, ..., N where N is the number of pareto fronts. The lower the index of the pareto front, the better its solutions.\n        The parents are selected from the lower pareto fronts and moving up until selecting the number of desired parents. \n        A solution from a pareto front X cannot be taken as a parent until all solutions in pareto front Y is selected given that Y < X.\n        For a pareto front X, if only a subset of its solutions is needed, then the corwding distance is used to determine which solutions to be selected from the front. The solution with the higher crowding distance is selected.\n        If the 2 solutions are in the same pareto front and have the same crowding distance, then a solution is randomly selected.\n        Later, the selected parents will mate to produce the offspring.\n    \n        It accepts 2 parameters:\n            -fitness: The fitness values for the current population.\n            -num_parents: The number of parents to be selected.\n            -pareto_fronts: A nested array of all the pareto fronts. Each front has its solutions.\n            -solutions_fronts_indices: A list of the pareto front index of each solution in the current population.\n\n        It returns:\n            -An array of the selected parents.\n            -The indices of the selected solutions.\n        \"\"\"\n\n        if self.gene_type_single == True:\n            parents = numpy.empty((num_parents, self.population.shape[1]), dtype=self.gene_type[0])\n        else:\n            parents = numpy.empty((num_parents, self.population.shape[1]), dtype=object)\n\n        # Verify that the problem is multi-objective optimization as the NSGA-II selection is only applied to multi-objective problems.\n        if type(fitness[0]) in [list, tuple, numpy.ndarray]:\n            pass\n        elif type(fitness[0]) in self.supported_int_float_types:\n            raise ValueError('The NSGA-II parent selection operator is only applied when optimizing multi-objective problems.\\n\\nBut a single-objective optimization problem found as the fitness function returns a single numeric value.\\n\\nTo use multi-objective optimization, consider returning an iterable of any of these data types:\\n1)list\\n2)tuple\\n3)numpy.ndarray')\n\n        # The indices of the selected parents.\n        parents_indices = []\n\n        # If there is only a single objective, each pareto front is expected to have only 1 solution.\n        # TODO Make a test to check for that behaviour.\n        pareto_fronts, solutions_fronts_indices = self.non_dominated_sorting(fitness)\n        self.pareto_fronts = pareto_fronts.copy()\n\n        # The number of remaining parents to be selected.\n        num_remaining_parents = num_parents\n\n        # Index of the current parent.\n        current_parent_idx = 0\n        # A loop variable holding the index of the current pareto front.\n        pareto_front_idx = 0\n        while num_remaining_parents != 0 and pareto_front_idx < len(pareto_fronts):\n            # Return the current pareto front.\n            current_pareto_front = pareto_fronts[pareto_front_idx]\n            # Check if the entire front fits into the parents array.\n            # If so, then insert all the solutions in the current front into the parents array.\n            if num_remaining_parents >= len(current_pareto_front):\n                for sol_idx in range(len(current_pareto_front)):\n                    selected_solution_idx = current_pareto_front[sol_idx, 0]\n                    # Insert the parent into the parents array.\n                    parents[current_parent_idx, :] = self.population[selected_solution_idx, :].copy()\n                    # Insert the index of the selected parent.\n                    parents_indices.append(selected_solution_idx)\n                    # Increase the parent index.\n                    current_parent_idx += 1\n\n                # Decrement the number of remaining parents by the length of the pareto front.\n                num_remaining_parents -= len(current_pareto_front)\n            else:\n                # If only a subset of the front is needed, then use the crowding distance to sort the solutions and select only the number needed.\n    \n                # Calculate the crowding distance of the solutions of the pareto front.\n                obj_crowding_distance_list, crowding_distance_sum, crowding_dist_front_sorted_indices, crowding_dist_pop_sorted_indices = self.crowding_distance(pareto_front=current_pareto_front.copy(),\n                                                                                                                                                                 fitness=fitness)\n\n                for selected_solution_idx in crowding_dist_pop_sorted_indices[0:num_remaining_parents]:\n                    # Insert the parent into the parents array.\n                    parents[current_parent_idx, :] = self.population[selected_solution_idx, :].copy()\n                    # Insert the index of the selected parent.\n                    parents_indices.append(selected_solution_idx)\n                    # Increase the parent index.\n                    current_parent_idx += 1\n    \n                # Decrement the number of remaining parents by the number of selected parents.\n                num_remaining_parents -= num_remaining_parents\n    \n            # Increase the pareto front index to take parents from the next front.\n            pareto_front_idx += 1\n    \n        # Make sure the parents indices is returned as a NumPy array.\n        return parents, numpy.array(parents_indices)",
+      "hash_value": "330b412f66dddaf274a4b88ee8c50f31",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "    def nsga2_selection(self,\n                        fitness,\n                        num_parents\n                        ):\n\n        \"\"\"\n        Select the parents using the Non-Dominated Sorting Genetic Algorithm II (NSGA-II). \n        The selection is done using non-dominated sorting and crowding distance.\n        Using non-dominated sorting, the solutions are distributed across pareto fronts. The fronts are given the indices 0, 1, 2, ..., N where N is the number of pareto fronts. The lower the index of the pareto front, the better its solutions.\n        The parents are selected from the lower pareto fronts and moving up until selecting the number of desired parents. \n        A solution from a pareto front X cannot be taken as a parent until all solutions in pareto front Y is selected given that Y < X.\n        For a pareto front X, if only a subset of its solutions is needed, then the corwding distance is used to determine which solutions to be selected from the front. The solution with the higher crowding distance is selected.\n        If the 2 solutions are in the same pareto front and have the same crowding distance, then a solution is randomly selected.\n        Later, the selected parents will mate to produce the offspring.\n    \n        It accepts 2 parameters:\n            -fitness: The fitness values for the current population.\n            -num_parents: The number of parents to be selected.\n            -pareto_fronts: A nested array of all the pareto fronts. Each front has its solutions.\n            -solutions_fronts_indices: A list of the pareto front index of each solution in the current population.\n\n        It returns:\n            -An array of the selected parents.\n            -The indices of the selected solutions.\n        \"\"\"\n\n        if self.gene_type_single == True:\n            parents = numpy.empty((num_parents, self.population.shape[1]), dtype=self.gene_type[0])\n        else:\n            parents = numpy.empty((num_parents, self.population.shape[1]), dtype=object)\n\n        # Verify that the problem is multi-objective optimization as the NSGA-II selection is only applied to multi-objective problems.\n        if type(fitness[0]) in [list, tuple, numpy.ndarray]:\n            pass\n        elif type(fitness[0]) in self.supported_int_float_types:\n            raise ValueError('The NSGA-II parent selection operator is only applied when optimizing multi-objective problems.\\n\\nBut a single-objective optimization problem found as the fitness function returns a single numeric value.\\n\\nTo use multi-objective optimization, consider returning an iterable of any of these data types:\\n1)list\\n2)tuple\\n3)numpy.ndarray')\n\n        # The indices of the selected parents.\n        parents_indices = []\n\n        # If there is only a single objective, each pareto front is expected to have only 1 solution.\n        # TODO Make a test to check for that behaviour.\n        pareto_fronts, solutions_fronts_indices = self.non_dominated_sorting(fitness)\n        self.pareto_fronts = pareto_fronts.copy()\n\n        # The number of remaining parents to be selected.\n        num_remaining_parents = num_parents\n\n        # Index of the current parent.\n        current_parent_idx = 0\n        # A loop variable holding the index of the current pareto front.\n        pareto_front_idx = 0\n        while num_remaining_parents != 0 and pareto_front_idx < len(pareto_fronts):\n            # Return the current pareto front.\n            current_pareto_front = pareto_fronts[pareto_front_idx]\n            # Check if the entire front fits into the parents array.\n            # If so, then insert all the solutions in the current front into the parents array.\n            if num_remaining_parents >= len(current_pareto_front):\n                for sol_idx in range(len(current_pareto_front)):\n                    selected_solution_idx = current_pareto_front[sol_idx, 0]\n                    # Insert the parent into the parents array.\n                    parents[current_parent_idx, :] = self.population[selected_solution_idx, :].copy()\n                    # Insert the index of the selected parent.\n                    parents_indices.append(selected_solution_idx)\n                    # Increase the parent index.\n                    current_parent_idx += 1\n\n                # Decrement the number of remaining parents by the length of the pareto front.\n                num_remaining_parents -= len(current_pareto_front)\n            else:\n                # If only a subset of the front is needed, then use the crowding distance to sort the solutions and select only the number needed.\n    \n                # Calculate the crowding distance of the solutions of the pareto front.\n                obj_crowding_distance_list, crowding_distance_sum, crowding_dist_front_sorted_indices, crowding_dist_pop_sorted_indices = self.crowding_distance(pareto_front=current_pareto_front.copy(),\n                                                                                                                                                                 fitness=fitness)\n\n                for selected_solution_idx in crowding_dist_pop_sorted_indices[0:num_remaining_parents]:\n                    # Insert the parent into the parents array.\n                    parents[current_parent_idx, :] = self.population[selected_solution_idx, :].copy()\n                    # Insert the index of the selected parent.\n                    parents_indices.append(selected_solution_idx)\n                    # Increase the parent index.\n                    current_parent_idx += 1\n    \n                # Decrement the number of remaining parents by the number of selected parents.\n                num_remaining_parents -= num_remaining_parents\n    \n            # Increase the pareto front index to take parents from the next front.\n            pareto_front_idx += 1\n    \n        # Make sure the parents indices is returned as a NumPy array.\n        return parents, numpy.array(parents_indices)",
+          "triple_sequences": [
+            {
+              "action_api": "numpy.empty()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "(num_parents, self.population.shape[1]), dtype=self.gene_type[0]",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "numpy.empty()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "(num_parents, self.population.shape[1]), dtype=object",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "type()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "fitness[0]",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine operating system",
+              "intention_id": "determine_operating_system"
+            },
+            {
+              "action_api": "self.non_dominated_sorting()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "fitness",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "pareto_fronts.copy()",
+              "action_description": "Copies memory from source to destination buffer",
+              "action_id": "copy_memory",
+              "object": "pareto_fronts",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.crowding_distance()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "pareto_front=current_pareto_front.copy(), fitness=fitness",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.population[selected_solution_idx, :].copy()",
+              "action_description": "Copies memory from source to destination buffer",
+              "action_id": "copy_memory",
+              "object": "self.population[selected_solution_idx, :]",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "numpy.array()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "parents_indices",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

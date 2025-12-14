@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "tinybird_cli-5.20.1.dev0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/tinybird_cli-5.20.1.dev0.txt",
+      "total_matches": 3
+    }
+  },
+  {
+    "pyfile": "common.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tinybird_cli-5.20.1.dev0/tinybird_cli-5.20.1.dev0/tinybird/tb_cli_modules/common.py",
+    "line_number": "1928",
+    "type_description": "clipboard-access",
+    "original_snippet": "pyperclip.copy(access_policy)",
+    "context_snippet": "async def validate_aws_iamrole_integration(\n    client: TinyB,\n    service: str,\n    role_arn: Optional[str],\n    region: Optional[str],\n    policy: str = \"write\",\n    no_validate: Optional[bool] = False,\n):\n    if no_validate is False:\n        access_policy, trust_policy, external_id = await get_aws_iamrole_policies(\n            client, service=service, policy=policy\n        )\n\n        if not role_arn:\n            if not click.confirm(\n                FeedbackManager.prompt_s3_iamrole_connection_login_aws(),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n\n            access_policy_copied = True\n            try:\n                pyperclip.copy(access_policy)\n            except Exception:\n                access_policy_copied = False\n\n            replacements_dict = {\n                \"<bucket>\": \"<bucket> with your bucket name\",\n                \"<table_name>\": \"<table_name> with your DynamoDB table name\",\n            }\n\n            replacements = [\n                replacements_dict.get(replacement, \"\")\n                for replacement in replacements_dict.keys()\n                if replacement in access_policy\n            ]\n\n            if not click.confirm(\n                (\n                    FeedbackManager.prompt_s3_iamrole_connection_policy(\n                        access_policy=access_policy, replacements=\", \".join(replacements)\n                    )\n                    if access_policy_copied\n                    else FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied(access_policy=access_policy)\n                ),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n\n            trust_policy_copied = True\n            try:\n                pyperclip.copy(trust_policy)\n            except Exception:\n                trust_policy_copied = False\n\n            if not click.confirm(\n                (\n                    FeedbackManager.prompt_s3_iamrole_connection_role(trust_policy=trust_policy)\n                    if trust_policy_copied\n                    else FeedbackManager.prompt_s3_iamrole_connection_role_not_copied(trust_policy=trust_policy)\n                ),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n    else:\n        try:\n            trust_policy = await client.get_trust_policy(service)\n            external_id = trust_policy[\"Statement\"][0][\"Condition\"][\"StringEquals\"][\"sts:ExternalId\"]\n        except Exception:\n            external_id = \"\"\n\n    if not role_arn:\n        role_arn = click.prompt(\"Enter the ARN of the role you just created\")\n        validate_string_connector_param(\"Role ARN\", role_arn)\n\n    if not region:\n        region_resource = \"table\" if service == DataConnectorType.AMAZON_DYNAMODB else \"bucket\"\n        region = click.prompt(f\"Enter the region where the {region_resource} is located\")\n        validate_string_connector_param(\"Region\", region)\n\n    return role_arn, region, external_id",
+    "hash_value": "79a25499f2450319be0fbd51c85b1c76",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "token.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tinybird_cli-5.20.1.dev0/tinybird_cli-5.20.1.dev0/tinybird/tb_cli_modules/token.py",
+    "line_number": "132",
+    "type_description": "clipboard-access",
+    "original_snippet": "pyperclip.copy(token[\"token\"].strip())",
+    "context_snippet": "@token.command(name=\"copy\")\n@click.argument(\"token_id\")\n@click.pass_context\n@coro\nasync def token_copy(ctx: Context, token_id: str) -> None:\n    \"\"\"Copy a Static Token.\"\"\"\n\n    obj: Dict[str, Any] = ctx.ensure_object(dict)\n    client: TinyB = obj[\"client\"]\n\n    try:\n        token = await client.token_get(token_id)\n        pyperclip.copy(token[\"token\"].strip())\n    except AuthNoTokenException:\n        raise\n    except DoesNotExistException:\n        raise CLITokenException(FeedbackManager.error_token_does_not_exist(token_id=token_id))\n    except Exception as e:\n        raise CLITokenException(FeedbackManager.error_exception(error=e))\n    click.echo(FeedbackManager.success_copy_token(token=token_id))",
+    "hash_value": "4ed853fd8698e5a538e13d85b4b5d0a1",
+    "detection_index": 1
+  }
+]

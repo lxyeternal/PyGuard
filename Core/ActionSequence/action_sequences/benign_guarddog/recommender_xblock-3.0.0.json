@@ -1,0 +1,181 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport re\nimport subprocess\n\nfrom setuptools import setup\nfrom setuptools.command.install import install as _install\n\nbase_path = os.path.dirname(__file__)\nREADME = open(os.path.join(base_path, \"README.rst\")).read()\n\nclass XBlockInstall(_install):\n    \"\"\"Custom XBlock install command.\"\"\"\n\n    def run(self):\n        _install.run(self)\n        self.compile_translations()\n\n    def compile_translations(self):\n        \"\"\"\n        Compiles textual translations files(.po) to binary(.mo) files.\n        \"\"\"\n        self.announce('Compiling translations')\n        try:\n            for dirname, _, files in os.walk(os.path.join('recommender', 'translations')):\n                for fname in files:\n                    if os.path.splitext(fname)[1] == '.po':\n                        po_path = os.path.join(dirname, fname)\n                        mo_path = os.path.splitext(po_path)[0] + '.mo'\n                        self.announce('Compiling translation at %s' % po_path)\n                        subprocess.check_call(['msgfmt', po_path, '-o', mo_path], cwd=self.install_lib)\n        except Exception as ex:\n            self.announce('Translations compilation failed: %s' % getattr(ex, 'message', str(ex)))\n\ndef package_data(pkg, root_list):\n    \"\"\"Generic function to find package_data for `pkg` under `root`.\"\"\"\n    data = []\n    for root in root_list:\n        for dirname, _, files in os.walk(os.path.join(pkg, root)):\n            for fname in files:\n                data.append(os.path.relpath(os.path.join(dirname, fname), pkg))\n    return {pkg: data}\n\ndef get_version(file_path):\n    \"\"\"\n    Extract the version string from the file at the given relative path fragments.\n    \"\"\"\n    filename = os.path.join(os.path.dirname(__file__), file_path)\n    with open(filename, encoding='utf-8') as opened_file:\n        version_file = opened_file.read()\n        version_match = re.search(r\"(?m)^__version__ = ['\\\"]([^'\\\"]+)['\\\"]\", version_file)\n    if version_match:\n        return version_match.group(1)\n    raise RuntimeError('Unable to find version string.')\n\nVERSION = get_version(\"recommender/__init__.py\")\n\nsetup(\n    name='recommender-xblock',\n    version=VERSION,\n    description='recommender XBlock',   # TODO: write a better description.\n    long_description=README,\n    author='edX',\n    author_email='oscm@edx.org',\n    url='https://github.com/openedx/RecommenderXBlock',\n    packages=[\n        'recommender',\n    ],\n    license='AGPL 3.0',\n    entry_points={\n        'xblock.v1': [\n            'recommender = recommender.recommender:RecommenderXBlock',\n        ]\n    },\n    package_data=package_data(\"recommender\", [\"static\", \"templates\", \"translations\", \"public\"]),\n    cmdclass={\n        'install': XBlockInstall,\n    },\n    keywords=\"edx recommender\",\n    classifiers=[\n        \"Development Status :: 4 - Beta\",\n        \"Intended Audience :: Developers\",\n        \"License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)\",\n        \"Natural Language :: English\",\n        \"Programming Language :: Python :: 3\",\n        'Programming Language :: Python :: 3.11',\n        'Programming Language :: Python :: 3.12',\n    ],\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.join",
+        "open",
+        "os.path.join",
+        "os.walk",
+        "os.path.splitext",
+        "os.path.splitext",
+        "subprocess.check_call",
+        "os.path.join",
+        "os.walk",
+        "os.path.relpath",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.join",
+        "open",
+        "re.search"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(__file__)",
+        "os.path.join(base_path, \"README.rst\")",
+        "open(os.path.join(base_path, \"README.rst\"))",
+        "os.path.join('recommender', 'translations')",
+        "os.walk(os.path.join('recommender', 'translations'))",
+        "os.path.splitext(fname)",
+        "os.path.splitext(po_path)",
+        "subprocess.check_call(['msgfmt', po_path, '-o', mo_path], cwd=self.install_lib)",
+        "os.path.join(pkg, root)",
+        "os.walk(os.path.join(pkg, root))",
+        "os.path.relpath(os.path.join(dirname, fname), pkg)",
+        "os.path.join(dirname, fname)",
+        "os.path.dirname(__file__)",
+        "os.path.join(os.path.dirname(__file__), file_path)",
+        "open(filename, encoding='utf-8')",
+        "re.search(r\"(?m)^__version__ = ['\\\"]([^'\\\"]+)['\\\"]\", version_file)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.walk",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.walk",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.relpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        }
+      ],
+      "contextual_code": "import os\nimport re\nimport subprocess\n\nbase_path = os.path.dirname(__file__)\nREADME = open(os.path.join(base_path, \"README.rst\")).read()\n\nclass XBlockInstall(_install):\n    def compile_translations(self):\n        self.announce('Compiling translations')\n        try:\n            for dirname, _, files in os.walk(os.path.join('recommender', 'translations')):\n                for fname in files:\n                    if os.path.splitext(fname)[1] == '.po':\n                        po_path = os.path.join(dirname, fname)\n                        mo_path = os.path.splitext(po_path)[0] + '.mo'\n                        self.announce('Compiling translation at %s' % po_path)\n                        subprocess.check_call(['msgfmt', po_path, '-o', mo_path], cwd=self.install_lib)\n        except Exception as ex:\n            self.announce('Translations compilation failed: %s' % getattr(ex, 'message', str(ex)))\n\ndef package_data(pkg, root_list):\n    data = []\n    for root in root_list:\n        for dirname, _, files in os.walk(os.path.join(pkg, root)):\n            for fname in files:\n                data.append(os.path.relpath(os.path.join(dirname, fname), pkg))\n    return {pkg: data}\n\ndef get_version(file_path):\n    filename = os.path.join(os.path.dirname(__file__), file_path)\n    with open(filename, encoding='utf-8') as opened_file:\n        version_file = opened_file.read()\n        version_match = re.search(r\"(?m)^__version__ = ['\\\"]([^'\\\"]+)['\\\"]\", version_file)\n    if version_match:\n        return version_match.group(1)\n    raise RuntimeError('Unable to find version string.')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "recommender_xblock-3.0.0",
+      "total_matches": 2
+    }
+  }
+]

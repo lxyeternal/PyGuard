@@ -1,0 +1,201 @@
+[
+  {
+    "pyfile": "ptyprocess.py",
+    "code_snippet": "    @classmethod\n    def spawn(\n            cls, argv, cwd=None, env=None, echo=True, preexec_fn=None,\n            dimensions=(24, 80), pass_fds=()):\n        '''Start the given command in a child process in a pseudo terminal.\n\n        This does all the fork/exec type of stuff for a pty, and returns an\n        instance of PtyProcess.\n\n        If preexec_fn is supplied, it will be called with no arguments in the\n        child process before exec-ing the specified command.\n        It may, for instance, set signal handlers to SIG_DFL or SIG_IGN.\n\n        Dimensions of the psuedoterminal used for the subprocess can be\n        specified as a tuple (rows, cols), or the default (24, 80) will be used.\n\n        By default, all file descriptors except 0, 1 and 2 are closed. This\n        behavior can be overridden with pass_fds, a list of file descriptors to\n        keep open between the parent and the child.\n        '''\n        # Note that it is difficult for this method to fail.\n        # You cannot detect if the child process cannot start.\n        # So the only way you can tell if the child process started\n        # or not is to try to read from the file descriptor. If you get\n        # EOF immediately then it means that the child is already dead.\n        # That may not necessarily be bad because you may have spawned a child\n        # that performs some task; creates no stdout output; and then dies.\n\n        if not isinstance(argv, (list, tuple)):\n            raise TypeError(\"Expected a list or tuple for argv, got %r\" % argv)\n\n        # Shallow copy of argv so we can modify it\n        argv = argv[:]\n        command = argv[0]\n\n        command_with_path = which(command)\n        if command_with_path is None:\n            raise FileNotFoundError('The command was not found or was not ' +\n                                    'executable: %s.' % command)\n        command = command_with_path\n        argv[0] = command\n\n        # [issue #119] To prevent the case where exec fails and the user is\n        # stuck interacting with a python child process instead of whatever\n        # was expected, we implement the solution from\n        # http://stackoverflow.com/a/3703179 to pass the exception to the\n        # parent process\n\n        # [issue #119] 1. Before forking, open a pipe in the parent process.\n        exec_err_pipe_read, exec_err_pipe_write = os.pipe()\n\n        if use_native_pty_fork:\n            pid, fd = pty.fork()\n        else:\n            # Use internal fork_pty, for Solaris\n            pid, fd = _fork_pty.fork_pty()\n\n        # Some platforms must call setwinsize() and setecho() from the\n        # child process, and others from the master process. We do both,\n        # allowing IOError for either.\n\n        if pid == CHILD:\n            # set window size\n            try:\n                _setwinsize(STDIN_FILENO, *dimensions)\n            except IOError as err:\n                if err.args[0] not in (errno.EINVAL, errno.ENOTTY):\n                    raise\n\n            # disable echo if spawn argument echo was unset\n            if not echo:\n                try:\n                    _setecho(STDIN_FILENO, False)\n                except (IOError, termios.error) as err:\n                    if err.args[0] not in (errno.EINVAL, errno.ENOTTY):\n                        raise\n\n            # [issue #119] 3. The child closes the reading end and sets the\n            # close-on-exec flag for the writing end.\n            os.close(exec_err_pipe_read)\n            fcntl.fcntl(exec_err_pipe_write, fcntl.F_SETFD, fcntl.FD_CLOEXEC)\n\n            # Do not allow child to inherit open file descriptors from parent,\n            # with the exception of the exec_err_pipe_write of the pipe\n            # and pass_fds.\n            # Impose ceiling on max_fd: AIX bugfix for users with unlimited\n            # nofiles where resource.RLIMIT_NOFILE is 2^63-1 and os.closerange()\n            # occasionally raises out of range error\n            max_fd = min(1048576, resource.getrlimit(resource.RLIMIT_NOFILE)[0])\n            spass_fds = sorted(set(pass_fds) | {exec_err_pipe_write})\n            for pair in zip([2] + spass_fds, spass_fds + [max_fd]):\n                os.closerange(pair[0]+1, pair[1])\n\n            if cwd is not None:\n                os.chdir(cwd)\n\n            if preexec_fn is not None:\n                try:\n                    preexec_fn()\n                except Exception as e:\n                    ename = type(e).__name__\n                    tosend = '{}:0:{}'.format(ename, str(e))\n                    if PY3:\n                        tosend = tosend.encode('utf-8')\n\n                    os.write(exec_err_pipe_write, tosend)\n                    os.close(exec_err_pipe_write)\n                    os._exit(1)\n\n            try:\n                if env is None:\n                    os.execv(command, argv)\n                else:\n                    os.execvpe(command, argv, env)\n            except OSError as err:\n                # [issue #119] 5. If exec fails, the child writes the error\n                # code back to the parent using the pipe, then exits.\n                tosend = 'OSError:{}:{}'.format(err.errno, str(err))\n                if PY3:\n                    tosend = tosend.encode('utf-8')\n                os.write(exec_err_pipe_write, tosend)\n                os.close(exec_err_pipe_write)\n                os._exit(os.EX_OSERR)\n\n        # Parent\n        inst = cls(pid, fd)\n        \n        # Set some informational attributes\n        inst.argv = argv\n        if env is not None:\n            inst.env = env\n        if cwd is not None:\n            inst.launch_dir = cwd\n\n        # [issue #119] 2. After forking, the parent closes the writing end\n        # of the pipe and reads from the reading end.\n        os.close(exec_err_pipe_write)\n        exec_err_data = os.read(exec_err_pipe_read, 4096)\n        os.close(exec_err_pipe_read)\n\n        # [issue #119] 6. The parent reads eof (a zero-length read) if the\n        # child successfully performed exec, since close-on-exec made\n        # successful exec close the writing end of the pipe. Or, if exec\n        # failed, the parent reads the error code and can proceed\n        # accordingly. Either way, the parent blocks until the child calls\n        # exec.\n        if len(exec_err_data) != 0:\n            try:\n                errclass, errno_s, errmsg = exec_err_data.split(b':', 2)\n                exctype = getattr(builtins, errclass.decode('ascii'), Exception)\n\n                exception = exctype(errmsg.decode('utf-8', 'replace'))\n                if exctype is OSError:\n                    exception.errno = int(errno_s)\n            except:\n                raise Exception('Subprocess failed, got bad error data: %r'\n                                    % exec_err_data)\n            else:\n                raise exception\n\n        try:\n            inst.setwinsize(*dimensions)\n        except IOError as err:\n            if err.args[0] not in (errno.EINVAL, errno.ENOTTY, errno.ENXIO):\n                raise\n\n        return inst\n\n# Relevant imports and global variables\nimport builtins  # or __builtin__ as builtins for Python 2\nimport os\nimport errno\nimport fcntl\nimport pty\nimport resource\nimport signal\nimport struct\nimport sys\nimport termios\nimport time\nfrom pty import (STDIN_FILENO, CHILD)\nfrom .util import which, PtyProcessError\nPY3 = sys.version_info[0] >= 3\nuse_native_pty_fork = True or False (set above based on platform)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.pipe",
+        "pty.fork",
+        "os.close",
+        "fcntl.fcntl",
+        "resource.getrlimit",
+        "os.closerange",
+        "os.chdir",
+        "os.write",
+        "os.close",
+        "os._exit",
+        "os.execv",
+        "os.execvpe",
+        "os.write",
+        "os.close",
+        "os._exit",
+        "os.close",
+        "os.read",
+        "os.close"
+      ],
+      "api_sequence_with_args": [
+        "os.pipe()",
+        "pty.fork()",
+        "os.close(exec_err_pipe_read)",
+        "fcntl.fcntl(exec_err_pipe_write, fcntl.F_SETFD, fcntl.FD_CLOEXEC)",
+        "resource.getrlimit(resource.RLIMIT_NOFILE)",
+        "os.closerange(pair[0]+1, pair[1])",
+        "os.chdir(cwd)",
+        "os.write(exec_err_pipe_write, tosend)",
+        "os.close(exec_err_pipe_write)",
+        "os._exit(1)",
+        "os.execv(command, argv)",
+        "os.execvpe(command, argv, env)",
+        "os.write(exec_err_pipe_write, tosend)",
+        "os.close(exec_err_pipe_write)",
+        "os._exit(os.EX_OSERR)",
+        "os.close(exec_err_pipe_write)",
+        "os.read(exec_err_pipe_read, 4096)",
+        "os.close(exec_err_pipe_read)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.pipe",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "pty.fork",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "fcntl.fcntl",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "resource.getrlimit",
+          "id": "get_os_info",
+          "description": "Retrieves operating system information",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.closerange",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os._exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.execv",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.execvpe",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os._exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        }
+      ],
+      "contextual_code": "import os\nimport fcntl\nimport pty\nimport resource\n\n@classmethod\ndef spawn(cls, argv, cwd=None, env=None, echo=True, preexec_fn=None, dimensions=(24, 80), pass_fds=()):\n    if not isinstance(argv, (list, tuple)):\n        raise TypeError(\"Expected a list or tuple for argv, got %r\" % argv)\n    argv = argv[:]\n    command = argv[0]\n    command_with_path = which(command)\n    if command_with_path is None:\n        raise FileNotFoundError('The command was not found or was not ' + 'executable: %s.' % command)\n    command = command_with_path\n    argv[0] = command\n    exec_err_pipe_read, exec_err_pipe_write = os.pipe()\n    if use_native_pty_fork:\n        pid, fd = pty.fork()\n    else:\n        pid, fd = _fork_pty.fork_pty()\n    if pid == CHILD:\n        os.close(exec_err_pipe_read)\n        fcntl.fcntl(exec_err_pipe_write, fcntl.F_SETFD, fcntl.FD_CLOEXEC)\n        max_fd = min(1048576, resource.getrlimit(resource.RLIMIT_NOFILE)[0])\n        spass_fds = sorted(set(pass_fds) | {exec_err_pipe_write})\n        for pair in zip([2] + spass_fds, spass_fds + [max_fd]):\n            os.closerange(pair[0]+1, pair[1])\n        if cwd is not None:\n            os.chdir(cwd)\n        if preexec_fn is not None:\n            try:\n                preexec_fn()\n            except Exception as e:\n                tosend = '{}:0:{}'.format(type(e).__name__, str(e))\n                if PY3:\n                    tosend = tosend.encode('utf-8')\n                os.write(exec_err_pipe_write, tosend)\n                os.close(exec_err_pipe_write)\n                os._exit(1)\n        try:\n            if env is None:\n                os.execv(command, argv)\n            else:\n                os.execvpe(command, argv, env)\n        except OSError as err:\n            tosend = 'OSError:{}:{}'.format(err.errno, str(err))\n            if PY3:\n                tosend = tosend.encode('utf-8')\n            os.write(exec_err_pipe_write, tosend)\n            os.close(exec_err_pipe_write)\n            os._exit(os.EX_OSERR)\n    os.close(exec_err_pipe_write)\n    exec_err_data = os.read(exec_err_pipe_read, 4096)\n    os.close(exec_err_pipe_read)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ptyprocess-0.7.0",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "runpod-1.7.9",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/runpod-1.7.9.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "graphql.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/runpod-1.7.9/runpod-1.7.9/runpod/api/graphql.py",
+    "line_number": "33",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.post(url, headers=headers, data=data, timeout=30)",
+    "context_snippet": "import json\nimport os\nfrom typing import Any, Dict\n\nimport requests\n\nfrom runpod import error\nfrom runpod.user_agent import USER_AGENT\n\nHTTP_STATUS_UNAUTHORIZED = 401\n\n\ndef run_graphql_query(query: str) -> Dict[str, Any]:\n    \"\"\"\n    Run a GraphQL query\n    \"\"\"\n    from runpod import api_key  # pylint: disable=import-outside-toplevel, cyclic-import\n\n    api_url_base = os.environ.get(\"RUNPOD_API_BASE_URL\", \"https://api.runpod.io\")\n    url = f\"{api_url_base}/graphql\"\n\n    headers = {\n        \"Content-Type\": \"application/json\",\n        \"User-Agent\": USER_AGENT,\n        \"Authorization\": f\"Bearer {api_key}\",\n    }\n\n    data = json.dumps({\"query\": query})\n    response = requests.post(url, headers=headers, data=data, timeout=30)\n\n    if response.status_code == HTTP_STATUS_UNAUTHORIZED:\n        raise error.AuthenticationError(\n            \"Unauthorized request, please check your API key.\"\n        )\n\n    if \"errors\" in response.json():\n        raise error.QueryError(response.json()[\"errors\"][0][\"message\"], query)\n\n    return response.json()",
+    "hash_value": "ac56a545c554054ee81f8d2381ea2096",
+    "detection_index": 1
+  }
+]

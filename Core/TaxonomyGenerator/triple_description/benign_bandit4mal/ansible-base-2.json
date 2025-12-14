@@ -1,0 +1,316 @@
+{
+  "metadata": {
+    "package_name": "ansible-base-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ansible-base-2.10.17.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "urls.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible-base-2.10.17/ansible-base-2.10.17/lib/ansible/module_utils/urls.py",
+      "line_number": "1443",
+      "type_description": "B820:get",
+      "context_snippet": "def prepare_multipart(fields):\n    \"\"\"Takes a mapping, and prepares a multipart/form-data body\n\n    :arg fields: Mapping\n    :returns: tuple of (content_type, body) where ``content_type`` is\n        the ``multipart/form-data`` ``Content-Type`` header including\n        ``boundary`` and ``body`` is the prepared bytestring body\n\n    Payload content from a file will be base64 encoded and will include\n    the appropriate ``Content-Transfer-Encoding`` and ``Content-Type``\n    headers.\n\n    Example:\n        {\n            \"file1\": {\n                \"filename\": \"/bin/true\",\n                \"mime_type\": \"application/octet-stream\"\n            },\n            \"file2\": {\n                \"content\": \"text based file content\",\n                \"filename\": \"fake.txt\",\n                \"mime_type\": \"text/plain\",\n            },\n            \"text_form_field\": \"value\"\n        }\n    \"\"\"\n\n    if not isinstance(fields, Mapping):\n        raise TypeError(\n            'Mapping is required, cannot be type %s' % fields.__class__.__name__\n        )\n\n    m = email.mime.multipart.MIMEMultipart('form-data')\n    for field, value in sorted(fields.items()):\n        if isinstance(value, string_types):\n            main_type = 'text'\n            sub_type = 'plain'\n            content = value\n            filename = None\n        elif isinstance(value, Mapping):\n            filename = value.get('filename')\n            content = value.get('content')\n            if not any((filename, content)):\n                raise ValueError('at least one of filename or content must be provided')\n\n            mime = value.get('mime_type')\n            if not mime:\n                try:\n                    mime = mimetypes.guess_type(filename or '', strict=False)[0] or 'application/octet-stream'\n                except Exception:\n                    mime = 'application/octet-stream'\n            main_type, sep, sub_type = mime.partition('/')\n        else:\n            raise TypeError(\n                'value must be a string, or mapping, cannot be type %s' % value.__class__.__name__\n            )\n\n        if not content and filename:\n            with open(to_bytes(filename, errors='surrogate_or_strict'), 'rb') as f:\n                part = email.mime.application.MIMEApplication(f.read())\n                del part['Content-Type']\n                part.add_header('Content-Type', '%s/%s' % (main_type, sub_type))\n        else:\n            part = email.mime.nonmultipart.MIMENonMultipart(main_type, sub_type)\n            part.set_payload(to_bytes(content))\n\n        part.add_header('Content-Disposition', 'form-data')\n        del part['MIME-Version']\n        part.set_param(\n            'name',\n            field,\n            header='Content-Disposition'\n        )\n        if filename:\n            part.set_param(\n                'filename',\n                to_native(os.path.basename(filename)),\n                header='Content-Disposition'\n            )\n\n        m.attach(part)\n\n    if PY3:\n        # Ensure headers are not split over multiple lines\n        # The HTTP policy also uses CRLF by default\n        b_data = m.as_bytes(policy=email.policy.HTTP)\n    else:\n        # Py2\n        # We cannot just call ``as_string`` since it provides no way\n        # to specify ``maxheaderlen``\n        fp = cStringIO()  # cStringIO seems to be required here\n        # Ensure headers are not split over multiple lines\n        g = email.generator.Generator(fp, maxheaderlen=0)\n        g.flatten(m)\n        # ``fix_eols`` switches from ``\\n`` to ``\\r\\n``\n        b_data = email.utils.fix_eols(fp.getvalue())\n    del m\n\n    headers, sep, b_content = b_data.partition(b'\\r\\n\\r\\n')\n    del b_data\n\n    if PY3:\n        parser = email.parser.BytesHeaderParser().parsebytes\n    else:\n        # Py2\n        parser = email.parser.HeaderParser().parsestr\n\n    return (\n        parser(headers)['content-type'],  # Message converts to native strings\n        b_content\n    )\n",
+      "hash_value": "5c318895299892982a5b5bc7dc2d353b",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def prepare_multipart(fields):\n    \"\"\"Takes a mapping, and prepares a multipart/form-data body\n\n    :arg fields: Mapping\n    :returns: tuple of (content_type, body) where ``content_type`` is\n        the ``multipart/form-data`` ``Content-Type`` header including\n        ``boundary`` and ``body`` is the prepared bytestring body\n\n    Payload content from a file will be base64 encoded and will include\n    the appropriate ``Content-Transfer-Encoding`` and ``Content-Type``\n    headers.\n\n    Example:\n        {\n            \"file1\": {\n                \"filename\": \"/bin/true\",\n                \"mime_type\": \"application/octet-stream\"\n            },\n            \"file2\": {\n                \"content\": \"text based file content\",\n                \"filename\": \"fake.txt\",\n                \"mime_type\": \"text/plain\",\n            },\n            \"text_form_field\": \"value\"\n        }\n    \"\"\"\n\n    if not isinstance(fields, Mapping):\n        raise TypeError(\n            'Mapping is required, cannot be type %s' % fields.__class__.__name__\n        )\n\n    m = email.mime.multipart.MIMEMultipart('form-data')\n    for field, value in sorted(fields.items()):\n        if isinstance(value, string_types):\n            main_type = 'text'\n            sub_type = 'plain'\n            content = value\n            filename = None\n        elif isinstance(value, Mapping):\n            filename = value.get('filename')\n            content = value.get('content')\n            if not any((filename, content)):\n                raise ValueError('at least one of filename or content must be provided')\n\n            mime = value.get('mime_type')\n            if not mime:\n                try:\n                    mime = mimetypes.guess_type(filename or '', strict=False)[0] or 'application/octet-stream'\n                except Exception:\n                    mime = 'application/octet-stream'\n            main_type, sep, sub_type = mime.partition('/')\n        else:\n            raise TypeError(\n                'value must be a string, or mapping, cannot be type %s' % value.__class__.__name__\n            )\n\n        if not content and filename:\n            with open(to_bytes(filename, errors='surrogate_or_strict'), 'rb') as f:\n                part = email.mime.application.MIMEApplication(f.read())\n                del part['Content-Type']\n                part.add_header('Content-Type', '%s/%s' % (main_type, sub_type))\n        else:\n            part = email.mime.nonmultipart.MIMENonMultipart(main_type, sub_type)\n            part.set_payload(to_bytes(content))\n\n        part.add_header('Content-Disposition', 'form-data')\n        del part['MIME-Version']\n        part.set_param(\n            'name',\n            field,\n            header='Content-Disposition'\n        )\n        if filename:\n            part.set_param(\n                'filename',\n                to_native(os.path.basename(filename)),\n                header='Content-Disposition'\n            )\n\n        m.attach(part)\n\n    if PY3:\n        # Ensure headers are not split over multiple lines\n        # The HTTP policy also uses CRLF by default\n        b_data = m.as_bytes(policy=email.policy.HTTP)\n    else:\n        # Py2\n        # We cannot just call ``as_string`` since it provides no way\n        # to specify ``maxheaderlen``\n        fp = cStringIO()  # cStringIO seems to be required here\n        # Ensure headers are not split over multiple lines\n        g = email.generator.Generator(fp, maxheaderlen=0)\n        g.flatten(m)\n        # ``fix_eols`` switches from ``\\n`` to ``\\r\\n``\n        b_data = email.utils.fix_eols(fp.getvalue())\n    del m\n\n    headers, sep, b_content = b_data.partition(b'\\r\\n\\r\\n')\n    del b_data\n\n    if PY3:\n        parser = email.parser.BytesHeaderParser().parsebytes\n    else:\n        # Py2\n        parser = email.parser.HeaderParser().parsestr\n\n    return (\n        parser(headers)['content-type'],  # Message converts to native strings\n        b_content\n    )\n",
+          "triple_sequences": [
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "fields, Mapping",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "email.mime.multipart.MIMEMultipart()",
+              "action_description": "Creates multipart writer for HTTP requests",
+              "action_id": "create_multipart_writer",
+              "object": "'form-data'",
+              "object_description": "Content type string",
+              "object_id": "content_type",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "sorted()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "fields.items()",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "value, string_types",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "value, Mapping",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "value.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'filename'",
+              "object_description": "File name",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "value.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'content'",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "value.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'mime_type'",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "mimetypes.guess_type()",
+              "action_description": "Retrieves MIME type for file",
+              "action_id": "get_platform_info",
+              "object": "filename or '', strict=False",
+              "object_description": "File name",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "to_bytes(filename, errors='surrogate_or_strict'), 'rb'",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "f.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "email.mime.application.MIMEApplication()",
+              "action_description": "Creates multipart writer for HTTP requests",
+              "action_id": "create_multipart_writer",
+              "object": "f.read()",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "part.add_header()",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "'Content-Type', '%s/%s' % (main_type, sub_type)",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "email.mime.nonmultipart.MIMENonMultipart()",
+              "action_description": "Creates multipart writer for HTTP requests",
+              "action_id": "create_multipart_writer",
+              "object": "main_type, sub_type",
+              "object_description": "Content type string",
+              "object_id": "content_type",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "part.set_payload()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "to_bytes(content)",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "part.add_header()",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "'Content-Disposition', 'form-data'",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "part.set_param()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "'name', field, header='Content-Disposition'",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "os.path.basename()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "filename",
+              "object_description": "File name",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "to_native()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "os.path.basename(filename)",
+              "object_description": "File name",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "part.set_param()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "'filename', to_native(os.path.basename(filename)), header='Content-Disposition'",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "m.attach()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "part",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "m.as_bytes()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "policy=email.policy.HTTP",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "cStringIO()",
+              "action_description": "Creates in-memory bytes buffer from encoded string",
+              "action_id": "create_memory_bytes",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "email.generator.Generator()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "fp, maxheaderlen=0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "g.flatten()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "m",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare webhook for data transmission",
+              "intention_id": "webhook_transmission_preparation"
+            },
+            {
+              "action_api": "email.utils.fix_eols()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "fp.getvalue()",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "b_data.partition()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "b'\\r\\n\\r\\n'",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "email.parser.BytesHeaderParser().parsebytes",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "headers",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "email.parser.HeaderParser().parsestr",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "headers",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

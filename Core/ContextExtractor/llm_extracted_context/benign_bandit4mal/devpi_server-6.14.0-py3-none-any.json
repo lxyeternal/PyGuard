@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "devpi_server-6.14.0-py3-none-any",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "fileutil.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/devpi_server-6.14.0-py3-none-any/devpi_server/fileutil.py",
+    "line_number": "87",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "86\t        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n87\t            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n88\t        elif opcode == b'O':  # set",
+    "context_snippet": "def load(fp, _from_bytes=int.from_bytes, _unpack=unpack):\n    read = fp.read\n    stack = []\n    stack_append = stack.append\n    stack_pop = stack.pop\n\n    def _load_collection(type_):\n        length = _from_bytes(read(4), byteorder=\"big\", signed=True)\n        if length:\n            res = type_(stack[-length:])\n            del stack[-length:]\n            stack_append(res)\n        else:\n            stack_append(type_())\n\n    stopped = False\n    while True:\n        opcode = read(1)\n        if not opcode:\n            raise EOFError\n        if opcode == b'@':  # tuple\n            _load_collection(tuple)\n        elif opcode == b'A':  # bytes\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode == b'B':  # Channel\n            raise NotImplementedError(\"opcode B for Channel\")\n        elif opcode == b'C':  # False\n            stack_append(False)  # noqa: FBT003\n        elif opcode == b'D':  # float\n            stack_append(_unpack(\"!d\", read(8))[0])\n        elif opcode == b'E':  # frozenset\n            _load_collection(frozenset)\n        elif opcode in (b'F', b'G'):  # int, long\n            stack_append(_from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode in (b'H', b'I'):  # longint, longlong\n            stack_append(int(read(_from_bytes(read(4), byteorder=\"big\", signed=True))))\n        elif opcode == b'J':  # dict\n            stack_append({})\n        elif opcode == b'K':  # list\n            stack_append([None] * _from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode == b'L':  # None\n            stack_append(None)\n        elif opcode == b'M':  # Python 2 string\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n        elif opcode == b'O':  # set\n            _load_collection(set)\n        elif opcode == b'P':  # setitem\n            try:\n                value = stack_pop()\n                key = stack_pop()\n            except IndexError:\n                raise LoadError(\"not enough items for setitem\")\n            stack[-1][key] = value\n        elif opcode == b'Q':  # stop\n            stopped = True\n            break\n        elif opcode == b'R':  # True\n            stack_append(True)  # noqa: FBT003\n        elif opcode == b'T':  # complex\n            stack_append(complex(_unpack(\"!d\", read(8))[0], _unpack(\"!d\", read(8))[0]))\n        else:\n            raise LoadError(\n                \"unknown opcode %r - wire protocol corruption?\" % opcode)\n    if not stopped:\n        raise LoadError(\"didn't get STOP\")\n    if len(stack) != 1:\n        raise LoadError(\"internal unserialization error\")\n    return stack_pop(0)",
+    "hash_value": "1fc432b1b2bae904649a002de60a9cc9"
+  },
+  {
+    "pyfile": "test_streaming.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/devpi_server-6.14.0-py3-none-any/test_devpi_server/test_streaming.py",
+    "line_number": "63",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "62\t        from time import sleep\n63\t        if \"storage_with_filesystem\" not in storage_info.get('_test_markers', []):\n64\t            pytest.skip(\"The storage doesn't have marker 'storage_with_filesystem'.\")",
+    "context_snippet": "@pytest.mark.slow\n@pytest.mark.parametrize(\"length,pkg_version,pkg_name\", [\n    (None, '1.0', 'pkg1'), (False, '1.1', 'pkg2')])\ndef test_streaming_download(self, content_digest, files_path, length, pkg_version, pkg_name, server_url_session, simpypi, storage_info):\n    from time import sleep\n    if \"storage_with_filesystem\" not in storage_info.get('_test_markers', []):\n        pytest.skip(\"The storage doesn't have marker 'storage_with_filesystem'.\")\n    (content, digest) = content_digest\n    (url, s) = server_url_session\n    pkgzip = f\"{pkg_name}-{pkg_version}.zip\"\n    simpypi.add_release(pkg_name, pkgver='%s#sha256=%s' % (pkgzip, digest))\n    simpypi.add_file(\n        f\"/{pkg_name}/{pkgzip}\", content, stream=True, length=length)\n    with contextlib.closing(s.get(url + f\"root/mirror/{pkg_name}\")) as r:\n        r = r.json()\n    assert pkg_version in r['result'], r\n    href = r['result'][pkg_version]['+links'][0]['href']\n    r = requests.get(href, stream=True)\n    with contextlib.closing(r):\n        stream = r.iter_content(1024)\n        data = next(stream)\n        assert data == b'deadbeaf' * 128\n        part = next(stream)\n        assert part == b'sandwich' * 128\n        data = data + part\n        if length is not False:\n            assert r.headers['content-length'] == str(len(content))\n        for part in stream:\n            data = data + part\n        assert data == content\n    pkg_file = files_path.joinpath(\n        'root', 'mirror', '+f', digest[:3], digest[3:16], pkgzip)\n    # this is sometimes delayed a bit, so we check for a while\n    for i in range(50):\n        if pkg_file.exists():\n            break\n        sleep(0.1)\n    assert pkg_file.exists()\n",
+    "hash_value": "b3a7c8dbeacea3c169224705047914f5"
+  }
+]

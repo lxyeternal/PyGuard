@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "acryl_datahub-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/acryl_datahub-1.0.0.3rc2.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "nifi.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/acryl_datahub-1.0.0.3rc2/acryl_datahub-1.0.0.3rc2/src/datahub/ingestion/source/nifi.py",
+      "line_number": "822",
+      "type_description": "B820:get",
+      "context_snippet": "    def fetch_provenance_events(\n        self,\n        processor: NifiComponent,\n        eventType: str,\n        startDate: datetime,\n        endDate: Optional[datetime] = None,\n    ) -> Iterable[Dict]:\n        logger.debug(\n            f\"Fetching {eventType} provenance events for {processor.id}\\\n            of processor type {processor.type}, Start date: {startDate}, End date: {endDate}\"\n        )\n\n        provenance_response = self.submit_provenance_query(\n            processor, eventType, startDate, endDate\n        )\n\n        if provenance_response.ok:\n            provenance = provenance_response.json().get(\"provenance\", {})\n            provenance_uri = provenance.get(\"uri\")\n            logger.debug(f\"Retrieving provenance uri: {provenance_uri}\")\n            provenance_response = self.session.get(provenance_uri)\n            if provenance_response.ok:\n                provenance = provenance_response.json().get(\"provenance\", {})\n\n            attempts = 5  # wait for at most 5 attempts 5*1= 5 seconds\n            while (not provenance.get(\"finished\", False)) and attempts > 0:\n                logger.warning(\n                    f\"Provenance query not completed, attempts left : {attempts}\"\n                )\n                # wait until the uri returns percentcomplete 100\n                time.sleep(1)\n                provenance_response = self.session.get(provenance_uri)\n                attempts -= 1\n                if provenance_response.ok:\n                    provenance = provenance_response.json().get(\"provenance\", {})\n\n            events = provenance.get(\"results\", {}).get(\"provenanceEvents\", [])\n            last_event_time: Optional[datetime] = None\n            oldest_event_time: Optional[datetime] = None\n\n            for event in events:\n                event_time = parser.parse(event.get(\"eventTime\"))\n                # datetime.strptime(\n                #    event.get(\"eventTime\"), \"%m/%d/%Y %H:%M:%S.%f %Z\"\n                # )\n                if not last_event_time or event_time > last_event_time:\n                    last_event_time = event_time\n\n                if not oldest_event_time or event_time < oldest_event_time:\n                    oldest_event_time = event_time\n\n                yield event\n\n            processor.last_event_time = str(last_event_time)\n            self.delete_provenance(provenance_uri)\n\n            total = provenance.get(\"results\", {}).get(\"total\")\n            totalCount = provenance.get(\"results\", {}).get(\"totalCount\")\n            logger.debug(f\"Retrieved {totalCount} of {total}\")\n            if total != str(totalCount):\n                logger.debug(\"Trying to retrieve more events for the same processor\")\n                yield from self.fetch_provenance_events(\n                    processor, eventType, startDate, oldest_event_time\n                )\n        else:\n            self.report.warning(\n                f\"Provenance events could not be fetched for processor \\\n                    {processor.id} of type {processor.name}\",\n                self.config.site_url,\n            )\n            logger.warning(provenance_response.text)\n        return",
+      "hash_value": "4a6f8f3df98a6095e84076d9eb91e060",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    def fetch_provenance_events(\n        self,\n        processor: NifiComponent,\n        eventType: str,\n        startDate: datetime,\n        endDate: Optional[datetime] = None,\n    ) -> Iterable[Dict]:\n        logger.debug(\n            f\"Fetching {eventType} provenance events for {processor.id}\\\n            of processor type {processor.type}, Start date: {startDate}, End date: {endDate}\"\n        )\n\n        provenance_response = self.submit_provenance_query(\n            processor, eventType, startDate, endDate\n        )\n\n        if provenance_response.ok:\n            provenance = provenance_response.json().get(\"provenance\", {})\n            provenance_uri = provenance.get(\"uri\")\n            logger.debug(f\"Retrieving provenance uri: {provenance_uri}\")\n            provenance_response = self.session.get(provenance_uri)\n            if provenance_response.ok:\n                provenance = provenance_response.json().get(\"provenance\", {})\n\n            attempts = 5  # wait for at most 5 attempts 5*1= 5 seconds\n            while (not provenance.get(\"finished\", False)) and attempts > 0:\n                logger.warning(\n                    f\"Provenance query not completed, attempts left : {attempts}\"\n                )\n                # wait until the uri returns percentcomplete 100\n                time.sleep(1)\n                provenance_response = self.session.get(provenance_uri)\n                attempts -= 1\n                if provenance_response.ok:\n                    provenance = provenance_response.json().get(\"provenance\", {})\n\n            events = provenance.get(\"results\", {}).get(\"provenanceEvents\", [])\n            last_event_time: Optional[datetime] = None\n            oldest_event_time: Optional[datetime] = None\n\n            for event in events:\n                event_time = parser.parse(event.get(\"eventTime\"))\n                # datetime.strptime(\n                #    event.get(\"eventTime\"), \"%m/%d/%Y %H:%M:%S.%f %Z\"\n                # )\n                if not last_event_time or event_time > last_event_time:\n                    last_event_time = event_time\n\n                if not oldest_event_time or event_time < oldest_event_time:\n                    oldest_event_time = event_time\n\n                yield event\n\n            processor.last_event_time = str(last_event_time)\n            self.delete_provenance(provenance_uri)\n\n            total = provenance.get(\"results\", {}).get(\"total\")\n            totalCount = provenance.get(\"results\", {}).get(\"totalCount\")\n            logger.debug(f\"Retrieved {totalCount} of {total}\")\n            if total != str(totalCount):\n                logger.debug(\"Trying to retrieve more events for the same processor\")\n                yield from self.fetch_provenance_events(\n                    processor, eventType, startDate, oldest_event_time\n                )\n        else:\n            self.report.warning(\n                f\"Provenance events could not be fetched for processor \\\n                    {processor.id} of type {processor.name}\",\n                self.config.site_url,\n            )\n            logger.warning(provenance_response.text)\n        return",
+          "triple_sequences": [
+            {
+              "action_api": "self.submit_provenance_query()",
+              "action_description": "Executes function to retrieve data",
+              "action_id": "execute_sql_query",
+              "object": "processor, eventType, startDate, endDate",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "provenance_response.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "self.session.get()",
+              "action_description": "Sends HTTP GET request to URL",
+              "action_id": "open_url_get",
+              "object": "provenance_uri",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "time.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "1",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "parser.parse()",
+              "action_description": "Parses string into datetime object",
+              "action_id": "parse_datetime",
+              "object": "event.get(\"eventTime\")",
+              "object_description": "Character from obfuscated string",
+              "object_id": "character_from_obfuscated_string",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.delete_provenance()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "provenance_uri",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file_content"
+            },
+            {
+              "action_api": "self.fetch_provenance_events()",
+              "action_description": "Executes function to retrieve data",
+              "action_id": "execute_sql_query",
+              "object": "processor, eventType, startDate, oldest_event_time",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "self.report.warning()",
+              "action_description": "Executes function to log warning",
+              "action_id": "execute_shell_command",
+              "object": "f\"Provenance events could not be fetched for processor {processor.id} of type {processor.name}\", self.config.site_url",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "logger.warning()",
+              "action_description": "Executes function to log warning",
+              "action_id": "execute_shell_command",
+              "object": "provenance_response.text",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "erppeek.py",
+    "code_snippet": "def _interact(global_vars, use_pprint=True, usage=USAGE):\n    import code\n    import pprint\n    if PY2:\n        import __builtin__ as builtins\n\n        def _exec(code, g):\n            exec('exec code in g')\n    else:\n        import builtins\n        _exec = getattr(builtins, 'exec')\n\n    if use_pprint:\n        def displayhook(value, _printer=pprint.pprint, _builtins=builtins):\n            # Pretty-format the output\n            if value is None:\n                return\n            _printer(value)\n            _builtins._ = value\n        sys.displayhook = displayhook\n\n    class Usage(object):\n        def __call__(self):\n            print(usage)\n        __repr__ = lambda s: usage\n    builtins.usage = Usage()\n\n    try:\n        import readline as rl\n        import rlcompleter\n        rl.parse_and_bind('tab: complete')\n        # IOError if file missing, or broken Apple readline\n        rl.read_history_file(HIST_FILE)\n    except Exception:\n        pass\n    else:\n        if rl.get_history_length() < 0:\n            rl.set_history_length(int(os.getenv('HISTSIZE', 500)))\n        # better append instead of replace?\n        atexit.register(rl.write_history_file, HIST_FILE)\n\n    class Console(code.InteractiveConsole):\n        def runcode(self, code):\n            try:\n                _exec(code, global_vars)\n            except SystemExit:\n                raise\n            except:\n                # Print readable 'Fault' errors\n                # Work around http://bugs.python.org/issue12643\n                (exc_type, exc, tb) = sys.exc_info()\n                msg = ''.join(format_exception(exc_type, exc, tb, chain=False))\n                print(msg.strip())\n\n    sys.exc_clear() if hasattr(sys, 'exc_clear') else None  # Python 2.x\n    # Key UP to avoid an empty line\n    Console().interact('\\033[A')",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.exec",
+        "sys.displayhook",
+        "atexit.register",
+        "rl.write_history_file",
+        "sys.exc_info"
+      ],
+      "api_sequence_with_args": [
+        "builtins.exec(code, global_vars)",
+        "sys.displayhook = displayhook",
+        "atexit.register(rl.write_history_file, HIST_FILE)",
+        "rl.write_history_file(HIST_FILE)",
+        "sys.exc_info()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "sys.displayhook",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "atexit.register",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "rl.write_history_file",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "sys.exc_info",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        }
+      ],
+      "contextual_code": "def _interact(global_vars, use_pprint=True, usage=USAGE):\n    import code\n    import pprint\n    if PY2:\n        import __builtin__ as builtins\n        def _exec(code, g):\n            exec('exec code in g')\n    else:\n        import builtins\n        _exec = getattr(builtins, 'exec')\n\n    if use_pprint:\n        def displayhook(value, _printer=pprint.pprint, _builtins=builtins):\n            if value is None:\n                return\n            _printer(value)\n            _builtins._ = value\n        sys.displayhook = displayhook\n\n    class Usage(object):\n        def __call__(self):\n            print(usage)\n        __repr__ = lambda s: usage\n    builtins.usage = Usage()\n\n    try:\n        import readline as rl\n        import rlcompleter\n        rl.parse_and_bind('tab: complete')\n        rl.read_history_file(HIST_FILE)\n    except Exception:\n        pass\n    else:\n        if rl.get_history_length() < 0:\n            rl.set_history_length(int(os.getenv('HISTSIZE', 500)))\n        atexit.register(rl.write_history_file, HIST_FILE)\n\n    class Console(code.InteractiveConsole):\n        def runcode(self, code):\n            try:\n                _exec(code, global_vars)\n            except SystemExit:\n                raise\n            except:\n                (exc_type, exc, tb) = sys.exc_info()\n                msg = ''.join(format_exception(exc_type, exc, tb, chain=False))\n                print(msg.strip())"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "erppeek-1.7.1",
+      "total_matches": 1
+    }
+  }
+]

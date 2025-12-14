@@ -1,0 +1,271 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import atexit\nimport io\nimport os\nimport re\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nimport textwrap\n\nfrom setuptools import setup, Extension, find_packages\nfrom setuptools.command.build_ext import build_ext\n\nfrom horovod import __version__\n\n_FRAMEWORK_METADATA_FILE = 'horovod/metadata.json'\n\nclass CMakeExtension(Extension):\n    def __init__(self, name, cmake_lists_dir='.', sources=None, **kwa):\n        if sources is None:\n            sources = []\n        Extension.__init__(self, name, sources=sources, **kwa)\n        self.cmake_lists_dir = os.path.abspath(cmake_lists_dir)\n\n\ntensorflow_mpi_lib = CMakeExtension('horovod.tensorflow.mpi_lib',\n                                    cmake_lists_dir='.', sources=[])\ntorch_mpi_lib_v2 = CMakeExtension('horovod.torch.mpi_lib_v2',\n                                  cmake_lists_dir='.', sources=[])\nmxnet_mpi_lib = CMakeExtension('horovod.mxnet.mpi_lib',\n                               cmake_lists_dir='.', sources=[])\n\ndef get_cmake_bin():\n    from packaging import version\n\n    if 'HOROVOD_CMAKE' in os.environ:\n        return os.environ['HOROVOD_CMAKE']\n\n    cmake_bin = 'cmake'\n    try:\n        out = subprocess.check_output([cmake_bin, '--version'])\n    except OSError:\n        cmake_installed_version = version.parse(\"0.0\")\n    else:\n        cmake_installed_version = version.parse(re.search(r'version\\s*([\\d.]+)', out.decode()).group(1))\n\n    if cmake_installed_version < version.parse(\"3.13.0\"):\n        print(\"Could not find a recent CMake to build Horovod. \"\n              \"Attempting to install CMake 3.13 to a temporary location via pip.\", flush=True)\n        cmake_temp_dir = tempfile.TemporaryDirectory(prefix=\"horovod-cmake-tmp\")\n        atexit.register(cmake_temp_dir.cleanup)\n        try:\n            _ = subprocess.check_output([\"pip\", \"install\", \"--target\", cmake_temp_dir.name, \"cmake~=3.13.0\"])\n        except Exception:\n            raise RuntimeError(\"Failed to install temporary CMake. \"\n                               \"Please update your CMake to 3.13+ or set HOROVOD_CMAKE appropriately.\")\n        cmake_bin = os.path.join(cmake_temp_dir.name, \"bin\", \"run_cmake\")\n        with io.open(cmake_bin, \"w\") as f_run_cmake:\n            f_run_cmake.write(\n                f\"#!/bin/sh\\nPYTHONPATH={cmake_temp_dir.name} {os.path.join(cmake_temp_dir.name, 'bin', 'cmake')} \\\"$@\\\"\")\n        os.chmod(cmake_bin, 0o755)\n\n    return cmake_bin\n\n\nclass custom_build_ext(build_ext):\n    def build_extensions(self):\n        if os.getenv('HOROVOD_SKIP_COMPILE') == '1':\n            # Skip building extensions using CMake\n            print(\"Horovod is being installed without native libraries\")\n            return\n\n        cmake_bin = get_cmake_bin()\n\n        config = 'Debug' if self.debug or os.environ.get('HOROVOD_DEBUG') == \"1\" else 'RelWithDebInfo'\n\n        ext_name = self.extensions[0].name\n        build_dir = self.get_ext_fullpath(ext_name).replace(self.get_ext_filename(ext_name), '')\n        build_dir = os.path.abspath(build_dir)\n\n        cmake_args = ['-DCMAKE_BUILD_TYPE=' + config,\n                      '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(config.upper(), build_dir),\n                      '-DPYTHON_EXECUTABLE:FILEPATH=' + sys.executable]\n\n        make_args = ['-j8'] if not os.environ.get('MAKEFLAGS') else []\n        if self.verbose:\n            make_args.append('VERBOSE=1')\n\n        cmake_build_args = ['--config', config]\n        if make_args:\n            # -- specifies that these args are going to the native build tool: make\n            cmake_build_args += ['--'] + make_args\n\n        cmake_build_dir = os.path.join(self.build_temp, config)\n        if not os.path.exists(cmake_build_dir):\n            os.makedirs(cmake_build_dir)\n\n        config_and_build_commands = [\n            [cmake_bin, self.extensions[0].cmake_lists_dir] + cmake_args,\n            [cmake_bin, '--build', '.'] + cmake_build_args\n        ]\n\n        if self.verbose:\n            print(f\"Running CMake in {cmake_build_dir}:\")\n            for command in config_and_build_commands:\n                print(\" \".join(command))\n            sys.stdout.flush()\n\n        # Config and build the extension\n        try:\n            for command in config_and_build_commands:\n                subprocess.check_call(command, cwd=cmake_build_dir)\n        except OSError as e:\n            raise RuntimeError('CMake failed: {}'.format(str(e)))\n\n        if sys.argv[1].startswith('develop'):\n            # Copy over metadata.json file from build directory\n            shutil.copyfile(os.path.join(build_dir, _FRAMEWORK_METADATA_FILE),\n                            os.path.join(self.extensions[0].cmake_lists_dir, _FRAMEWORK_METADATA_FILE))\n            # Remove unfound frameworks, otherwise develop mode will fail the install\n            self.extensions = [x for x in self.extensions if os.path.exists(self.get_ext_fullpath(x.name))]\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.environ",
+        "subprocess.check_output",
+        "re.search",
+        "subprocess.check_output",
+        "tempfile.TemporaryDirectory",
+        "atexit.register",
+        "subprocess.check_output",
+        "os.path.join",
+        "io.open",
+        "io.open.write",
+        "os.path.join",
+        "os.chmod",
+        "os.getenv",
+        "os.environ.get",
+        "os.path.abspath",
+        "os.path.join",
+        "os.path.exists",
+        "os.makedirs",
+        "subprocess.check_call",
+        "sys.argv",
+        "shutil.copyfile",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(cmake_lists_dir)",
+        "os.environ",
+        "subprocess.check_output([cmake_bin, '--version'])",
+        "re.search(r'version\\s*([\\d.]+)', out.decode())",
+        "subprocess.check_output([\"pip\", \"install\", \"--target\", cmake_temp_dir.name, \"cmake~=3.13.0\"])",
+        "tempfile.TemporaryDirectory(prefix=\"horovod-cmake-tmp\")",
+        "atexit.register(cmake_temp_dir.cleanup)",
+        "subprocess.check_output([\"pip\", \"install\", \"--target\", cmake_temp_dir.name, \"cmake~=3.13.0\"])",
+        "os.path.join(cmake_temp_dir.name, \"bin\", \"run_cmake\")",
+        "io.open(cmake_bin, \"w\")",
+        "f_run_cmake.write(f\"#!/bin/sh\\nPYTHONPATH={cmake_temp_dir.name} {os.path.join(cmake_temp_dir.name, 'bin', 'cmake')} \\\"$@\\\"\")",
+        "os.path.join(cmake_temp_dir.name, 'bin', 'cmake')",
+        "os.chmod(cmake_bin, 0o755)",
+        "os.getenv('HOROVOD_SKIP_COMPILE')",
+        "os.environ.get('HOROVOD_DEBUG')",
+        "os.path.abspath(build_dir)",
+        "os.path.join(self.build_temp, config)",
+        "os.path.exists(cmake_build_dir)",
+        "os.makedirs(cmake_build_dir)",
+        "subprocess.check_call(command, cwd=cmake_build_dir)",
+        "sys.argv[1].startswith('develop')",
+        "shutil.copyfile(os.path.join(build_dir, _FRAMEWORK_METADATA_FILE), os.path.join(self.extensions[0].cmake_lists_dir, _FRAMEWORK_METADATA_FILE))",
+        "os.path.join(build_dir, _FRAMEWORK_METADATA_FILE)",
+        "os.path.join(self.extensions[0].cmake_lists_dir, _FRAMEWORK_METADATA_FILE)",
+        "os.path.exists(self.get_ext_fullpath(x.name))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "tempfile.TemporaryDirectory",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "atexit.register",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "io.open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chmod",
+          "id": "change_file_mode_execute",
+          "description": "Changes file mode to add execute permission",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "def get_cmake_bin():\n    from packaging import version\n\n    if 'HOROVOD_CMAKE' in os.environ:\n        return os.environ['HOROVOD_CMAKE']\n\n    cmake_bin = 'cmake'\n    try:\n        out = subprocess.check_output([cmake_bin, '--version'])\n    except OSError:\n        cmake_installed_version = version.parse(\"0.0\")\n    else:\n        cmake_installed_version = version.parse(re.search(r'version\\s*([\\d.]+)', out.decode()).group(1))\n\n    if cmake_installed_version < version.parse(\"3.13.0\"):\n        print(\"Could not find a recent CMake to build Horovod. \"\n              \"Attempting to install CMake 3.13 to a temporary location via pip.\", flush=True)\n        cmake_temp_dir = tempfile.TemporaryDirectory(prefix=\"horovod-cmake-tmp\")\n        atexit.register(cmake_temp_dir.cleanup)\n        try:\n            _ = subprocess.check_output([\"pip\", \"install\", \"--target\", cmake_temp_dir.name, \"cmake~=3.13.0\"])\n        except Exception:\n            raise RuntimeError(\"Failed to install temporary CMake. \"\n                               \"Please update your CMake to 3.13+ or set HOROVOD_CMAKE appropriately.\")\n        cmake_bin = os.path.join(cmake_temp_dir.name, \"bin\", \"run_cmake\")\n        with io.open(cmake_bin, \"w\") as f_run_cmake:\n            f_run_cmake.write(\n                f\"#!/bin/sh\\nPYTHONPATH={cmake_temp_dir.name} {os.path.join(cmake_temp_dir.name, 'bin', 'cmake')} \\\"$@\\\"\")\n        os.chmod(cmake_bin, 0o755)\n\n    return cmake_bin\n\nclass custom_build_ext(build_ext):\n    def build_extensions(self):\n        if os.getenv('HOROVOD_SKIP_COMPILE') == '1':\n            print(\"Horovod is being installed without native libraries\")\n            return\n\n        cmake_bin = get_cmake_bin()\n\n        config = 'Debug' if self.debug or os.environ.get('HOROVOD_DEBUG') == \"1\" else 'RelWithDebInfo'\n\n        ext_name = self.extensions[0].name\n        build_dir = self.get_ext_fullpath(ext_name).replace(self.get_ext_filename(ext_name), '')\n        build_dir = os.path.abspath(build_dir)\n\n        cmake_args = ['-DCMAKE_BUILD_TYPE=' + config,\n                      '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(config.upper(), build_dir),\n                      '-DPYTHON_EXECUTABLE:FILEPATH=' + sys.executable]\n\n        make_args = ['-j8'] if not os.environ.get('MAKEFLAGS') else []\n        if self.verbose:\n            make_args.append('VERBOSE=1')\n\n        cmake_build_args = ['--config', config]\n        if make_args:\n            cmake_build_args += ['--'] + make_args\n\n        cmake_build_dir = os.path.join(self.build_temp, config)\n        if not os.path.exists(cmake_build_dir):\n            os.makedirs(cmake_build_dir)\n\n        config_and_build_commands = [\n            [cmake_bin, self.extensions[0].cmake_lists_dir] + cmake_args,\n            [cmake_bin, '--build', '.'] + cmake_build_args\n        ]\n\n        if self.verbose:\n            print(f\"Running CMake in {cmake_build_dir}:\")\n            for command in config_and_build_commands:\n                print(\" \".join(command))\n            sys.stdout.flush()\n\n        try:\n            for command in config_and_build_commands:\n                subprocess.check_call(command, cwd=cmake_build_dir)\n        except OSError as e:\n            raise RuntimeError('CMake failed: {}'.format(str(e)))\n\n        if sys.argv[1].startswith('develop'):\n            shutil.copyfile(os.path.join(build_dir, _FRAMEWORK_METADATA_FILE),\n                            os.path.join(self.extensions[0].cmake_lists_dir, _FRAMEWORK_METADATA_FILE))\n            self.extensions = [x for x in self.extensions if os.path.exists(self.get_ext_fullpath(x.name))]"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "horovod-0.28.1",
+      "total_matches": 1
+    }
+  }
+]

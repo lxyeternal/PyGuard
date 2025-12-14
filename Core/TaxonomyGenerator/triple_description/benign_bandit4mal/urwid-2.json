@@ -1,0 +1,216 @@
+{
+  "metadata": {
+    "package_name": "urwid-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/urwid-2.6.16.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "test_main_loop.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urwid-2.6.16/urwid-2.6.16/tests/test_main_loop.py",
+      "line_number": "99",
+      "type_description": "B840:executor",
+      "context_snippet": "@unittest.skipIf(IS_WINDOWS, \"selectors for pipe are not supported on Windows\")\ndef test_watch_pipe(self):\n    \"\"\"Test watching pipe is stopped on explicit False only.\"\"\"\n    evt = threading.Event()  # We need thread synchronization\n    outcome: list[bytes] = []\n\n    def pipe_cb(data: bytes) -> typing.Any:\n        outcome.append(data)\n\n        if not evt.is_set():\n            evt.set()\n\n        if data == b\"false\":\n            return False\n        if data == b\"true\":\n            return True\n        if data == b\"null\":\n            return None\n        return object()\n\n    def pipe_writer(fd: int) -> None:\n        os.write(fd, b\"something\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"true\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"null\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"false\")\n\n    with ClosingTemporaryFilesPair() as (\n        rd_r,\n        wr_r,\n    ), ClosingTemporaryFilesPair() as (\n        rd_w,\n        wr_w,\n    ), concurrent.futures.ThreadPoolExecutor(\n        max_workers=1,\n    ) as executor, unittest.mock.patch(\n        \"subprocess.Popen\",  # we want to be sure that nothing outside is called\n        autospec=True,\n    ):\n        evl = urwid.MainLoop(\n            urwid.SolidFill(),\n            screen=urwid.display.raw.Screen(input=rd_r, output=wr_w),  # We need screen which support mocked IO\n            handle_mouse=False,  # Less external calls - better\n        )\n        evl.set_alarm_in(1, stop_screen_cb)\n        pipe_fd = evl.watch_pipe(pipe_cb)\n        executor.submit(pipe_writer, pipe_fd)\n\n        evl.run()\n        self.assertEqual([b\"something\", b\"true\", b\"null\", b\"false\"], outcome)\n        not_removed = evl.remove_watch_pipe(pipe_fd)\n        self.assertFalse(not_removed)",
+      "hash_value": "b9cd6b3a60561dba5fe7719021351a3d",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "@unittest.skipIf(IS_WINDOWS, \"selectors for pipe are not supported on Windows\")\ndef test_watch_pipe(self):\n    \"\"\"Test watching pipe is stopped on explicit False only.\"\"\"\n    evt = threading.Event()  # We need thread synchronization\n    outcome: list[bytes] = []\n\n    def pipe_cb(data: bytes) -> typing.Any:\n        outcome.append(data)\n\n        if not evt.is_set():\n            evt.set()\n\n        if data == b\"false\":\n            return False\n        if data == b\"true\":\n            return True\n        if data == b\"null\":\n            return None\n        return object()\n\n    def pipe_writer(fd: int) -> None:\n        os.write(fd, b\"something\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"true\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"null\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"false\")\n\n    with ClosingTemporaryFilesPair() as (\n        rd_r,\n        wr_r,\n    ), ClosingTemporaryFilesPair() as (\n        rd_w,\n        wr_w,\n    ), concurrent.futures.ThreadPoolExecutor(\n        max_workers=1,\n    ) as executor, unittest.mock.patch(\n        \"subprocess.Popen\",  # we want to be sure that nothing outside is called\n        autospec=True,\n    ):\n        evl = urwid.MainLoop(\n            urwid.SolidFill(),\n            screen=urwid.display.raw.Screen(input=rd_r, output=wr_w),  # We need screen which support mocked IO\n            handle_mouse=False,  # Less external calls - better\n        )\n        evl.set_alarm_in(1, stop_screen_cb)\n        pipe_fd = evl.watch_pipe(pipe_cb)\n        executor.submit(pipe_writer, pipe_fd)\n\n        evl.run()\n        self.assertEqual([b\"something\", b\"true\", b\"null\", b\"false\"], outcome)\n        not_removed = evl.remove_watch_pipe(pipe_fd)\n        self.assertFalse(not_removed)",
+          "triple_sequences": [
+            {
+              "action_api": "threading.Event()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "evt.is_set()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "evt.set()",
+              "action_description": "Starts thread execution",
+              "action_id": "start_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "evt.wait()",
+              "action_description": "Waits for thread to finish execution",
+              "action_id": "wait_thread",
+              "object": "0.1",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "evt.clear()",
+              "action_description": "Waits for thread to finish execution",
+              "action_id": "wait_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "os.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "fd, b\"something\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "fd, b\"true\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "fd, b\"null\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "fd, b\"false\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "concurrent.futures.ThreadPoolExecutor()",
+              "action_description": "Initializes thread pool executor",
+              "action_id": "init_thread_pool",
+              "object": "max_workers=1",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Concurrent execution preparation",
+              "intention_id": "concurrent_execution_preparation"
+            },
+            {
+              "action_api": "executor.submit()",
+              "action_description": "Submits function to thread pool",
+              "action_id": "submit_thread_function",
+              "object": "pipe_writer, pipe_fd",
+              "object_description": "Thread target and arguments",
+              "object_id": "thread_target_arguments",
+              "intention_description": "Run function in thread pool",
+              "intention_id": "run_function_thread_pool"
+            },
+            {
+              "action_api": "unittest.mock.patch()",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "\"subprocess.Popen\"",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import module dynamically",
+              "intention_id": "import_module_dynamically"
+            },
+            {
+              "action_api": "urwid.MainLoop()",
+              "action_description": "Instantiates EVIL class",
+              "action_id": "init_evil_class",
+              "object": "urwid.SolidFill(), screen=urwid.display.raw.Screen(input=rd_r, output=wr_w), handle_mouse=False",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            },
+            {
+              "action_api": "evl.set_alarm_in()",
+              "action_description": "Creates asynchronous task",
+              "action_id": "create_async_task",
+              "object": "1, stop_screen_cb",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "evl.watch_pipe()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "pipe_cb",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "evl.run()",
+              "action_description": "Runs asynchronous function until completion",
+              "action_id": "run_async_function",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "self.assertEqual()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "[b\"something\", b\"true\", b\"null\", b\"false\"], outcome",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "evl.remove_watch_pipe()",
+              "action_description": "Removes all keyboard hooks",
+              "action_id": "remove_keyboard_hooks",
+              "object": "pipe_fd",
+              "object_description": "Process ID",
+              "object_id": "process_id",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            },
+            {
+              "action_api": "self.assertFalse()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "not_removed",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

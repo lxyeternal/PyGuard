@@ -1,0 +1,526 @@
+{
+  "metadata": {
+    "package_name": "litellm-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/litellm-1.65.7.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "main.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/litellm-1.65.7/litellm-1.65.7/litellm/secret_managers/main.py",
+      "line_number": "259",
+      "type_description": "B801:b64decode",
+      "context_snippet": "def get_secret(  # noqa: PLR0915\n    secret_name: str,\n    default_value: Optional[Union[str, bool]] = None,\n):\n    key_management_system = litellm._key_management_system\n    key_management_settings = litellm._key_management_settings\n    secret = None\n\n    if secret_name.startswith(\"os.environ/\"):\n        secret_name = secret_name.replace(\"os.environ/\", \"\")\n\n    # Example: oidc/google/https://bedrock-runtime.us-east-1.amazonaws.com/model/stability.stable-diffusion-xl-v1/invoke\n    if secret_name.startswith(\"oidc/\"):\n        secret_name_split = secret_name.replace(\"oidc/\", \"\")\n        oidc_provider, oidc_aud = secret_name_split.split(\"/\", 1)\n        # TODO: Add caching for HTTP requests\n        if oidc_provider == \"google\":\n            oidc_token = oidc_cache.get_cache(key=secret_name)\n            if oidc_token is not None:\n                return oidc_token\n\n            oidc_client = HTTPHandler(timeout=httpx.Timeout(timeout=600.0, connect=5.0))\n            # https://cloud.google.com/compute/docs/instances/verifying-instance-identity#request_signature\n            response = oidc_client.get(\n                \"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity\",\n                params={\"audience\": oidc_aud},\n                headers={\"Metadata-Flavor\": \"Google\"},\n            )\n            if response.status_code == 200:\n                oidc_token = response.text\n                oidc_cache.set_cache(key=secret_name, value=oidc_token, ttl=3600 - 60)\n                return oidc_token\n            else:\n                raise ValueError(\"Google OIDC provider failed\")\n        elif oidc_provider == \"circleci\":\n            # https://circleci.com/docs/openid-connect-tokens/\n            env_secret = os.getenv(\"CIRCLE_OIDC_TOKEN\")\n            if env_secret is None:\n                raise ValueError(\"CIRCLE_OIDC_TOKEN not found in environment\")\n            return env_secret\n        elif oidc_provider == \"circleci_v2\":\n            # https://circleci.com/docs/openid-connect-tokens/\n            env_secret = os.getenv(\"CIRCLE_OIDC_TOKEN_V2\")\n            if env_secret is None:\n                raise ValueError(\"CIRCLE_OIDC_TOKEN_V2 not found in environment\")\n            return env_secret\n        elif oidc_provider == \"github\":\n            # https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#using-custom-actions\n            actions_id_token_request_url = os.getenv(\"ACTIONS_ID_TOKEN_REQUEST_URL\")\n            actions_id_token_request_token = os.getenv(\"ACTIONS_ID_TOKEN_REQUEST_TOKEN\")\n            if (\n                actions_id_token_request_url is None\n                or actions_id_token_request_token is None\n            ):\n                raise ValueError(\n                    \"ACTIONS_ID_TOKEN_REQUEST_URL or ACTIONS_ID_TOKEN_REQUEST_TOKEN not found in environment\"\n                )\n\n            oidc_token = oidc_cache.get_cache(key=secret_name)\n            if oidc_token is not None:\n                return oidc_token\n\n            oidc_client = HTTPHandler(timeout=httpx.Timeout(timeout=600.0, connect=5.0))\n            response = oidc_client.get(\n                actions_id_token_request_url,\n                params={\"audience\": oidc_aud},\n                headers={\n                    \"Authorization\": f\"Bearer {actions_id_token_request_token}\",\n                    \"Accept\": \"application/json; api-version=2.0\",\n                },\n            )\n            if response.status_code == 200:\n                oidc_token = response.json().get(\"value\", None)\n                oidc_cache.set_cache(key=secret_name, value=oidc_token, ttl=300 - 5)\n                return oidc_token\n            else:\n                raise ValueError(\"Github OIDC provider failed\")\n        elif oidc_provider == \"azure\":\n            # https://azure.github.io/azure-workload-identity/docs/quick-start.html\n            azure_federated_token_file = os.getenv(\"AZURE_FEDERATED_TOKEN_FILE\")\n            if azure_federated_token_file is None:\n                raise ValueError(\"AZURE_FEDERATED_TOKEN_FILE not found in environment\")\n            with open(azure_federated_token_file, \"r\") as f:\n                oidc_token = f.read()\n                return oidc_token\n        elif oidc_provider == \"file\":\n            # Load token from a file\n            with open(oidc_aud, \"r\") as f:\n                oidc_token = f.read()\n                return oidc_token\n        elif oidc_provider == \"env\":\n            # Load token directly from an environment variable\n            oidc_token = os.getenv(oidc_aud)\n            if oidc_token is None:\n                raise ValueError(f\"Environment variable {oidc_aud} not found\")\n            return oidc_token\n        elif oidc_provider == \"env_path\":\n            # Load token from a file path specified in an environment variable\n            token_file_path = os.getenv(oidc_aud)\n            if token_file_path is None:\n                raise ValueError(f\"Environment variable {oidc_aud} not found\")\n            with open(token_file_path, \"r\") as f:\n                oidc_token = f.read()\n                return oidc_token\n        else:\n            raise ValueError(\"Unsupported OIDC provider\")\n\n    try:\n        if (\n            _should_read_secret_from_secret_manager()\n            and litellm.secret_manager_client is not None\n        ):\n            try:\n                client = litellm.secret_manager_client\n                key_manager = \"local\"\n                if key_management_system is not None:\n                    key_manager = key_management_system.value\n\n                if key_management_settings is not None:\n                    if (\n                        key_management_settings.hosted_keys is not None\n                        and secret_name not in key_management_settings.hosted_keys\n                    ):  # allow user to specify which keys to check in hosted key manager\n                        key_manager = \"local\"\n\n                if (\n                    key_manager == KeyManagementSystem.AZURE_KEY_VAULT.value\n                    or type(client).__module__ + \".\" + type(client).__name__\n                    == \"azure.keyvault.secrets._client.SecretClient\"\n                ):  # support Azure Secret Client - from azure.keyvault.secrets import SecretClient\n                    secret = client.get_secret(secret_name).value\n                elif (\n                    key_manager == KeyManagementSystem.GOOGLE_KMS.value\n                    or client.__class__.__name__ == \"KeyManagementServiceClient\"\n                ):\n                    encrypted_secret: Any = os.getenv(secret_name)\n                    if encrypted_secret is None:\n                        raise ValueError(\n                            \"Google KMS requires the encrypted secret to be in the environment!\"\n                        )\n                    b64_flag = _is_base64(encrypted_secret)\n                    if b64_flag is True:  # if passed in as encoded b64 string\n                        encrypted_secret = base64.b64decode(encrypted_secret)\n                        ciphertext = encrypted_secret\n                    else:\n                        raise ValueError(\n                            \"Google KMS requires the encrypted secret to be encoded in base64\"\n                        )  # fix for this vulnerability https://huntr.com/bounties/ae623c2f-b64b-4245-9ed4-f13a0a5824ce\n                    response = client.decrypt(\n                        request={\n                            \"name\": litellm._google_kms_resource_name,\n                            \"ciphertext\": ciphertext,\n                        }\n                    )\n                    secret = response.plaintext.decode(\n                        \"utf-8\"\n                    )  # assumes the original value was encoded with utf-8\n                elif key_manager == KeyManagementSystem.AWS_KMS.value:\n                    \"\"\"\n                    Only check the tokens which start with 'aws_kms/'. This prevents latency impact caused by checking all keys.\n                    \"\"\"\n                    encrypted_value = os.getenv(secret_name, None)\n                    if encrypted_value is None:\n                        raise Exception(\n                            \"AWS KMS - Encrypted Value of Key={} is None\".format(\n                                secret_name\n                            )\n                        )\n                    # Decode the base64 encoded ciphertext\n                    ciphertext_blob = base64.b64decode(encrypted_value)\n\n                    # Set up the parameters for the decrypt call\n                    params = {\"CiphertextBlob\": ciphertext_blob}\n                    # Perform the decryption\n                    response = client.decrypt(**params)\n\n                    # Extract and decode the plaintext\n                    plaintext = response[\"Plaintext\"]\n                    secret = plaintext.decode(\"utf-8\")\n                    if isinstance(secret, str):\n                        secret = secret.strip()\n                elif key_manager == KeyManagementSystem.AWS_SECRET_MANAGER.value:\n                    from litellm.secret_managers.aws_secret_manager_v2 import (\n                        AWSSecretsManagerV2,\n                    )\n\n                    if isinstance(client, AWSSecretsManagerV2):\n                        secret = client.sync_read_secret(\n                            secret_name=secret_name,\n                            primary_secret_name=key_management_settings.primary_secret_name,\n                        )\n                        print_verbose(f\"get_secret_value_response: {secret}\")\n                elif key_manager == KeyManagementSystem.GOOGLE_SECRET_MANAGER.value:\n                    try:\n                        secret = client.get_secret_from_google_secret_manager(\n                            secret_name\n                        )\n                        print_verbose(f\"secret from google secret manager:  {secret}\")\n                        if secret is None:\n                            raise ValueError(\n                                f\"No secret found in Google Secret Manager for {secret_name}\"\n                            )\n                    except Exception as e:\n                        print_verbose(f\"An error occurred - {str(e)}\")\n                        raise e\n                elif key_manager == KeyManagementSystem.HASHICORP_VAULT.value:\n                    try:\n                        secret = client.sync_read_secret(secret_name=secret_name)\n                        if secret is None:\n                            raise ValueError(\n                                f\"No secret found in Hashicorp Secret Manager for {secret_name}\"\n                            )\n                    except Exception as e:\n                        print_verbose(f\"An error occurred - {str(e)}\")\n                        raise e\n                elif key_manager == \"local\":\n                    secret = os.getenv(secret_name)\n                else:  # assume the default is infisicial client\n                    secret = client.get_secret(secret_name).secret_value\n            except Exception as e:  # check if it's in os.environ\n                verbose_logger.error(\n                    f\"Defaulting to os.environ value for key={secret_name}. An exception occurred - {str(e)}.\\n\\n{traceback.format_exc()}\"\n                )\n                secret = os.getenv(secret_name)\n            try:\n                if isinstance(secret, str):\n                    secret_value_as_bool = ast.literal_eval(secret)\n                    if isinstance(secret_value_as_bool, bool):\n                        return secret_value_as_bool\n                    else:\n                        return secret\n            except Exception:\n                return secret\n        else:\n            secret = os.environ.get(secret_name)\n            secret_value_as_bool = str_to_bool(secret) if secret is not None else None\n            if secret_value_as_bool is not None and isinstance(\n                secret_value_as_bool, bool\n            ):\n                return secret_value_as_bool\n            else:\n                return secret\n    except Exception as e:\n        if default_value is not None:\n            return default_value\n        else:\n            raise e\n",
+      "hash_value": "719b652c2522e7679a959d52cffee4f4",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def get_secret(  # noqa: PLR0915\n    secret_name: str,\n    default_value: Optional[Union[str, bool]] = None,\n):\n    key_management_system = litellm._key_management_system\n    key_management_settings = litellm._key_management_settings\n    secret = None\n\n    if secret_name.startswith(\"os.environ/\"):\n        secret_name = secret_name.replace(\"os.environ/\", \"\")\n\n    # Example: oidc/google/https://bedrock-runtime.us-east-1.amazonaws.com/model/stability.stable-diffusion-xl-v1/invoke\n    if secret_name.startswith(\"oidc/\"):\n        secret_name_split = secret_name.replace(\"oidc/\", \"\")\n        oidc_provider, oidc_aud = secret_name_split.split(\"/\", 1)\n        # TODO: Add caching for HTTP requests\n        if oidc_provider == \"google\":\n            oidc_token = oidc_cache.get_cache(key=secret_name)\n            if oidc_token is not None:\n                return oidc_token\n\n            oidc_client = HTTPHandler(timeout=httpx.Timeout(timeout=600.0, connect=5.0))\n            # https://cloud.google.com/compute/docs/instances/verifying-instance-identity#request_signature\n            response = oidc_client.get(\n                \"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity\",\n                params={\"audience\": oidc_aud},\n                headers={\"Metadata-Flavor\": \"Google\"},\n            )\n            if response.status_code == 200:\n                oidc_token = response.text\n                oidc_cache.set_cache(key=secret_name, value=oidc_token, ttl=3600 - 60)\n                return oidc_token\n            else:\n                raise ValueError(\"Google OIDC provider failed\")\n        elif oidc_provider == \"circleci\":\n            # https://circleci.com/docs/openid-connect-tokens/\n            env_secret = os.getenv(\"CIRCLE_OIDC_TOKEN\")\n            if env_secret is None:\n                raise ValueError(\"CIRCLE_OIDC_TOKEN not found in environment\")\n            return env_secret\n        elif oidc_provider == \"circleci_v2\":\n            # https://circleci.com/docs/openid-connect-tokens/\n            env_secret = os.getenv(\"CIRCLE_OIDC_TOKEN_V2\")\n            if env_secret is None:\n                raise ValueError(\"CIRCLE_OIDC_TOKEN_V2 not found in environment\")\n            return env_secret\n        elif oidc_provider == \"github\":\n            # https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#using-custom-actions\n            actions_id_token_request_url = os.getenv(\"ACTIONS_ID_TOKEN_REQUEST_URL\")\n            actions_id_token_request_token = os.getenv(\"ACTIONS_ID_TOKEN_REQUEST_TOKEN\")\n            if (\n                actions_id_token_request_url is None\n                or actions_id_token_request_token is None\n            ):\n                raise ValueError(\n                    \"ACTIONS_ID_TOKEN_REQUEST_URL or ACTIONS_ID_TOKEN_REQUEST_TOKEN not found in environment\"\n                )\n\n            oidc_token = oidc_cache.get_cache(key=secret_name)\n            if oidc_token is not None:\n                return oidc_token\n\n            oidc_client = HTTPHandler(timeout=httpx.Timeout(timeout=600.0, connect=5.0))\n            response = oidc_client.get(\n                actions_id_token_request_url,\n                params={\"audience\": oidc_aud},\n                headers={\n                    \"Authorization\": f\"Bearer {actions_id_token_request_token}\",\n                    \"Accept\": \"application/json; api-version=2.0\",\n                },\n            )\n            if response.status_code == 200:\n                oidc_token = response.json().get(\"value\", None)\n                oidc_cache.set_cache(key=secret_name, value=oidc_token, ttl=300 - 5)\n                return oidc_token\n            else:\n                raise ValueError(\"Github OIDC provider failed\")\n        elif oidc_provider == \"azure\":\n            # https://azure.github.io/azure-workload-identity/docs/quick-start.html\n            azure_federated_token_file = os.getenv(\"AZURE_FEDERATED_TOKEN_FILE\")\n            if azure_federated_token_file is None:\n                raise ValueError(\"AZURE_FEDERATED_TOKEN_FILE not found in environment\")\n            with open(azure_federated_token_file, \"r\") as f:\n                oidc_token = f.read()\n                return oidc_token\n        elif oidc_provider == \"file\":\n            # Load token from a file\n            with open(oidc_aud, \"r\") as f:\n                oidc_token = f.read()\n                return oidc_token\n        elif oidc_provider == \"env\":\n            # Load token directly from an environment variable\n            oidc_token = os.getenv(oidc_aud)\n            if oidc_token is None:\n                raise ValueError(f\"Environment variable {oidc_aud} not found\")\n            return oidc_token\n        elif oidc_provider == \"env_path\":\n            # Load token from a file path specified in an environment variable\n            token_file_path = os.getenv(oidc_aud)\n            if token_file_path is None:\n                raise ValueError(f\"Environment variable {oidc_aud} not found\")\n            with open(token_file_path, \"r\") as f:\n                oidc_token = f.read()\n                return oidc_token\n        else:\n            raise ValueError(\"Unsupported OIDC provider\")\n\n    try:\n        if (\n            _should_read_secret_from_secret_manager()\n            and litellm.secret_manager_client is not None\n        ):\n            try:\n                client = litellm.secret_manager_client\n                key_manager = \"local\"\n                if key_management_system is not None:\n                    key_manager = key_management_system.value\n\n                if key_management_settings is not None:\n                    if (\n                        key_management_settings.hosted_keys is not None\n                        and secret_name not in key_management_settings.hosted_keys\n                    ):  # allow user to specify which keys to check in hosted key manager\n                        key_manager = \"local\"\n\n                if (\n                    key_manager == KeyManagementSystem.AZURE_KEY_VAULT.value\n                    or type(client).__module__ + \".\" + type(client).__name__\n                    == \"azure.keyvault.secrets._client.SecretClient\"\n                ):  # support Azure Secret Client - from azure.keyvault.secrets import SecretClient\n                    secret = client.get_secret(secret_name).value\n                elif (\n                    key_manager == KeyManagementSystem.GOOGLE_KMS.value\n                    or client.__class__.__name__ == \"KeyManagementServiceClient\"\n                ):\n                    encrypted_secret: Any = os.getenv(secret_name)\n                    if encrypted_secret is None:\n                        raise ValueError(\n                            \"Google KMS requires the encrypted secret to be in the environment!\"\n                        )\n                    b64_flag = _is_base64(encrypted_secret)\n                    if b64_flag is True:  # if passed in as encoded b64 string\n                        encrypted_secret = base64.b64decode(encrypted_secret)\n                        ciphertext = encrypted_secret\n                    else:\n                        raise ValueError(\n                            \"Google KMS requires the encrypted secret to be encoded in base64\"\n                        )  # fix for this vulnerability https://huntr.com/bounties/ae623c2f-b64b-4245-9ed4-f13a0a5824ce\n                    response = client.decrypt(\n                        request={\n                            \"name\": litellm._google_kms_resource_name,\n                            \"ciphertext\": ciphertext,\n                        }\n                    )\n                    secret = response.plaintext.decode(\n                        \"utf-8\"\n                    )  # assumes the original value was encoded with utf-8\n                elif key_manager == KeyManagementSystem.AWS_KMS.value:\n                    \"\"\"\n                    Only check the tokens which start with 'aws_kms/'. This prevents latency impact caused by checking all keys.\n                    \"\"\"\n                    encrypted_value = os.getenv(secret_name, None)\n                    if encrypted_value is None:\n                        raise Exception(\n                            \"AWS KMS - Encrypted Value of Key={} is None\".format(\n                                secret_name\n                            )\n                        )\n                    # Decode the base64 encoded ciphertext\n                    ciphertext_blob = base64.b64decode(encrypted_value)\n\n                    # Set up the parameters for the decrypt call\n                    params = {\"CiphertextBlob\": ciphertext_blob}\n                    # Perform the decryption\n                    response = client.decrypt(**params)\n\n                    # Extract and decode the plaintext\n                    plaintext = response[\"Plaintext\"]\n                    secret = plaintext.decode(\"utf-8\")\n                    if isinstance(secret, str):\n                        secret = secret.strip()\n                elif key_manager == KeyManagementSystem.AWS_SECRET_MANAGER.value:\n                    from litellm.secret_managers.aws_secret_manager_v2 import (\n                        AWSSecretsManagerV2,\n                    )\n\n                    if isinstance(client, AWSSecretsManagerV2):\n                        secret = client.sync_read_secret(\n                            secret_name=secret_name,\n                            primary_secret_name=key_management_settings.primary_secret_name,\n                        )\n                        print_verbose(f\"get_secret_value_response: {secret}\")\n                elif key_manager == KeyManagementSystem.GOOGLE_SECRET_MANAGER.value:\n                    try:\n                        secret = client.get_secret_from_google_secret_manager(\n                            secret_name\n                        )\n                        print_verbose(f\"secret from google secret manager:  {secret}\")\n                        if secret is None:\n                            raise ValueError(\n                                f\"No secret found in Google Secret Manager for {secret_name}\"\n                            )\n                    except Exception as e:\n                        print_verbose(f\"An error occurred - {str(e)}\")\n                        raise e\n                elif key_manager == KeyManagementSystem.HASHICORP_VAULT.value:\n                    try:\n                        secret = client.sync_read_secret(secret_name=secret_name)\n                        if secret is None:\n                            raise ValueError(\n                                f\"No secret found in Hashicorp Secret Manager for {secret_name}\"\n                            )\n                    except Exception as e:\n                        print_verbose(f\"An error occurred - {str(e)}\")\n                        raise e\n                elif key_manager == \"local\":\n                    secret = os.getenv(secret_name)\n                else:  # assume the default is infisicial client\n                    secret = client.get_secret(secret_name).secret_value\n            except Exception as e:  # check if it's in os.environ\n                verbose_logger.error(\n                    f\"Defaulting to os.environ value for key={secret_name}. An exception occurred - {str(e)}.\\n\\n{traceback.format_exc()}\"\n                )\n                secret = os.getenv(secret_name)\n            try:\n                if isinstance(secret, str):\n                    secret_value_as_bool = ast.literal_eval(secret)\n                    if isinstance(secret_value_as_bool, bool):\n                        return secret_value_as_bool\n                    else:\n                        return secret\n            except Exception:\n                return secret\n        else:\n            secret = os.environ.get(secret_name)\n            secret_value_as_bool = str_to_bool(secret) if secret is not None else None\n            if secret_value_as_bool is not None and isinstance(\n                secret_value_as_bool, bool\n            ):\n                return secret_value_as_bool\n            else:\n                return secret\n    except Exception as e:\n        if default_value is not None:\n            return default_value\n        else:\n            raise e\n",
+          "triple_sequences": [
+            {
+              "action_api": "secret_name.startswith()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "\"os.environ/\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "secret_name.replace()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "\"os.environ/\", \"\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "secret_name.startswith()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "\"oidc/\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "secret_name.replace()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "\"oidc/\", \"\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "secret_name_split.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "\"/\", 1",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "oidc_cache.get_cache()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "key=secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "HTTPHandler()",
+              "action_description": "Creates HTTP session for making asynchronous requests",
+              "action_id": "create_http_session",
+              "object": "timeout=httpx.Timeout(timeout=600.0, connect=5.0)",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "oidc_client.get()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "\"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity\", params={\"audience\": oidc_aud}, headers={\"Metadata-Flavor\": \"Google\"}",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "oidc_cache.set_cache()",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "key=secret_name, value=oidc_token, ttl=3600 - 60",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"CIRCLE_OIDC_TOKEN\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"CIRCLE_OIDC_TOKEN_V2\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"ACTIONS_ID_TOKEN_REQUEST_URL\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"ACTIONS_ID_TOKEN_REQUEST_TOKEN\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "oidc_cache.get_cache()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "key=secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "HTTPHandler()",
+              "action_description": "Creates HTTP session for making asynchronous requests",
+              "action_id": "create_http_session",
+              "object": "timeout=httpx.Timeout(timeout=600.0, connect=5.0)",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "oidc_client.get()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "actions_id_token_request_url, params={\"audience\": oidc_aud}, headers={\"Authorization\": f\"Bearer {actions_id_token_request_token}\", \"Accept\": \"application/json; api-version=2.0\"}",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "response.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "oidc_cache.set_cache()",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "key=secret_name, value=oidc_token, ttl=300 - 5",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"AZURE_FEDERATED_TOKEN_FILE\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "azure_federated_token_file, \"r\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "oidc_aud, \"r\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "oidc_aud",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "oidc_aud",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "token_file_path, \"r\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "_should_read_secret_from_secret_manager()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine presence of required module",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "client.get_secret()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "_is_base64()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "encrypted_secret",
+              "object_description": "Base64-encoded string",
+              "object_id": "base64_encoded_string",
+              "intention_description": "Decode base64 data",
+              "intention_id": "decode_base64_data"
+            },
+            {
+              "action_api": "base64.b64decode()",
+              "action_description": "Decodes base64-encoded string to bytes",
+              "action_id": "decode_base64_bytes",
+              "object": "encrypted_secret",
+              "object_description": "Base64-encoded string",
+              "object_id": "base64_encoded_string",
+              "intention_description": "Decode base64 data",
+              "intention_id": "decode_base64_data"
+            },
+            {
+              "action_api": "client.decrypt()",
+              "action_description": "Decrypts data using initialized AES cipher",
+              "action_id": "decrypt_aes_data",
+              "object": "request={\"name\": litellm._google_kms_resource_name, \"ciphertext\": ciphertext}",
+              "object_description": "Encrypted data",
+              "object_id": "encrypted_data",
+              "intention_description": "Decrypt encrypted data",
+              "intention_id": "decrypt_encrypted_data"
+            },
+            {
+              "action_api": "response.plaintext.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "\"utf-8\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name, None",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "base64.b64decode()",
+              "action_description": "Decodes base64-encoded string to bytes",
+              "action_id": "decode_base64_bytes",
+              "object": "encrypted_value",
+              "object_description": "Base64-encoded string",
+              "object_id": "base64_encoded_string",
+              "intention_description": "Decode base64 data",
+              "intention_id": "decode_base64_data"
+            },
+            {
+              "action_api": "client.decrypt()",
+              "action_description": "Decrypts data using initialized AES cipher",
+              "action_id": "decrypt_aes_data",
+              "object": "params={\"CiphertextBlob\": ciphertext_blob}",
+              "object_description": "Encrypted data",
+              "object_id": "encrypted_data",
+              "intention_description": "Decrypt encrypted data",
+              "intention_id": "decrypt_encrypted_data"
+            },
+            {
+              "action_api": "plaintext.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "\"utf-8\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "secret, str",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "secret.strip()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "client.sync_read_secret()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name=secret_name, primary_secret_name=key_management_settings.primary_secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "client.get_secret_from_google_secret_manager()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "client.sync_read_secret()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name=secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "client.get_secret()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.getenv()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "secret, str",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "ast.literal_eval()",
+              "action_description": "Evaluates string as Python expression",
+              "action_id": "eval_python_expr",
+              "object": "secret",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Evaluate constructed code",
+              "intention_id": "evaluate_constructed_code"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "secret_name",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "str_to_bool()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "secret",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

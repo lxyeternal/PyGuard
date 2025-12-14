@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import subprocess\nimport os\nimport sys\n\nVERSION = '2.5.1'\n\nclass BuildDoc(Command):\n    user_options = []\n\n    def initialize_options(self) -> None:\n        pass\n\n    def finalize_options(self) -> None:\n        pass\n\n    def run(self):\n        output_path = 'docs/html'\n        changed_files = []\n        cmd = [\n            'sphinx-build',\n            'docs/source', output_path,\n            '--builder', 'html',\n            '--define', f'version={VERSION}',\n            '--verbose'\n        ]\n        with subprocess.Popen(\n                cmd,\n                stdout=subprocess.PIPE,\n                bufsize=1,\n                universal_newlines=True\n        ) as p:\n            for line in p.stdout:\n                print(line, end='')\n                if line.startswith('reading sources... ['):\n                    file_name = line.rsplit(maxsplit=1)[1]\n                    if file_name:\n                        changed_files.append(file_name + '.html')\n\n        index_path = os.path.join(os.getcwd(), output_path, 'index.html')\n        print('\\nIndex:')\n        print(f'file://{index_path}')\n\n        if changed_files:\n            print('Update pages:')\n            for cf in changed_files:\n                f_path = os.path.join(os.getcwd(), output_path, cf)\n                print(cf, f'file://{f_path}')\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "subprocess.Popen",
+        "subprocess.Popen.stdout",
+        "os.getcwd",
+        "os.path.join",
+        "os.getcwd",
+        "os.path.join"
+      ],
+      "api_sequence_with_args": [
+        "subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)",
+        "subprocess.Popen.stdout",
+        "os.getcwd()",
+        "os.path.join(os.getcwd(), output_path, 'index.html')",
+        "os.getcwd()",
+        "os.path.join(os.getcwd(), output_path, cf)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.stdout",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "import subprocess\nimport os\n\nclass BuildDoc(Command):\n    def run(self):\n        output_path = 'docs/html'\n        changed_files = []\n        cmd = [\n            'sphinx-build',\n            'docs/source', output_path,\n            '--builder', 'html',\n            '--define', f'version={VERSION}',\n            '--verbose'\n        ]\n        with subprocess.Popen(\n                cmd,\n                stdout=subprocess.PIPE,\n                bufsize=1,\n                universal_newlines=True\n        ) as p:\n            for line in p.stdout:\n                print(line, end='')\n                if line.startswith('reading sources... ['):\n                    file_name = line.rsplit(maxsplit=1)[1]\n                    if file_name:\n                        changed_files.append(file_name + '.html')\n\n        index_path = os.path.join(os.getcwd(), output_path, 'index.html')\n        print(f'file://{index_path}')\n\n        if changed_files:\n            for cf in changed_files:\n                f_path = os.path.join(os.getcwd(), output_path, cf)\n                print(cf, f'file://{f_path}')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "gcsa-2.5.1",
+      "total_matches": 1
+    }
+  }
+]

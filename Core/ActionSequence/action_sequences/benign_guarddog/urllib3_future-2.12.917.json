@@ -1,0 +1,340 @@
+[
+  {
+    "pyfile": "noxfile.py",
+    "code_snippet": "from __future__ import annotations\n\nimport contextlib\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport time\nimport typing\nfrom http.client import RemoteDisconnected\nfrom socket import timeout as SocketTimeout\nfrom urllib.error import HTTPError, URLError\nfrom urllib.request import Request, urlopen\n\nimport nox\n\n@contextlib.contextmanager\ndef traefik_boot(\n    session: nox.Session, *args: str\n) -> typing.Generator[None, None, None]:\n    \"\"\"\n    Start a server to reliably test HTTP/1.1, HTTP/2 and HTTP/3 over QUIC.\n    \"\"\"\n    # we may want to avoid starting the traefik server...\n    if os.environ.get(\"TRAEFIK_HTTPBIN_ENABLE\", \"true\") != \"true\":\n        yield\n        return\n\n    # nox allows us to specify pos args\n    # if we detect any of them, we should check\n    # if the target tests requires Traefik or not.\n    detect_specific_traefik: bool | None = None\n    for arg in args:\n        if arg.startswith(\"test/\"):\n            detect_specific_traefik = False\n        if arg.startswith(\"test/with_traefik\") or arg == \"test/\":\n            detect_specific_traefik = True\n            break\n    if detect_specific_traefik is False:\n        yield\n        return\n\n    external_stack_started = False\n    is_windows = platform.system() == \"Windows\"\n    dc_v1_legacy = is_windows is False and shutil.which(\"docker-compose\") is not None\n    traefik_ipv4 = os.environ.get(\"TRAEFIK_HTTPBIN_IPV4\", \"127.0.0.1\")\n\n    if dc_v1_legacy:\n        dc_v2_probe = subprocess.Popen([\"docker\", \"compose\", \"ps\"])\n\n        dc_v2_probe.wait()\n        dc_v1_legacy = dc_v2_probe.returncode != 0\n\n    if not os.path.exists(\"./traefik/httpbin.local.pem\"):\n        session.log(\"Prepare fake certificates for our Traefik server...\")\n\n        session.run(\n            *[\n                \"python\",\n                \"-m\",\n                \"trustme\",\n                \"-i\",\n                \"httpbin.local\",\n                \"alt.httpbin.local\",\n                \"-d\",\n                \"./traefik\",\n            ]\n        )\n\n        shutil.move(\"./traefik/server.pem\", \"./traefik/httpbin.local.pem\")\n\n        if os.path.exists(\"./traefik/httpbin.local.pem.key\"):\n            os.unlink(\"./traefik/httpbin.local.pem.key\")\n\n        shutil.move(\"./traefik/server.key\", \"./traefik/httpbin.local.pem.key\")\n\n        if os.path.exists(\"./rootCA.pem\"):\n            os.unlink(\"./rootCA.pem\")\n\n        shutil.move(\"./traefik/client.pem\", \"./rootCA.pem\")\n\n    try:\n        session.log(\"Attempt to start Traefik with go-httpbin[...]\")\n\n        if is_windows:\n            if not os.path.exists(\"./go-httpbin\"):\n                clone_proc = subprocess.Popen(\n                    [\"git\", \"clone\", \"https://github.com/mccutchen/go-httpbin.git\"]\n                )\n\n                clone_proc.wait()\n\n            shutil.copyfile(\n                \"./traefik/patched.Dockerfile\", \"./go-httpbin/patched.Dockerfile\"\n            )\n\n            dc_process = subprocess.Popen(\n                [\n                    \"docker\",\n                    \"compose\",\n                    \"-f\",\n                    \"docker-compose.win.yaml\",\n                    \"up\",\n                    \"-d\",\n                ]\n            )\n        else:\n            if dc_v1_legacy:\n                dc_process = subprocess.Popen([\"docker-compose\", \"up\", \"-d\"])\n            else:\n                dc_process = subprocess.Popen([\"docker\", \"compose\", \"up\", \"-d\"])\n\n        dc_process.wait()\n    except OSError as e:\n        session.warn(\n            f\"Traefik server cannot be run due to an error with containers: {e}\"\n        )\n    else:\n        session.log(\"Traefik server is starting[...]\")\n\n        i = 0\n\n        while True:\n            if i >= 120:\n                if not dc_v1_legacy:\n                    subprocess.Popen(\n                        [\n                            \"docker\",\n                            \"compose\",\n                            \"-f\",\n                            \"docker-compose.win.yaml\",\n                            \"logs\",\n                            \"--tail=128\",\n                        ]\n                    )\n\n                raise TimeoutError(\n                    \"Error while waiting for the Traefik server (timeout/readiness)\"\n                )\n\n            try:\n                r = urlopen(\n                    Request(\n                        f\"http://{traefik_ipv4}:8888/get\",\n                        headers={\"Host\": \"httpbin.local\"},\n                    ),\n                    timeout=1.0,\n                )\n            except (\n                HTTPError,\n                URLError,\n                RemoteDisconnected,\n                TimeoutError,\n                SocketTimeout,\n                ConnectionError,\n            ) as e:\n                i += 1\n                time.sleep(1)\n                session.log(f\"Waiting for the Traefik server: {e}...\")\n                continue\n\n            if int(r.status) == 200:\n                break\n\n        session.log(\"Traefik server is ready to accept connections[...]\")\n        external_stack_started = True\n\n    yield\n\n    if external_stack_started:\n        if dc_v1_legacy:\n            dc_process = subprocess.Popen([\"docker-compose\", \"stop\"])\n        else:\n            dc_process = subprocess.Popen([\"docker\", \"compose\", \"stop\"])\n\n        dc_process.wait()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "platform.system",
+        "shutil.which",
+        "subprocess.Popen",
+        "subprocess.Popen.wait",
+        "os.path.exists",
+        "session.log",
+        "session.run",
+        "shutil.move",
+        "os.path.exists",
+        "os.unlink",
+        "shutil.move",
+        "os.path.exists",
+        "os.unlink",
+        "shutil.move",
+        "session.log",
+        "os.path.exists",
+        "subprocess.Popen",
+        "subprocess.Popen.wait",
+        "shutil.copyfile",
+        "subprocess.Popen",
+        "subprocess.Popen.wait",
+        "subprocess.Popen",
+        "subprocess.Popen.wait",
+        "urlopen",
+        "Request",
+        "time.sleep",
+        "session.log",
+        "subprocess.Popen",
+        "subprocess.Popen.wait"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"TRAEFIK_HTTPBIN_ENABLE\", \"true\")",
+        "platform.system()",
+        "shutil.which(\"docker-compose\")",
+        "subprocess.Popen([\"docker\", \"compose\", \"ps\"])",
+        "dc_v2_probe.wait()",
+        "os.path.exists(\"./traefik/httpbin.local.pem\")",
+        "session.log(\"Prepare fake certificates for our Traefik server...\")",
+        "session.run(*[\"python\", \"-m\", \"trustme\", \"-i\", \"httpbin.local\", \"alt.httpbin.local\", \"-d\", \"./traefik\"])",
+        "shutil.move(\"./traefik/server.pem\", \"./traefik/httpbin.local.pem\")",
+        "os.path.exists(\"./traefik/httpbin.local.pem.key\")",
+        "os.unlink(\"./traefik/httpbin.local.pem.key\")",
+        "shutil.move(\"./traefik/server.key\", \"./traefik/httpbin.local.pem.key\")",
+        "os.path.exists(\"./rootCA.pem\")",
+        "os.unlink(\"./rootCA.pem\")",
+        "shutil.move(\"./traefik/client.pem\", \"./rootCA.pem\")",
+        "session.log(\"Attempt to start Traefik with go-httpbin[...]\")",
+        "os.path.exists(\"./go-httpbin\")",
+        "subprocess.Popen([\"git\", \"clone\", \"https://github.com/mccutchen/go-httpbin.git\"])",
+        "clone_proc.wait()",
+        "shutil.copyfile(\"./traefik/patched.Dockerfile\", \"./go-httpbin/patched.Dockerfile\")",
+        "subprocess.Popen([\"docker\", \"compose\", \"-f\", \"docker-compose.win.yaml\", \"up\", \"-d\"])",
+        "dc_process.wait()",
+        "subprocess.Popen([\"docker-compose\", \"up\", \"-d\"])",
+        "subprocess.Popen([\"docker\", \"compose\", \"up\", \"-d\"])",
+        "dc_process.wait()",
+        "urlopen(Request(f\"http://{traefik_ipv4}:8888/get\", headers={\"Host\": \"httpbin.local\"}), timeout=1.0)",
+        "Request(f\"http://{traefik_ipv4}:8888/get\", headers={\"Host\": \"httpbin.local\"})",
+        "time.sleep(1)",
+        "session.log(f\"Waiting for the Traefik server: {e}...\")",
+        "subprocess.Popen([\"docker\", \"compose\", \"-f\", \"docker-compose.win.yaml\", \"logs\", \"--tail=128\"])",
+        "subprocess.Popen([\"docker-compose\", \"stop\"])",
+        "subprocess.Popen([\"docker\", \"compose\", \"stop\"])",
+        "dc_process.wait()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "session.log",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "session.run",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "shutil.move",
+          "id": "move_file",
+          "description": "Moves file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "shutil.move",
+          "id": "move_file",
+          "description": "Moves file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "shutil.move",
+          "id": "move_file",
+          "description": "Moves file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "session.log",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "urlopen",
+          "id": "open_url_get_timeout",
+          "description": "Opens URL with GET parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "Request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "session.log",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "import os\nimport platform\nimport shutil\nimport subprocess\nimport time\nfrom urllib.request import Request, urlopen\n\n@contextlib.contextmanager\ndef traefik_boot(session, *args):\n    if os.environ.get(\"TRAEFIK_HTTPBIN_ENABLE\", \"true\") != \"true\":\n        yield\n        return\n\n    detect_specific_traefik = None\n    for arg in args:\n        if arg.startswith(\"test/\"):\n            detect_specific_traefik = False\n        if arg.startswith(\"test/with_traefik\") or arg == \"test/\":\n            detect_specific_traefik = True\n            break\n    if detect_specific_traefik is False:\n        yield\n        return\n\n    external_stack_started = False\n    is_windows = platform.system() == \"Windows\"\n    dc_v1_legacy = is_windows is False and shutil.which(\"docker-compose\") is not None\n    traefik_ipv4 = os.environ.get(\"TRAEFIK_HTTPBIN_IPV4\", \"127.0.0.1\")\n\n    if dc_v1_legacy:\n        dc_v2_probe = subprocess.Popen([\"docker\", \"compose\", \"ps\"])\n        dc_v2_probe.wait()\n        dc_v1_legacy = dc_v2_probe.returncode != 0\n\n    if not os.path.exists(\"./traefik/httpbin.local.pem\"):\n        session.log(\"Prepare fake certificates for our Traefik server...\")\n        session.run(\n            *[\n                \"python\",\n                \"-m\",\n                \"trustme\",\n                \"-i\",\n                \"httpbin.local\",\n                \"alt.httpbin.local\",\n                \"-d\",\n                \"./traefik\",\n            ]\n        )\n        shutil.move(\"./traefik/server.pem\", \"./traefik/httpbin.local.pem\")\n        if os.path.exists(\"./traefik/httpbin.local.pem.key\"):\n            os.unlink(\"./traefik/httpbin.local.pem.key\")\n        shutil.move(\"./traefik/server.key\", \"./traefik/httpbin.local.pem.key\")\n        if os.path.exists(\"./rootCA.pem\"):\n            os.unlink(\"./rootCA.pem\")\n        shutil.move(\"./traefik/client.pem\", \"./rootCA.pem\")\n\n    try:\n        session.log(\"Attempt to start Traefik with go-httpbin[...]\")\n        if is_windows:\n            if not os.path.exists(\"./go-httpbin\"):\n                clone_proc = subprocess.Popen([\n                    \"git\", \"clone\", \"https://github.com/mccutchen/go-httpbin.git\"\n                ])\n                clone_proc.wait()\n            shutil.copyfile(\n                \"./traefik/patched.Dockerfile\", \"./go-httpbin/patched.Dockerfile\"\n            )\n            dc_process = subprocess.Popen([\n                \"docker\",\n                \"compose\",\n                \"-f\",\n                \"docker-compose.win.yaml\",\n                \"up\",\n                \"-d\",\n            ])\n        else:\n            if dc_v1_legacy:\n                dc_process = subprocess.Popen([\"docker-compose\", \"up\", \"-d\"])\n            else:\n                dc_process = subprocess.Popen([\"docker\", \"compose\", \"up\", \"-d\"])\n        dc_process.wait()\n    except OSError as e:\n        session.warn(\n            f\"Traefik server cannot be run due to an error with containers: {e}\"\n        )\n    else:\n        session.log(\"Traefik server is starting[...]\")\n        i = 0\n        while True:\n            if i >= 120:\n                if not dc_v1_legacy:\n                    subprocess.Popen([\n                        \"docker\",\n                        \"compose\",\n                        \"-f\",\n                        \"docker-compose.win.yaml\",\n                        \"logs\",\n                        \"--tail=128\",\n                    ])\n                raise TimeoutError(\n                    \"Error while waiting for the Traefik server (timeout/readiness)\"\n                )\n            try:\n                r = urlopen(\n                    Request(\n                        f\"http://{traefik_ipv4}:8888/get\",\n                        headers={\"Host\": \"httpbin.local\"},\n                    ),\n                    timeout=1.0,\n                )\n            except Exception as e:\n                i += 1\n                time.sleep(1)\n                session.log(f\"Waiting for the Traefik server: {e}...\")\n                continue\n            if int(r.status) == 200:\n                break\n        session.log(\"Traefik server is ready to accept connections[...]\")\n        external_stack_started = True\n    yield\n    if external_stack_started:\n        if dc_v1_legacy:\n            dc_process = subprocess.Popen([\"docker-compose\", \"stop\"])\n        else:\n            dc_process = subprocess.Popen([\"docker\", \"compose\", \"stop\"])\n        dc_process.wait()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "urllib3_future-2.12.917",
+      "total_matches": 1
+    }
+  }
+]

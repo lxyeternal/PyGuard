@@ -1,0 +1,252 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# 10 lines before the flagged line (Line 80) and all relevant context, as per rules\n\nimport os\nimport subprocess\nimport sys\nfrom packaging.version import Version\n\nimport numpy\nimport setuptools.command.build_py\nimport setuptools.command.develop\nfrom Cython.Build import cythonize\nfrom setuptools import Extension, find_packages, setup\n\npython_version = sys.version.split()[0]\nif Version(python_version) < Version(\"3.9\") or Version(python_version) >= Version(\"3.12\"):\n    raise RuntimeError(\"TTS requires python >= 3.9 and < 3.12 \" \"but your Python version is {}\".format(sys.version))\n\ncwd = os.path.dirname(os.path.abspath(__file__))\nwith open(os.path.join(cwd, \"TTS\", \"VERSION\")) as fin:\n    version = fin.read().strip()\n\nclass build_py(setuptools.command.build_py.build_py):  # pylint: disable=too-many-ancestors\n    def run(self):\n        setuptools.command.build_py.build_py.run(self)\n\nclass develop(setuptools.command.develop.develop):\n    def run(self):\n        setuptools.command.develop.develop.run(self)\n\n# The documentation for this feature is in server/README.md\npackage_data = [\"TTS/server/templates/*\"]\n\ndef pip_install(package_name):\n    subprocess.call([sys.executable, \"-m\", \"pip\", \"install\", package_name])\n\nrequirements = open(os.path.join(cwd, \"requirements.txt\"), \"r\").readlines()\nwith open(os.path.join(cwd, \"requirements.notebooks.txt\"), \"r\") as f:\n    requirements_notebooks = f.readlines()\nwith open(os.path.join(cwd, \"requirements.dev.txt\"), \"r\") as f:\n    requirements_dev = f.readlines()\nwith open(os.path.join(cwd, \"requirements.ja.txt\"), \"r\") as f:\n    requirements_ja = f.readlines()\nrequirements_all = requirements_dev + requirements_notebooks + requirements_ja\n\nwith open(\"README.md\", \"r\", encoding=\"utf-8\") as readme_file:\n    README = readme_file.read()\n\nexts = [\n    Extension(\n        name=\"TTS.tts.utils.monotonic_align.core\",\n        sources=[\"TTS/tts/utils/monotonic_align/core.pyx\"],\n    )\n]\n\nsetup(\n    name=\"TTS\",\n    version=version,\n    url=\"https://github.com/coqui-ai/TTS\",\n    author=\"Eren Gölge\",\n    author_email=\"egolge@coqui.ai\",\n    description=\"Deep learning for Text to Speech by Coqui.\",\n    long_description=README,\n    long_description_content_type=\"text/markdown\",\n    license=\"MPL-2.0\",\n    # cython\n    include_dirs=numpy.get_include(),\n    ext_modules=cythonize(exts, language_level=3),\n    # ext_modules=find_cython_extensions(),\n    # package\n    include_package_data=True,\n    packages=find_packages(include=[\"TTS\"], exclude=[\"*.tests\", \"*tests.*\", \"tests.*\", \"*tests\", \"tests\"]),\n    package_data={\n        \"TTS\": [\n            \"VERSION\",\n        ]\n    },\n    project_urls={\n        \"Documentation\": \"https://github.com/coqui-ai/TTS/wiki\",\n        \"Tracker\": \"https://github.com/coqui-ai/TTS/issues\",\n        \"Repository\": \"https://github.com/coqui-ai/TTS\",\n        \"Discussions\": \"https://github.com/coqui-ai/TTS/discussions\",\n    },\n    cmdclass={\n        \"build_py\": build_py,\n        \"develop\": develop,\n        # 'build_ext': build_ext\n    },\n    install_requires=requirements,\n    extras_require={\n        \"all\": requirements_all,\n        \"dev\": requirements_dev,\n        \"notebooks\": requirements_notebooks,\n        \"ja\": requirements_ja,\n    },\n    python_requires=\">=3.9.0, <3.12\",\n    entry_points={\"console_scripts\": [\"tts=TTS.bin.synthesize:main\", \"tts-server = TTS.server.server:main\"]},\n    classifiers=[\n        \"Programming Language :: Python\",\n        \"Programming Language :: Python :: 3\",\n        \"Programming Language :: Python :: 3.9\",\n        \"Programming Language :: Python :: 3.10\",\n        \"Programming Language :: Python :: 3.11\",\n        \"Development Status :: 3 - Alpha\",\n        \"Intended Audience :: Science/Research\",\n        \"Intended Audience :: Developers\",\n        \"Operating System :: POSIX :: Linux\",\n        \"License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)\",\n        \"Topic :: Software Development\",\n        \"Topic :: Software Development :: Libraries :: Python Modules\",\n        \"Topic :: Multimedia :: Sound/Audio :: Speech\",\n        \"Topic :: Multimedia :: Sound/Audio\",\n        \"Topic :: Multimedia\",\n        \"Topic :: Scientific/Engineering :: Artificial Intelligence\",\n    ],\n    zip_safe=False,\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.version.split",
+        "packaging.version.Version",
+        "packaging.version.Version",
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "open",
+        "io.TextIOWrapper.read",
+        "os.path.join",
+        "open",
+        "io.TextIOWrapper.readlines",
+        "os.path.join",
+        "open",
+        "io.TextIOWrapper.readlines",
+        "os.path.join",
+        "open",
+        "io.TextIOWrapper.readlines",
+        "open",
+        "io.TextIOWrapper.read",
+        "numpy.get_include",
+        "cythonize",
+        "setuptools.Extension",
+        "setuptools.find_packages",
+        "setuptools.setup"
+      ],
+      "api_sequence_with_args": [
+        "sys.version.split()",
+        "packaging.version.Version(python_version)",
+        "packaging.version.Version(\"3.9\")",
+        "os.path.abspath(__file__)",
+        "os.path.dirname(os.path.abspath(__file__))",
+        "os.path.join(cwd, \"TTS\", \"VERSION\")",
+        "open(os.path.join(cwd, \"TTS\", \"VERSION\"))",
+        "fin.read()",
+        "os.path.join(cwd, \"requirements.txt\")",
+        "open(os.path.join(cwd, \"requirements.txt\"), \"r\")",
+        "os.path.join(cwd, \"requirements.notebooks.txt\")",
+        "open(os.path.join(cwd, \"requirements.notebooks.txt\"), \"r\")",
+        "os.path.join(cwd, \"requirements.dev.txt\")",
+        "open(os.path.join(cwd, \"requirements.dev.txt\"), \"r\")",
+        "os.path.join(cwd, \"requirements.ja.txt\")",
+        "open(os.path.join(cwd, \"requirements.ja.txt\"), \"r\")",
+        "open(\"README.md\", \"r\", encoding=\"utf-8\")",
+        "readme_file.read()",
+        "numpy.get_include()",
+        "cythonize(exts, language_level=3)",
+        "setuptools.Extension(name=\"TTS.tts.utils.monotonic_align.core\", sources=[\"TTS/tts/utils/monotonic_align/core.pyx\"])",
+        "setuptools.find_packages(include=[\"TTS\"], exclude=[\"*.tests\", \"*tests.*\", \"tests.*\", \"*tests\", \"tests\"])",
+        "setuptools.setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.version.split",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "packaging.version.Version",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.readlines",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.readlines",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.readlines",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "numpy.get_include",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "cythonize",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "setuptools.Extension",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "setuptools.find_packages",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "setuptools.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\nfrom packaging.version import Version\nimport numpy\nfrom setuptools import Extension, find_packages, setup\n\npython_version = sys.version.split()[0]\nif Version(python_version) < Version(\"3.9\") or Version(python_version) >= Version(\"3.12\"):\n    raise RuntimeError(\"TTS requires python >= 3.9 and < 3.12 \" \"but your Python version is {}\".format(sys.version))\n\ncwd = os.path.dirname(os.path.abspath(__file__))\nwith open(os.path.join(cwd, \"TTS\", \"VERSION\")) as fin:\n    version = fin.read().strip()\n\nrequirements = open(os.path.join(cwd, \"requirements.txt\"), \"r\").readlines()\nwith open(os.path.join(cwd, \"requirements.notebooks.txt\"), \"r\") as f:\n    requirements_notebooks = f.readlines()\nwith open(os.path.join(cwd, \"requirements.dev.txt\"), \"r\") as f:\n    requirements_dev = f.readlines()\nwith open(os.path.join(cwd, \"requirements.ja.txt\"), \"r\") as f:\n    requirements_ja = f.readlines()\n\nwith open(\"README.md\", \"r\", encoding=\"utf-8\") as readme_file:\n    README = readme_file.read()\n\nexts = [\n    Extension(\n        name=\"TTS.tts.utils.monotonic_align.core\",\n        sources=[\"TTS/tts/utils/monotonic_align/core.pyx\"],\n    )\n]\n\nsetup(\n    name=\"TTS\",\n    version=version,\n    ...\n    include_dirs=numpy.get_include(),\n    ext_modules=cythonize(exts, language_level=3),\n    packages=find_packages(include=[\"TTS\"], exclude=[\"*.tests\", \"*tests.*\", \"tests.*\", \"*tests\", \"tests\"]),\n    ...\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "tts-0.22.0",
+      "total_matches": 1
+    }
+  }
+]

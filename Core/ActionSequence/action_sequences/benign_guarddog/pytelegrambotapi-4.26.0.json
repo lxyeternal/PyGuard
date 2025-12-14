@@ -1,0 +1,384 @@
+[
+  {
+    "pyfile": "apihelper.py",
+    "code_snippet": "import requests\nfrom requests.exceptions import HTTPError, ConnectionError, Timeout\nfrom requests.adapters import HTTPAdapter\nimport telebot\nfrom telebot import types\nfrom telebot import util\n\nlogger = telebot.logger\n\nproxy = None\nsession = None\n\nAPI_URL = None\nFILE_URL = None\n\nCONNECT_TIMEOUT = 15\nREAD_TIMEOUT = 30\n\nLONG_POLLING_TIMEOUT = 10 # Should be positive, short polling should be used for testing purposes only (https://core.telegram.org/bots/api#getupdates)\n\nSESSION_TIME_TO_LIVE = 600  # In seconds. None - live forever, 0 - one-time\n\nRETRY_ON_ERROR = False\nRETRY_TIMEOUT = 2\nMAX_RETRIES = 15\nRETRY_ENGINE = 1\n\nCUSTOM_SERIALIZER = None\nCUSTOM_REQUEST_SENDER = None\n\nENABLE_MIDDLEWARE = False\n\n\ndef _get_req_session(reset=False):\n    if SESSION_TIME_TO_LIVE:\n        # If session TTL is set - check time passed\n        creation_date = util.per_thread('req_session_time', lambda: datetime.now(), reset)\n        # noinspection PyTypeChecker\n        if (datetime.now() - creation_date).total_seconds() > SESSION_TIME_TO_LIVE:\n            # Force session reset\n            reset = True\n            # Save reset time\n            util.per_thread('req_session_time', lambda: datetime.now(), True)\n\n    if SESSION_TIME_TO_LIVE == 0:\n        # Session is one-time use\n        return requests.sessions.Session()\n    else:\n        # Session lives some time or forever once created. Default\n        return util.per_thread('req_session', lambda: session if session else requests.sessions.Session(), reset)\n\n\ndef _make_request(token, method_name, method='get', params=None, files=None):\n    \"\"\"\n    Makes a request to the Telegram API.\n    :param token: The bot's API token. (Created with @BotFather)\n    :param method_name: Name of the API method to be called. (E.g. 'getUpdates')\n    :param method: HTTP method to be used. Defaults to 'get'.\n    :param params: Optional parameters. Should be a dictionary with key-value pairs.\n    :param files: Optional files.\n    :return: The result parsed to a JSON dictionary.\n    \"\"\"\n    if not token:\n        raise Exception('Bot token is not defined')\n    if API_URL:\n        # noinspection PyUnresolvedReferences\n        request_url = API_URL.format(token, method_name)\n    else:\n        request_url = \"https://api.telegram.org/bot{0}/{1}\".format(token, method_name)\n\n    logger.debug(\"Request: method={0} url={1} params={2} files={3}\".format(method, request_url, params, files).replace(token, token.split(':')[0] + \":{TOKEN}\"))\n    read_timeout = READ_TIMEOUT\n    connect_timeout = CONNECT_TIMEOUT\n\n    if files:\n        files_copy = dict(files)\n        # process types.InputFile\n        for key, value in files_copy.items():\n            if isinstance(value, types.InputFile):\n                files[key] = (value.file_name, value.file)\n            elif isinstance(value, tuple) and (len(value) == 2) and isinstance(value[1], types.InputFile):\n                files[key] = (value[0], value[1].file)\n\n    \n    if files and format_header_param:\n        fields.format_header_param = _no_encode(format_header_param)\n    if params:\n        if 'timeout' in params:\n            read_timeout = params.pop('timeout')\n            connect_timeout = read_timeout\n        if 'long_polling_timeout' in params:\n            # For getUpdates. It's the only function with timeout parameter on the BOT API side\n            long_polling_timeout = params.pop('long_polling_timeout')\n            params['timeout'] = long_polling_timeout\n            # Long polling hangs for a given time. Read timeout should be greater that long_polling_timeout\n            read_timeout = max(long_polling_timeout + 5, read_timeout)\n\n    params = params or None # Set params to None if empty\n    result = None\n\n    if CUSTOM_REQUEST_SENDER:\n        # noinspection PyCallingNonCallable\n        result = CUSTOM_REQUEST_SENDER(\n            method, request_url, params=params, files=files,\n            timeout=(connect_timeout, read_timeout), proxies=proxy)\n    elif RETRY_ON_ERROR and RETRY_ENGINE == 1:\n        got_result = False\n        current_try = 0\n        while not got_result and current_try<MAX_RETRIES-1:\n            current_try+=1\n            try:\n                result = _get_req_session().request(\n                    method, request_url, params=params, files=files,\n                    timeout=(connect_timeout, read_timeout), proxies=proxy)\n                got_result = True\n            except HTTPError:\n                logger.debug(\"HTTP Error on {0} method (Try #{1})\".format(method_name, current_try))\n                time.sleep(RETRY_TIMEOUT)\n            except ConnectionError:\n                logger.debug(\"Connection Error on {0} method (Try #{1})\".format(method_name, current_try))\n                time.sleep(RETRY_TIMEOUT)\n            except Timeout:\n                logger.debug(\"Timeout Error on {0} method (Try #{1})\".format(method_name, current_try))\n                time.sleep(RETRY_TIMEOUT)\n        if not got_result:\n            result = _get_req_session().request(\n                    method, request_url, params=params, files=files,\n                    timeout=(connect_timeout, read_timeout), proxies=proxy)\n    elif RETRY_ON_ERROR and RETRY_ENGINE == 2:\n        http = _get_req_session()\n        # noinspection PyUnresolvedReferences\n        retry_strategy = requests.packages.urllib3.util.retry.Retry(\n            total=MAX_RETRIES,\n            allowed_methods=None,\n            backoff_factor=RETRY_TIMEOUT,\n            backoff_max=RETRY_TIMEOUT\n        )\n        adapter = HTTPAdapter(max_retries=retry_strategy)\n        for prefix in ('http://', 'https://'):\n            http.mount(prefix, adapter)\n        result = http.request(\n            method, request_url, params=params, files=files,\n            timeout=(connect_timeout, read_timeout), proxies=proxy)\n    else:\n        result = _get_req_session().request(\n            method, request_url, params=params, files=files,\n            timeout=(connect_timeout, read_timeout), proxies=proxy)\n    \n    logger.debug(\"The server returned: '{0}'\".format(result.text.encode('utf8')))\n    \n    json_result = _check_result(method_name, result)\n    if json_result:\n        return json_result['result']\n\n\ndef get_file(token, file_id):\n    method_url = r'getFile'\n    return _make_request(token, method_url, params={'file_id': file_id})\n\n\ndef get_file_url(token, file_id):\n    if FILE_URL is None:\n        return \"https://api.telegram.org/file/bot{0}/{1}\".format(token, get_file(token, file_id)['file_path'])\n    else:\n        # noinspection PyUnresolvedReferences\n        return FILE_URL.format(token, get_file(token, file_id)['file_path'])\n\n\ndef download_file(token, file_path):\n    if FILE_URL is None:\n        url =  \"https://api.telegram.org/file/bot{0}/{1}\".format(token, file_path)\n    else:\n        # noinspection PyUnresolvedReferences\n        url =  FILE_URL.format(token, file_path)\n        \n    result = _get_req_session().get(url, proxies=proxy)\n    if result.status_code != 200:\n        raise ApiHTTPException('Download file', result)\n        \n    return result.content\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "util.per_thread",
+        "datetime.now",
+        "datetime.now",
+        "util.per_thread",
+        "util.per_thread",
+        "requests.sessions.Session",
+        "util.per_thread",
+        "requests.sessions.Session",
+        "util.per_thread",
+        "session.request",
+        "session.request",
+        "requests.packages.urllib3.util.retry.Retry",
+        "HTTPAdapter",
+        "session.mount",
+        "session.mount",
+        "session.request",
+        "session.request",
+        "logger.debug",
+        "result.text.encode",
+        "_check_result"
+      ],
+      "api_sequence_with_args": [
+        "util.per_thread('req_session_time', lambda: datetime.now(), reset)",
+        "datetime.now()",
+        "datetime.now()",
+        "util.per_thread('req_session_time', lambda: datetime.now(), True)",
+        "util.per_thread('req_session', lambda: session if session else requests.sessions.Session(), reset)",
+        "requests.sessions.Session()",
+        "util.per_thread('req_session', lambda: session if session else requests.sessions.Session(), reset)",
+        "requests.sessions.Session()",
+        "util.per_thread('req_session', lambda: session if session else requests.sessions.Session(), reset)",
+        "session.request(method, request_url, params=params, files=files, timeout=(connect_timeout, read_timeout), proxies=proxy)",
+        "session.request(method, request_url, params=params, files=files, timeout=(connect_timeout, read_timeout), proxies=proxy)",
+        "requests.packages.urllib3.util.retry.Retry(total=MAX_RETRIES, allowed_methods=None, backoff_factor=RETRY_TIMEOUT, backoff_max=RETRY_TIMEOUT)",
+        "HTTPAdapter(max_retries=retry_strategy)",
+        "session.mount('http://', adapter)",
+        "session.mount('https://', adapter)",
+        "session.request(method, request_url, params=params, files=files, timeout=(connect_timeout, read_timeout), proxies=proxy)",
+        "session.request(method, request_url, params=params, files=files, timeout=(connect_timeout, read_timeout), proxies=proxy)",
+        "logger.debug(\"The server returned: '{0}'\".format(result.text.encode('utf8')))",
+        "result.text.encode('utf8')",
+        "_check_result(method_name, result)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "util.per_thread",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "datetime.now",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "datetime.now",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "util.per_thread",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "util.per_thread",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "requests.sessions.Session",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "util.per_thread",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "requests.sessions.Session",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "util.per_thread",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "requests.sessions.Session.request",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.sessions.Session.request",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.packages.urllib3.util.retry.Retry",
+          "id": "configure_proxy_handler",
+          "description": "Configures proxy handler for HTTP requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "requests.adapters.HTTPAdapter",
+          "id": "build_opener",
+          "description": "Builds opener object with specified handler",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "requests.sessions.Session.mount",
+          "id": "build_opener",
+          "description": "Builds opener object with specified handler",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "requests.sessions.Session.mount",
+          "id": "build_opener",
+          "description": "Builds opener object with specified handler",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "requests.sessions.Session.request",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.sessions.Session.request",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "telebot.logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "result.text.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "_check_result",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def _get_req_session(reset=False):\n    if SESSION_TIME_TO_LIVE:\n        creation_date = util.per_thread('req_session_time', lambda: datetime.now(), reset)\n        if (datetime.now() - creation_date).total_seconds() > SESSION_TIME_TO_LIVE:\n            reset = True\n            util.per_thread('req_session_time', lambda: datetime.now(), True)\n    if SESSION_TIME_TO_LIVE == 0:\n        return requests.sessions.Session()\n    else:\n        return util.per_thread('req_session', lambda: session if session else requests.sessions.Session(), reset)\n\ndef _make_request(token, method_name, method='get', params=None, files=None):\n    if not token:\n        raise Exception('Bot token is not defined')\n    if API_URL:\n        request_url = API_URL.format(token, method_name)\n    else:\n        request_url = \"https://api.telegram.org/bot{0}/{1}\".format(token, method_name)\n    logger.debug(\"Request: method={0} url={1} params={2} files={3}\".format(method, request_url, params, files).replace(token, token.split(':')[0] + \":{TOKEN}\"))\n    read_timeout = READ_TIMEOUT\n    connect_timeout = CONNECT_TIMEOUT\n    if files:\n        files_copy = dict(files)\n        for key, value in files_copy.items():\n            if isinstance(value, types.InputFile):\n                files[key] = (value.file_name, value.file)\n            elif isinstance(value, tuple) and (len(value) == 2) and isinstance(value[1], types.InputFile):\n                files[key] = (value[0], value[1].file)\n    if files and format_header_param:\n        fields.format_header_param = _no_encode(format_header_param)\n    if params:\n        if 'timeout' in params:\n            read_timeout = params.pop('timeout')\n            connect_timeout = read_timeout\n        if 'long_polling_timeout' in params:\n            long_polling_timeout = params.pop('long_polling_timeout')\n            params['timeout'] = long_polling_timeout\n            read_timeout = max(long_polling_timeout + 5, read_timeout)\n    params = params or None\n    result = None\n    if CUSTOM_REQUEST_SENDER:\n        result = CUSTOM_REQUEST_SENDER(\n            method, request_url, params=params, files=files,\n            timeout=(connect_timeout, read_timeout), proxies=proxy)\n    elif RETRY_ON_ERROR and RETRY_ENGINE == 1:\n        got_result = False\n        current_try = 0\n        while not got_result and current_try<MAX_RETRIES-1:\n            current_try+=1\n            try:\n                result = _get_req_session().request(\n                    method, request_url, params=params, files=files,\n                    timeout=(connect_timeout, read_timeout), proxies=proxy)\n                got_result = True\n            except HTTPError:\n                logger.debug(\"HTTP Error on {0} method (Try #{1})\".format(method_name, current_try))\n                time.sleep(RETRY_TIMEOUT)\n            except ConnectionError:\n                logger.debug(\"Connection Error on {0} method (Try #{1})\".format(method_name, current_try))\n                time.sleep(RETRY_TIMEOUT)\n            except Timeout:\n                logger.debug(\"Timeout Error on {0} method (Try #{1})\".format(method_name, current_try))\n                time.sleep(RETRY_TIMEOUT)\n        if not got_result:\n            result = _get_req_session().request(\n                    method, request_url, params=params, files=files,\n                    timeout=(connect_timeout, read_timeout), proxies=proxy)\n    elif RETRY_ON_ERROR and RETRY_ENGINE == 2:\n        http = _get_req_session()\n        retry_strategy = requests.packages.urllib3.util.retry.Retry(\n            total=MAX_RETRIES,\n            allowed_methods=None,\n            backoff_factor=RETRY_TIMEOUT,\n            backoff_max=RETRY_TIMEOUT\n        )\n        adapter = HTTPAdapter(max_retries=retry_strategy)\n        for prefix in ('http://', 'https://'):\n            http.mount(prefix, adapter)\n        result = http.request(\n            method, request_url, params=params, files=files,\n            timeout=(connect_timeout, read_timeout), proxies=proxy)\n    else:\n        result = _get_req_session().request(\n            method, request_url, params=params, files=files,\n            timeout=(connect_timeout, read_timeout), proxies=proxy)\n    logger.debug(\"The server returned: '{0}'\".format(result.text.encode('utf8')))\n    json_result = _check_result(method_name, result)\n    if json_result:\n        return json_result['result']"
+    }
+  },
+  {
+    "pyfile": "asyncio_helper.py",
+    "code_snippet": "import asyncio # for future uses\nimport ssl\nimport aiohttp\nimport certifi\nfrom telebot import types\n\ntry:\n    import ujson as json\nexcept ImportError:\n    import json\nimport os\nAPI_URL = 'https://api.telegram.org/bot{0}/{1}'\n\nfrom datetime import datetime\n\nfrom telebot import util\nimport logging\n\nlogger = logging.getLogger('TeleBot')\n\nproxy = None\nsession = None\n\nFILE_URL = None\n\nREQUEST_TIMEOUT = 300\nMAX_RETRIES = 3\n\nREQUEST_LIMIT = 50\n\nclass SessionManager:\n    def __init__(self) -> None:\n        self.session = None\n        self.ssl_context = ssl.create_default_context(cafile=certifi.where())\n\n\n    async def create_session(self):\n        self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(\n            limit=REQUEST_LIMIT,\n            ssl_context=self.ssl_context\n        ))\n        return self.session\n\n    async def get_session(self):\n        if self.session is None:\n            self.session = await self.create_session()\n            return self.session\n            \n        if self.session.closed:\n            self.session = await self.create_session()\n\n        # noinspection PyProtectedMember\n        if not self.session._loop.is_running():\n            await self.session.close()\n            self.session = await self.create_session()\n        return self.session\n\n\nsession_manager = SessionManager()\n\nasync def get_file(token, file_id):\n    method_url = r'getFile'\n    return await _process_request(token, method_url, params={'file_id': file_id})\n\nasync def get_file_url(token, file_id):\n    if FILE_URL is None:\n        return \"https://api.telegram.org/file/bot{0}/{1}\".format(token, (await get_file(token, file_id))['file_path'])\n    else:\n        # noinspection PyUnresolvedReferences\n        return FILE_URL.format(token, (await get_file(token, file_id))['file_path'])\n\nasync def download_file(token, file_path):\n    if FILE_URL is None:\n        url =  \"https://api.telegram.org/file/bot{0}/{1}\".format(token, file_path)\n    else:\n        # noinspection PyUnresolvedReferences\n        url =  FILE_URL.format(token, file_path)\n    session = await session_manager.get_session()\n    async with session.get(url, proxy=proxy) as response:\n        if response.status != 200:\n            raise ApiHTTPException('Download file', response)\n        result = await response.read()\n    \n    return result\n\nasync def _process_request(token, url, method='get', params=None, files=None, **kwargs):\n    # Let's resolve all timeout parameters.\n    # getUpdates parameter may contain 2 parameters: request_timeout & timeout.\n    # other methods may contain timeout parameter that should be applied to\n    # ClientTimeout only.\n    # timeout should be added to params for getUpdates. All other timeout's should be used\n    # for request timeout.\n    # here we got request_timeout, so this is getUpdates method.\n    if 'request_timeout' in kwargs:\n        request_timeout = kwargs.pop('request_timeout')\n\n    else:\n        # let's check for timeout in params\n        request_timeout = params.pop('timeout', None) if params else None\n        # we will apply default request_timeout if there is no timeout in params\n        # otherwise, we will use timeout parameter applied for payload.\n    \n    request_timeout = REQUEST_TIMEOUT if request_timeout is None else request_timeout\n    \n\n    # Preparing data by adding all parameters and files to FormData\n    params = _prepare_data(params, files)\n\n    timeout = aiohttp.ClientTimeout(total=request_timeout)\n    got_result = False\n    current_try=0\n    session = await session_manager.get_session()\n    while not got_result and current_try<MAX_RETRIES-1:\n        current_try +=1\n        try:\n            async with session.request(method=method, url=API_URL.format(token, url), data=params, timeout=timeout, proxy=proxy) as resp:\n                got_result = True\n                logger.debug(\"Request: method={0} url={1} params={2} files={3} request_timeout={4} current_try={5}\".format(method, url, params, files, request_timeout, current_try).replace(token, token.split(':')[0] + \":{TOKEN}\"))\n                \n                json_result = await _check_result(url, resp)\n                if json_result:\n                    return json_result['result']\n        except (ApiTelegramException,ApiInvalidJSONException, ApiHTTPException) as e:\n            raise e\n        except aiohttp.ClientError as e:\n            logger.error('Aiohttp ClientError: {0}'.format(e.__class__.__name__))\n        except Exception as e:\n            logger.error(f'Unknown error: {e.__class__.__name__}')\n        if not got_result:\n            raise RequestTimeout(\"Request timeout. Request: method={0} url={1} params={2} files={3} request_timeout={4}\".format(method, url, params, files, request_timeout, current_try))\n        \ndef _prepare_data(params=None, files=None):\n    \"\"\"\n    Adds the parameters and files to the request.\n\n    :param params:\n    :param files:\n    :return:\n    \"\"\"\n    data = aiohttp.formdata.FormData(quote_fields=False)\n\n    if params:\n        for key, value in params.items():\n            data.add_field(key, str(value))\n    if files:\n        for key, f in files.items():\n            if isinstance(f, tuple):\n                if len(f) == 2:\n                    file_name, file = f\n                    if isinstance(file, types.InputFile):\n                        file = file.file\n                else:\n                    raise ValueError('Tuple must have exactly 2 elements: filename, fileobj')\n            elif isinstance(f, types.InputFile):\n                file_name = f.file_name\n                file = f.file\n            else:\n                file_name, file = _prepare_file(f) or key, f\n\n            data.add_field(key, file, filename=file_name)\n\n    return data\n\ndef _prepare_file(obj):\n    \"\"\"\n    Prepares file for upload.\n    \"\"\"\n    name = getattr(obj, 'name', None)\n    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':\n        return os.path.basename(name)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ssl.create_default_context",
+        "certifi.where",
+        "aiohttp.ClientSession",
+        "aiohttp.TCPConnector",
+        "session.get",
+        "aiohttp.ClientTimeout",
+        "session.request",
+        "logger.debug",
+        "logger.error",
+        "logger.error",
+        "aiohttp.formdata.FormData",
+        "data.add_field",
+        "data.add_field",
+        "os.path.basename",
+        "getattr"
+      ],
+      "api_sequence_with_args": [
+        "ssl.create_default_context(cafile=certifi.where())",
+        "certifi.where()",
+        "aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=REQUEST_LIMIT, ssl_context=self.ssl_context))",
+        "aiohttp.TCPConnector(limit=REQUEST_LIMIT, ssl_context=self.ssl_context)",
+        "session.get(url, proxy=proxy)",
+        "aiohttp.ClientTimeout(total=request_timeout)",
+        "session.request(method=method, url=API_URL.format(token, url), data=params, timeout=timeout, proxy=proxy)",
+        "logger.debug(\"Request: method={0} url={1} params={2} files={3} request_timeout={4} current_try={5}\".format(method, url, params, files, request_timeout, current_try).replace(token, token.split(':')[0] + \":{TOKEN}\"))",
+        "logger.error('Aiohttp ClientError: {0}'.format(e.__class__.__name__))",
+        "logger.error(f'Unknown error: {e.__class__.__name__}')",
+        "aiohttp.formdata.FormData(quote_fields=False)",
+        "data.add_field(key, str(value))",
+        "data.add_field(key, file, filename=file_name)",
+        "os.path.basename(name)",
+        "getattr(obj, 'name', None)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ssl.create_default_context",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "certifi.where",
+          "id": "get_os_null_device",
+          "description": "Retrieves operating system null device path",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "aiohttp.ClientSession",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "aiohttp.TCPConnector",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "session.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "aiohttp.ClientTimeout",
+          "id": "open_url_get_timeout",
+          "description": "Opens URL with GET parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "session.request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "aiohttp.formdata.FormData",
+          "id": "create_multipart_writer",
+          "description": "Creates multipart writer for HTTP requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "data.add_field",
+          "id": "add_multipart_field",
+          "description": "Adds field to multipart HTTP request",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "data.add_field",
+          "id": "add_multipart_field",
+          "description": "Adds field to multipart HTTP request",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "class SessionManager:\n    def __init__(self) -> None:\n        self.session = None\n        self.ssl_context = ssl.create_default_context(cafile=certifi.where())\n\n    async def create_session(self):\n        self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(\n            limit=REQUEST_LIMIT,\n            ssl_context=self.ssl_context\n        ))\n        return self.session\n\n    async def get_session(self):\n        if self.session is None:\n            self.session = await self.create_session()\n            return self.session\n        if self.session.closed:\n            self.session = await self.create_session()\n        if not self.session._loop.is_running():\n            await self.session.close()\n            self.session = await self.create_session()\n        return self.session\n\nasync def download_file(token, file_path):\n    if FILE_URL is None:\n        url =  \"https://api.telegram.org/file/bot{0}/{1}\".format(token, file_path)\n    else:\n        url =  FILE_URL.format(token, file_path)\n    session = await session_manager.get_session()\n    async with session.get(url, proxy=proxy) as response:\n        if response.status != 200:\n            raise ApiHTTPException('Download file', response)\n        result = await response.read()\n    return result\n\nasync def _process_request(token, url, method='get', params=None, files=None, **kwargs):\n    if 'request_timeout' in kwargs:\n        request_timeout = kwargs.pop('request_timeout')\n    else:\n        request_timeout = params.pop('timeout', None) if params else None\n    request_timeout = REQUEST_TIMEOUT if request_timeout is None else request_timeout\n    params = _prepare_data(params, files)\n    timeout = aiohttp.ClientTimeout(total=request_timeout)\n    got_result = False\n    current_try=0\n    session = await session_manager.get_session()\n    while not got_result and current_try<MAX_RETRIES-1:\n        current_try +=1\n        try:\n            async with session.request(method=method, url=API_URL.format(token, url), data=params, timeout=timeout, proxy=proxy) as resp:\n                got_result = True\n                logger.debug(\"Request: method={0} url={1} params={2} files={3} request_timeout={4} current_try={5}\".format(method, url, params, files, request_timeout, current_try).replace(token, token.split(':')[0] + \":{TOKEN}\"))\n                json_result = await _check_result(url, resp)\n                if json_result:\n                    return json_result['result']\n        except (ApiTelegramException,ApiInvalidJSONException, ApiHTTPException) as e:\n            raise e\n        except aiohttp.ClientError as e:\n            logger.error('Aiohttp ClientError: {0}'.format(e.__class__.__name__))\n        except Exception as e:\n            logger.error(f'Unknown error: {e.__class__.__name__}')\n        if not got_result:\n            raise RequestTimeout(\"Request timeout. Request: method={0} url={1} params={2} files={3} request_timeout={4}\".format(method, url, params, files, request_timeout, current_try))\n\ndef _prepare_data(params=None, files=None):\n    data = aiohttp.formdata.FormData(quote_fields=False)\n    if params:\n        for key, value in params.items():\n            data.add_field(key, str(value))\n    if files:\n        for key, f in files.items():\n            if isinstance(f, tuple):\n                if len(f) == 2:\n                    file_name, file = f\n                    if isinstance(file, types.InputFile):\n                        file = file.file\n                else:\n                    raise ValueError('Tuple must have exactly 2 elements: filename, fileobj')\n            elif isinstance(f, types.InputFile):\n                file_name = f.file_name\n                file = f.file\n            else:\n                file_name, file = _prepare_file(f) or key, f\n            data.add_field(key, file, filename=file_name)\n    return data\n\ndef _prepare_file(obj):\n    name = getattr(obj, 'name', None)\n    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':\n        return os.path.basename(name)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pytelegrambotapi-4.26.0",
+      "total_matches": 6
+    }
+  }
+]

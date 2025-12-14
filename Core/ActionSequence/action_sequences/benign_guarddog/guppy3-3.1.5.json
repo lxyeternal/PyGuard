@@ -1,0 +1,31 @@
+[
+  {
+    "pyfile": "Spec.py",
+    "code_snippet": "class _GLUECLAMP_:\n\n    ...\n\n    def _get_compile(self):\n        token = self._root.token\n        parser = self._root.parser\n        symbol = self._root.symbol\n\n        def mapchildren_id(node, f):\n            return node\n\n        def mapchildren_default(node, f):\n            return [node[0]] + [f(n) for n in node[1:]]\n\n        mapchildren_dispatch = dict(\n            [(value, mapchildren_id) for value in range(token.N_TOKENS)])\n\n        mapchildren_dispatch.update(dict([(value, mapchildren_default)\n                                          for value, name in list(symbol.sym_name.items())]))\n\n        def mapchildren(node, f):\n            return mapchildren_dispatch[node[0]](node, f)\n\n        def visitor(C):\n            d = mapchildren_dispatch.copy()\n            for value, name in list(symbol.sym_name.items()):\n                if hasattr(C, name):\n                    d[value] = getattr(C, name).__func__\n\n            def _visit(node): return d[node[0]](node, _visit)\n            return _visit\n\n        def recover_source_node(node, l):\n            for n in node[1:]:\n                recover_source_dispatch[n[0]](n, l)\n\n        def recover_source_token(node, l):\n            if l and l[-1] != '(':  # data dependency: l\n                l.append(' ')\n            l.append(node[1])\n\n        def recover_source_name(node, l):\n            if l and l[-1] not in ('.', '('):\n                l.append(' ')\n            l.append(node[1])\n\n        def recover_source_tight_left(node, l):\n            l.append(node[1])\n\n        def recover_source_lpar(node, l):\n            if l and not (l[-1][-1:].isalnum() or l[-1] == '('):\n                l.append(' ')\n            l.append(node[1])\n\n        recover_source_dispatch = dict([(value, recover_source_node)\n                                        for value, name in list(symbol.sym_name.items())])\n        recover_source_dispatch.update(\n            dict([(value, recover_source_token) for value in range(token.N_TOKENS)]))\n\n        recover_source_dispatch[token.NAME] = recover_source_name\n\n        for tok in ('RPAR', 'LSQB', 'RSQB', 'COLON', 'COMMA', 'SEMI',\n                    'DOT', 'LBRACE', 'RBRACE'):\n            recover_source_dispatch[getattr(\n                token, tok)] = recover_source_tight_left\n\n        recover_source_dispatch[token.LPAR] = recover_source_lpar\n\n        def recover_source(node):\n            l = []\n            recover_source_dispatch[node[0]](node, l)\n            return ''.join(l)\n\n        class wrap_lambdef:\n            def test(node, f):\n                # and_test ('or' and_test)* | lambdef\n                if len(node) == 2 and node[1][0] == symbol.lambdef:\n                    lsource = recover_source(node[1])\n                    lnode = mapchildren(node[1], f)\n\n                    return (\n                        292, (293, (294, (295, (297, (298, (299, (300, (301,\n                                                                        (302, (303, (304, (305, (1, 'wrap_source_string')),\n                                                                                     (308, (7, '('), (317, (318, (292, lnode)), (12, ','),\n                                                                                                      (318, (292, (293, (294, (295, (297, (298, (299, (300,\n                                                                                                                                                       (301, (302, (303, (304, (305, (3, '%r' % lsource\n                                                                                                                                                                                      )))))))))))))))), (8, ')'))))))))))))))\n\n                return mapchildren(node, f)\n\n        wrap_lambdef = visitor(wrap_lambdef)\n\n        def compile_(source, filename, mode, *args):\n            if mode != 'spec':\n                return compile(source, filename, mode, *args)\n            ast = parser.expr(source)\n            node = parser.ast2tuple(ast, line_info=1)\n            node = mapchildren(node, wrap_lambdef)\n\n            ast = parser.tuple2ast(node)\n\n            co = parser.compileast(ast)\n            return co\n\n        return compile_",
+    "pattern_analysis": {
+      "api_sequence": [
+        "compile"
+      ],
+      "api_sequence_with_args": [
+        "compile(source, filename, mode, *args)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        }
+      ],
+      "contextual_code": "def compile_(source, filename, mode, *args):\n    if mode != 'spec':\n        return compile(source, filename, mode, *args)\n    ast = parser.expr(source)\n    node = parser.ast2tuple(ast, line_info=1)\n    node = mapchildren(node, wrap_lambdef)\n    ast = parser.tuple2ast(node)\n    co = parser.compileast(ast)\n    return co"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "guppy3-3.1.5",
+      "total_matches": 2
+    }
+  }
+]

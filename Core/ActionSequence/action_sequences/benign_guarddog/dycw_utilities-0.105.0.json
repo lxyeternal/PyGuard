@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "http.py",
+    "code_snippet": "from __future__ import annotations\n\nfrom contextlib import contextmanager\nfrom http.client import HTTPSConnection\nfrom ipaddress import IPv4Address\nfrom typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from collections.abc import Iterator\n\n\ndef get_public_ip(*, timeout: float | None = None) -> IPv4Address:\n    \"\"\"Get your public IP address.\"\"\"\n    with yield_connection(\"api.ipify.org\", timeout=timeout) as conn:  # pragma: no cover\n        conn.request(\"GET\", \"/?format=text\")\n        response = conn.getresponse()\n        address = response.read().decode(\"utf8\")\n    return IPv4Address(address)  # pragma: no cover\n\n\n@contextmanager\ndef yield_connection(\n    host: str, /, *, timeout: float | None = None\n) -> Iterator[HTTPSConnection]:\n    \"\"\"Yield an HTTP connection.\"\"\"\n    conn = HTTPSConnection(host, timeout=timeout)\n    try:\n        yield conn\n    finally:\n        conn.close()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "http.client.HTTPSConnection",
+        "http.client.HTTPSConnection.request",
+        "http.client.HTTPSConnection.getresponse",
+        "http.client.HTTPResponse.read",
+        "str.decode",
+        "ipaddress.IPv4Address",
+        "http.client.HTTPSConnection.close"
+      ],
+      "api_sequence_with_args": [
+        "http.client.HTTPSConnection(host, timeout=timeout)",
+        "http.client.HTTPSConnection.request(\"GET\", \"/?format=text\")",
+        "http.client.HTTPSConnection.getresponse()",
+        "http.client.HTTPResponse.read()",
+        "str.decode(\"utf8\")",
+        "ipaddress.IPv4Address(address)",
+        "http.client.HTTPSConnection.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "http.client.HTTPSConnection",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "http.client.HTTPSConnection.request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "http.client.HTTPSConnection.getresponse",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "http.client.HTTPResponse.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "str.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "ipaddress.IPv4Address",
+          "id": "get_public_ip",
+          "description": "Retrieves public IP address using HTTP request",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "http.client.HTTPSConnection.close",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def get_public_ip(*, timeout: float | None = None) -> IPv4Address:\n    \"\"\"Get your public IP address.\"\"\"\n    with yield_connection(\"api.ipify.org\", timeout=timeout) as conn:\n        conn.request(\"GET\", \"/?format=text\")\n        response = conn.getresponse()\n        address = response.read().decode(\"utf8\")\n    return IPv4Address(address)\n\n@contextmanager\ndef yield_connection(host: str, /, *, timeout: float | None = None):\n    conn = HTTPSConnection(host, timeout=timeout)\n    try:\n        yield conn\n    finally:\n        conn.close()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "dycw_utilities-0.105.0",
+      "total_matches": 1
+    }
+  }
+]

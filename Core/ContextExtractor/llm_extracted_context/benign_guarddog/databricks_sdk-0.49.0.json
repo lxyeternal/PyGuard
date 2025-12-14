@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "databricks_sdk-0.49.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/databricks_sdk-0.49.0.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "credentials_provider.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/databricks_sdk-0.49.0/databricks_sdk-0.49.0/databricks/sdk/credentials_provider.py",
+    "line_number": "331",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.get(endpoint, headers=headers)",
+    "context_snippet": "@oauth_credentials_strategy(\"github-oidc-azure\", [\"host\", \"azure_client_id\"])\ndef github_oidc_azure(cfg: \"Config\") -> Optional[CredentialsProvider]:\n    if \"ACTIONS_ID_TOKEN_REQUEST_TOKEN\" not in os.environ:\n        # not in GitHub actions\n        return None\n\n    # Client ID is the minimal thing we need, as otherwise we get AADSTS700016: Application with\n    # identifier 'https://token.actions.githubusercontent.com' was not found in the directory '...'.\n    if not cfg.is_azure:\n        return None\n\n    # See https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers\n    headers = {\"Authorization\": f\"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}\"}\n    endpoint = f\"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=api://AzureADTokenExchange\"\n    response = requests.get(endpoint, headers=headers)\n    if not response.ok:\n        return None\n\n    # get the ID Token with aud=api://AzureADTokenExchange sub=repo:org/repo:environment:name\n    response_json = response.json()\n    if \"value\" not in response_json:\n        return None\n\n    logger.info(\n        \"Configured AAD token for GitHub Actions OIDC (%s)\",\n        cfg.azure_client_id,\n    )\n    params = {\n        \"client_assertion_type\": \"urn:ietf:params:oauth:client-assertion-type:jwt-bearer\",\n        \"resource\": cfg.effective_azure_login_app_id,\n        \"client_assertion\": response_json[\"value\"],\n    }\n    aad_endpoint = cfg.arm_environment.active_directory_endpoint\n    if not cfg.azure_tenant_id:\n        # detect Azure AD Tenant ID if it's not specified directly\n        token_endpoint = cfg.oidc_endpoints.token_endpoint\n        cfg.azure_tenant_id = token_endpoint.replace(aad_endpoint, \"\").split(\"/\")[0]\n    inner = ClientCredentials(\n        client_id=cfg.azure_client_id,\n        client_secret=\"\",  # we have no (rotatable) secrets in OIDC flow\n        token_url=f\"{aad_endpoint}{cfg.azure_tenant_id}/oauth2/token\",\n        endpoint_params=params,\n        use_params=True,\n        disable_async=not cfg.enable_experimental_async_token_refresh,\n    )\n\n    def refreshed_headers() -> Dict[str, str]:\n        token = inner.token()\n        return {\"Authorization\": f\"{token.token_type} {token.access_token}\"}\n\n    def token() -> Token:\n        return inner.token()\n\n    return OAuthCredentialsProvider(refreshed_headers, token)",
+    "hash_value": "91eb301fca66f4081092c44f472bbe82",
+    "detection_index": 1
+  }
+]

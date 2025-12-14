@@ -1,0 +1,201 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import sys\nimport os\nimport datetime\nfrom textwrap import dedent\n\n# ... (other imports and code omitted for brevity)\n\nclass NameSpacePackager(object):\n    def __init__(self, pkg_data):\n        assert isinstance(pkg_data, dict)\n        self._pkg_data = pkg_data\n        self.full_package_name = self._pkg_data['full_package_name']\n        self._split = None\n        self._extra_packages = []\n        self.depth = self.full_package_name.count('.')\n        self.nested = self._pkg_data.get('nested', False)\n        # if self.nested:\n        #     NameSpaceInstaller.install_namespaces = lambda x: None\n        self.command = None\n        self.python_version()\n        self._pkg = [None, None]  # required and pre-installable packages\n        if sys.argv[0] == 'setup.py' and sys.argv[1] == 'install':\n            debug('calling setup.py', sys.argv)\n            if '-h' in sys.argv:\n                pass\n            elif '--single-version-externally-managed' not in sys.argv:\n                if os.environ.get('READTHEDOCS', None) == 'True':\n                    os.system('pip install .')\n                    sys.exit(0)\n                if not os.environ.get('RUAMEL_NO_PIP_INSTALL_CHECK', False):\n                    print('error: you have to install with \"pip install .\"')\n                    sys.exit(1)\n        # If you only support an extension module on Linux, Windows thinks it\n        # is pure. That way you would get pure python .whl files that take\n        # precedence for downloading on Linux over source with compilable C code\n        if self._pkg_data.get('universal'):\n            Distribution.is_pure = lambda *args: True\n        else:\n            Distribution.is_pure = lambda *args: False\n        for x in sys.argv:\n            if x[0] == '-' or x == 'setup.py':\n                continue\n            self.command = x\n            break\n    # ... (rest of class omitted for brevity)\n\n# ... (other code omitted for brevity)\n\ndef main():\n    dump_kw = '--dump-kw'\n    if dump_kw in sys.argv:\n        import wheel\n        import setuptools\n        import pip\n\n        print('python:    ', sys.version)\n        print('pip:       ', pip.__version__)\n        print('setuptools:', setuptools.__version__)\n        print('wheel:     ', wheel.__version__)\n    nsp = NameSpacePackager(pkg_data)\n    nsp.check()\n    # nsp.create_dirs()\n    MySdist.nsp = nsp\n    cmdclass = dict(install_lib=MyInstallLib, sdist=MySdist)  # NOQA: C408\n    if _bdist_wheel_available:\n        MyBdistWheel.nsp = nsp\n        cmdclass['bdist_wheel'] = MyBdistWheel\n\n    kw = dict(  # NOQA: C408\n        name=nsp.full_package_name,\n        version=version_str,\n        packages=nsp.packages,\n        python_requires=nsp.python_requires,\n        project_urls=nsp.project_urls,\n        author=nsp.author,\n        author_email=nsp.author_email,\n        cmdclass=cmdclass,\n        package_dir=nsp.package_dir,\n        entry_points=nsp.entry_points(),\n        description=nsp.description,\n        install_requires=nsp.install_requires,\n        extras_require=nsp.extras_require,  # available since setuptools 18.0 / 2015-06\n        license=nsp.license,\n        classifiers=nsp.classifiers,\n        keywords=nsp.keywords,\n        package_data=nsp.package_data,\n        ext_modules=nsp.ext_modules,\n        test_suite=nsp.test_suite,\n        zip_safe=False,\n    )\n\n    if '--version' not in sys.argv and ('--verbose' in sys.argv or dump_kw in sys.argv):\n        for k in sorted(kw):\n            v = kw[k]\n            print('  \"{0}\": {1},'.format(k, repr(v)))\n    # if '--record' in sys.argv:\n    #     return\n    if dump_kw in sys.argv:\n        sys.argv.remove(dump_kw)\n    if not os.environ.get('RUAMEL_NO_LONG_DESCRIPTION', False):\n        for readme_file_name, readme_markup_type in [\n            ('README.md', 'text/markdown; charset=UTF-8; variant=CommonMark'),\n            ('README.rst', 'text/x-rst'),\n        ]:\n            try:\n                kw['long_description'] = open(readme_file_name).read()\n                kw['long_description_content_type'] = readme_markup_type\n                break\n            except FileNotFoundError:\n                pass\n\n    # if nsp.wheel(kw, setup):\n    #     return\n    with TmpFiles(pkg_data, keep=True):\n        for x in ['-c', 'egg_info', '--egg-base', 'pip-egg-info']:\n            if x not in sys.argv:\n                break\n        else:\n            # we're doing a tox setup install any starred package by searching up the\n            # source tree until you match your/package/name for your.package.name\n            for p in nsp.install_pre:\n                import subprocess\n\n                # search other source\n                setup_path = os.path.join(*p.split('.') + ['setup.py'])\n                try_dir = os.path.dirname(sys.executable)\n                while len(try_dir) > 1:\n                    full_path_setup_py = os.path.join(try_dir, setup_path)\n                    if os.path.exists(full_path_setup_py):\n                        pip = sys.executable.replace('python', 'pip')\n                        cmd = [pip, 'install', os.path.dirname(full_path_setup_py)]\n                        # with open('/var/tmp/notice', 'a') as fp:\n                        #     print('installing', cmd, file=fp)\n                        subprocess.check_output(cmd)\n                        break\n                    try_dir = os.path.dirname(try_dir)\n        setup(**kw)\n\nmain()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.argv",
+        "os.environ.get",
+        "os.system",
+        "sys.exit",
+        "os.environ.get",
+        "sys.exit",
+        "os.environ.get",
+        "open",
+        "open.read",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.exists",
+        "sys.executable.replace",
+        "os.path.dirname",
+        "subprocess.check_output",
+        "setup"
+      ],
+      "api_sequence_with_args": [
+        "sys.argv",
+        "os.environ.get('READTHEDOCS', None)",
+        "os.system('pip install .')",
+        "sys.exit(0)",
+        "os.environ.get('RUAMEL_NO_PIP_INSTALL_CHECK', False)",
+        "sys.exit(1)",
+        "os.environ.get('RUAMEL_NO_LONG_DESCRIPTION', False)",
+        "open(readme_file_name)",
+        "open(readme_file_name).read()",
+        "os.path.join(*p.split('.') + ['setup.py'])",
+        "os.path.dirname(sys.executable)",
+        "os.path.dirname(try_dir)",
+        "os.path.join(try_dir, setup_path)",
+        "os.path.exists(full_path_setup_py)",
+        "sys.executable.replace('python', 'pip')",
+        "os.path.dirname(full_path_setup_py)",
+        "subprocess.check_output(cmd)",
+        "setup(**kw)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "sys.executable.replace",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "if sys.argv[0] == 'setup.py' and sys.argv[1] == 'install':\n    debug('calling setup.py', sys.argv)\n    if '-h' in sys.argv:\n        pass\n    elif '--single-version-externally-managed' not in sys.argv:\n        if os.environ.get('READTHEDOCS', None) == 'True':\n            os.system('pip install .')\n            sys.exit(0)\n        if not os.environ.get('RUAMEL_NO_PIP_INSTALL_CHECK', False):\n            print('error: you have to install with \"pip install .\"')\n            sys.exit(1)\n\nif not os.environ.get('RUAMEL_NO_LONG_DESCRIPTION', False):\n    for readme_file_name, readme_markup_type in [\n        ('README.md', 'text/markdown; charset=UTF-8; variant=CommonMark'),\n        ('README.rst', 'text/x-rst'),\n    ]:\n        try:\n            kw['long_description'] = open(readme_file_name).read()\n            kw['long_description_content_type'] = readme_markup_type\n            break\n        except FileNotFoundError:\n            pass\n\nfor p in nsp.install_pre:\n    import subprocess\n    setup_path = os.path.join(*p.split('.') + ['setup.py'])\n    try_dir = os.path.dirname(sys.executable)\n    while len(try_dir) > 1:\n        full_path_setup_py = os.path.join(try_dir, setup_path)\n        if os.path.exists(full_path_setup_py):\n            pip = sys.executable.replace('python', 'pip')\n            cmd = [pip, 'install', os.path.dirname(full_path_setup_py)]\n            subprocess.check_output(cmd)\n            break\n        try_dir = os.path.dirname(try_dir)\nsetup(**kw)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ruamel.yaml-0.18.10",
+      "total_matches": 2
+    }
+  }
+]

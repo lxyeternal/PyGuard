@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "six.py",
+    "code_snippet": "import sys\n\nif PY3:\n    import builtins\n    exec_ = getattr(builtins, \"exec\")\n\n\n    def reraise(tp, value, tb=None):\n        if value.__traceback__ is not tb:\n            raise value.with_traceback(tb)\n        raise value\n\n\n    print_ = getattr(builtins, \"print\")\n    del builtins\n\nelse:\n    def exec_(_code_, _globs_=None, _locs_=None):\n        \"\"\"Execute code in a namespace.\"\"\"\n        if _globs_ is None:\n            frame = sys._getframe(1)\n            _globs_ = frame.f_globals\n            if _locs_ is None:\n                _locs_ = frame.f_locals\n            del frame\n        elif _locs_ is None:\n            _locs_ = _globs_\n        exec(\"\"\"exec _code_ in _globs_, _locs_\"\"\")\n\n\n    exec_(\"\"\"def reraise(tp, value, tb=None):\n    raise tp, value, tb\n\"\"\")\n\n\n    def print_(*args, **kwargs):\n        \"\"\"The new-style print function.\"\"\"\n        fp = kwargs.pop(\"file\", sys.stdout)\n        if fp is None:\n            return\n        def write(data):\n            if not isinstance(data, basestring):\n                data = str(data)\n            fp.write(data)\n        want_unicode = False\n        sep = kwargs.pop(\"sep\", None)\n        if sep is not None:\n            if isinstance(sep, unicode):\n                want_unicode = True\n            elif not isinstance(sep, str):\n                raise TypeError(\"sep must be None or a string\")\n        end = kwargs.pop(\"end\", None)\n        if end is not None:\n            if isinstance(end, unicode):\n                want_unicode = True\n            elif not isinstance(end, str):\n                raise TypeError(\"end must be None or a string\")\n        if kwargs:\n            raise TypeError(\"invalid keyword arguments to print()\")\n        if not want_unicode:\n            for arg in args:\n                if isinstance(arg, unicode):\n                    want_unicode = True\n                    break\n        if want_unicode:\n            newline = unicode(\"\\n\")\n            space = unicode(\" \")\n        else:\n            newline = \"\\n\"\n            space = \" \"\n        if sep is None:\n            sep = space\n        if end is None:\n            end = newline\n        for i, arg in enumerate(args):\n            if i:\n                write(sep)\n            write(arg)\n        write(end)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.exec",
+        "builtins.print",
+        "sys._getframe"
+      ],
+      "api_sequence_with_args": [
+        "builtins.exec(...)",
+        "builtins.print(...)",
+        "sys._getframe(1)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "builtins.print",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys._getframe",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        }
+      ],
+      "contextual_code": "if PY3:\n    import builtins\n    exec_ = getattr(builtins, \"exec\")\n    print_ = getattr(builtins, \"print\")\n    del builtins\nelse:\n    def exec_(_code_, _globs_=None, _locs_=None):\n        if _globs_ is None:\n            frame = sys._getframe(1)\n            _globs_ = frame.f_globals\n            if _locs_ is None:\n                _locs_ = frame.f_locals\n            del frame\n        elif _locs_ is None:\n            _locs_ = _globs_\n        exec(\"\"\"exec _code_ in _globs_, _locs_\"\"\")\n    def print_(*args, **kwargs):\n        fp = kwargs.pop(\"file\", sys.stdout)\n        if fp is None:\n            return\n        def write(data):\n            if not isinstance(data, basestring):\n                data = str(data)\n            fp.write(data)\n        # ... (rest omitted for brevity)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "urlobject-2.4.3",
+      "total_matches": 2
+    }
+  }
+]

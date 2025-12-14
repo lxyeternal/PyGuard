@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "deal-4.24.5",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/deal-4.24.5.txt",
+      "total_matches": 5
+    }
+  },
+  {
+    "pyfile": "_contract.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/deal-4.24.5/deal-4.24.5/deal/linter/_contract.py",
+    "line_number": "154",
+    "type_description": "obfuscation",
+    "original_snippet": "exc = getattr(builtins, name, name)",
+    "context_snippet": "    @cached_property\n    def exceptions(self) -> list[Union[str, type[BaseException]]]:\n        from ._extractors import get_name\n\n        excs = []\n        for expr in self.args:\n            name = get_name(expr)\n            if not name:\n                continue\n            exc = getattr(builtins, name, name)\n            excs.append(exc)\n        return excs",
+    "hash_value": "c547e088ef58f810e8fff3b941ce9b1e",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "exceptions.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/deal-4.24.5/deal-4.24.5/deal/linter/_extractors/exceptions.py",
+    "line_number": "48",
+    "type_description": "obfuscation",
+    "original_snippet": "exc = getattr(builtins, name, name)",
+    "context_snippet": "from __future__ import annotations\n\nimport ast\nimport builtins\nimport re\nfrom inspect import cleandoc\nfrom typing import Iterator\n\nfrom .._contract import Category\nfrom .._stub import StubsManager\nfrom .common import TOKENS, Extractor, Token, get_full_name, get_name, get_stub, infer\nfrom .contracts import get_contracts\n\n@get_exceptions.register(*TOKENS.RAISE)\ndef handle_raise(expr: ast.Raise, **kwargs) -> Token | None:\n    if expr.exc is None:\n        return None\n    name = get_name(expr.exc)\n    if not name:\n        # raised a value, too tricky\n        if not isinstance(expr.exc, TOKENS.CALL):\n            return None\n        # raised an instance of an exception\n        name = get_name(expr.exc.func)\n        if not name or name[0].islower():\n            return None\n    exc = getattr(builtins, name, name)\n    return Token(value=exc, line=expr.exc.lineno, col=expr.exc.col_offset)\n\n# Helper functions used:\ndef get_name(expr):\n    # imported from .common\n    pass\n",
+    "hash_value": "027fbe4ac312406acc43c7ea2eb1aea3",
+    "detection_index": 1
+  }
+]

@@ -1,0 +1,101 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import distutils\nimport distutils.ccompiler\n\n# ... (other code omitted for brevity)\n\ndef spawn(self, cmd, **kwargs):\n    should_use_avx2 = False\n    # try to be thorough in detecting that we are on a platform that potentially supports AVX2\n    machine_name = platform.machine()\n    if ((machine_name.startswith((\"x86\", \"i686\")) or\n        machine_name.lower() == \"amd64\") and\n            os.environ.get(\"MAC_ARCH\") != \"arm64\"):\n        should_use_avx2 = True\n\n    if should_use_avx2:\n        extra_options = compiler_options.get(self.compiler_type)\n        if extra_options is not None:\n            # filenames are closer to the end of command line\n            for argument in reversed(cmd):\n                # Check if argument contains a filename. We must check for all\n                # possible extensions; checking for target extension is faster.\n                if not argument.endswith(self.obj_extension):\n                    continue\n\n                # check for a filename only to avoid building a new string\n                # with variable extension\n                for filename in avx2_filenames:\n                    off_end = -len(self.obj_extension)\n                    off_start = -len(filename) + off_end\n                    if argument.endswith(filename, off_start, off_end):\n                        if self.compiler_type == 'bcpp':\n                            # Borland accepts a source file name at the end,\n                            # insert the options before it\n                            cmd[-1:-1] = extra_options\n                        else:\n                            cmd += extra_options\n\n                # filename is found, no need to search any further\n                break\n\n    distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)\n\n# Patch distutils to use our spawn\n\ndistutils.ccompiler.CCompiler.__spawn = distutils.ccompiler.CCompiler.spawn\ndistutils.ccompiler.CCompiler.spawn = spawn\n\n# ... (other code omitted for brevity)\n\n@add_command('docs')\nclass DocsCommand(Command):\n    \"\"\" For building the pygame-ce documentation with `python setup.py docs`.\n    This generates html, and documentation .h header files.\n    \"\"\"\n    user_options = [\n        (\n            'fullgeneration',\n            'f',\n            'Full generation. Do not use a saved environment, always read all files.'\n        )\n    ]\n    boolean_options = ['fullgeneration']\n\n    def initialize_options(self):\n        self._dir = os.getcwd()\n        self.fullgeneration = None\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        '''\n        runs Sphinx to build the docs.\n        '''\n        import subprocess\n        command_line = [sys.executable, \"dev.py\", \"docs\"]\n        if self.fullgeneration:\n            command_line.append('--full')\n\n        print(\"WARNING: This command is deprecated and will be removed in the future.\")\n        print(f\"Please use the following replacement: `{' '.join(command_line)}`\\n\")\n        if subprocess.call(command_line) != 0:\n            raise SystemExit(\"Failed to build documentation\")\n\n@add_command('stubcheck')\nclass StubcheckCommand(Command):\n    \"\"\" For checking the stubs with `python setup.py stubcheck`.\n    \"\"\"\n    user_options = []\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        '''\n        runs mypy to build the docs.\n        '''\n        import subprocess\n        command_line = [sys.executable, \"dev.py\", \"stubs\"]\n        print(\"WARNING: This command is deprecated and will be removed in the future.\")\n        print(f\"Please use the following replacement: `{' '.join(command_line)}`\\n\")\n        result = subprocess.run(command_line)\n        if result.returncode != 0:\n            raise SystemExit(\"Stubcheck failed.\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.machine",
+        "os.environ.get",
+        "distutils.ccompiler.spawn",
+        "os.getcwd",
+        "subprocess.call",
+        "sys.executable",
+        "subprocess.run",
+        "sys.executable"
+      ],
+      "api_sequence_with_args": [
+        "platform.machine()",
+        "os.environ.get(\"MAC_ARCH\")",
+        "distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)",
+        "os.getcwd()",
+        "subprocess.call(command_line)",
+        "sys.executable",
+        "subprocess.run(command_line)",
+        "sys.executable"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.machine",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "distutils.ccompiler.spawn",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "def spawn(self, cmd, **kwargs):\n    should_use_avx2 = False\n    machine_name = platform.machine()\n    if ((machine_name.startswith((\"x86\", \"i686\")) or\n        machine_name.lower() == \"amd64\") and\n            os.environ.get(\"MAC_ARCH\") != \"arm64\"):\n        should_use_avx2 = True\n    # ... (optionally modifies cmd)\n    distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)\n\nclass DocsCommand(Command):\n    def initialize_options(self):\n        self._dir = os.getcwd()\n        self.fullgeneration = None\n    def run(self):\n        import subprocess\n        command_line = [sys.executable, \"dev.py\", \"docs\"]\n        if self.fullgeneration:\n            command_line.append('--full')\n        if subprocess.call(command_line) != 0:\n            raise SystemExit(\"Failed to build documentation\")\n\nclass StubcheckCommand(Command):\n    def run(self):\n        import subprocess\n        command_line = [sys.executable, \"dev.py\", \"stubs\"]\n        result = subprocess.run(command_line)\n        if result.returncode != 0:\n            raise SystemExit(\"Stubcheck failed.\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pygame_ce-2.5.3",
+      "total_matches": 3
+    }
+  }
+]

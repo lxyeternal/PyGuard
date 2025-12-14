@@ -1,0 +1,217 @@
+[
+  {
+    "metadata": {
+      "package_name": "ibm_watson_machine_learning-1.0.367",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "models.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ibm_watson_machine_learning-1.0.367/ibm_watson_machine_learning-1.0.367/ibm_watson_machine_learning/models.py",
+    "line_number": "2955",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2954\t            elapsed_time = 0\n2955\t            while model_details['entity'].get('content_import_state') == 'running' and elapsed_time < 60:\n2956\t                time.sleep(2)",
+    "code_snippet": "def _store_autoAI_model(self,model_path, meta_props, feature_names=None, label_column_names=None):\n    \"\"\"Store trained model from object storage into Watson Machine Learning repository on IBM Cloud.\"\"\"\n    model_meta = self.ConfigurationMetaNames._generate_resource_metadata(\n        meta_props,\n        client=self._client\n    )\n    if not self._client.CLOUD_PLATFORM_SPACES and not self._client.CPD_version:\n        self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.NAME, str, True)\n\n        # note: remove pipeline-model.json part from the string to allow correct regexp\n        if model_path.endswith('pipeline-model.json'):\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", '/'.join(model_path.split('/')[:-1]))\n            # --- end note\n        else:\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", model_path)\n        model_uid = x[-1] if x else ''\n        details = self._client.training.get_details(model_uid, _internal=True)\n\n        if self.ConfigurationMetaNames.RUNTIME_UID in meta_props:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.RUNTIME_UID, str, False)\n            model_meta.update({self.ConfigurationMetaNames.RUNTIME_UID: {\n                \"href\": API_VERSION + RUNTIMES + \"/\" + meta_props[self._client.repository.ModelMetaNames.RUNTIME_UID]}})\n        if self.ConfigurationMetaNames.SOFTWARE_SPEC_UID in meta_props:\n            if self._client.WSD_20:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.SOFTWARE_SPEC_UID, str, False)\n                model_meta.update({self.ConfigurationMetaNames.SOFTWARE_SPEC_UID: {\n                    \"base_id\": meta_props[self.ConfigurationMetaNames.SOFTWARE_SPEC_UID]}})\n            else:\n                model_meta.pop(self.ConfigurationMetaNames.SOFTWARE_SPEC_UID)\n\n        if self.ConfigurationMetaNames.SPACE_UID in meta_props and \\\n                meta_props[self._client.repository.ModelMetaNames.SPACE_UID] is not None:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.SPACE_UID, str, False)\n            model_meta.update({self.ConfigurationMetaNames.SPACE_UID: {\n                \"href\": API_VERSION + SPACES + \"/\" + meta_props[self._client.repository.ModelMetaNames.SPACE_UID]}})\n        if self.ConfigurationMetaNames.PIPELINE_UID in meta_props:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.PIPELINE_UID, str, False)\n            if self._client.WSD:\n                model_meta.update({self.ConfigurationMetaNames.PIPELINE_UID: {\n                    \"href\": self._client.service_instance._href_definitions.get_base_asset_href(meta_props[\n                        self._client.repository.ModelMetaNames.PIPELINE_UID])}})\n            else:\n                model_meta.update({self.ConfigurationMetaNames.PIPELINE_UID: {\n                    \"href\": API_VERSION + PIPELINES + \"/\" + meta_props[\n                        self._client.repository.ModelMetaNames.PIPELINE_UID]}})\n        if self._client.WSD_20:\n            if self.ConfigurationMetaNames.MODEL_DEFINITION_UID in meta_props:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.MODEL_DEFINITION_UID, str, False)\n                meta_props[self._client.repository.ModelMetaNames.MODEL_DEFINITION_UID] = {\n                    \"id\": meta_props[self._client.repository.ModelMetaNames.MODEL_DEFINITION_UID]}\n        else:\n            if self.ConfigurationMetaNames.TRAINING_LIB_UID in meta_props:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.TRAINING_LIB_UID, str, False)\n                model_meta.update({self.ConfigurationMetaNames.TRAINING_LIB_UID: {\n                    \"href\": API_VERSION + LIBRARIES + \"/\" + meta_props[\n                        self._client.repository.ModelMetaNames.TRAINING_LIB_UID]}})\n        if self._client.default_project_id is not None:\n            model_meta.update({'project': {\n                \"href\": \"/v2/projects\" + self._client.default_project_id}})\n\n        model_meta.update({\"import\": details[\"entity\"][\"results_reference\"]})\n        model_meta[\"import\"][\"location\"][\"path\"] = model_path\n        runtime_uid = 'hybrid_0.1'\n        model_type = 'wml-hybrid_0.1'\n\n        if self.ConfigurationMetaNames.TYPE not in meta_props:\n            model_meta.update({\"type\": model_type})\n\n        if self.ConfigurationMetaNames.RUNTIME_UID not in meta_props and \\\n                self.ConfigurationMetaNames.SOFTWARE_SPEC_UID not in meta_props:\n            model_meta.update({\"runtime\": {\"href\": \"/v4/runtimes/\"+runtime_uid}})\n        input_schema = []\n        output_schema = []\n        if self.ConfigurationMetaNames.INPUT_DATA_SCHEMA in meta_props and \\\n                meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA] is not None:\n            if self._client.WSD_20:\n                if isinstance(meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA], dict):\n                    input_schema = [meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]]\n                else:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.INPUT_DATA_SCHEMA, list, False)\n                    input_schema = meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]\n            else:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.INPUT_DATA_SCHEMA, dict, False)\n                input_schema = [meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]]\n            model_meta.pop(self.ConfigurationMetaNames.INPUT_DATA_SCHEMA)\n\n        if self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA in meta_props and \\\n                meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA] is not None:\n            if str(meta_props[self.ConfigurationMetaNames.TYPE]).startswith('do-') and self._client.WSD_20:\n                try:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, dict,\n                                             False)\n                    output_schema = [meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]]\n                except WMLClientError:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, list,\n                                             False)\n                    output_schema = meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]\n            else:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, dict, False)\n                output_schema = [meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]]\n            model_meta.pop(self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA)\n\n        if len(input_schema) != 0 or len(output_schema) != 0:\n            model_meta.update({\"schemas\": {\n                \"input\": input_schema,\n                \"output\": output_schema}\n            })\n\n        if label_column_names:\n            model_meta['label_column'] = label_column_names[0]\n\n        creation_response = requests.post(\n           self._wml_credentials['url'] + '/v4/models',\n           headers=self._client._get_headers(),\n           json=model_meta\n        )\n\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['id']\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['guid']\n    else:\n        # For V4 cloud prepare the metadata\n        if \"autoai_sdk\" in model_path:\n            input_payload = meta_props\n\n        else:\n            input_payload = self._create_cloud_model_payload(model_meta, feature_names=feature_names, label_column_names=label_column_names).deepcopy()\n\n        if self._client.CLOUD_PLATFORM_SPACES or self._client.CPD_version:\n            params = {}\n            params.update({'version': self._client.version_param})\n            url = self._wml_credentials['url'] + '/ml/v4/models'\n        else:\n            params = self._client._params()\n            url = self._client.service_instance._href_definitions.get_published_models_href()\n\n        if label_column_names:\n            input_payload['label_column'] = label_column_names[0]\n\n        creation_response = requests.post(\n            url,\n            params= params,\n            headers=self._client._get_headers(),\n            json=input_payload\n        )\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n        model_uid = model_details['metadata']['id']\n\n        if 'entity' in model_details:\n            start_time = time.time()\n            elapsed_time = 0\n            while model_details['entity'].get('content_import_state') == 'running' and elapsed_time < 60:\n                time.sleep(2)\n                elapsed_time = time.time()-start_time\n                model_details = self.get_details(model_uid)\n\n    return self.get_details(model_uid)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "re.findall",
+        "self._client.training.get_details",
+        "requests.post",
+        "requests.post.status_code",
+        "self._handle_response",
+        "self._handle_response",
+        "self.get_details",
+        "time.time",
+        "time.sleep",
+        "time.time",
+        "self.get_details",
+        "self.get_details"
+      ],
+      "api_sequence_with_args": [
+        "re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", '/'.join(model_path.split('/')[:-1])) OR re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", model_path)",
+        "self._client.training.get_details(model_uid, _internal=True)",
+        "requests.post(self._wml_credentials['url'] + '/v4/models', headers=self._client._get_headers(), json=model_meta) OR requests.post(url, params=params, headers=self._client._get_headers(), json=input_payload)",
+        "creation_response.status_code",
+        "self._handle_response(201, u'creating new model', creation_response)",
+        "self._handle_response(202, u'creating new model', creation_response)",
+        "self.get_details(model_uid)",
+        "time.time()",
+        "time.sleep(2)",
+        "time.time()",
+        "self.get_details(model_uid)",
+        "self.get_details(model_uid)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "re.findall",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "self._client.training.get_details",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "self._handle_response",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "self._handle_response",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "self.get_details",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self.get_details",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "self.get_details",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        }
+      ],
+      "contextual_code": "def _store_autoAI_model(self,model_path, meta_props, feature_names=None, label_column_names=None):\n    # ...\n    if not self._client.CLOUD_PLATFORM_SPACES and not self._client.CPD_version:\n        # ...\n        if model_path.endswith('pipeline-model.json'):\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", '/'.join(model_path.split('/')[:-1]))\n        else:\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", model_path)\n        model_uid = x[-1] if x else ''\n        details = self._client.training.get_details(model_uid, _internal=True)\n        # ...\n        creation_response = requests.post(\n           self._wml_credentials['url'] + '/v4/models',\n           headers=self._client._get_headers(),\n           json=model_meta\n        )\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['id']\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['guid']\n    else:\n        # ...\n        creation_response = requests.post(\n            url,\n            params= params,\n            headers=self._client._get_headers(),\n            json=input_payload\n        )\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n        model_uid = model_details['metadata']['id']\n        if 'entity' in model_details:\n            start_time = time.time()\n            elapsed_time = 0\n            while model_details['entity'].get('content_import_state') == 'running' and elapsed_time < 60:\n                time.sleep(2)\n                elapsed_time = time.time()-start_time\n                model_details = self.get_details(model_uid)\n    return self.get_details(model_uid)"
+    }
+  },
+  {
+    "pyfile": "connections.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ibm_watson_machine_learning-1.0.367/ibm_watson_machine_learning-1.0.367/ibm_watson_machine_learning/helpers/connections/connections.py",
+    "line_number": "544",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "543\t                        return_only_holdout=False,\n544\t                        time_ordered_data=self.auto_pipeline_params.get('time_ordered_data')\n545\t                    )",
+    "code_snippet": "try:\n    X_train, X_holdout, y_train, y_holdout, _, _ = make_holdout_split(\n        x=data,\n        y=dfy,\n        learning_type=self.auto_pipeline_params['prediction_type'],\n        fairness_info=self.auto_pipeline_params.get('fairness_info', None),\n        test_size=self.auto_pipeline_params.get('holdout_size') if self.auto_pipeline_params.get('holdout_size') is not None else 0.1,\n        return_only_holdout=False,\n        time_ordered_data=self.auto_pipeline_params.get('time_ordered_data')\n    )\nexcept (TypeError, KeyError):\n    if self.auto_pipeline_params.get('time_ordered_data'):\n        warn(\"Outdated autoai_libs - time_ordered_data parameter is not supported. Please update autoai_libs to version >=1.16.2\")\n    X_train, X_holdout, y_train, y_holdout, _, _ = make_holdout_split(\n        x=data,\n        y=dfy,\n        learning_type=self.auto_pipeline_params['prediction_type'],\n        fairness_info=self.auto_pipeline_params.get('fairness_info', None),\n        test_size=self.auto_pipeline_params.get('holdout_size') if self.auto_pipeline_params.get('holdout_size') is not None else 0.1,\n        return_only_holdout=False\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "make_holdout_split",
+        "self.auto_pipeline_params.get",
+        "warn",
+        "make_holdout_split",
+        "self.auto_pipeline_params.get"
+      ],
+      "api_sequence_with_args": [
+        "make_holdout_split(x=data, y=dfy, learning_type=self.auto_pipeline_params['prediction_type'], fairness_info=self.auto_pipeline_params.get('fairness_info', None), test_size=self.auto_pipeline_params.get('holdout_size') if self.auto_pipeline_params.get('holdout_size') is not None else 0.1, return_only_holdout=False, time_ordered_data=self.auto_pipeline_params.get('time_ordered_data'))",
+        "self.auto_pipeline_params.get('time_ordered_data')",
+        "warn(\"Outdated autoai_libs - time_ordered_data parameter is not supported. Please update autoai_libs to version >=1.16.2\")",
+        "make_holdout_split(x=data, y=dfy, learning_type=self.auto_pipeline_params['prediction_type'], fairness_info=self.auto_pipeline_params.get('fairness_info', None), test_size=self.auto_pipeline_params.get('holdout_size') if self.auto_pipeline_params.get('holdout_size') is not None else 0.1, return_only_holdout=False)",
+        "self.auto_pipeline_params.get('holdout_size')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "make_holdout_split",
+          "id": "exfiltrate_folder",
+          "description": "Recursively processes folder for file exfiltration",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.auto_pipeline_params.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "make_holdout_split",
+          "id": "exfiltrate_folder",
+          "description": "Recursively processes folder for file exfiltration",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.auto_pipeline_params.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "try:\n    X_train, X_holdout, y_train, y_holdout, _, _ = make_holdout_split(\n        x=data,\n        y=dfy,\n        learning_type=self.auto_pipeline_params['prediction_type'],\n        fairness_info=self.auto_pipeline_params.get('fairness_info', None),\n        test_size=self.auto_pipeline_params.get('holdout_size') if self.auto_pipeline_params.get('holdout_size') is not None else 0.1,\n        return_only_holdout=False,\n        time_ordered_data=self.auto_pipeline_params.get('time_ordered_data')\n    )\nexcept (TypeError, KeyError):\n    if self.auto_pipeline_params.get('time_ordered_data'):\n        warn(\"Outdated autoai_libs - time_ordered_data parameter is not supported. Please update autoai_libs to version >=1.16.2\")\n    X_train, X_holdout, y_train, y_holdout, _, _ = make_holdout_split(\n        x=data,\n        y=dfy,\n        learning_type=self.auto_pipeline_params['prediction_type'],\n        fairness_info=self.auto_pipeline_params.get('fairness_info', None),\n        test_size=self.auto_pipeline_params.get('holdout_size') if self.auto_pipeline_params.get('holdout_size') is not None else 0.1,\n        return_only_holdout=False\n    )"
+    }
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "boltons-25.0.0",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "jsonutils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/boltons-25.0.0/boltons-25.0.0/boltons/jsonutils.py",
+    "line_number": "259",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "258\t                    if verbose and obj_count and obj_count % 100 == 0:\n259\t                        sys.stdout.write('.')\n260\t                        if obj_count % 10000:",
+    "context_snippet": "if __name__ == '__main__':\n    def _main():\n        import sys\n        if '-h' in sys.argv or '--help' in sys.argv:\n            print('loads one or more JSON Line files for basic validation.')\n            return\n        verbose = False\n        if '-v' in sys.argv or '--verbose' in sys.argv:\n            verbose = True\n        file_count, obj_count = 0, 0\n        filenames = sys.argv[1:]\n        for filename in filenames:\n            if filename in ('-h', '--help', '-v', '--verbose'):\n                continue\n            file_count += 1\n            with open(filename, 'rb') as file_obj:\n                iterator = JSONLIterator(file_obj)\n                cur_obj_count = 0\n                while 1:\n                    try:\n                        next(iterator)\n                    except ValueError:\n                        print('error reading object #%s around byte %s in %s'\n                              % (cur_obj_count + 1, iterator.cur_byte_pos, filename))\n                        return\n                    except StopIteration:\n                        break\n                    obj_count += 1\n                    cur_obj_count += 1\n                    if verbose and obj_count and obj_count % 100 == 0:\n                        sys.stdout.write('.')\n                        if obj_count % 10000:\n                            sys.stdout.write('%s\\n' % obj_count)\n        if verbose:\n            print('files checked: %s' % file_count)\n            print('objects loaded: %s' % obj_count)\n        return\n\n    _main()",
+    "hash_value": "56539e4d2d9c02acd47686dda0dcc6e4"
+  },
+  {
+    "pyfile": "test_ioutils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/boltons-25.0.0/boltons-25.0.0/tests/test_ioutils.py",
+    "line_number": "234",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "233\t        a = ioutils.SpooledBytesIO()\n234\t        a.write(b\"I am a!\")\n235\t        b = ioutils.SpooledBytesIO()",
+    "context_snippet": "def test_compare_not_equal_instances(self):\n    \"\"\"Make sure instances with different values fail == check.\"\"\"\n    a = ioutils.SpooledBytesIO()\n    a.write(b\"I am a!\")\n    b = ioutils.SpooledBytesIO()\n    b.write(b\"I am b!\")\n    self.assertNotEqual(a, b)",
+    "hash_value": "b306580a05b892cbcc0a3422f3e55929"
+  },
+  {
+    "pyfile": "namedutils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/boltons-25.0.0/boltons-25.0.0/boltons/namedutils.py",
+    "line_number": "204",
+    "type_description": "B800:exec_used",
+    "severity": "Medium",
+    "confidence": "High",
+    "original_snippet": "203\t    try:\n204\t        exec(class_definition, namespace)\n205\t    except SyntaxError as e:",
+    "context_snippet": "def namedtuple(typename, field_names, verbose=False, rename=False):\n    \"\"\"Returns a new subclass of tuple with named fields.\n\n    >>> Point = namedtuple('Point', ['x', 'y'])\n    >>> Point.__doc__                   # docstring for the new class\n    'Point(x, y)'\n    >>> p = Point(11, y=22)             # instantiate with pos args or keywords\n    >>> p[0] + p[1]                     # indexable like a plain tuple\n    33\n    >>> x, y = p                        # unpack like a regular tuple\n    >>> x, y\n    (11, 22)\n    >>> p.x + p.y                       # fields also accessible by name\n    33\n    >>> d = p._asdict()                 # convert to a dictionary\n    >>> d['x']\n    11\n    >>> Point(**d)                      # convert from a dictionary\n    Point(x=11, y=22)\n    >>> p._replace(x=100)               # _replace() is like str.replace() but targets named fields\n    Point(x=100, y=22)\n    \"\"\"\n\n    # Validate the field names.  At the user's option, either generate an error\n    # message or automatically replace the field name with a valid name.\n    if isinstance(field_names, str):\n        field_names = field_names.replace(',', ' ').split()\n    field_names = [str(x) for x in field_names]\n    if rename:\n        seen = set()\n        for index, name in enumerate(field_names):\n            if (not all(c.isalnum() or c == '_' for c in name)\n                or _iskeyword(name)\n                or not name\n                or name[0].isdigit()\n                or name.startswith('_')\n                or name in seen):\n                field_names[index] = '_%d' % index\n            seen.add(name)\n    for name in [typename] + field_names:\n        if not all(c.isalnum() or c == '_' for c in name):\n            raise ValueError('Type names and field names can only contain '\n                             'alphanumeric characters and underscores: %r'\n                             % name)\n        if _iskeyword(name):\n            raise ValueError('Type names and field names cannot be a '\n                             'keyword: %r' % name)\n        if name[0].isdigit():\n            raise ValueError('Type names and field names cannot start with '\n                             'a number: %r' % name)\n    seen = set()\n    for name in field_names:\n        if name.startswith('_') and not rename:\n            raise ValueError('Field names cannot start with an underscore: '\n                             '%r' % name)\n        if name in seen:\n            raise ValueError('Encountered duplicate field name: %r' % name)\n        seen.add(name)\n\n    # Fill-in the class template\n    fmt_kw = {'typename': typename}\n    fmt_kw['field_names'] = tuple(field_names)\n    fmt_kw['num_fields'] = len(field_names)\n    fmt_kw['arg_list'] = repr(tuple(field_names)).replace(\"'\", \"\")[1:-1]\n    fmt_kw['repr_fmt'] = ', '.join(_repr_tmpl.format(name=name)\n                                   for name in field_names)\n    fmt_kw['field_defs'] = '\\n'.join(_imm_field_tmpl.format(index=index, name=name)\n                                     for index, name in enumerate(field_names))\n    class_definition = _namedtuple_tmpl.format(**fmt_kw)\n\n    if verbose:\n        print(class_definition)\n\n    # Execute the template string in a temporary namespace and support\n    # tracing utilities by setting a value for frame.f_globals['__name__']\n    namespace = dict(_itemgetter=_itemgetter,\n                     __name__='namedtuple_%s' % typename,\n                     OrderedDict=OrderedDict,\n                     _property=property,\n                     _tuple=tuple)\n    try:\n        exec(class_definition, namespace)\n    except SyntaxError as e:\n        raise SyntaxError(e.msg + ':\\n' + class_definition)\n    result = namespace[typename]\n\n    # For pickling to work, the __module__ variable needs to be set to the frame\n    # where the named tuple is created.  Bypass this step in environments where\n    # sys._getframe is not defined (Jython for example) or sys._getframe is not\n    # defined for arguments greater than 0 (IronPython).\n    try:\n        frame = _sys._getframe(1)\n        result.__module__ = frame.f_globals.get('__name__', '__main__')\n    except (AttributeError, ValueError):\n        pass\n\n    return result",
+    "hash_value": "85dd7f19f7f261f91f752f31a63b2c26"
+  }
+]

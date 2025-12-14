@@ -1,0 +1,394 @@
+[
+  {
+    "metadata": {
+      "package_name": "ansible-base-2.10.17",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "urls.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible-base-2.10.17/ansible-base-2.10.17/lib/ansible/module_utils/urls.py",
+    "line_number": "1443",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1442\t            filename = value.get('filename')\n1443\t            content = value.get('content')\n1444\t            if not any((filename, content)):",
+    "code_snippet": "def prepare_multipart(fields):\n    \"\"\"Takes a mapping, and prepares a multipart/form-data body\n\n    :arg fields: Mapping\n    :returns: tuple of (content_type, body) where ``content_type`` is\n        the ``multipart/form-data`` ``Content-Type`` header including\n        ``boundary`` and ``body`` is the prepared bytestring body\n\n    Payload content from a file will be base64 encoded and will include\n    the appropriate ``Content-Transfer-Encoding`` and ``Content-Type``\n    headers.\n\n    Example:\n        {\n            \"file1\": {\n                \"filename\": \"/bin/true\",\n                \"mime_type\": \"application/octet-stream\"\n            },\n            \"file2\": {\n                \"content\": \"text based file content\",\n                \"filename\": \"fake.txt\",\n                \"mime_type\": \"text/plain\",\n            },\n            \"text_form_field\": \"value\"\n        }\n    \"\"\"\n\n    if not isinstance(fields, Mapping):\n        raise TypeError(\n            'Mapping is required, cannot be type %s' % fields.__class__.__name__\n        )\n\n    m = email.mime.multipart.MIMEMultipart('form-data')\n    for field, value in sorted(fields.items()):\n        if isinstance(value, string_types):\n            main_type = 'text'\n            sub_type = 'plain'\n            content = value\n            filename = None\n        elif isinstance(value, Mapping):\n            filename = value.get('filename')\n            content = value.get('content')\n            if not any((filename, content)):\n                raise ValueError('at least one of filename or content must be provided')\n\n            mime = value.get('mime_type')\n            if not mime:\n                try:\n                    mime = mimetypes.guess_type(filename or '', strict=False)[0] or 'application/octet-stream'\n                except Exception:\n                    mime = 'application/octet-stream'\n            main_type, sep, sub_type = mime.partition('/')\n        else:\n            raise TypeError(\n                'value must be a string, or mapping, cannot be type %s' % value.__class__.__name__\n            )\n\n        if not content and filename:\n            with open(to_bytes(filename, errors='surrogate_or_strict'), 'rb') as f:\n                part = email.mime.application.MIMEApplication(f.read())\n                del part['Content-Type']\n                part.add_header('Content-Type', '%s/%s' % (main_type, sub_type))\n        else:\n            part = email.mime.nonmultipart.MIMENonMultipart(main_type, sub_type)\n            part.set_payload(to_bytes(content))\n\n        part.add_header('Content-Disposition', 'form-data')\n        del part['MIME-Version']\n        part.set_param(\n            'name',\n            field,\n            header='Content-Disposition'\n        )\n        if filename:\n            part.set_param(\n                'filename',\n                to_native(os.path.basename(filename)),\n                header='Content-Disposition'\n            )\n\n        m.attach(part)\n\n    if PY3:\n        # Ensure headers are not split over multiple lines\n        # The HTTP policy also uses CRLF by default\n        b_data = m.as_bytes(policy=email.policy.HTTP)\n    else:\n        # Py2\n        # We cannot just call ``as_string`` since it provides no way\n        # to specify ``maxheaderlen``\n        fp = cStringIO()  # cStringIO seems to be required here\n        # Ensure headers are not split over multiple lines\n        g = email.generator.Generator(fp, maxheaderlen=0)\n        g.flatten(m)\n        # ``fix_eols`` switches from ``\\n`` to ``\\r\\n``\n        b_data = email.utils.fix_eols(fp.getvalue())\n    del m\n\n    headers, sep, b_content = b_data.partition(b'\\r\\n\\r\\n')\n    del b_data\n\n    if PY3:\n        parser = email.parser.BytesHeaderParser().parsebytes\n    else:\n        # Py2\n        parser = email.parser.HeaderParser().parsestr\n\n    return (\n        parser(headers)['content-type'],  # Message converts to native strings\n        b_content\n    )\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "email.mime.multipart.MIMEMultipart",
+        "sorted",
+        "isinstance",
+        "isinstance",
+        "value.get",
+        "value.get",
+        "any",
+        "value.get",
+        "mimetypes.guess_type",
+        "mime.partition",
+        "open",
+        "to_bytes",
+        "email.mime.application.MIMEApplication",
+        "email.mime.nonmultipart.MIMENonMultipart",
+        "part.set_payload",
+        "part.add_header",
+        "del",
+        "part.set_param",
+        "part.set_param",
+        "os.path.basename",
+        "to_native",
+        "m.attach",
+        "email.policy.HTTP",
+        "m.as_bytes",
+        "cStringIO",
+        "email.generator.Generator",
+        "g.flatten",
+        "email.utils.fix_eols",
+        "fp.getvalue",
+        "del",
+        "b_data.partition",
+        "del",
+        "email.parser.BytesHeaderParser",
+        "email.parser.BytesHeaderParser.parsebytes",
+        "email.parser.HeaderParser",
+        "email.parser.HeaderParser.parsestr",
+        "parser",
+        "parser",
+        "parser(headers).__getitem__",
+        "return"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(fields, Mapping)",
+        "email.mime.multipart.MIMEMultipart('form-data')",
+        "sorted(fields.items())",
+        "isinstance(value, string_types)",
+        "isinstance(value, Mapping)",
+        "value.get('filename')",
+        "value.get('content')",
+        "any((filename, content))",
+        "value.get('mime_type')",
+        "mimetypes.guess_type(filename or '', strict=False)[0]",
+        "mime.partition('/')",
+        "open(to_bytes(filename, errors='surrogate_or_strict'), 'rb')",
+        "to_bytes(filename, errors='surrogate_or_strict')",
+        "email.mime.application.MIMEApplication(f.read())",
+        "email.mime.nonmultipart.MIMENonMultipart(main_type, sub_type)",
+        "part.set_payload(to_bytes(content))",
+        "part.add_header('Content-Type', '%s/%s' % (main_type, sub_type))",
+        "del part['Content-Type']",
+        "part.set_param('name', field, header='Content-Disposition')",
+        "part.set_param('filename', to_native(os.path.basename(filename)), header='Content-Disposition')",
+        "os.path.basename(filename)",
+        "to_native(os.path.basename(filename))",
+        "m.attach(part)",
+        "email.policy.HTTP",
+        "m.as_bytes(policy=email.policy.HTTP)",
+        "cStringIO()",
+        "email.generator.Generator(fp, maxheaderlen=0)",
+        "g.flatten(m)",
+        "email.utils.fix_eols(fp.getvalue())",
+        "fp.getvalue()",
+        "del m",
+        "b_data.partition(b'\\r\\n\\r\\n')",
+        "del b_data",
+        "email.parser.BytesHeaderParser()",
+        "email.parser.BytesHeaderParser().parsebytes",
+        "email.parser.HeaderParser()",
+        "email.parser.HeaderParser().parsestr",
+        "parser(headers)",
+        "parser(headers)['content-type']",
+        "return (parser(headers)['content-type'], b_content)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "if not content and filename:\n    with open(to_bytes(filename, errors='surrogate_or_strict'), 'rb') as f:\n        part = email.mime.application.MIMEApplication(f.read())\n        del part['Content-Type']\n        part.add_header('Content-Type', '%s/%s' % (main_type, sub_type))\n...\nif filename:\n    part.set_param(\n        'filename',\n        to_native(os.path.basename(filename)),\n        header='Content-Disposition'\n    )"
+    }
+  },
+  {
+    "pyfile": "ansible_connection_cli_stub.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible-base-2.10.17/ansible-base-2.10.17/lib/ansible/cli/scripts/ansible_connection_cli_stub.py",
+    "line_number": "160",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "159\n160\t                s.close()\n161",
+    "code_snippet": "def run(self):\n    try:\n        while not self.connection._conn_closed:\n            signal.signal(signal.SIGALRM, self.connect_timeout)\n            signal.signal(signal.SIGTERM, self.handler)\n            signal.alarm(self.connection.get_option('persistent_connect_timeout'))\n\n            self.exception = None\n            (s, addr) = self.sock.accept()\n            signal.alarm(0)\n            signal.signal(signal.SIGALRM, self.command_timeout)\n            while True:\n                data = recv_data(s)\n                if not data:\n                    break\n                log_messages = self.connection.get_option('persistent_log_messages')\n\n                if log_messages:\n                    display.display(\"jsonrpc request: %s\" % data, log_only=True)\n\n                request = json.loads(to_text(data, errors='surrogate_or_strict'))\n                if request.get('method') == \"exec_command\" and not self.connection.connected:\n                    self.connection._connect()\n\n                signal.alarm(self.connection.get_option('persistent_command_timeout'))\n\n                resp = self.srv.handle_request(data)\n                signal.alarm(0)\n\n                if log_messages:\n                    display.display(\"jsonrpc response: %s\" % resp, log_only=True)\n\n                send_data(s, to_bytes(resp))\n\n            s.close()\n\n    except Exception as e:\n        # socket.accept() will raise EINTR if the socket.close() is called\n        if hasattr(e, 'errno'):\n            if e.errno != errno.EINTR:\n                self.exception = traceback.format_exc()\n        else:\n            self.exception = traceback.format_exc()\n\n    finally:\n        # allow time for any exception msg send over socket to receive at other end before shutting down\n        time.sleep(0.1)\n\n        # when done, close the connection properly and cleanup the socket file so it can be recreated\n        self.shutdown()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "signal.signal",
+        "signal.signal",
+        "signal.alarm",
+        "self.sock.accept",
+        "signal.alarm",
+        "signal.signal",
+        "recv_data",
+        "self.connection.get_option",
+        "display.display",
+        "json.loads",
+        "to_text",
+        "request.get",
+        "self.connection._connect",
+        "signal.alarm",
+        "self.srv.handle_request",
+        "signal.alarm",
+        "display.display",
+        "send_data",
+        "to_bytes",
+        "s.close",
+        "hasattr",
+        "traceback.format_exc",
+        "traceback.format_exc",
+        "time.sleep",
+        "self.shutdown"
+      ],
+      "api_sequence_with_args": [
+        "signal.signal(signal.SIGALRM, self.connect_timeout)",
+        "signal.signal(signal.SIGTERM, self.handler)",
+        "signal.alarm(self.connection.get_option('persistent_connect_timeout'))",
+        "self.sock.accept()",
+        "signal.alarm(0)",
+        "signal.signal(signal.SIGALRM, self.command_timeout)",
+        "recv_data(s)",
+        "self.connection.get_option('persistent_log_messages')",
+        "display.display(\"jsonrpc request: %s\" % data, log_only=True)",
+        "json.loads(to_text(data, errors='surrogate_or_strict'))",
+        "to_text(data, errors='surrogate_or_strict')",
+        "request.get('method')",
+        "self.connection._connect()",
+        "signal.alarm(self.connection.get_option('persistent_command_timeout'))",
+        "self.srv.handle_request(data)",
+        "signal.alarm(0)",
+        "display.display(\"jsonrpc response: %s\" % resp, log_only=True)",
+        "send_data(s, to_bytes(resp))",
+        "to_bytes(resp)",
+        "s.close()",
+        "hasattr(e, 'errno')",
+        "traceback.format_exc()",
+        "traceback.format_exc()",
+        "time.sleep(0.1)",
+        "self.shutdown()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "signal.signal",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "signal.alarm",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "socket.socket.accept",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "signal.alarm",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "recv_data",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self.connection.get_option",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "display.display",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "to_text",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "dict.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.connection._connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "signal.alarm",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self.srv.handle_request",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "signal.alarm",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "display.display",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "send_data",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "to_bytes",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "traceback.format_exc",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "traceback.format_exc",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self.shutdown",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "def run(self):\n    try:\n        while not self.connection._conn_closed:\n            signal.signal(signal.SIGALRM, self.connect_timeout)\n            signal.signal(signal.SIGTERM, self.handler)\n            signal.alarm(self.connection.get_option('persistent_connect_timeout'))\n\n            self.exception = None\n            (s, addr) = self.sock.accept()\n            signal.alarm(0)\n            signal.signal(signal.SIGALRM, self.command_timeout)\n            while True:\n                data = recv_data(s)\n                if not data:\n                    break\n                log_messages = self.connection.get_option('persistent_log_messages')\n\n                if log_messages:\n                    display.display(\"jsonrpc request: %s\" % data, log_only=True)\n\n                request = json.loads(to_text(data, errors='surrogate_or_strict'))\n                if request.get('method') == \"exec_command\" and not self.connection.connected:\n                    self.connection._connect()\n\n                signal.alarm(self.connection.get_option('persistent_command_timeout'))\n\n                resp = self.srv.handle_request(data)\n                signal.alarm(0)\n\n                if log_messages:\n                    display.display(\"jsonrpc response: %s\" % resp, log_only=True)\n\n                send_data(s, to_bytes(resp))\n\n            s.close()\n\n    except Exception as e:\n        if hasattr(e, 'errno'):\n            if e.errno != errno.EINTR:\n                self.exception = traceback.format_exc()\n        else:\n            self.exception = traceback.format_exc()\n\n    finally:\n        time.sleep(0.1)\n        self.shutdown()"
+    }
+  }
+]

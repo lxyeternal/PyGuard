@@ -1,0 +1,39 @@
+[
+  {
+    "metadata": {
+      "package_name": "bpython-0.25",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/bpython-0.25.txt",
+      "total_matches": 3
+    }
+  },
+  {
+    "pyfile": "repl.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/bpython-0.25/bpython-0.25/bpython/repl.py",
+    "line_number": "936",
+    "type_description": "clipboard-access",
+    "original_snippet": "pyperclip.copy(content)",
+    "context_snippet": "def copy2clipboard(self) -> None:\n    \"\"\"Copy current content to clipboard.\"\"\"\n\n    if not have_pyperclip:\n        self.interact.notify(_(\"No clipboard available.\"))\n        return\n\n    content = self.get_session_formatted_for_file()\n    try:\n        pyperclip.copy(content)\n    except pyperclip.PyperclipException:\n        self.interact.notify(_(\"Could not copy to clipboard.\"))\n    else:\n        self.interact.notify(_(\"Copied content to clipboard.\"))",
+    "hash_value": "3376e57b3c056ac859a64c3bad748418",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "simpleeval.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/bpython-0.25/bpython-0.25/bpython/simpleeval.py",
+    "line_number": "131",
+    "type_description": "obfuscation",
+    "original_snippet": "return getattr(builtins, node.id)",
+    "context_snippet": "def simple_eval(node_or_string, namespace=None):\n    \"\"\"\n    Safely evaluate an expression node or a string containing a Python\n    expression without triggering any user code.\n\n    The string or node provided may only consist of:\n    * the following Python literal structures: strings, numbers, tuples,\n        lists, dicts, and sets\n    * variable names causing lookups in the passed in namespace or builtins\n    * getitem calls using the [] syntax on objects of the types above\n\n    Like Python 3's literal_eval, unary and binary + and - operations are\n    allowed on all builtin numeric types.\n\n    The optional namespace dict-like ought not to cause side effects on lookup.\n    \"\"\"\n    if namespace is None:\n        namespace = {}\n    if isinstance(node_or_string, str):\n        node_or_string = ast.parse(node_or_string, mode=\"eval\")\n    if isinstance(node_or_string, ast.Expression):\n        node_or_string = node_or_string.body\n\n    def _convert(node):\n        if isinstance(node, ast.Constant):\n            return node.value\n        elif isinstance(node, ast.Tuple):\n            return tuple(map(_convert, node.elts))\n        elif isinstance(node, ast.List):\n            return list(map(_convert, node.elts))\n        elif isinstance(node, ast.Dict):\n            return {\n                _convert(k): _convert(v) for k, v in zip(node.keys, node.values)\n            }\n        elif isinstance(node, ast.Set):\n            return set(map(_convert, node.elts))\n        elif (\n            isinstance(node, ast.Call)\n            and isinstance(node.func, ast.Name)\n            and node.func.id == \"set\"\n            and node.args == node.keywords == []\n        ):\n            return set()\n\n        # this is a deviation from literal_eval: we evaluate tuple() and list()\n        elif (\n            isinstance(node, ast.Call)\n            and isinstance(node.func, ast.Name)\n            and node.func.id == \"tuple\"\n            and node.args == node.keywords == []\n        ):\n            return tuple()\n        elif (\n            isinstance(node, ast.Call)\n            and isinstance(node.func, ast.Name)\n            and node.func.id == \"list\"\n            and node.args == node.keywords == []\n        ):\n            return list()\n\n        # this is a deviation from literal_eval: we allow non-literals\n        elif isinstance(node, _name_type_nodes):\n            try:\n                return namespace[node.id]\n            except KeyError:\n                try:\n                    return getattr(builtins, node.id)\n                except AttributeError:\n                    raise EvaluationError(\"can't lookup %s\" % node.id)\n\n        # unary + and - are allowed on any type\n        elif isinstance(node, ast.UnaryOp) and isinstance(\n            node.op, (ast.UAdd, ast.USub)\n        ):\n            # ast.literal_eval does ast typechecks here, we use type checks\n            operand = _convert(node.operand)\n            if not type(operand) in _numeric_types:\n                raise ValueError(\"unary + and - only allowed on builtin nums\")\n            if isinstance(node.op, ast.UAdd):\n                return +operand\n            else:\n                return -operand\n        elif isinstance(node, ast.BinOp) and isinstance(\n            node.op, (ast.Add, ast.Sub)\n        ):\n            # ast.literal_eval does ast typechecks here, we use type checks\n            left = _convert(node.left)\n            right = _convert(node.right)\n            if not (\n                isinstance(left, _numeric_types)\n                and isinstance(right, _numeric_types)\n            ):\n                raise ValueError(\"binary + and - only allowed on builtin nums\")\n            if isinstance(node.op, ast.Add):\n                return left + right\n            else:\n                return left - right\n\n        # this is a deviation from literal_eval: we allow indexing\n        elif isinstance(node, ast.Subscript) and isinstance(\n            node.slice, (ast.Constant, ast.Name)\n        ):\n            obj = _convert(node.value)\n            index = _convert(node.slice)\n            return safe_getitem(obj, index)\n\n        # this is a deviation from literal_eval: we allow attribute access\n        if isinstance(node, ast.Attribute):\n            obj = _convert(node.value)\n            attr = node.attr\n            return getattr_safe(obj, attr)\n\n        raise ValueError(f\"malformed node or string: {node!r}\")\n\n    return _convert(node_or_string)\n\n# Data dependencies:\n# - 'builtins' is imported at the top: import builtins\n# - 'node' is a parameter to the inner function _convert\n# - 'node.id' is an attribute of ast.Name nodes\n# - 'namespace' is a parameter to simple_eval\n# - 'EvaluationError' is defined above as a custom Exception\n# - '_name_type_nodes' is defined above as (ast.Name,)\n",
+    "hash_value": "38cf06f6a77653d6e47a1e1aa6a56fe4",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "setup.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/bpython-0.25/bpython-0.25/setup.py",
+    "line_number": "278",
+    "type_description": "code-execution",
+    "original_snippet": "proc = subprocess.Popen(\n[\"git\", \"describe\", \"--tags\", \"--first-parent\"],\nstdout=subprocess.PIPE,\nstderr=subprocess.PIPE,\n)",
+    "context_snippet": "import subprocess\n\nversion_file = \"bpython/_version.py\"\nversion = \"unknown\"\n\ntry:\n    # get version from git describe\n    proc = subprocess.Popen(\n        [\"git\", \"describe\", \"--tags\", \"--first-parent\"],\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n    stdout = proc.communicate()[0].strip()\n    stdout = stdout.decode(\"ascii\")\n\n    if proc.returncode == 0:\n        version = git_describe_to_python_version(stdout)\nexcept OSError:\n    pass",
+    "hash_value": "6d9e64d683fe38196a3813c2210c7782",
+    "detection_index": 1
+  }
+]

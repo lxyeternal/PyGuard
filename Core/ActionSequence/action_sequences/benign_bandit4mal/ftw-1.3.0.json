@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "ftw-1.3.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "http.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ftw-1.3.0/ftw-1.3.0/ftw/http.py",
+    "line_number": "62",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "61\t            try:\n62\t                response_data = zipbuf.read()\n63\t            except IOError:",
+    "code_snippet": "def parse_content_encoding(self, response_headers, response_data):\n    \"\"\"\n    Parses a response that contains Content-Encoding to retrieve\n    response_data\n    \"\"\"\n    if response_headers['content-encoding'] == 'br':\n        try:\n            response_data = brotli.decompress(response_data)\n        except brotli.error:\n            raise errors.TestError(\n                'Invalid or missing brotli data found',\n                {\n                    'response_data': str(response_data),\n                    'function': 'http.HttpResponse.parse_content_encoding'\n                })\n    elif response_headers['content-encoding'] == 'gzip':\n        buf = BytesIO(response_data)\n        zipbuf = gzip.GzipFile(fileobj=buf)\n        try:\n            response_data = zipbuf.read()\n        except IOError:\n            raise errors.TestError(\n                'Invalid or missing gzip data found',\n                {\n                    'response_data': str(response_data),\n                    'function': 'http.HttpResponse.parse_content_encoding'\n                })\n    elif response_headers['content-encoding'] == 'deflate':\n        try:\n            response_data = zlib.decompress(response_data, -zlib.MAX_WBITS)\n        except zlib.error:\n            raise errors.TestError(\n                'Invalid or missing deflate data found',\n                {\n                    'response_data': str(response_data),\n                    'function': 'http.HttpResponse.parse_content_encoding'\n                })\n    else:\n        raise errors.TestError(\n            'Received unknown Content-Encoding',\n            {\n                'content-encoding':\n                    str(response_headers['content-encoding']),\n                'function': 'http.HttpResponse.parse_content_encoding'\n            })\n    return response_data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "brotli.decompress",
+        "gzip.GzipFile",
+        "gzip.GzipFile.read",
+        "zlib.decompress"
+      ],
+      "api_sequence_with_args": [
+        "brotli.decompress(response_data)",
+        "gzip.GzipFile(fileobj=buf)",
+        "gzip.GzipFile.read()",
+        "zlib.decompress(response_data, -zlib.MAX_WBITS)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "brotli.decompress",
+          "id": "decompress_data_zlib",
+          "description": "Decompresses zlib-compressed data",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "compression_decompression"
+        },
+        {
+          "api_name": "gzip.GzipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "gzip.GzipFile.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "zlib.decompress",
+          "id": "decompress_data_zlib",
+          "description": "Decompresses zlib-compressed data",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "compression_decompression"
+        }
+      ],
+      "contextual_code": "def parse_content_encoding(self, response_headers, response_data):\n    if response_headers['content-encoding'] == 'br':\n        try:\n            response_data = brotli.decompress(response_data)\n        except brotli.error:\n            raise errors.TestError(...)\n    elif response_headers['content-encoding'] == 'gzip':\n        buf = BytesIO(response_data)\n        zipbuf = gzip.GzipFile(fileobj=buf)\n        try:\n            response_data = zipbuf.read()\n        except IOError:\n            raise errors.TestError(...)\n    elif response_headers['content-encoding'] == 'deflate':\n        try:\n            response_data = zlib.decompress(response_data, -zlib.MAX_WBITS)\n        except zlib.error:\n            raise errors.TestError(...)\n    else:\n        raise errors.TestError(...)\n    return response_data"
+    }
+  }
+]

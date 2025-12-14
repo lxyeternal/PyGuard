@@ -1,0 +1,161 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# Relevant imports and global variables\nimport os\nimport shlex\nimport subprocess\nimport warnings\nfrom shlex import quote\nfrom subprocess import PIPE, Popen, check_call\n\n# Exception used in flagged function\nclass RequiredDependencyException(Exception):\n    pass\n\n# Helper function used in flagged context\ndef update_dict(dict1: dict, dict2: dict):\n    for key in dict1:\n        if key in dict2:\n            dict2[key] = list(set(dict1[key] + dict2[key]))\n        else:\n            dict2[key] = dict1[key]\n    return dict2\n\n# Flagged code is inside the PKG_CONFIG class\ndefinition\nclass PKG_CONFIG:\n    \"\"\"Preform operations with pkg-config.\n    Parameters\n    ==========\n    libname : :class:`str`\n        The library name to query.\n    \"\"\"\n\n    def __init__(self, libname: str) -> None:\n        self.name = libname\n        self.pkg_config = os.environ.get(\"PKG_CONFIG\", \"pkg-config\")\n        self.setup_argparse()\n        self.check_pkgconfig = self.check_pkgconfig()\n\n    def check_pkgconfig(self):\n        \"\"\"Check whether pkg-config works.\n        If it doesn't work raise a warning.\n        \"\"\"\n        try:\n            check_call([self.pkg_config, \"--version\"], stdout=subprocess.DEVNULL)\n            return True\n        except Exception:\n            warnings.warn(\n                f\"{self.pkg_config} doesn't exists or doesn't seem to work\\n\"\n                \"We assume that you give the compiler flags using\\n\"\n                \"corresponding environment variables.\",\n                RuntimeWarning,\n            )\n            return False\n\n    def parse_cflags(self, raw_cflags):\n        \"\"\"Parse the flags from pkg-config using argparse.\"\"\"\n        raw_args = shlex.split(raw_cflags.strip())\n        args, unknown = self._cflag_parser.parse_known_args(raw_args)\n        config = {k: v or [] for k, v in args.__dict__.items()}\n        for i, x in enumerate(config[\"define_macros\"]):\n            parts = x.split(\"=\", 1)\n            value = x[1] or None if len(x) == 2 else None\n            config[\"define_macros\"][i] = (parts[0], value)\n        return config, \" \".join(quote(x) for x in unknown)\n\n    def setup_argparse(self):\n        _cflag_parser = argparse.ArgumentParser(add_help=False)\n        _cflag_parser.add_argument(\"-I\", dest=\"include_dirs\", action=\"append\")\n        _cflag_parser.add_argument(\"-L\", dest=\"library_dirs\", action=\"append\")\n        _cflag_parser.add_argument(\"-l\", dest=\"libraries\", action=\"append\")\n        _cflag_parser.add_argument(\"-D\", dest=\"define_macros\", action=\"append\")\n        _cflag_parser.add_argument(\"-R\", dest=\"runtime_library_dirs\", action=\"append\")\n        self._cflag_parser = _cflag_parser\n\n    def check_min_version(self, version):\n        \"\"\"Check whether the library of that version exists.\"\"\"\n        command = [\n            self.pkg_config,\n            \"--print-errors\",\n            \"--atleast-version\",\n            version,\n            self.name,\n        ]\n        try:\n            check_call(command, stdout=subprocess.DEVNULL)\n            return True\n        except Exception:\n            raise RequiredDependencyException(f\"{self.name} >= {version} is required\")\n\n    @property\n    def libs(self):\n        \"\"\"Get distutils-compatible extension extras for the given library.\n        This requires ``pkg-config``.\n        \"\"\"\n        if self.check_pkgconfig:\n            name = self.name\n            command = self.pkg_config\n            try:\n                proc = Popen(\n                    [command, \"--libs\", name],\n                    stdout=PIPE,\n                    stderr=PIPE,\n                )\n            except Exception:\n                pass\n            raw_libs, _ = proc.communicate()\n            known_libs, unknown_libs = self.parse_cflags(raw_libs.decode(\"utf8\"))\n            if unknown_libs:\n                known_libs[\"extra_link_args\"] = unknown_libs.split()\n            return known_libs\n        return dict()\n\n    @property\n    def cflags(self):\n        if self.check_pkgconfig:\n            name = self.name\n            command = self.pkg_config\n            try:\n                proc = Popen(\n                    [command, \"--cflags\", name],\n                    stdout=PIPE,\n                    stderr=PIPE,\n                )\n            except Exception:\n                pass\n            raw_cflags, _ = proc.communicate()\n            known_cflags, unknown_cflags = self.parse_cflags(raw_cflags.decode(\"utf8\"))\n            if unknown_cflags:\n                known_cflags[\"extra_compile_args\"] = unknown_cflags.split()\n            return known_cflags\n        return dict()\n\n    @property\n    def setuptools_args(self):\n        return update_dict(self.libs, self.cflags)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.DEVNULL",
+        "subprocess.check_call",
+        "warnings.warn",
+        "shlex.split",
+        "shlex.quote",
+        "subprocess.DEVNULL",
+        "subprocess.check_call",
+        "subprocess.PIPE",
+        "subprocess.Popen",
+        "subprocess.PIPE",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "str.decode"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"PKG_CONFIG\", \"pkg-config\")",
+        "subprocess.DEVNULL",
+        "subprocess.check_call([self.pkg_config, \"--version\"], stdout=subprocess.DEVNULL)",
+        "warnings.warn(f\"{self.pkg_config} doesn't exists or doesn't seem to work\\nWe assume that you give the compiler flags using\\ncorresponding environment variables.\", RuntimeWarning)",
+        "shlex.split(raw_cflags.strip())",
+        "shlex.quote(x)",
+        "subprocess.DEVNULL",
+        "subprocess.check_call(command, stdout=subprocess.DEVNULL)",
+        "subprocess.PIPE",
+        "subprocess.Popen([command, \"--libs\", name], stdout=PIPE, stderr=PIPE)",
+        "subprocess.PIPE",
+        "subprocess.Popen([command, \"--cflags\", name], stdout=PIPE, stderr=PIPE)",
+        "proc.communicate()",
+        "raw_libs.decode(\"utf8\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.DEVNULL",
+          "id": "open_null_device",
+          "description": "Opens null device for writing",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "warnings.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "shlex.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shlex.quote",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.DEVNULL",
+          "id": "open_null_device",
+          "description": "Opens null device for writing",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.PIPE",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.PIPE",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "str.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "import os\nimport shlex\nimport subprocess\nimport warnings\nfrom shlex import quote\nfrom subprocess import PIPE, Popen, check_call\n\nclass PKG_CONFIG:\n    def __init__(self, libname: str) -> None:\n        self.name = libname\n        self.pkg_config = os.environ.get(\"PKG_CONFIG\", \"pkg-config\")\n        self.setup_argparse()\n        self.check_pkgconfig = self.check_pkgconfig()\n\n    def check_pkgconfig(self):\n        try:\n            check_call([self.pkg_config, \"--version\"], stdout=subprocess.DEVNULL)\n            return True\n        except Exception:\n            warnings.warn(\n                f\"{self.pkg_config} doesn't exists or doesn't seem to work\\n\"\n                \"We assume that you give the compiler flags using\\n\"\n                \"corresponding environment variables.\",\n                RuntimeWarning,\n            )\n            return False\n\n    def parse_cflags(self, raw_cflags):\n        raw_args = shlex.split(raw_cflags.strip())\n        args, unknown = self._cflag_parser.parse_known_args(raw_args)\n        config = {k: v or [] for k, v in args.__dict__.items()}\n        for i, x in enumerate(config[\"define_macros\"]):\n            parts = x.split(\"=\", 1)\n            value = x[1] or None if len(x) == 2 else None\n            config[\"define_macros\"][i] = (parts[0], value)\n        return config, \" \".join(quote(x) for x in unknown)\n\n    def check_min_version(self, version):\n        command = [\n            self.pkg_config,\n            \"--print-errors\",\n            \"--atleast-version\",\n            version,\n            self.name,\n        ]\n        try:\n            check_call(command, stdout=subprocess.DEVNULL)\n            return True\n        except Exception:\n            raise RequiredDependencyException(f\"{self.name} >= {version} is required\")\n\n    @property\n    def libs(self):\n        if self.check_pkgconfig:\n            name = self.name\n            command = self.pkg_config\n            try:\n                proc = Popen(\n                    [command, \"--libs\", name],\n                    stdout=PIPE,\n                    stderr=PIPE,\n                )\n            except Exception:\n                pass\n            raw_libs, _ = proc.communicate()\n            known_libs, unknown_libs = self.parse_cflags(raw_libs.decode(\"utf8\"))\n            if unknown_libs:\n                known_libs[\"extra_link_args\"] = unknown_libs.split()\n            return known_libs\n        return dict()\n\n    @property\n    def cflags(self):\n        if self.check_pkgconfig:\n            name = self.name\n            command = self.pkg_config\n            try:\n                proc = Popen(\n                    [command, \"--cflags\", name],\n                    stdout=PIPE,\n                    stderr=PIPE,\n                )\n            except Exception:\n                pass\n            raw_cflags, _ = proc.communicate()\n            known_cflags, unknown_cflags = self.parse_cflags(raw_cflags.decode(\"utf8\"))\n            if unknown_cflags:\n                known_cflags[\"extra_compile_args\"] = unknown_cflags.split()\n            return known_cflags\n        return dict()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "manimpango-1.0.0a2",
+      "total_matches": 4
+    }
+  }
+]

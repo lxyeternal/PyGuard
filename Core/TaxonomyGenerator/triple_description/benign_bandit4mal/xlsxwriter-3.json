@@ -1,0 +1,456 @@
+{
+  "metadata": {
+    "package_name": "xlsxwriter-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/xlsxwriter-3.2.2.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "worksheet.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/xlsxwriter-3.2.2/xlsxwriter-3.2.2/xlsxwriter/worksheet.py",
+      "line_number": "3591",
+      "type_description": "B815:write",
+      "context_snippet": "    @convert_range_args\n    def add_table(self, first_row, first_col, last_row, last_col, options=None):\n        \"\"\"\n        Add an Excel table to a worksheet.\n\n        Args:\n            first_row:    The first row of the cell range. (zero indexed).\n            first_col:    The first column of the cell range.\n            last_row:     The last row of the cell range. (zero indexed).\n            last_col:     The last column of the cell range.\n            options:      Table format options. (Optional)\n\n        Returns:\n            0:  Success.\n            -1: Row or column is out of worksheet bounds.\n            -2: Incorrect parameter or option.\n            -3: Not supported in constant_memory mode.\n        \"\"\"\n        table = {}\n        col_formats = {}\n\n        if options is None:\n            options = {}\n        else:\n            # Copy the user defined options so they aren't modified.\n            options = options.copy()\n\n        if self.constant_memory:\n            warn(\"add_table() isn't supported in 'constant_memory' mode\")\n            return -3\n\n        # Check that row and col are valid without storing the values.\n        if self._check_dimensions(first_row, first_col, True, True):\n            return -1\n        if self._check_dimensions(last_row, last_col, True, True):\n            return -1\n\n        # Swap last row/col for first row/col as necessary.\n        if first_row > last_row:\n            (first_row, last_row) = (last_row, first_row)\n        if first_col > last_col:\n            (first_col, last_col) = (last_col, first_col)\n\n        # Check if the table range overlaps a previous merged or table range.\n        # This is a critical file corruption error in Excel.\n        cell_range = xl_range(first_row, first_col, last_row, last_col)\n        for row in range(first_row, last_row + 1):\n            for col in range(first_col, last_col + 1):\n                if self.table_cells.get((row, col)):\n                    previous_range = self.table_cells.get((row, col))\n                    raise OverlappingRange(\n                        f\"Table range '{cell_range}' overlaps previous \"\n                        f\"table range '{previous_range}'.\"\n                    )\n\n                if self.merged_cells.get((row, col)):\n                    previous_range = self.merged_cells.get((row, col))\n                    raise OverlappingRange(\n                        f\"Table range '{cell_range}' overlaps previous \"\n                        f\"merge range '{previous_range}'.\"\n                    )\n\n                self.table_cells[(row, col)] = cell_range\n\n        # Valid input parameters.\n        valid_parameter = {\n            \"autofilter\",\n            \"banded_columns\",\n            \"banded_rows\",\n            \"columns\",\n            \"data\",\n            \"first_column\",\n            \"header_row\",\n            \"last_column\",\n            \"name\",\n            \"style\",\n            \"total_row\",\n        }\n\n        # Check for valid input parameters.\n        for param_key in options.keys():\n            if param_key not in valid_parameter:\n                warn(f\"Unknown parameter '{param_key}' in add_table()\")\n                return -2\n\n        # Turn on Excel's defaults.\n        options[\"banded_rows\"] = options.get(\"banded_rows\", True)\n        options[\"header_row\"] = options.get(\"header_row\", True)\n        options[\"autofilter\"] = options.get(\"autofilter\", True)\n\n        # Check that there are enough rows.\n        num_rows = last_row - first_row\n        if options[\"header_row\"]:\n            num_rows -= 1\n\n        if num_rows < 0:\n            warn(\"Must have at least one data row in in add_table()\")\n            return -2\n\n        # Set the table options.\n        table[\"show_first_col\"] = options.get(\"first_column\", False)\n        table[\"show_last_col\"] = options.get(\"last_column\", False)\n        table[\"show_row_stripes\"] = options.get(\"banded_rows\", False)\n        table[\"show_col_stripes\"] = options.get(\"banded_columns\", False)\n        table[\"header_row_count\"] = options.get(\"header_row\", 0)\n        table[\"totals_row_shown\"] = options.get(\"total_row\", False)\n\n        # Set the table name.\n        if \"name\" in options:\n            name = options[\"name\"]\n            table[\"name\"] = name\n\n            if \" \" in name:\n                warn(f\"Name '{name}' in add_table() cannot contain spaces\")\n                return -2\n\n            # Warn if the name contains invalid chars as defined by Excel.\n            if not re.match(r\"^[\\w\\\\][\\w\\\\.]*$\", name, re.UNICODE) or re.match(\n                r\"^\\d\", name\n            ):\n                warn(f\"Invalid Excel characters in add_table(): '{name}'\")\n                return -2\n\n            # Warn if the name looks like a cell name.\n            if re.match(r\"^[a-zA-Z][a-zA-Z]?[a-dA-D]?\\d+$\", name):\n                warn(f\"Name looks like a cell name in add_table(): '{name}'\")\n                return -2\n\n            # Warn if the name looks like a R1C1 cell reference.\n            if re.match(r\"^[rcRC]$\", name) or re.match(r\"^[rcRC]\\d+[rcRC]\\d+$\", name):\n                warn(f\"Invalid name '{name}' like a RC cell ref in add_table()\")\n                return -2\n\n        # Set the table style.\n        if \"style\" in options:\n            table[\"style\"] = options[\"style\"]\n\n            if table[\"style\"] is None:\n                table[\"style\"] = \"\"\n\n            # Remove whitespace from style name.\n            table[\"style\"] = table[\"style\"].replace(\" \", \"\")\n        else:\n            table[\"style\"] = \"TableStyleMedium9\"\n\n        # Set the data range rows (without the header and footer).\n        first_data_row = first_row\n        last_data_row = last_row\n\n        if options.get(\"header_row\"):\n            first_data_row += 1\n\n        if options.get(\"total_row\"):\n            last_data_row -= 1\n\n        # Set the table and autofilter ranges.\n        table[\"range\"] = xl_range(first_row, first_col, last_row, last_col)\n\n        table[\"a_range\"] = xl_range(first_row, first_col, last_data_row, last_col)\n\n        # If the header row if off the default is to turn autofilter off.\n        if not options[\"header_row\"]:\n            options[\"autofilter\"] = 0\n\n        # Set the autofilter range.\n        if options[\"autofilter\"]:\n            table[\"autofilter\"] = table[\"a_range\"]\n\n        # Add the table columns.\n        col_id = 1\n        table[\"columns\"] = []\n        seen_names = {}\n\n        for col_num in range(first_col, last_col + 1):\n            # Set up the default column data.\n            col_data = {\n                \"id\": col_id,\n                \"name\": \"Column\" + str(col_id),\n                \"total_string\": \"\",\n                \"total_function\": \"\",\n                \"custom_total\": \"\",\n                \"total_value\": 0,\n                \"formula\": \"\",\n                \"format\": None,\n                \"name_format\": None,\n            }\n\n            # Overwrite the defaults with any user defined values.\n            if \"columns\" in options:\n                # Check if there are user defined values for this column.\n                if col_id <= len(options[\"columns\"]):\n                    user_data = options[\"columns\"][col_id - 1]\n                else:\n                    user_data = None\n\n                if user_data:\n                    # Get the column format.\n                    xformat = user_data.get(\"format\", None)\n\n                    # Map user defined values to internal values.\n                    if user_data.get(\"header\"):\n                        col_data[\"name\"] = user_data[\"header\"]\n\n                    # Excel requires unique case insensitive header names.\n                    header_name = col_data[\"name\"]\n                    name = header_name.lower()\n                    if name in seen_names:\n                        warn(f\"Duplicate header name in add_table(): '{name}'\")\n                        return -2\n\n                    seen_names[name] = True\n\n                    col_data[\"name_format\"] = user_data.get(\"header_format\")\n\n                    # Handle the column formula.\n                    if \"formula\" in user_data and user_data[\"formula\"]:\n                        formula = user_data[\"formula\"]\n\n                        # Remove the formula '=' sign if it exists.\n                        if formula.startswith(\"=\"):\n                            formula = formula.lstrip(\"=\")\n\n                        # Convert Excel 2010 \"@\" ref to 2007 \"#This Row\".\n                        formula = self._prepare_table_formula(formula)\n\n                        # Escape any future functions.\n                        formula = self._prepare_formula(formula, True)\n\n                        col_data[\"formula\"] = formula\n                        # We write the formulas below after the table data.\n\n                    # Handle the function for the total row.\n                    if user_data.get(\"total_function\"):\n                        function = user_data[\"total_function\"]\n                        if function == \"count_nums\":\n                            function = \"countNums\"\n                        if function == \"std_dev\":\n                            function = \"stdDev\"\n\n                        subtotals = set(\n                            [\n                                \"average\",\n                                \"countNums\",\n                                \"count\",\n                                \"max\",\n                                \"min\",\n                                \"stdDev\",\n                                \"sum\",\n                                \"var\",\n                            ]\n                        )\n\n                        if function in subtotals:\n                            formula = self._table_function_to_formula(\n                                function, col_data[\"name\"]\n                            )\n                        else:\n                            formula = self._prepare_formula(function, True)\n                            col_data[\"custom_total\"] = formula\n                            function = \"custom\"\n\n                        col_data[\"total_function\"] = function\n\n                        value = user_data.get(\"total_value\", 0)\n\n                        self._write_formula(last_row, col_num, formula, xformat, value)\n\n                    elif user_data.get(\"total_string\"):\n                        # Total label only (not a function).\n                        total_string = user_data[\"total_string\"]\n                        col_data[\"total_string\"] = total_string\n\n                        self._write_string(\n                            last_row, col_num, total_string, user_data.get(\"format\")\n                        )\n\n                    # Get the dxf format index.\n                    if xformat is not None:\n                        col_data[\"format\"] = xformat._get_dxf_index()\n\n                    # Store the column format for writing the cell data.\n                    # It doesn't matter if it is undefined.\n                    col_formats[col_id - 1] = xformat\n\n            # Store the column data.\n            table[\"columns\"].append(col_data)\n\n            # Write the column headers to the worksheet.\n            if options[\"header_row\"]:\n                self._write_string(\n                    first_row, col_num, col_data[\"name\"], col_data[\"name_format\"]\n                )\n\n            col_id += 1\n\n        # Write the cell data if supplied.\n        if \"data\" in options:\n            data = options[\"data\"]\n\n            i = 0  # For indexing the row data.\n            for row in range(first_data_row, last_data_row + 1):\n                j = 0  # For indexing the col data.\n                for col in range(first_col, last_col + 1):\n                    if i < len(data) and j < len(data[i]):\n                        token = data[i][j]\n                        if j in col_formats:\n                            self._write(row, col, token, col_formats[j])\n                        else:\n                            self._write(row, col, token, None)\n                    j += 1\n                i += 1\n\n        # Write any columns formulas after the user supplied table data to\n        # overwrite it if required.\n        for col_id, col_num in enumerate(range(first_col, last_col + 1)):\n            column_data = table[\"columns\"][col_id]\n            if column_data and column_data[\"formula\"]:\n                formula_format = col_formats.get(col_id)\n                formula = column_data[\"formula\"]\n\n                for row in range(first_data_row, last_data_row + 1):\n                    self._write_formula(row, col_num, formula, formula_format)\n\n        # Store the table data.\n        self.tables.append(table)\n\n        # Store the filter cell positions for use in the autofit calculation.\n        if options[\"autofilter\"]:\n            for col in range(first_col, last_col + 1):\n                # Check that the table autofilter doesn't overlap a worksheet filter.\n                if self.filter_cells.get((first_row, col)):\n                    filter_type, filter_range = self.filter_cells.get((first_row, col))\n                    if filter_type == \"worksheet\":\n                        raise OverlappingRange(\n                            f\"Table autofilter range '{cell_range}' overlaps previous \"\n                            f\"Worksheet autofilter range '{filter_range}'.\"\n                        )\n\n                self.filter_cells[(first_row, col)] = (\"table\", cell_range)\n\n        return 0",
+      "hash_value": "2ca24814ac54016360541d24e81474c7",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    @convert_range_args\n    def add_table(self, first_row, first_col, last_row, last_col, options=None):\n        \"\"\"\n        Add an Excel table to a worksheet.\n\n        Args:\n            first_row:    The first row of the cell range. (zero indexed).\n            first_col:    The first column of the cell range.\n            last_row:     The last row of the cell range. (zero indexed).\n            last_col:     The last column of the cell range.\n            options:      Table format options. (Optional)\n\n        Returns:\n            0:  Success.\n            -1: Row or column is out of worksheet bounds.\n            -2: Incorrect parameter or option.\n            -3: Not supported in constant_memory mode.\n        \"\"\"\n        table = {}\n        col_formats = {}\n\n        if options is None:\n            options = {}\n        else:\n            # Copy the user defined options so they aren't modified.\n            options = options.copy()\n\n        if self.constant_memory:\n            warn(\"add_table() isn't supported in 'constant_memory' mode\")\n            return -3\n\n        # Check that row and col are valid without storing the values.\n        if self._check_dimensions(first_row, first_col, True, True):\n            return -1\n        if self._check_dimensions(last_row, last_col, True, True):\n            return -1\n\n        # Swap last row/col for first row/col as necessary.\n        if first_row > last_row:\n            (first_row, last_row) = (last_row, first_row)\n        if first_col > last_col:\n            (first_col, last_col) = (last_col, first_col)\n\n        # Check if the table range overlaps a previous merged or table range.\n        # This is a critical file corruption error in Excel.\n        cell_range = xl_range(first_row, first_col, last_row, last_col)\n        for row in range(first_row, last_row + 1):\n            for col in range(first_col, last_col + 1):\n                if self.table_cells.get((row, col)):\n                    previous_range = self.table_cells.get((row, col))\n                    raise OverlappingRange(\n                        f\"Table range '{cell_range}' overlaps previous \"\n                        f\"table range '{previous_range}'.\"\n                    )\n\n                if self.merged_cells.get((row, col)):\n                    previous_range = self.merged_cells.get((row, col))\n                    raise OverlappingRange(\n                        f\"Table range '{cell_range}' overlaps previous \"\n                        f\"merge range '{previous_range}'.\"\n                    )\n\n                self.table_cells[(row, col)] = cell_range\n\n        # Valid input parameters.\n        valid_parameter = {\n            \"autofilter\",\n            \"banded_columns\",\n            \"banded_rows\",\n            \"columns\",\n            \"data\",\n            \"first_column\",\n            \"header_row\",\n            \"last_column\",\n            \"name\",\n            \"style\",\n            \"total_row\",\n        }\n\n        # Check for valid input parameters.\n        for param_key in options.keys():\n            if param_key not in valid_parameter:\n                warn(f\"Unknown parameter '{param_key}' in add_table()\")\n                return -2\n\n        # Turn on Excel's defaults.\n        options[\"banded_rows\"] = options.get(\"banded_rows\", True)\n        options[\"header_row\"] = options.get(\"header_row\", True)\n        options[\"autofilter\"] = options.get(\"autofilter\", True)\n\n        # Check that there are enough rows.\n        num_rows = last_row - first_row\n        if options[\"header_row\"]:\n            num_rows -= 1\n\n        if num_rows < 0:\n            warn(\"Must have at least one data row in in add_table()\")\n            return -2\n\n        # Set the table options.\n        table[\"show_first_col\"] = options.get(\"first_column\", False)\n        table[\"show_last_col\"] = options.get(\"last_column\", False)\n        table[\"show_row_stripes\"] = options.get(\"banded_rows\", False)\n        table[\"show_col_stripes\"] = options.get(\"banded_columns\", False)\n        table[\"header_row_count\"] = options.get(\"header_row\", 0)\n        table[\"totals_row_shown\"] = options.get(\"total_row\", False)\n\n        # Set the table name.\n        if \"name\" in options:\n            name = options[\"name\"]\n            table[\"name\"] = name\n\n            if \" \" in name:\n                warn(f\"Name '{name}' in add_table() cannot contain spaces\")\n                return -2\n\n            # Warn if the name contains invalid chars as defined by Excel.\n            if not re.match(r\"^[\\w\\\\][\\w\\\\.]*$\", name, re.UNICODE) or re.match(\n                r\"^\\d\", name\n            ):\n                warn(f\"Invalid Excel characters in add_table(): '{name}'\")\n                return -2\n\n            # Warn if the name looks like a cell name.\n            if re.match(r\"^[a-zA-Z][a-zA-Z]?[a-dA-D]?\\d+$\", name):\n                warn(f\"Name looks like a cell name in add_table(): '{name}'\")\n                return -2\n\n            # Warn if the name looks like a R1C1 cell reference.\n            if re.match(r\"^[rcRC]$\", name) or re.match(r\"^[rcRC]\\d+[rcRC]\\d+$\", name):\n                warn(f\"Invalid name '{name}' like a RC cell ref in add_table()\")\n                return -2\n\n        # Set the table style.\n        if \"style\" in options:\n            table[\"style\"] = options[\"style\"]\n\n            if table[\"style\"] is None:\n                table[\"style\"] = \"\"\n\n            # Remove whitespace from style name.\n            table[\"style\"] = table[\"style\"].replace(\" \", \"\")\n        else:\n            table[\"style\"] = \"TableStyleMedium9\"\n\n        # Set the data range rows (without the header and footer).\n        first_data_row = first_row\n        last_data_row = last_row\n\n        if options.get(\"header_row\"):\n            first_data_row += 1\n\n        if options.get(\"total_row\"):\n            last_data_row -= 1\n\n        # Set the table and autofilter ranges.\n        table[\"range\"] = xl_range(first_row, first_col, last_row, last_col)\n\n        table[\"a_range\"] = xl_range(first_row, first_col, last_data_row, last_col)\n\n        # If the header row if off the default is to turn autofilter off.\n        if not options[\"header_row\"]:\n            options[\"autofilter\"] = 0\n\n        # Set the autofilter range.\n        if options[\"autofilter\"]:\n            table[\"autofilter\"] = table[\"a_range\"]\n\n        # Add the table columns.\n        col_id = 1\n        table[\"columns\"] = []\n        seen_names = {}\n\n        for col_num in range(first_col, last_col + 1):\n            # Set up the default column data.\n            col_data = {\n                \"id\": col_id,\n                \"name\": \"Column\" + str(col_id),\n                \"total_string\": \"\",\n                \"total_function\": \"\",\n                \"custom_total\": \"\",\n                \"total_value\": 0,\n                \"formula\": \"\",\n                \"format\": None,\n                \"name_format\": None,\n            }\n\n            # Overwrite the defaults with any user defined values.\n            if \"columns\" in options:\n                # Check if there are user defined values for this column.\n                if col_id <= len(options[\"columns\"]):\n                    user_data = options[\"columns\"][col_id - 1]\n                else:\n                    user_data = None\n\n                if user_data:\n                    # Get the column format.\n                    xformat = user_data.get(\"format\", None)\n\n                    # Map user defined values to internal values.\n                    if user_data.get(\"header\"):\n                        col_data[\"name\"] = user_data[\"header\"]\n\n                    # Excel requires unique case insensitive header names.\n                    header_name = col_data[\"name\"]\n                    name = header_name.lower()\n                    if name in seen_names:\n                        warn(f\"Duplicate header name in add_table(): '{name}'\")\n                        return -2\n\n                    seen_names[name] = True\n\n                    col_data[\"name_format\"] = user_data.get(\"header_format\")\n\n                    # Handle the column formula.\n                    if \"formula\" in user_data and user_data[\"formula\"]:\n                        formula = user_data[\"formula\"]\n\n                        # Remove the formula '=' sign if it exists.\n                        if formula.startswith(\"=\"):\n                            formula = formula.lstrip(\"=\")\n\n                        # Convert Excel 2010 \"@\" ref to 2007 \"#This Row\".\n                        formula = self._prepare_table_formula(formula)\n\n                        # Escape any future functions.\n                        formula = self._prepare_formula(formula, True)\n\n                        col_data[\"formula\"] = formula\n                        # We write the formulas below after the table data.\n\n                    # Handle the function for the total row.\n                    if user_data.get(\"total_function\"):\n                        function = user_data[\"total_function\"]\n                        if function == \"count_nums\":\n                            function = \"countNums\"\n                        if function == \"std_dev\":\n                            function = \"stdDev\"\n\n                        subtotals = set(\n                            [\n                                \"average\",\n                                \"countNums\",\n                                \"count\",\n                                \"max\",\n                                \"min\",\n                                \"stdDev\",\n                                \"sum\",\n                                \"var\",\n                            ]\n                        )\n\n                        if function in subtotals:\n                            formula = self._table_function_to_formula(\n                                function, col_data[\"name\"]\n                            )\n                        else:\n                            formula = self._prepare_formula(function, True)\n                            col_data[\"custom_total\"] = formula\n                            function = \"custom\"\n\n                        col_data[\"total_function\"] = function\n\n                        value = user_data.get(\"total_value\", 0)\n\n                        self._write_formula(last_row, col_num, formula, xformat, value)\n\n                    elif user_data.get(\"total_string\"):\n                        # Total label only (not a function).\n                        total_string = user_data[\"total_string\"]\n                        col_data[\"total_string\"] = total_string\n\n                        self._write_string(\n                            last_row, col_num, total_string, user_data.get(\"format\")\n                        )\n\n                    # Get the dxf format index.\n                    if xformat is not None:\n                        col_data[\"format\"] = xformat._get_dxf_index()\n\n                    # Store the column format for writing the cell data.\n                    # It doesn't matter if it is undefined.\n                    col_formats[col_id - 1] = xformat\n\n            # Store the column data.\n            table[\"columns\"].append(col_data)\n\n            # Write the column headers to the worksheet.\n            if options[\"header_row\"]:\n                self._write_string(\n                    first_row, col_num, col_data[\"name\"], col_data[\"name_format\"]\n                )\n\n            col_id += 1\n\n        # Write the cell data if supplied.\n        if \"data\" in options:\n            data = options[\"data\"]\n\n            i = 0  # For indexing the row data.\n            for row in range(first_data_row, last_data_row + 1):\n                j = 0  # For indexing the col data.\n                for col in range(first_col, last_col + 1):\n                    if i < len(data) and j < len(data[i]):\n                        token = data[i][j]\n                        if j in col_formats:\n                            self._write(row, col, token, col_formats[j])\n                        else:\n                            self._write(row, col, token, None)\n                    j += 1\n                i += 1\n\n        # Write any columns formulas after the user supplied table data to\n        # overwrite it if required.\n        for col_id, col_num in enumerate(range(first_col, last_col + 1)):\n            column_data = table[\"columns\"][col_id]\n            if column_data and column_data[\"formula\"]:\n                formula_format = col_formats.get(col_id)\n                formula = column_data[\"formula\"]\n\n                for row in range(first_data_row, last_data_row + 1):\n                    self._write_formula(row, col_num, formula, formula_format)\n\n        # Store the table data.\n        self.tables.append(table)\n\n        # Store the filter cell positions for use in the autofit calculation.\n        if options[\"autofilter\"]:\n            for col in range(first_col, last_col + 1):\n                # Check that the table autofilter doesn't overlap a worksheet filter.\n                if self.filter_cells.get((first_row, col)):\n                    filter_type, filter_range = self.filter_cells.get((first_row, col))\n                    if filter_type == \"worksheet\":\n                        raise OverlappingRange(\n                            f\"Table autofilter range '{cell_range}' overlaps previous \"\n                            f\"Worksheet autofilter range '{filter_range}'.\"\n                        )\n\n                self.filter_cells[(first_row, col)] = (\"table\", cell_range)\n\n        return 0",
+          "triple_sequences": [
+            {
+              "action_api": "options.copy()",
+              "action_description": "Copies file to destination",
+              "action_id": "copy_file",
+              "object": "options",
+              "object_description": "Custom post install function",
+              "object_id": "custom_post_install_function",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "warn()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "add_table() isn't supported in 'constant_memory' mode",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "self._check_dimensions()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "first_row, first_col, True, True",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "self._check_dimensions()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "last_row, last_col, True, True",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "xl_range()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "first_row, first_col, last_row, last_col",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "self.table_cells.get()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "(row, col)",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Determine presence of marker file",
+              "intention_id": "determine_marker_file_presence"
+            },
+            {
+              "action_api": "self.merged_cells.get()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "(row, col)",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Determine presence of marker file",
+              "intention_id": "determine_marker_file_presence"
+            },
+            {
+              "action_api": "self.table_cells.__setitem__()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "(row, col), cell_range",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.keys()",
+              "action_description": "List directory contents",
+              "action_id": "list_directory_contents",
+              "object": "options",
+              "object_description": "Custom post install function",
+              "object_id": "custom_post_install_function",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "warn()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "Unknown parameter '{param_key}' in add_table()",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "banded_rows, True",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "header_row, True",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "autofilter, True",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "warn()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "Must have at least one data row in in add_table()",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "first_column, False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "last_column, False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "banded_rows, False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "banded_columns, False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "header_row, 0",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "total_row, False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'^[\\w\\\\][\\w\\\\.]*$', name, re.UNICODE",
+              "object_description": "Regex pattern",
+              "object_id": "regex_pattern",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'^\\d', name",
+              "object_description": "Regex pattern",
+              "object_id": "regex_pattern",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'^[a-zA-Z][a-zA-Z]?[a-dA-D]?\\d+$', name",
+              "object_description": "Regex pattern",
+              "object_id": "regex_pattern",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'^[rcRC]$', name",
+              "object_description": "Regex pattern",
+              "object_id": "regex_pattern",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "re.match()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r'^[rcRC]\\d+[rcRC]\\d+$', name",
+              "object_description": "Regex pattern",
+              "object_id": "regex_pattern",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "table['style'].replace()",
+              "action_description": "Replaces string",
+              "action_id": "reverse_string",
+              "object": "\" \", \"\"",
+              "object_description": "Space delimiter",
+              "object_id": "space_delimiter",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "xl_range()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "first_row, first_col, last_row, last_col",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "xl_range()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "first_row, first_col, last_data_row, last_col",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "header_row",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "total_row",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "autofilter",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "table['columns'].append()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "col_data",
+              "object_description": "Custom post install function",
+              "object_id": "custom_post_install_function",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self._write_string()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "first_row, col_num, col_data['name'], col_data['name_format']",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._write()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "row, col, token, col_formats[j]",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._write()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "row, col, token, None",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._write_formula()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "last_row, col_num, formula, xformat, value",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._write_string()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "last_row, col_num, total_string, user_data.get('format')",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "xformat._get_dxf_index()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "xformat",
+              "object_description": "Custom post install function",
+              "object_id": "custom_post_install_function",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self._write_string()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "first_row, col_num, col_data['name'], col_data['name_format']",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._write_formula()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "row, col_num, formula, formula_format",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.tables.append()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "table",
+              "object_description": "Custom post install function",
+              "object_id": "custom_post_install_function",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.filter_cells.get()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "(first_row, col)",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Determine marker file presence",
+              "intention_id": "determine_marker_file_presence"
+            },
+            {
+              "action_api": "self.filter_cells.__setitem__()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "(first_row, col), ('table', cell_range)",
+              "object_description": "Thread arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

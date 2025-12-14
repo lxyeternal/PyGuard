@@ -1,0 +1,88 @@
+[
+  {
+    "metadata": {
+      "package_name": "python_xlib-0.33-py2.py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "unix_connect.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/python_xlib-0.33-py2.py3-none-any/Xlib/support/unix_connect.py",
+    "line_number": "193",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "192\t        # although more inefficient\n193\t        data = os.popen('xauth list %s 2>/dev/null' % dname).read()\n194",
+    "code_snippet": "def old_get_auth(sock, dname, host, dno):\n    # Find authorization cookie\n    auth_name = auth_data = b''\n\n    try:\n        # We could parse .Xauthority, but xauth is simpler\n        # although more inefficient\n        data = os.popen('xauth list %s 2>/dev/null' % dname).read()\n\n        # If there's a cookie, it is of the format\n        #      DISPLAY SCHEME COOKIE\n        # We're interested in the two last parts for the\n        # connection establishment\n        lines = data.split('\\n')\n        if len(lines) >= 1:\n            parts = lines[0].split(None, 2)\n            if len(parts) == 3:\n                auth_name = parts[1]\n                hexauth = parts[2]\n                auth = b''\n\n                # Translate hexcode into binary\n                for i in range(0, len(hexauth), 2):\n                    auth = auth + chr(int(hexauth[i:i+2], 16))\n\n                auth_data = auth\n    except os.error:\n        pass\n\n    return auth_name, auth_data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.popen",
+        "os.popen.read",
+        "str.split",
+        "str.split",
+        "chr",
+        "int"
+      ],
+      "api_sequence_with_args": [
+        "os.popen('xauth list %s 2>/dev/null' % dname)",
+        "os.popen('xauth list %s 2>/dev/null' % dname).read()",
+        "data.split('\\n')",
+        "lines[0].split(None, 2)",
+        "chr(int(hexauth[i:i+2], 16))",
+        "int(hexauth[i:i+2], 16)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.popen",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.popen.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "str.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "str.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "chr",
+          "id": "convert_int_to_char",
+          "description": "Converts integer to Unicode character",
+          "first_id": "data_transformation_processing",
+          "second_id": "type_conversion",
+          "third_id": "string_conversion"
+        },
+        {
+          "api_name": "int",
+          "id": "convert_char_to_int",
+          "description": "Converts character to integer Unicode code point",
+          "first_id": "data_transformation_processing",
+          "second_id": "type_conversion",
+          "third_id": "string_conversion"
+        }
+      ],
+      "contextual_code": "def old_get_auth(sock, dname, host, dno):\n    auth_name = auth_data = b''\n    try:\n        data = os.popen('xauth list %s 2>/dev/null' % dname).read()\n        lines = data.split('\\n')\n        if len(lines) >= 1:\n            parts = lines[0].split(None, 2)\n            if len(parts) == 3:\n                auth_name = parts[1]\n                hexauth = parts[2]\n                auth = b''\n                for i in range(0, len(hexauth), 2):\n                    auth = auth + chr(int(hexauth[i:i+2], 16))\n                auth_data = auth\n    except os.error:\n        pass\n    return auth_name, auth_data"
+    }
+  }
+]

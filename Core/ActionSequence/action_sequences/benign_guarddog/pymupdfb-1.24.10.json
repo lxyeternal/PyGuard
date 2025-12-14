@@ -1,0 +1,232 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import subprocess\nimport sys\n\ndef log( text):\n    global _log_prefix\n    if not _log_prefix:\n        # This typically sets _log_prefix to `PyMuPDF/setup.py`.\n        p = os.path.abspath( __file__)\n        p, p1 = os.path.split( p)\n        p, p0 = os.path.split( p)\n        _log_prefix = os.path.join( p0, p1)\n    print(f'{_log_prefix}: {text}', file=sys.stdout)\n    sys.stdout.flush()\n\ndef run(command, check=1):\n    log(f'Running: {command}')\n    return subprocess.run( command, shell=1, check=check)\n\n\ndef _git_get_branch( directory):\n    command = f'cd {directory} && git branch --show-current'\n    log( f'Running: {command}')\n    p = subprocess.run(\n            command,\n            shell=True,\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            )\n    ret = None\n    if p.returncode == 0:\n        ret = p.stdout.strip()\n        log( f'Have found MuPDF git branch: ret={ret!r}')\n    return ret\n\n\ndef build_mupdf_windows( mupdf_local, build_type, overwrite_config):\n    assert mupdf_local\n\n    if overwrite_config:\n        mupdf_config_h = f'{mupdf_local}/include/mupdf/fitz/config.h'\n        prefix = '#define TOFU_CJK_EXT 1 /* PyMuPDF override. */\\n'\n        with open(mupdf_config_h) as f:\n            text = f.read()\n        if text.startswith(prefix):\n            print(f'Not modifying {mupdf_config_h} because already has prefix {prefix!r}.')\n        else:\n            print(f'Prefixing {mupdf_config_h} with {prefix!r}.')\n            text = prefix + text\n            st = os.stat(mupdf_config_h)\n            with open(mupdf_config_h, 'w') as f:\n                f.write(text)\n            os.utime(mupdf_config_h, (st.st_atime, st.st_mtime))\n        \n    wp = pipcl.wdev.WindowsPython()\n    tesseract = '' if os.environ.get('PYMUPDF_SETUP_MUPDF_TESSERACT') == '0' else 'tesseract-'\n    windows_build_tail = f'build\\\\shared-{tesseract}{build_type}-x{wp.cpu.bits}-py{wp.version}'\n    windows_build_dir = f'{mupdf_local}\\\\{windows_build_tail}'\n    #log( f'Building mupdf.')\n    devenv = os.environ.get('PYMUPDF_SETUP_DEVENV')\n    if not devenv:\n        vs = pipcl.wdev.WindowsVS()\n        devenv = vs.devenv\n    if not devenv:\n        devenv = 'devenv.com'\n        log( f'Cannot find devenv.com in default locations, using: {devenv!r}')\n    command = f'cd \"{mupdf_local}\" && \"{sys.executable}\" ./scripts/mupdfwrap.py'\n    if os.environ.get('PYMUPDF_SETUP_MUPDF_VS_UPGRADE') == '1':\n        command += ' --vs-upgrade 1'\n        \n    # Would like to simply do f'... --devenv {shutil.quote(devenv)}', but\n    # it looks like if `devenv` has spaces then `shutil.quote()` puts it\n    # inside single quotes, which then appear to be ignored when run by\n    # subprocess.run().\n    #\n    # So instead we strip any enclosing quotes and the enclose with\n    # double-quotes.\n    #\n    if len(devenv) >= 2:\n        for q in '\"', \"'\":\n            if devenv.startswith( q) and devenv.endswith( q):\n                devenv = devenv[1:-1]\n    command += f' -d {windows_build_tail}'\n    command += f' -b'\n    command += f' --refcheck-if \"#if 1\"'\n    command += f' --devenv \"{devenv}\"'\n    command += f' all'\n    if os.environ.get( 'PYMUPDF_SETUP_MUPDF_REBUILD') == '0':\n        log( f'PYMUPDF_SETUP_MUPDF_REBUILD is \"0\" so not building MuPDF; would have run: {command}')\n    else:\n        log( f'Building MuPDF by running: {command}')\n        subprocess.run( command, shell=True, check=True)\n        log( f'Finished building mupdf.')\n    \n    return windows_build_dir\n\ndef build_mupdf_unix( mupdf_local, build_type, overwrite_config):\n    '''\n    Builds MuPDF.\n\n    Args:\n        mupdf_local:\n            Path of MuPDF directory or None if we are using system MuPDF.\n    \n    Returns the absolute path of build directory within MuPDF, e.g.\n    `.../mupdf/build/pymupdf-shared-release`, or `None` if we are using the\n    system MuPDF.\n    '''    \n    if not mupdf_local:\n        log( f'Using system mupdf.')\n        return None\n\n    env = dict()\n    if overwrite_config:\n        # By predefining TOFU_CJK_EXT here, we don't need to modify\n        # MuPDF's include/mupdf/fitz/config.h.\n        log( f'Setting XCFLAGS and XCXXFLAGS to predefine TOFU_CJK_EXT.')\n        env_add(env, 'XCFLAGS', '-DTOFU_CJK_EXT')\n        env_add(env, 'XCXXFLAGS', '-DTOFU_CJK_EXT')\n\n    if openbsd or freebsd:\n        env_add(env, 'CXX', 'c++', ' ')\n\n    # Add extra flags for MacOS cross-compilation, where ARCHFLAGS can be\n    # '-arch arm64'.\n    #\n    archflags = os.environ.get( 'ARCHFLAGS')\n    if archflags:\n        env_add(env, 'XCFLAGS', archflags)\n        env_add(env, 'XLIBS', archflags)\n\n    # We specify a build directory path containing 'pymupdf' so that we\n    # coexist with non-PyMuPDF builds (because PyMuPDF builds have a\n    # different config.h).\n    #\n    # We also append further text to try to allow different builds to\n    # work if they reuse the mupdf directory.\n    #\n    # Using platform.machine() (e.g. 'amd64') ensures that different\n    # builds of mupdf on a shared filesystem can coexist. Using\n    # $_PYTHON_HOST_PLATFORM allows cross-compiled cibuildwheel builds\n    # to coexist, e.g. on github.\n    #\n    build_prefix = f'PyMuPDF-'\n    if pyodide:\n        build_prefix += 'pyodide-'\n    else:\n        build_prefix += f'{platform.machine()}-'\n    build_prefix_extra = os.environ.get( '_PYTHON_HOST_PLATFORM')\n    if build_prefix_extra:\n        build_prefix += f'{build_prefix_extra}-'\n    build_prefix += 'shared-'\n    if msys2:\n        # Error in mupdf/scripts/tesseract/endianness.h:\n        # #error \"I don't know what architecture this is!\"\n        log(f'msys2: building MuPDF without tesseract.')\n    elif os.environ.get('PYMUPDF_SETUP_MUPDF_TESSERACT') == '0':\n        log(f'PYMUPDF_SETUP_MUPDF_TESSERACT=0 so building mupdf without tesseract.')\n    else:\n        build_prefix += 'tesseract-'\n    mupdf_version_tuple = get_mupdf_version(mupdf_local)\n    if (\n            linux\n            and os.environ.get('PYMUPDF_SETUP_MUPDF_BSYMBOLIC', '1') == '1'\n            and mupdf_version_tuple >= (1, 24, 3)\n            ):\n        log(f'Appending `bsymbolic-` to MuPDF build path.')\n        build_prefix += 'bsymbolic-'\n    unix_build_dir = f'{mupdf_local}/build/{build_prefix}{build_type}'\n    # We need MuPDF's Python bindings, so we build MuPDF with\n    # `mupdf/scripts/mupdfwrap.py` instead of running `make`.\n    #\n    command = f'cd {mupdf_local} &&'\n    for n, v in env.items():\n        command += f' {n}={shlex.quote(v)}'\n    command += f' {sys.executable} ./scripts/mupdfwrap.py -d build/{build_prefix}{build_type} -b '\n    if 'p' in PYMUPDF_SETUP_FLAVOUR:\n        command += 'all'\n    else:\n        command += 'm01'    # No need for C++/Python bindings.\n    command += f' && echo {unix_build_dir}:'\n    command += f' && ls -l {unix_build_dir}'\n\n    if os.environ.get( 'PYMUPDF_SETUP_MUPDF_REBUILD') == '0':\n        log( f'PYMUPDF_SETUP_MUPDF_REBUILD is \"0\" so not building MuPDF; would have run: {command}')\n    else:\n        log( f'Building MuPDF by running: {command}')\n        subprocess.run( command, shell=True, check=True)\n        log( f'Finished building mupdf.')\n    \n    return unix_build_dir\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.split",
+        "os.path.split",
+        "os.path.join",
+        "sys.stdout.flush",
+        "subprocess.run",
+        "subprocess.run",
+        "open",
+        "open.read",
+        "os.stat",
+        "open",
+        "open.write",
+        "os.utime",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "subprocess.run",
+        "open",
+        "open.read"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(__file__)",
+        "os.path.split(p)",
+        "os.path.split(p)",
+        "os.path.join(p0, p1)",
+        "sys.stdout.flush()",
+        "subprocess.run(command, shell=1, check=check)",
+        "subprocess.run(command, shell=True, check=False, text=True, stdout=subprocess.PIPE)",
+        "open(mupdf_config_h)",
+        "open(mupdf_config_h).read()",
+        "os.stat(mupdf_config_h)",
+        "open(mupdf_config_h, 'w')",
+        "open(mupdf_config_h, 'w').write(text)",
+        "os.utime(mupdf_config_h, (st.st_atime, st.st_mtime))",
+        "os.environ.get('PYMUPDF_SETUP_MUPDF_TESSERACT')",
+        "os.environ.get('PYMUPDF_SETUP_DEVENV')",
+        "os.environ.get('PYMUPDF_SETUP_MUPDF_VS_UPGRADE')",
+        "os.environ.get('PYMUPDF_SETUP_MUPDF_REBUILD')",
+        "os.environ.get('PYMUPDF_SETUP_MUPDF_REBUILD')",
+        "subprocess.run(command, shell=True, check=True)",
+        "open(mupdf_config_h)",
+        "open(mupdf_config_h).read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.stdout.flush",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.utime",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "import subprocess\nimport sys\n\ndef log(text):\n    global _log_prefix\n    if not _log_prefix:\n        p = os.path.abspath(__file__)\n        p, p1 = os.path.split(p)\n        p, p0 = os.path.split(p)\n        _log_prefix = os.path.join(p0, p1)\n    print(f'{_log_prefix}: {text}', file=sys.stdout)\n    sys.stdout.flush()\n\ndef run(command, check=1):\n    log(f'Running: {command}')\n    return subprocess.run(command, shell=1, check=check)\n\n\ndef _git_get_branch(directory):\n    command = f'cd {directory} && git branch --show-current'\n    log(f'Running: {command}')\n    p = subprocess.run(\n        command,\n        shell=True,\n        check=False,\n        text=True,\n        stdout=subprocess.PIPE,\n    )\n    ret = None\n    if p.returncode == 0:\n        ret = p.stdout.strip()\n        log(f'Have found MuPDF git branch: ret={ret!r}')\n    return ret\n\n\ndef build_mupdf_windows(mupdf_local, build_type, overwrite_config):\n    assert mupdf_local\n\n    if overwrite_config:\n        mupdf_config_h = f'{mupdf_local}/include/mupdf/fitz/config.h'\n        prefix = '#define TOFU_CJK_EXT 1 /* PyMuPDF override. */\\n'\n        with open(mupdf_config_h) as f:\n            text = f.read()\n        if text.startswith(prefix):\n            print(f'Not modifying {mupdf_config_h} because already has prefix {prefix!r}.')\n        else:\n            print(f'Prefixing {mupdf_config_h} with {prefix!r}.')\n            text = prefix + text\n            st = os.stat(mupdf_config_h)\n            with open(mupdf_config_h, 'w') as f:\n                f.write(text)\n            os.utime(mupdf_config_h, (st.st_atime, st.st_mtime))\n    # ...\n    if os.environ.get('PYMUPDF_SETUP_MUPDF_REBUILD') == '0':\n        log(f'PYMUPDF_SETUP_MUPDF_REBUILD is \"0\" so not building MuPDF; would have run: {command}')\n    else:\n        log(f'Building MuPDF by running: {command}')\n        subprocess.run(command, shell=True, check=True)\n        log(f'Finished building mupdf.')\n    return windows_build_dir\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pymupdfb-1.24.10",
+      "total_matches": 4
+    }
+  }
+]

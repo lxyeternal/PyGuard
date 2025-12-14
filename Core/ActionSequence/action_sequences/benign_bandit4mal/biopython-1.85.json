@@ -1,0 +1,177 @@
+[
+  {
+    "metadata": {
+      "package_name": "biopython-1.85",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_GenomeDiagram.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/biopython-1.85/biopython-1.85/Tests/test_GenomeDiagram.py",
+    "line_number": "1272",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1271\t        output_filename = os.path.join(\"Graphics\", \"GD_by_obj_frag_linear.pdf\")\n1272\t        gdd.write(output_filename, \"PDF\")\n1273",
+    "code_snippet": "def test_diagram_via_object_pdf(self):\n    \"\"\"Construct and draw PDF using object approach.\"\"\"\n    genbank_entry = self.record\n    gdd = Diagram(\"Test Diagram\")\n\n    gdt1 = Track(\n        \"CDS features\",\n        greytrack=True,\n        scale_largetick_interval=1e4,\n        scale_smalltick_interval=1e3,\n        greytrack_labels=10,\n        greytrack_font_color=\"red\",\n        scale_format=\"SInt\",\n    )\n    gdt2 = Track(\"gene features\", greytrack=1, scale_largetick_interval=1e4)\n\n    # First add some feature sets:\n    gdfsA = FeatureSet(name=\"CDS backgrounds\")\n    gdfsB = FeatureSet(name=\"gene background\")\n\n    gdfs1 = FeatureSet(name=\"CDS features\")\n    gdfs2 = FeatureSet(name=\"gene features\")\n    gdfs3 = FeatureSet(name=\"misc_features\")\n    gdfs4 = FeatureSet(name=\"repeat regions\")\n\n    prev_gene = None\n    cds_count = 0\n    for feature in genbank_entry.features:\n        if feature.type == \"CDS\":\n            cds_count += 1\n            if prev_gene:\n                # Assuming it goes with this CDS!\n                if cds_count % 2 == 0:\n                    dark, light = colors.peru, colors.tan\n                else:\n                    dark, light = colors.burlywood, colors.bisque\n                # Background for CDS,\n                a = gdfsA.add_feature(\n                    SeqFeature(\n                        SimpleLocation(\n                            feature.location.start, feature.location.end, strand=0\n                        )\n                    ),\n                    color=dark,\n                )\n                # Background for gene,\n                b = gdfsB.add_feature(\n                    SeqFeature(\n                        SimpleLocation(\n                            prev_gene.location.start,\n                            prev_gene.location.end,\n                            strand=0,\n                        )\n                    ),\n                    color=dark,\n                )\n                # Cross link,\n                gdd.cross_track_links.append(CrossLink(a, b, light, dark))\n                prev_gene = None\n        if feature.type == \"gene\":\n            prev_gene = feature\n\n    # Some cross links on the same linear diagram fragment,\n    f, c = fill_and_border(colors.red)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(2220, 2230)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(2200, 2210)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, f, c))\n\n    f, c = fill_and_border(colors.blue)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(2150, 2200)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(2220, 2290)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, f, c, flip=True))\n\n    f, c = fill_and_border(colors.green)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(2250, 2560)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(2300, 2860)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, f, c))\n\n    # Some cross links where both parts are saddling the linear diagram fragment boundary,\n    f, c = fill_and_border(colors.red)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(3155, 3250)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(3130, 3300)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, f, c))\n    # Nestled within that (drawn on top),\n    f, c = fill_and_border(colors.blue)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(3160, 3275)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(3180, 3225)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, f, c, flip=True))\n\n    # Some cross links where two features are on either side of the linear diagram fragment boundary,\n    f, c = fill_and_border(colors.green)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(6450, 6550)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(6265, 6365)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, color=f, border=c))\n    f, c = fill_and_border(colors.gold)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(6265, 6365)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(6450, 6550)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, color=f, border=c))\n    f, c = fill_and_border(colors.red)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(6275, 6375)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(6430, 6530)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, color=f, border=c, flip=True))\n    f, c = fill_and_border(colors.blue)\n    a = gdfsA.add_feature(SeqFeature(SimpleLocation(6430, 6530)), color=f, border=c)\n    b = gdfsB.add_feature(SeqFeature(SimpleLocation(6275, 6375)), color=f, border=c)\n    gdd.cross_track_links.append(CrossLink(a, b, color=f, border=c, flip=True))\n\n    cds_count = 0\n    for feature in genbank_entry.features:\n        if feature.type == \"CDS\":\n            cds_count += 1\n            if cds_count % 2 == 0:\n                gdfs1.add_feature(feature, color=colors.pink, sigil=\"ARROW\")\n            else:\n                gdfs1.add_feature(feature, color=colors.red, sigil=\"ARROW\")\n\n        if feature.type == \"gene\":\n            # Note we set the colour of ALL the genes later on as a test,\n            gdfs2.add_feature(feature, sigil=\"ARROW\")\n\n        if feature.type == \"misc_feature\":\n            gdfs3.add_feature(feature, color=colors.orange)\n\n        if feature.type == \"repeat_region\":\n            gdfs4.add_feature(feature, color=colors.purple)\n\n    # gdd.cross_track_links = gdd.cross_track_links[:1]\n\n    gdfs1.set_all_features(\"label\", 1)\n    gdfs2.set_all_features(\"label\", 1)\n    gdfs3.set_all_features(\"label\", 1)\n    gdfs4.set_all_features(\"label\", 1)\n\n    gdfs3.set_all_features(\"hide\", 0)\n    gdfs4.set_all_features(\"hide\", 0)\n\n    # gdfs1.set_all_features('color', colors.red)\n    gdfs2.set_all_features(\"color\", colors.blue)\n\n    gdt1.add_set(gdfsA)  # Before CDS so under them!\n    gdt1.add_set(gdfs1)\n\n    gdt2.add_set(gdfsB)  # Before genes so under them!\n    gdt2.add_set(gdfs2)\n\n    gdt3 = Track(\n        \"misc features and repeats\", greytrack=1, scale_largetick_interval=1e4\n    )\n    gdt3.add_set(gdfs3)\n    gdt3.add_set(gdfs4)\n\n    # Now add some graph sets:\n\n    # Use a fairly large step so we can easily tell the difference\n    # between the bar and line graphs.\n    step = len(genbank_entry) // 200\n    gdgs1 = GraphSet(\"GC skew\")\n\n    graphdata1 = apply_to_window(genbank_entry.seq, step, calc_gc_skew, step)\n    gdgs1.new_graph(\n        graphdata1,\n        \"GC Skew\",\n        style=\"bar\",\n        color=colors.violet,\n        altcolor=colors.purple,\n    )\n\n    gdt4 = Track(\n        \"GC Skew (bar)\", height=1.94, greytrack=1, scale_largetick_interval=1e4\n    )\n    gdt4.add_set(gdgs1)\n\n    gdgs2 = GraphSet(\"GC and AT Content\")\n    gdgs2.new_graph(\n        apply_to_window(genbank_entry.seq, step, calc_gc_content, step),\n        \"GC content\",\n        style=\"line\",\n        color=colors.lightgreen,\n        altcolor=colors.darkseagreen,\n    )\n\n    gdgs2.new_graph(\n        apply_to_window(genbank_entry.seq, step, calc_at_content, step),\n        \"AT content\",\n        style=\"line\",\n        color=colors.orange,\n        altcolor=colors.red,\n    )\n\n    gdt5 = Track(\n        \"GC Content(green line), AT Content(red line)\",\n        height=1.94,\n        greytrack=1,\n        scale_largetick_interval=1e4,\n    )\n    gdt5.add_set(gdgs2)\n\n    gdgs3 = GraphSet(\"Di-nucleotide count\")\n    step = len(genbank_entry) // 400  # smaller step\n    gdgs3.new_graph(\n        apply_to_window(genbank_entry.seq, step, calc_dinucleotide_counts, step),\n        \"Di-nucleotide count\",\n        style=\"heat\",\n        color=colors.red,\n        altcolor=colors.orange,\n    )\n    gdt6 = Track(\"Di-nucleotide count\", height=0.5, greytrack=False, scale=False)\n    gdt6.add_set(gdgs3)\n\n    # Add the tracks (from both features and graphs)\n    # Leave some white space in the middle/bottom\n    gdd.add_track(gdt4, 3)  # GC skew\n    gdd.add_track(gdt5, 4)  # GC and AT content\n    gdd.add_track(gdt1, 5)  # CDS features\n    gdd.add_track(gdt2, 6)  # Gene features\n    gdd.add_track(gdt3, 7)  # Misc features and repeat feature\n    gdd.add_track(gdt6, 8)  # Feature depth\n\n    # Finally draw it in both formats, and full view and partial\n    gdd.draw(\n        format=\"circular\", orientation=\"landscape\", tracklines=0, pagesize=\"A0\"\n    )\n    output_filename = os.path.join(\"Graphics\", \"GD_by_obj_circular.pdf\")\n    gdd.write(output_filename, \"PDF\")\n\n    gdd.circular = False\n    gdd.draw(\n        format=\"circular\",\n        orientation=\"landscape\",\n        tracklines=0,\n        pagesize=\"A0\",\n        start=3000,\n        end=6300,\n    )\n    output_filename = os.path.join(\"Graphics\", \"GD_by_obj_frag_circular.pdf\")\n    gdd.write(output_filename, \"PDF\")\n\n    gdd.draw(\n        format=\"linear\",\n        orientation=\"landscape\",\n        tracklines=0,\n        pagesize=\"A0\",\n        fragments=3,\n    )\n    output_filename = os.path.join(\"Graphics\", \"GD_by_obj_linear.pdf\")\n    gdd.write(output_filename, \"PDF\")\n\n    gdd.set_all_tracks(\"greytrack_labels\", 2)\n    gdd.draw(\n        format=\"linear\",\n        orientation=\"landscape\",\n        tracklines=0,\n        pagesize=(30 * cm, 10 * cm),\n        fragments=1,\n        start=3000,\n        end=6300,\n    )\n    output_filename = os.path.join(\"Graphics\", \"GD_by_obj_frag_linear.pdf\")\n    gdd.write(output_filename, \"PDF\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "gdd.write",
+        "os.path.join",
+        "gdd.write",
+        "os.path.join",
+        "gdd.write",
+        "os.path.join",
+        "gdd.write"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(\"Graphics\", \"GD_by_obj_circular.pdf\")",
+        "gdd.write(output_filename, \"PDF\")",
+        "os.path.join(\"Graphics\", \"GD_by_obj_frag_circular.pdf\")",
+        "gdd.write(output_filename, \"PDF\")",
+        "os.path.join(\"Graphics\", \"GD_by_obj_linear.pdf\")",
+        "gdd.write(output_filename, \"PDF\")",
+        "os.path.join(\"Graphics\", \"GD_by_obj_frag_linear.pdf\")",
+        "gdd.write(output_filename, \"PDF\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "gdd.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "gdd.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "gdd.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "gdd.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "output_filename = os.path.join(\"Graphics\", \"GD_by_obj_circular.pdf\")\ngdd.write(output_filename, \"PDF\")\n\noutput_filename = os.path.join(\"Graphics\", \"GD_by_obj_frag_circular.pdf\")\ngdd.write(output_filename, \"PDF\")\n\noutput_filename = os.path.join(\"Graphics\", \"GD_by_obj_linear.pdf\")\ngdd.write(output_filename, \"PDF\")\n\noutput_filename = os.path.join(\"Graphics\", \"GD_by_obj_frag_linear.pdf\")\ngdd.write(output_filename, \"PDF\")"
+    }
+  },
+  {
+    "pyfile": "test_Entrez.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/biopython-1.85/biopython-1.85/Tests/test_Entrez.py",
+    "line_number": "290",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "289\t        self.assertEqual(request.method, \"GET\")\n290\t        base_url, query = deconstruct_request(request, self)\n291",
+    "code_snippet": "def test_construct_cgi_ecitmatch(self):\n    citation = {\n        \"journal_title\": \"proc natl acad sci u s a\",\n        \"year\": \"1991\",\n        \"volume\": \"88\",\n        \"first_page\": \"3248\",\n        \"author_name\": \"mann bj\",\n        \"key\": \"citation_1\",\n    }\n    variables = Entrez._update_ecitmatch_variables(\n        {\"db\": \"pubmed\", \"bdata\": [citation]}\n    )\n\n    with patch_urlopen() as patched:\n        Entrez.ecitmatch(**variables)\n\n    request = get_patched_request(patched, self)\n    self.assertEqual(request.method, \"GET\")\n    base_url, query = deconstruct_request(request, self)\n\n    self.assertEqual(base_url, URL_HEAD + \"ecitmatch.cgi\")\n    query.pop(\"bdata\")  # TODO\n    self.assertDictEqual(\n        query, {\"retmode\": [\"xml\"], \"db\": [variables[\"db\"]], **QUERY_DEFAULTS}\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "Entrez._update_ecitmatch_variables",
+        "patch_urlopen",
+        "Entrez.ecitmatch",
+        "get_patched_request",
+        "deconstruct_request"
+      ],
+      "api_sequence_with_args": [
+        "Entrez._update_ecitmatch_variables({\"db\": \"pubmed\", \"bdata\": [citation]})",
+        "patch_urlopen()",
+        "Entrez.ecitmatch(**variables)",
+        "get_patched_request(patched, self)",
+        "deconstruct_request(request, self)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "Entrez._update_ecitmatch_variables",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "patch_urlopen",
+          "id": "build_opener",
+          "description": "Builds opener object with specified handler",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "Entrez.ecitmatch",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_patched_request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "deconstruct_request",
+          "id": "encode_url_query",
+          "description": "Encodes mapping object to URL query string",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        }
+      ],
+      "contextual_code": "def test_construct_cgi_ecitmatch(self):\n    citation = {\n        \"journal_title\": \"proc natl acad sci u s a\",\n        \"year\": \"1991\",\n        \"volume\": \"88\",\n        \"first_page\": \"3248\",\n        \"author_name\": \"mann bj\",\n        \"key\": \"citation_1\",\n    }\n    variables = Entrez._update_ecitmatch_variables({\"db\": \"pubmed\", \"bdata\": [citation]})\n\n    with patch_urlopen() as patched:\n        Entrez.ecitmatch(**variables)\n\n    request = get_patched_request(patched, self)\n    base_url, query = deconstruct_request(request, self)"
+    }
+  }
+]

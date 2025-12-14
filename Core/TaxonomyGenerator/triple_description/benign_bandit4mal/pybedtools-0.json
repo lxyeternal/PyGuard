@@ -1,0 +1,156 @@
+{
+  "metadata": {
+    "package_name": "pybedtools-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/pybedtools-0.12.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "venn_maker.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pybedtools-0.12.0/pybedtools-0.12.0/pybedtools/contrib/venn_maker.py",
+      "line_number": "232",
+      "type_description": "B815:write",
+      "context_snippet": "def venn_maker(\n    beds,\n    names=None,\n    figure_filename=None,\n    script_filename=None,\n    additional_args=None,\n    run=False,\n):\n    \"\"\"\n    Given a list of interval files, write an R script to create a Venn \\\n    diagram of overlaps (and optionally run it).\n\n    The R script calls the venn.diagram function of the R package VennDiagram\n    for extremely flexible Venn and Euler diagram creation.  Uses\n    `cleaned_intersect()` to create string representations of shared intervals.\n\n    `beds` is a list of up to 4 filenames or BedTools.\n\n    `names` is a list of names to use for the Venn diagram, in the same order\n    as `beds`. Default is \"abcd\"[:len(beds)].\n\n    `figure_filename` is the TIFF file to save the figure as.\n\n    `script_filename` is the optional filename to write the R script to\n\n    `additional_args` is list that will be inserted into the R script,\n    verbatim.  For example, to use scaled Euler diagrams with different colors,\n    use::\n\n        additional_args = ['euler.d=TRUE',\n                           'scaled=TRUE',\n                           'cat.col=c(\"red\",\"blue\")']\n\n    If `run` is True, then assume R is installed, is on the path, and has\n    VennDiagram installed . . . and run the script.  The resulting filename\n    will be saved as `figure_filename`.\n    \"\"\"\n\n    if figure_filename is None:\n        figure_filename = \"NULL\"\n    else:\n        figure_filename = '\"%s\"' % figure_filename\n\n    if names is None:\n        names = \"abcd\"[: len(beds)]\n\n    _beds = []\n    for bed in beds:\n        if not isinstance(bed, pybedtools.BedTool):\n            bed = pybedtools.BedTool(bed)\n        _beds.append(bed)\n\n    cleaned = cleaned_intersect(_beds)\n    results = OrderedDict(list(zip(names, cleaned)))\n\n    s = template.substitute(\n        x=_dict_to_R_named_list(results),\n        filename=figure_filename,\n        names=_list_to_R_syntax(names),\n    )\n    if additional_args:\n        s += \",\" + \", \".join(additional_args)\n\n    s += \")\"\n\n    if not script_filename:\n        fn = pybedtools.BedTool._tmp()\n    else:\n        fn = script_filename\n\n    fout = open(fn, \"w\")\n    fout.write(s)\n    fout.close()\n\n    out = fn + \".Rout\"\n    if run:\n\n        if not pybedtools.settings._R_installed:\n            helpers._check_for_R()\n\n        cmds = [os.path.join(pybedtools.settings._R_path, \"R\"), \"CMD\", \"BATCH\", fn, out]\n        p = subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n\n        stdout, stderr = p.communicate()\n        if stdout or stderr:\n            print(\"stdout:\", stdout)\n            print(\"stderr:\", stderr)\n\n    if not script_filename:\n        return s\n\n    return None",
+      "hash_value": "25966528c5d947f8e42beeeafb83e2a2",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def venn_maker(\n    beds,\n    names=None,\n    figure_filename=None,\n    script_filename=None,\n    additional_args=None,\n    run=False,\n):\n    \"\"\"\n    Given a list of interval files, write an R script to create a Venn \\\n    diagram of overlaps (and optionally run it).\n\n    The R script calls the venn.diagram function of the R package VennDiagram\n    for extremely flexible Venn and Euler diagram creation.  Uses\n    `cleaned_intersect()` to create string representations of shared intervals.\n\n    `beds` is a list of up to 4 filenames or BedTools.\n\n    `names` is a list of names to use for the Venn diagram, in the same order\n    as `beds`. Default is \"abcd\"[:len(beds)].\n\n    `figure_filename` is the TIFF file to save the figure as.\n\n    `script_filename` is the optional filename to write the R script to\n\n    `additional_args` is list that will be inserted into the R script,\n    verbatim.  For example, to use scaled Euler diagrams with different colors,\n    use::\n\n        additional_args = ['euler.d=TRUE',\n                           'scaled=TRUE',\n                           'cat.col=c(\"red\",\"blue\")']\n\n    If `run` is True, then assume R is installed, is on the path, and has\n    VennDiagram installed . . . and run the script.  The resulting filename\n    will be saved as `figure_filename`.\n    \"\"\"\n\n    if figure_filename is None:\n        figure_filename = \"NULL\"\n    else:\n        figure_filename = '\"%s\"' % figure_filename\n\n    if names is None:\n        names = \"abcd\"[: len(beds)]\n\n    _beds = []\n    for bed in beds:\n        if not isinstance(bed, pybedtools.BedTool):\n            bed = pybedtools.BedTool(bed)\n        _beds.append(bed)\n\n    cleaned = cleaned_intersect(_beds)\n    results = OrderedDict(list(zip(names, cleaned)))\n\n    s = template.substitute(\n        x=_dict_to_R_named_list(results),\n        filename=figure_filename,\n        names=_list_to_R_syntax(names),\n    )\n    if additional_args:\n        s += \",\" + \", \".join(additional_args)\n\n    s += \")\"\n\n    if not script_filename:\n        fn = pybedtools.BedTool._tmp()\n    else:\n        fn = script_filename\n\n    fout = open(fn, \"w\")\n    fout.write(s)\n    fout.close()\n\n    out = fn + \".Rout\"\n    if run:\n\n        if not pybedtools.settings._R_installed:\n            helpers._check_for_R()\n\n        cmds = [os.path.join(pybedtools.settings._R_path, \"R\"), \"CMD\", \"BATCH\", fn, out]\n        p = subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n\n        stdout, stderr = p.communicate()\n        if stdout or stderr:\n            print(\"stdout:\", stdout)\n            print(\"stderr:\", stderr)\n\n    if not script_filename:\n        return s\n\n    return None",
+          "triple_sequences": [
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "bed, pybedtools.BedTool",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "pybedtools.BedTool()",
+              "action_description": "Instantiates BedTool class",
+              "action_id": "init_grabber_class",
+              "object": "bed",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "cleaned_intersect()",
+              "action_description": "Instantiates Grabber class",
+              "action_id": "init_grabber_class",
+              "object": "_beds",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "OrderedDict()",
+              "action_description": "Instantiates Grabber class",
+              "action_id": "init_grabber_class",
+              "object": "list(zip(names, cleaned))",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "template.substitute()",
+              "action_description": "Instantiates Grabber class",
+              "action_id": "init_grabber_class",
+              "object": "x=_dict_to_R_named_list(results), filename=figure_filename, names=_list_to_R_syntax(names)",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "fn, \"w\"",
+              "object_description": "Script file path",
+              "object_id": "script_file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "fout.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "s",
+              "object_description": "Script file content",
+              "object_id": "script_file_content",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fout.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "pybedtools.settings._R_path, \"R\"",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "subprocess.Popen()",
+              "action_description": "Spawns new process to execute command without shell access",
+              "action_id": "spawn_process_no_shell",
+              "object": "cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "p.communicate()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "\"stdout:\", stdout",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "\"stderr:\", stderr",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

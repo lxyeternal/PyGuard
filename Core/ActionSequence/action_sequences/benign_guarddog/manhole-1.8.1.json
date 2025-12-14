@@ -1,0 +1,273 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import re\nfrom distutils.command.build import build\nfrom itertools import chain\nfrom os import fspath\nfrom pathlib import Path\n\nfrom setuptools import Command\nfrom setuptools import find_packages\nfrom setuptools import setup\nfrom setuptools.command.develop import develop\nfrom setuptools.command.easy_install import easy_install\nfrom setuptools.command.editable_wheel import editable_wheel\nfrom setuptools.command.install_lib import install_lib\n\npth_file = Path(__file__).parent.joinpath('src', 'manhole.pth')\n\nclass BuildWithPTH(build):\n    def run(self):\n        super().run()\n        self.copy_file(fspath(pth_file), fspath(Path(self.build_lib, pth_file.name)))\n\nclass PTHWheelPiggyback:\n    def __init__(self, strategy):\n        self.strategy = strategy\n\n    def __enter__(self):\n        self.strategy.__enter__()\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        self.strategy.__exit__(exc_type, exc_val, exc_tb)\n\n    def __call__(self, wheel, files, mapping):\n        self.strategy(wheel, files, mapping)\n        wheel.writestr(fspath(pth_file.name), pth_file.read_bytes())\n\nclass EditableWheelWithPTH(editable_wheel):\n    def _select_strategy(self, dist_name, tag, lib):\n        return PTHWheelPiggyback(super()._select_strategy(dist_name, tag, lib))\n\nclass EasyInstallWithPTH(easy_install):\n    def run(self, *args, **kwargs):\n        super().run(*args, **kwargs)\n        self.copy_file(fspath(pth_file), str(Path(self.install_dir, pth_file.name)))\n\nclass InstallLibWithPTH(install_lib):\n    def run(self):\n        super().run()\n        dest = str(Path(self.install_dir, pth_file.name))\n        self.copy_file(fspath(pth_file), dest)\n        self.outputs = [dest]\n\n    def get_outputs(self):\n        return chain(install_lib.get_outputs(self), self.outputs)\n\nclass DevelopWithPTH(develop):\n    def run(self):\n        super().run()\n        self.copy_file(fspath(pth_file), str(Path(self.install_dir, pth_file.name)))\n\nclass GeneratePTH(Command):\n    user_options = []  # noqa: RUF012\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        with pth_file.open('w') as fh:\n            with pth_file.with_suffix('.embed').open() as sh:\n                fh.write(f\"import os, sys;exec({sh.read().replace('    ', ' ')!r})\")\n\ndef read(*names, **kwargs):\n    with Path(__file__).parent.joinpath(*names).open(encoding=kwargs.get('encoding', 'utf8')) as fh:\n        return fh.read()\n\nsetup(\n    name='manhole',\n    version='1.8.1',\n    license='BSD-2-Clause',\n    description='Manhole is in-process service that will accept unix domain socket connections and present the'\n    'stacktraces for all threads and an interactive prompt.',\n    long_description='{}\\n{}'.format(\n        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),\n        re.sub(':[a-z]+:`~?(.*?)`', r'``\\1``', read('CHANGELOG.rst')),\n    ),\n    author='Ionel Cristian Mărieș',\n    author_email='contact@ionelmc.ro',\n    url='https://github.com/ionelmc/python-manhole',\n    packages=find_packages('src'),\n    package_dir={'': 'src'},\n    py_modules=[path.stem for path in Path('src').glob('*.py')],\n    include_package_data=True,\n    zip_safe=False,\n    classifiers=[\n        # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers\n        'Development Status :: 5 - Production/Stable',\n        'Intended Audience :: Developers',\n        'License :: OSI Approved :: BSD License',\n        'Operating System :: Unix',\n        'Operating System :: POSIX',\n        'Programming Language :: Python',\n        'Topic :: Software Development :: Debuggers',\n        'Topic :: Utilities',\n        'Topic :: System :: Monitoring',\n        'Topic :: System :: Networking',\n        'Programming Language :: Python :: 3',\n        'Programming Language :: Python :: 3 :: Only',\n        'Programming Language :: Python :: 3.8',\n        'Programming Language :: Python :: 3.9',\n        'Programming Language :: Python :: 3.10',\n        'Programming Language :: Python :: 3.11',\n        'Programming Language :: Python :: 3.12',\n        'Programming Language :: Python :: Implementation :: CPython',\n        'Programming Language :: Python :: Implementation :: PyPy',\n        # uncomment if you test on these interpreters:\n        # \"Programming Language :: Python :: Implementation :: IronPython\",\n        # \"Programming Language :: Python :: Implementation :: Jython\",\n        # \"Programming Language :: Python :: Implementation :: Stackless\",\n        'Topic :: Utilities',\n    ],\n    project_urls={\n        'Documentation': 'https://python-manhole.readthedocs.io/',\n        'Changelog': 'https://python-manhole.readthedocs.io/en/latest/changelog.html',\n        'Issue Tracker': 'https://github.com/ionelmc/python-manhole/issues',\n    },\n    entry_points={\n        'console_scripts': [\n            'manhole-cli = manhole.cli:main',\n        ]\n    },\n    keywords=['debugging', 'manhole', 'thread', 'socket', 'unix domain socket'],\n    python_requires='>=3.8',\n    install_requires=[\n        # eg: \"aspectlib==1.1.1\", \"six>=1.7\",\n    ],\n    extras_require={\n        # eg:\n        #   \"rst\": [\"docutils>=0.11\"],\n        #   \":python_version==\"2.6\"\": [\"argparse\"],\n    },\n    cmdclass={\n        'build': BuildWithPTH,\n        'easy_install': EasyInstallWithPTH,\n        'install_lib': InstallLibWithPTH,\n        'develop': DevelopWithPTH,\n        'editable_wheel': EditableWheelWithPTH,\n        'genpth': GeneratePTH,\n    },\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "Path.__file__.parent.joinpath",
+        "fspath",
+        "Path(self.build_lib, pth_file.name)",
+        "fspath",
+        "self.copy_file",
+        "self.strategy.__enter__",
+        "self.strategy.__exit__",
+        "self.strategy",
+        "fspath",
+        "pth_file.name",
+        "pth_file.read_bytes",
+        "wheel.writestr",
+        "super()._select_strategy",
+        "PTHWheelPiggyback",
+        "super().run",
+        "fspath",
+        "Path(self.install_dir, pth_file.name)",
+        "str",
+        "self.copy_file",
+        "super().run",
+        "Path(self.install_dir, pth_file.name)",
+        "str",
+        "fspath",
+        "self.copy_file",
+        "self.outputs",
+        "install_lib.get_outputs",
+        "self.outputs",
+        "chain",
+        "super().run",
+        "fspath",
+        "Path(self.install_dir, pth_file.name)",
+        "str",
+        "self.copy_file",
+        "pth_file.open",
+        "pth_file.with_suffix",
+        "pth_file.with_suffix('.embed').open",
+        "sh.read",
+        "fh.write",
+        "Path(__file__).parent.joinpath",
+        "Path(__file__).parent.joinpath(*names).open",
+        "fh.read",
+        "re.compile",
+        "read",
+        "re.compile(...).sub",
+        "read",
+        "re.sub",
+        "find_packages",
+        "Path('src').glob",
+        "path.stem",
+        "setup"
+      ],
+      "api_sequence_with_args": [
+        "Path(__file__).parent.joinpath('src', 'manhole.pth')",
+        "fspath(pth_file)",
+        "Path(self.build_lib, pth_file.name)",
+        "fspath(Path(self.build_lib, pth_file.name))",
+        "self.copy_file(fspath(pth_file), fspath(Path(self.build_lib, pth_file.name)))",
+        "self.strategy.__enter__()",
+        "self.strategy.__exit__(exc_type, exc_val, exc_tb)",
+        "self.strategy(wheel, files, mapping)",
+        "fspath(pth_file.name)",
+        "pth_file.name",
+        "pth_file.read_bytes()",
+        "wheel.writestr(fspath(pth_file.name), pth_file.read_bytes())",
+        "super()._select_strategy(dist_name, tag, lib)",
+        "PTHWheelPiggyback(super()._select_strategy(dist_name, tag, lib))",
+        "super().run(*args, **kwargs)",
+        "fspath(pth_file)",
+        "Path(self.install_dir, pth_file.name)",
+        "str(Path(self.install_dir, pth_file.name))",
+        "self.copy_file(fspath(pth_file), str(Path(self.install_dir, pth_file.name)))",
+        "super().run()",
+        "Path(self.install_dir, pth_file.name)",
+        "str(Path(self.install_dir, pth_file.name))",
+        "fspath(pth_file)",
+        "self.copy_file(fspath(pth_file), dest)",
+        "self.outputs = [dest]",
+        "install_lib.get_outputs(self)",
+        "self.outputs",
+        "chain(install_lib.get_outputs(self), self.outputs)",
+        "super().run()",
+        "fspath(pth_file)",
+        "Path(self.install_dir, pth_file.name)",
+        "str(Path(self.install_dir, pth_file.name))",
+        "self.copy_file(fspath(pth_file), str(Path(self.install_dir, pth_file.name)))",
+        "pth_file.open('w')",
+        "pth_file.with_suffix('.embed')",
+        "pth_file.with_suffix('.embed').open()",
+        "sh.read()",
+        "fh.write(f\"import os, sys;exec({sh.read().replace('    ', ' ')!r})\")",
+        "Path(__file__).parent.joinpath(*names)",
+        "Path(__file__).parent.joinpath(*names).open(encoding=kwargs.get('encoding', 'utf8'))",
+        "fh.read()",
+        "re.compile('^.. start-badges.*^.. end-badges', re.M | re.S)",
+        "read('README.rst')",
+        "re.compile(...).sub('', read('README.rst'))",
+        "read('CHANGELOG.rst')",
+        "re.sub(':[a-z]+:`~?(.*?)`', r'``\\1``', read('CHANGELOG.rst'))",
+        "find_packages('src')",
+        "Path('src').glob('*.py')",
+        "path.stem for path in Path('src').glob('*.py')",
+        "setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "Path.__file__.parent.joinpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "fspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path(self.build_lib, pth_file.name)",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.copy_file",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "pth_file.read_bytes",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "wheel.writestr",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "pth_file.open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "pth_file.with_suffix('.embed').open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "sh.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "fh.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "Path(__file__).parent.joinpath(*names)",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path(__file__).parent.joinpath(*names).open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "fh.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "re.compile",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.compile(...).sub",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "re.sub",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "find_packages",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "Path('src').glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "from pathlib import Path\nfrom os import fspath\n\npth_file = Path(__file__).parent.joinpath('src', 'manhole.pth')\n\nclass BuildWithPTH(build):\n    def run(self):\n        super().run()\n        self.copy_file(fspath(pth_file), fspath(Path(self.build_lib, pth_file.name)))\n\nclass PTHWheelPiggyback:\n    def __init__(self, strategy):\n        self.strategy = strategy\n    def __enter__(self):\n        self.strategy.__enter__()\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        self.strategy.__exit__(exc_type, exc_val, exc_tb)\n    def __call__(self, wheel, files, mapping):\n        self.strategy(wheel, files, mapping)\n        wheel.writestr(fspath(pth_file.name), pth_file.read_bytes())\n\nclass EditableWheelWithPTH(editable_wheel):\n    def _select_strategy(self, dist_name, tag, lib):\n        return PTHWheelPiggyback(super()._select_strategy(dist_name, tag, lib))\n\nclass EasyInstallWithPTH(easy_install):\n    def run(self, *args, **kwargs):\n        super().run(*args, **kwargs)\n        self.copy_file(fspath(pth_file), str(Path(self.install_dir, pth_file.name)))\n\nclass InstallLibWithPTH(install_lib):\n    def run(self):\n        super().run()\n        dest = str(Path(self.install_dir, pth_file.name))\n        self.copy_file(fspath(pth_file), dest)\n        self.outputs = [dest]\n    def get_outputs(self):\n        return chain(install_lib.get_outputs(self), self.outputs)\n\nclass DevelopWithPTH(develop):\n    def run(self):\n        super().run()\n        self.copy_file(fspath(pth_file), str(Path(self.install_dir, pth_file.name)))\n\nclass GeneratePTH(Command):\n    user_options = []\n    def initialize_options(self):\n        pass\n    def finalize_options(self):\n        pass\n    def run(self):\n        with pth_file.open('w') as fh:\n            with pth_file.with_suffix('.embed').open() as sh:\n                fh.write(f\"import os, sys;exec({sh.read().replace('    ', ' ')!r})\")\n\ndef read(*names, **kwargs):\n    with Path(__file__).parent.joinpath(*names).open(encoding=kwargs.get('encoding', 'utf8')) as fh:\n        return fh.read()\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "manhole-1.8.1",
+      "total_matches": 1
+    }
+  }
+]

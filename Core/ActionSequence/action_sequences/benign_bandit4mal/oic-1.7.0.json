@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "oic-1.7.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "base.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/oic-1.7.0/oic-1.7.0/src/oic/oauth2/base.py",
+    "line_number": "135",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "134\t                requests.Response,\n135\t                req.request(method, url, **_kwargs),\n136\t            )",
+    "code_snippet": "def http_request(self, url: str, method=\"GET\", **kwargs) -> requests.Response:\n    \"\"\"\n    Run a HTTP request to fetch the given url.\n\n    This wraps the requests library, so you can pass\n    most requests kwargs to this method to override\n    defaults.\n\n    :param url: The URL to fetch\n    :param method: The HTTP method to use.\n    :param kwargs: Additional keyword arguments to pass through.\n\n    \"\"\"\n    _kwargs = copy.copy(self.request_args)\n    _kwargs.update(kwargs)\n\n    if self.cookiejar:\n        _kwargs[\"cookies\"] = self._cookies()\n        logger.debug(\"SENT %s COOKIES\", len(_kwargs[\"cookies\"]))  # type: ignore\n\n    if self.req_callback is not None:\n        _kwargs = self.req_callback(method, url, **_kwargs)\n\n    try:\n        req = getattr(self.settings, \"requests_session\", None) or requests\n        r = cast(\n            requests.Response,\n            req.request(method, url, **_kwargs),\n        )\n    except Exception as err:\n        logger.error(\n            \"http_request failed: %s, url: %s, htargs: %s, method: %s\"\n            % (err, url, sanitize(_kwargs), method)\n        )\n        raise\n\n    if self.events is not None:\n        self.events.store(\"HTTP response\", r, ref=url)\n\n    try:\n        _cookie = r.headers[\"set-cookie\"]\n        logger.debug(\"RECEIVED COOKIE\")\n        try:\n            set_cookie(self.cookiejar, SimpleCookie(_cookie))\n        except CookieError as err:\n            logger.error(\"%s\", err)\n            raise NonFatalException(r, \"{}\".format(err))\n    except (AttributeError, KeyError):\n        pass\n\n    return r",
+    "pattern_analysis": {
+      "api_sequence": [
+        "copy.copy",
+        "logger.debug",
+        "self.req_callback",
+        "getattr",
+        "requests.request",
+        "logger.error",
+        "self.events.store",
+        "set_cookie",
+        "SimpleCookie",
+        "logger.error"
+      ],
+      "api_sequence_with_args": [
+        "copy.copy(self.request_args)",
+        "logger.debug(\"SENT %s COOKIES\", len(_kwargs[\"cookies\"]))",
+        "self.req_callback(method, url, **_kwargs)",
+        "getattr(self.settings, \"requests_session\", None)",
+        "requests.request(method, url, **_kwargs)",
+        "logger.error(\"http_request failed: %s, url: %s, htargs: %s, method: %s\" % (err, url, sanitize(_kwargs), method))",
+        "self.events.store(\"HTTP response\", r, ref=url)",
+        "set_cookie(self.cookiejar, SimpleCookie(_cookie))",
+        "SimpleCookie(_cookie)",
+        "logger.error(\"%s\", err)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "copy.copy",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.req_callback",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "requests.request",
+          "id": "send_http_custom",
+          "description": "Sends HTTP request with specified method and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.events.store",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "set_cookie",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "SimpleCookie",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def http_request(self, url: str, method=\"GET\", **kwargs) -> requests.Response:\n    _kwargs = copy.copy(self.request_args)\n    _kwargs.update(kwargs)\n\n    if self.cookiejar:\n        _kwargs[\"cookies\"] = self._cookies()\n        logger.debug(\"SENT %s COOKIES\", len(_kwargs[\"cookies\"]))\n\n    if self.req_callback is not None:\n        _kwargs = self.req_callback(method, url, **_kwargs)\n\n    try:\n        req = getattr(self.settings, \"requests_session\", None) or requests\n        r = cast(\n            requests.Response,\n            req.request(method, url, **_kwargs),\n        )\n    except Exception as err:\n        logger.error(\n            \"http_request failed: %s, url: %s, htargs: %s, method: %s\"\n            % (err, url, sanitize(_kwargs), method)\n        )\n        raise\n\n    if self.events is not None:\n        self.events.store(\"HTTP response\", r, ref=url)\n\n    try:\n        _cookie = r.headers[\"set-cookie\"]\n        logger.debug(\"RECEIVED COOKIE\")\n        try:\n            set_cookie(self.cookiejar, SimpleCookie(_cookie))\n        except CookieError as err:\n            logger.error(\"%s\", err)\n            raise NonFatalException(r, \"{}\".format(err))\n    except (AttributeError, KeyError):\n        pass"
+    }
+  }
+]

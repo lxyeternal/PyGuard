@@ -1,0 +1,567 @@
+[
+  {
+    "pyfile": "example_hive.py",
+    "code_snippet": "import logging\nimport os\nimport time\nfrom datetime import datetime, timedelta\nfrom typing import Any, List\n\nfrom airflow import DAG, settings\nfrom airflow.exceptions import AirflowException\nfrom airflow.models import Connection, TaskInstance, Variable\nfrom airflow.operators.python import PythonOperator\nfrom airflow.providers.amazon.aws.operators.emr import (\n    EmrCreateJobFlowOperator,\n    EmrTerminateJobFlowOperator,\n)\nfrom airflow.providers.apache.hive.operators.hive import HiveOperator\nfrom airflow.utils.state import State\nfrom airflow.utils.trigger_rule import TriggerRule\nfrom requests import get\n\nHIVE_OPERATOR_INGRESS_PORT = int(os.getenv(\"HIVE_OPERATOR_INGRESS_PORT\", 10000))\nAWS_S3_CREDS = {\n    \"aws_access_key_id\": os.getenv(\"AWS_ACCESS_KEY_ID\", \"aws_access_key\"),\n    \"aws_secret_access_key\": os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"aws_secret_key\"),\n    \"region_name\": os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\"),\n}\nBOTO_DUPLICATE_PERMISSION_ERROR = \"InvalidPermission.Duplicate\"\n\n\ndef add_inbound_rule_for_security_group(task_instance: Any) -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n    from botocore.exceptions import ClientError\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    # Port HIVE_OPERATOR_INGRESS_PORT needs to be open for Impyla connectivity to Hive.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                HIVE_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n    # Allow SSH traffic on port 22 and copy file to HDFS.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n\ndef revoke_inbound_rules(task_instance: TaskInstance) -> None:\n    \"\"\"Remove an ingress rule from security group\"\"\"\n    import boto3\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    ip_range = str(current_docker_ip) + \"/32\"\n    logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=22,\n        ToPort=22,\n        GroupId=task_instance.xcom_pull(\n            key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n        )[0],\n        IpProtocol=\"tcp\",\n    )\n\n    logging.info(\"%s\", response)\n\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=HIVE_OPERATOR_INGRESS_PORT,\n        ToPort=HIVE_OPERATOR_INGRESS_PORT,\n        GroupId=task_instance.xcom_pull(\n            key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n        )[0],\n        IpProtocol=\"tcp\",\n    )\n\n    logging.info(\"%s\", response)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.getenv",
+        "os.getenv",
+        "requests.get",
+        "boto3.client",
+        "task_instance.xcom_pull",
+        "boto3.client.authorize_security_group_ingress",
+        "task_instance.xcom_pull",
+        "boto3.client.authorize_security_group_ingress",
+        "requests.get",
+        "boto3.client",
+        "task_instance.xcom_pull",
+        "boto3.client.revoke_security_group_ingress",
+        "task_instance.xcom_pull",
+        "boto3.client.revoke_security_group_ingress"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv(\"HIVE_OPERATOR_INGRESS_PORT\", 10000)",
+        "os.getenv(\"AWS_ACCESS_KEY_ID\", \"aws_access_key\")",
+        "os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"aws_secret_key\")",
+        "requests.get(\"https://api.ipify.org\")",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])",
+        "boto3.client.authorize_security_group_ingress(GroupId=..., IpPermissions=[...])",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])",
+        "boto3.client.authorize_security_group_ingress(GroupId=..., IpPermissions=[...])",
+        "requests.get(\"https://api.ipify.org\")",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])",
+        "boto3.client.revoke_security_group_ingress(CidrIp=..., FromPort=22, ToPort=22, GroupId=..., IpProtocol=\"tcp\")",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])",
+        "boto3.client.revoke_security_group_ingress(CidrIp=..., FromPort=HIVE_OPERATOR_INGRESS_PORT, ToPort=HIVE_OPERATOR_INGRESS_PORT, GroupId=..., IpProtocol=\"tcp\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.authorize_security_group_ingress",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.authorize_security_group_ingress",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.revoke_security_group_ingress",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.revoke_security_group_ingress",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "import os\nfrom requests import get\n\nHIVE_OPERATOR_INGRESS_PORT = int(os.getenv(\"HIVE_OPERATOR_INGRESS_PORT\", 10000))\nAWS_S3_CREDS = {\n    \"aws_access_key_id\": os.getenv(\"AWS_ACCESS_KEY_ID\", \"aws_access_key\"),\n    \"aws_secret_access_key\": os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"aws_secret_key\"),\n    \"region_name\": os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\"),\n}\n\n\ndef add_inbound_rule_for_security_group(task_instance):\n    import boto3\n    from botocore.exceptions import ClientError\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        ...\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        ...\n\ndef revoke_inbound_rules(task_instance):\n    import boto3\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    ip_range = str(current_docker_ip) + \"/32\"\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=22,\n        ToPort=22,\n        GroupId=task_instance.xcom_pull(\n            key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n        )[0],\n        IpProtocol=\"tcp\",\n    )\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=HIVE_OPERATOR_INGRESS_PORT,\n        ToPort=HIVE_OPERATOR_INGRESS_PORT,\n        GroupId=task_instance.xcom_pull(\n            key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n        )[0],\n        IpProtocol=\"tcp\",\n    )"
+    }
+  },
+  {
+    "pyfile": "example_livy.py",
+    "code_snippet": "import logging\nimport os\nimport time\nfrom datetime import datetime, timedelta\nfrom typing import Any, List\n\nfrom airflow import DAG, settings\nfrom airflow.exceptions import AirflowException\nfrom airflow.models import Connection, TaskInstance, Variable\nfrom airflow.operators.python import PythonOperator\nfrom airflow.providers.amazon.aws.operators.emr import (\n    EmrCreateJobFlowOperator,\n    EmrTerminateJobFlowOperator,\n)\nfrom airflow.utils.state import State\nfrom airflow.utils.trigger_rule import TriggerRule\nfrom botocore.exceptions import ClientError\nfrom requests import get\n\nLIVY_OPERATOR_INGRESS_PORT = int(os.getenv(\"LIVY_OPERATOR_INGRESS_PORT\", 8998))\nBOTO_DUPLICATE_PERMISSION_ERROR = \"InvalidPermission.Duplicate\"\nAWS_S3_CREDS = {\n    \"aws_access_key_id\": os.getenv(\"AWS_ACCESS_KEY_ID\", \"sample_aws_access_key_id\"),\n    \"aws_secret_access_key\": os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"sample_aws_secret_access_key\"),\n    \"region_name\": os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\"),\n}\n\ndef add_inbound_rule_for_security_group(task_instance: Any) -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    # Open port 'LIVY_OPERATOR_INGRESS_PORT'.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": LIVY_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": LIVY_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                LIVY_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n    # Open port 22 for downstream task 'ssh_and_copy_pifile_to_hdfs'.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\ndef revoke_inbound_rules(task_instance: TaskInstance) -> None:\n    \"\"\"Remove an ingress rule from security group\"\"\"\n    import boto3\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    ip_range = str(current_docker_ip) + \"/32\"\n    logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=LIVY_OPERATOR_INGRESS_PORT,\n        ToPort=LIVY_OPERATOR_INGRESS_PORT,\n        GroupId=task_instance.xcom_pull(\n            key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n        )[0],\n        IpProtocol=\"tcp\",\n    )\n    logging.info(\"%s\", response)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.getenv",
+        "os.getenv",
+        "requests.get",
+        "boto3.client",
+        "task_instance.xcom_pull",
+        "boto3.client.authorize_security_group_ingress",
+        "ClientError.response.get",
+        "ClientError.response.get",
+        "logging.error",
+        "task_instance.xcom_pull",
+        "boto3.client.authorize_security_group_ingress",
+        "ClientError.response.get",
+        "ClientError.response.get",
+        "logging.error",
+        "requests.get",
+        "logging.info",
+        "boto3.client",
+        "task_instance.xcom_pull",
+        "boto3.client.revoke_security_group_ingress",
+        "logging.info"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv(\"LIVY_OPERATOR_INGRESS_PORT\", 8998)",
+        "os.getenv(\"AWS_ACCESS_KEY_ID\", \"sample_aws_access_key_id\")",
+        "os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"sample_aws_secret_access_key\")",
+        "requests.get(\"https://api.ipify.org\").text",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])[0]",
+        "boto3.client.authorize_security_group_ingress(GroupId=..., IpPermissions=[...])",
+        "error.response.get(\"Error\", {})",
+        "error.response.get(\"Code\", \"\")",
+        "logging.error(\"Ingress for port %s already authorized. Error Message is: %s\", LIVY_OPERATOR_INGRESS_PORT, error.response[\"Error\"][\"Message\"])",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])[0]",
+        "boto3.client.authorize_security_group_ingress(GroupId=..., IpPermissions=[...])",
+        "error.response.get(\"Error\", {})",
+        "error.response.get(\"Code\", \"\")",
+        "logging.error(\"Ingress for port 22 already authorized. Error message is: %s\", error.response[\"Error\"][\"Message\"])",
+        "requests.get(\"https://api.ipify.org\").text",
+        "logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "task_instance.xcom_pull(key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"])[0]",
+        "boto3.client.revoke_security_group_ingress(CidrIp=ip_range, FromPort=LIVY_OPERATOR_INGRESS_PORT, ToPort=LIVY_OPERATOR_INGRESS_PORT, GroupId=..., IpProtocol=\"tcp\")",
+        "logging.info(\"%s\", response)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.authorize_security_group_ingress",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "ClientError.response.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "ClientError.response.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "logging.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.authorize_security_group_ingress",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "ClientError.response.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "ClientError.response.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "logging.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logging.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "task_instance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.revoke_security_group_ingress",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logging.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import os\nimport logging\nfrom requests import get\n\nLIVY_OPERATOR_INGRESS_PORT = int(os.getenv(\"LIVY_OPERATOR_INGRESS_PORT\", 8998))\nAWS_S3_CREDS = {\n    \"aws_access_key_id\": os.getenv(\"AWS_ACCESS_KEY_ID\", \"sample_aws_access_key_id\"),\n    \"aws_secret_access_key\": os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"sample_aws_secret_access_key\"),\n    \"region_name\": os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\"),\n}\n\ndef add_inbound_rule_for_security_group(task_instance):\n    import boto3\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": LIVY_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": LIVY_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                LIVY_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\ndef revoke_inbound_rules(task_instance):\n    import boto3\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    ip_range = str(current_docker_ip) + \"/32\"\n    logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=LIVY_OPERATOR_INGRESS_PORT,\n        ToPort=LIVY_OPERATOR_INGRESS_PORT,\n        GroupId=task_instance.xcom_pull(\n            key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n        )[0],\n        IpProtocol=\"tcp\",\n    )\n    logging.info(\"%s\", response)"
+    }
+  },
+  {
+    "pyfile": "example_sftp.py",
+    "code_snippet": "import logging\nimport os\nfrom requests import get\nfrom airflow.models import TaskInstance\n\nAWS_S3_CREDS = {\n    \"aws_access_key_id\": os.getenv(\"AWS_ACCESS_KEY_ID\", \"aws_access_key\"),\n    \"aws_secret_access_key\": os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"aws_secret_key\"),\n    \"region_name\": os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\"),\n}\nBOTO_DUPLICATE_PERMISSION_ERROR = \"InvalidPermission.Duplicate\"\nINSTANCE_SECURITY_GROUP = \"instance_response_master_security_group\"\n\n\ndef add_inbound_rule_for_security_group(task_instance: \"TaskInstance\") -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n    from botocore.exceptions import ClientError\n\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    current_docker_ip = get(\"https://api.ipify.org\").text\n\n    # Allow SSH traffic on port 22 and copy file to ec2 instance.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n\ndef revoke_inbound_rules(task_instance: TaskInstance) -> None:\n    \"\"\"Remove an ingress rule from security group\"\"\"\n    import boto3\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    ip_range = str(current_docker_ip) + \"/32\"\n    logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=22,\n        ToPort=22,\n        GroupId=task_instance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0],\n        IpProtocol=\"tcp\",\n    )\n    logging.info(\"%s\", response)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.getenv",
+        "os.getenv",
+        "requests.get",
+        "boto3.client",
+        "requests.get",
+        "boto3.client",
+        "TaskInstance.xcom_pull",
+        "boto3.client.authorize_security_group_ingress",
+        "logging.error",
+        "requests.get",
+        "logging.info",
+        "boto3.client",
+        "TaskInstance.xcom_pull",
+        "boto3.client.revoke_security_group_ingress",
+        "logging.info"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv(\"AWS_ACCESS_KEY_ID\", \"aws_access_key\")",
+        "os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"aws_secret_key\")",
+        "os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\")",
+        "requests.get(\"https://api.ipify.org\")",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "requests.get(\"https://api.ipify.org\")",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "TaskInstance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0]",
+        "boto3.client.authorize_security_group_ingress(GroupId=..., IpPermissions=[...])",
+        "logging.error(\"Ingress for port 22 already authorized. Error message is: %s\", error.response[\"Error\"][\"Message\"])",
+        "requests.get(\"https://api.ipify.org\")",
+        "logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))",
+        "boto3.client(\"ec2\", **AWS_S3_CREDS)",
+        "TaskInstance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0]",
+        "boto3.client.revoke_security_group_ingress(CidrIp=ip_range, FromPort=22, ToPort=22, GroupId=..., IpProtocol=\"tcp\")",
+        "logging.info(\"%s\", response)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "TaskInstance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.authorize_security_group_ingress",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "logging.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logging.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "boto3.client",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "TaskInstance.xcom_pull",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "boto3.client.revoke_security_group_ingress",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "logging.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import logging\nimport os\nfrom requests import get\nfrom airflow.models import TaskInstance\n\nAWS_S3_CREDS = {\n    \"aws_access_key_id\": os.getenv(\"AWS_ACCESS_KEY_ID\", \"aws_access_key\"),\n    \"aws_secret_access_key\": os.getenv(\"AWS_SECRET_ACCESS_KEY\", \"aws_secret_key\"),\n    \"region_name\": os.getenv(\"AWS_DEFAULT_REGION\", \"us-east-2\"),\n}\nBOTO_DUPLICATE_PERMISSION_ERROR = \"InvalidPermission.Duplicate\"\nINSTANCE_SECURITY_GROUP = \"instance_response_master_security_group\"\n\n\ndef add_inbound_rule_for_security_group(task_instance: \"TaskInstance\") -> None:\n    import boto3\n    from botocore.exceptions import ClientError\n\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    current_docker_ip = get(\"https://api.ipify.org\").text\n\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n\ndef revoke_inbound_rules(task_instance: TaskInstance) -> None:\n    import boto3\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    ip_range = str(current_docker_ip) + \"/32\"\n    logging.info(\"Trying to revoke ingress ip address is: %s\", str(ip_range))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    response = client.revoke_security_group_ingress(\n        CidrIp=ip_range,\n        FromPort=22,\n        ToPort=22,\n        GroupId=task_instance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0],\n        IpProtocol=\"tcp\",\n    )\n    logging.info(\"%s\", response)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "astronomer_providers-1.19.4",
+      "total_matches": 6
+    }
+  }
+]

@@ -1,0 +1,141 @@
+[
+  {
+    "pyfile": "bart.py",
+    "code_snippet": "# Relevant imports and global variables\nimport logging\nimport os\nimport urllib\n\n# Global variable used in the flagged line\nSOURCE_DIR = \"http://64.111.127.166/origin-destination/\"\n\nSOURCE_FILES = [\n    \"date-hour-soo-dest-2011.csv.gz\",\n    \"date-hour-soo-dest-2012.csv.gz\",\n    \"date-hour-soo-dest-2013.csv.gz\",\n    \"date-hour-soo-dest-2014.csv.gz\",\n    \"date-hour-soo-dest-2015.csv.gz\",\n    \"date-hour-soo-dest-2016.csv.gz\",\n    \"date-hour-soo-dest-2017.csv.gz\",\n    \"date-hour-soo-dest-2018.csv.gz\",\n    \"date-hour-soo-dest-2019.csv.gz\",\n]\n\n# Function that uses SOURCE_DIR\n\ndef _load_hourly_od(basename):\n    filename = os.path.join(DATA, basename.replace(\".csv.gz\", \".pkl\"))\n    if os.path.exists(filename):\n        return filename\n\n    # Download source files.\n    gz_filename = os.path.join(DATA, basename)\n    if not os.path.exists(gz_filename):\n        url = SOURCE_DIR + basename\n        logging.debug(\"downloading {}\".format(url))\n        urllib.request.urlretrieve(url, gz_filename)\n    csv_filename = gz_filename[:-3]\n    assert csv_filename.endswith(\".csv\")\n    if not os.path.exists(csv_filename):\n        logging.debug(\"unzipping {}\".format(gz_filename))\n        subprocess.check_call([\"gunzip\", \"-k\", gz_filename])\n    assert os.path.exists(csv_filename)\n\n    # Convert to PyTorch.\n    logging.debug(\"converting {}\".format(csv_filename))\n    start_date = datetime.datetime.strptime(\"2000-01-01\", \"%Y-%m-%d\")\n    stations = {}\n    num_rows = sum(1 for _ in open(csv_filename))\n    logging.info(\"Formatting {} rows\".format(num_rows))\n    rows = torch.empty((num_rows, 4), dtype=torch.long)\n    with open(csv_filename) as f:\n        for i, (date, hour, origin, destin, trip_count) in enumerate(csv.reader(f)):\n            date = datetime.datetime.strptime(date, \"%Y-%m-%d\")\n            date += datetime.timedelta(hours=int(hour))\n            rows[i, 0] = int((date - start_date).total_seconds() / 3600)\n            rows[i, 1] = stations.setdefault(origin, len(stations))\n            rows[i, 2] = stations.setdefault(destin, len(stations))\n            rows[i, 3] = int(trip_count)\n            if i % 10000 == 0:\n                sys.stderr.write(\".\")\n                sys.stderr.flush()\n\n    # Save data with metadata.\n    dataset = {\n        \"basename\": basename,\n        \"start_date\": start_date,\n        \"stations\": stations,\n        \"rows\": rows,\n        \"schema\": [\"time_hours\", \"origin\", \"destin\", \"trip_count\"],\n    }\n    dataset[\"rows\"]\n    logging.debug(\"saving {}\".format(filename))\n    torch.save(dataset, filename)\n    return filename\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "urllib.request.urlretrieve",
+        "os.path.exists",
+        "subprocess.check_call",
+        "os.path.exists",
+        "open",
+        "csv.reader",
+        "open",
+        "torch.save"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(DATA, basename.replace(\".csv.gz\", \".pkl\"))",
+        "os.path.exists(filename)",
+        "os.path.join(DATA, basename)",
+        "os.path.exists(gz_filename)",
+        "urllib.request.urlretrieve(url, gz_filename)",
+        "os.path.exists(csv_filename)",
+        "subprocess.check_call([\"gunzip\", \"-k\", gz_filename])",
+        "os.path.exists(csv_filename)",
+        "open(csv_filename)",
+        "csv.reader(f)",
+        "open(csv_filename)",
+        "torch.save(dataset, filename)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "csv.reader",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "torch.save",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import os\nimport urllib\n\ndef _load_hourly_od(basename):\n    filename = os.path.join(DATA, basename.replace(\".csv.gz\", \".pkl\"))\n    if os.path.exists(filename):\n        return filename\n\n    gz_filename = os.path.join(DATA, basename)\n    if not os.path.exists(gz_filename):\n        url = SOURCE_DIR + basename\n        urllib.request.urlretrieve(url, gz_filename)\n    csv_filename = gz_filename[:-3]\n    assert csv_filename.endswith(\".csv\")\n    if not os.path.exists(csv_filename):\n        subprocess.check_call([\"gunzip\", \"-k\", gz_filename])\n    assert os.path.exists(csv_filename)\n\n    with open(csv_filename) as f:\n        for i, (date, hour, origin, destin, trip_count) in enumerate(csv.reader(f)):\n            ...\n    torch.save(dataset, filename)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyro_ppl-1.9.1",
+      "total_matches": 1
+    }
+  }
+]

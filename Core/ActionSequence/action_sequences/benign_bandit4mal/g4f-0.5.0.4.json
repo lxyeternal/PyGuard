@@ -1,0 +1,227 @@
+[
+  {
+    "metadata": {
+      "package_name": "g4f-0.5.0.4",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "DfeHub.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/g4f-0.5.0.4/g4f-0.5.0.4/g4f/Provider/deprecated/DfeHub.py",
+    "line_number": "51",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "50\n51\t        response = requests.post(\"https://chat.dfehub.com/api/openai/v1/chat/completions\",\n52\t            headers=headers, json=json_data, timeout=3)\n53",
+    "code_snippet": "from __future__ import annotations\n\nimport json\nimport re\nimport time\n\nimport requests\n\nfrom ...typing import Any, CreateResult\nfrom ..base_provider import AbstractProvider\n\n\nclass DfeHub(AbstractProvider):\n    url                   = \"https://chat.dfehub.com/\"\n    supports_stream       = True\n    supports_gpt_35_turbo = True\n\n    @staticmethod\n    def create_completion(\n        model: str,\n        messages: list[dict[str, str]],\n        stream: bool, **kwargs: Any) -> CreateResult:\n        \n        headers = {\n            \"authority\"         : \"chat.dfehub.com\",\n            \"accept\"            : \"*/*\",\n            \"accept-language\"   : \"en,fr-FR;q=0.9,fr;q=0.8,es-ES;q=0.7,es;q=0.6,en-US;q=0.5,am;q=0.4,de;q=0.3\",\n            \"content-type\"      : \"application/json\",\n            \"origin\"            : \"https://chat.dfehub.com\",\n            \"referer\"           : \"https://chat.dfehub.com/\",\n            \"sec-ch-ua\"         : '\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\"',\n            \"sec-ch-ua-mobile\"  : \"?0\",\n            \"sec-ch-ua-platform\": '\"macOS\"',\n            \"sec-fetch-dest\"    : \"empty\",\n            \"sec-fetch-mode\"    : \"cors\",\n            \"sec-fetch-site\"    : \"same-origin\",\n            \"user-agent\"        : \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36\",\n            \"x-requested-with\"  : \"XMLHttpRequest\",\n        }\n\n        json_data = {\n            \"messages\"          : messages,\n            \"model\"             : \"gpt-3.5-turbo\",\n            \"temperature\"       : kwargs.get(\"temperature\", 0.5),\n            \"presence_penalty\"  : kwargs.get(\"presence_penalty\", 0),\n            \"frequency_penalty\" : kwargs.get(\"frequency_penalty\", 0),\n            \"top_p\"             : kwargs.get(\"top_p\", 1),\n            \"stream\"            : True\n        }\n        \n        response = requests.post(\"https://chat.dfehub.com/api/openai/v1/chat/completions\",\n            headers=headers, json=json_data, timeout=3)\n\n        for chunk in response.iter_lines():\n            if b\"detail\" in chunk:\n                delay = re.findall(r\"\\d+\\.\\d+\", chunk.decode())\n                delay = float(delay[-1])\n                time.sleep(delay)\n                yield from DfeHub.create_completion(model, messages, stream, **kwargs)\n            if b\"content\" in chunk:\n                data = json.loads(chunk.decode().split(\"data: \")[1])\n                yield (data[\"choices\"][0][\"delta\"][\"content\"])",
+    "pattern_analysis": {
+      "api_sequence": [
+        "requests.post",
+        "response.iter_lines",
+        "re.findall",
+        "chunk.decode",
+        "time.sleep",
+        "DfeHub.create_completion",
+        "chunk.decode",
+        "json.loads"
+      ],
+      "api_sequence_with_args": [
+        "requests.post(\"https://chat.dfehub.com/api/openai/v1/chat/completions\", headers=headers, json=json_data, timeout=3)",
+        "response.iter_lines()",
+        "re.findall(r\"\\d+\\.\\d+\", chunk.decode())",
+        "chunk.decode()",
+        "time.sleep(delay)",
+        "DfeHub.create_completion(model, messages, stream, **kwargs)",
+        "chunk.decode()",
+        "json.loads(chunk.decode().split(\"data: \")[1])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.iter_lines",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "re.findall",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "chunk.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "DfeHub.create_completion",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "chunk.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import json\nimport re\nimport time\nimport requests\n\nclass DfeHub(AbstractProvider):\n    @staticmethod\n    def create_completion(model: str, messages: list[dict[str, str]], stream: bool, **kwargs: Any) -> CreateResult:\n        headers = { ... }\n        json_data = { ... }\n        response = requests.post(\"https://chat.dfehub.com/api/openai/v1/chat/completions\", headers=headers, json=json_data, timeout=3)\n        for chunk in response.iter_lines():\n            if b\"detail\" in chunk:\n                delay = re.findall(r\"\\d+\\.\\d+\", chunk.decode())\n                delay = float(delay[-1])\n                time.sleep(delay)\n                yield from DfeHub.create_completion(model, messages, stream, **kwargs)\n            if b\"content\" in chunk:\n                data = json.loads(chunk.decode().split(\"data: \")[1])\n                yield (data[\"choices\"][0][\"delta\"][\"content\"])"
+    }
+  },
+  {
+    "pyfile": "AutonomousAI.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/g4f-0.5.0.4/g4f-0.5.0.4/g4f/Provider/not_working/AutonomousAI.py",
+    "line_number": "70",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "69\n70\t            async with session.post(api_endpoint, json=data, proxy=proxy) as response:\n71\t                await raise_for_status(response)",
+    "code_snippet": "from aiohttp import ClientSession\nimport base64\nimport json\nfrom ...requests.raise_for_status import raise_for_status\nfrom ...providers.response import FinishReason\n\nclass AutonomousAI(AsyncGeneratorProvider, ProviderModelMixin):\n    url = \"https://www.autonomous.ai/anon/\"\n    api_endpoints = {\n        \"llama\": \"https://chatgpt.autonomous.ai/api/v1/ai/chat\",\n        \"qwen_coder\": \"https://chatgpt.autonomous.ai/api/v1/ai/chat\",\n        \"hermes\": \"https://chatgpt.autonomous.ai/api/v1/ai/chat-hermes\",\n        \"vision\": \"https://chatgpt.autonomous.ai/api/v1/ai/chat-vision\",\n        \"summary\": \"https://chatgpt.autonomous.ai/api/v1/ai/summary\"\n    }\n    \n    working = False\n    supports_stream = True\n    supports_system_message = True\n    supports_message_history = True\n    \n    default_model = \"llama\"\n    models = [default_model, \"qwen_coder\", \"hermes\", \"vision\", \"summary\"]\n    \n    model_aliases = {\n        \"llama-3.3-70b\": default_model,\n        \"qwen-2.5-coder-32b\": \"qwen_coder\",\n        \"hermes-3\": \"hermes\",\n        \"llama-3.2-90b\": \"vision\",\n        \"llama-3.2-70b\": \"summary\",\n    }\n\n    @classmethod\n    async def create_async_generator(\n        cls,\n        model: str,\n        messages: Messages,\n        proxy: str = None,\n        stream: bool = False,\n        **kwargs\n    ) -> AsyncResult:\n        api_endpoint = cls.api_endpoints[model]\n        headers = {\n            'accept': '*/*',\n            'accept-language': 'en-US,en;q=0.9',\n            'content-type': 'application/json',\n            'country-code': 'US',\n            'origin': 'https://www.autonomous.ai',\n            'referer': 'https://www.autonomous.ai/',\n            'time-zone': 'America/New_York',\n            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'\n        }\n\n        async with ClientSession(headers=headers) as session:\n            message_json = json.dumps(messages)\n            encoded_message = base64.b64encode(message_json.encode()).decode(errors=\"ignore\")\n            \n            data = {\n                \"messages\": encoded_message,\n                \"threadId\": model,\n                \"stream\": stream,\n                \"aiAgent\": model\n            }\n            \n            async with session.post(api_endpoint, json=data, proxy=proxy) as response:\n                await raise_for_status(response)\n                async for chunk in response.content:\n                    if chunk:\n                        chunk_str = chunk.decode()\n                        if chunk_str == \"data: [DONE]\":\n                            continue\n                        \n                        try:\n                            # Remove \"data: \" prefix and parse JSON\n                            chunk_data = json.loads(chunk_str.replace(\"data: \", \"\"))\n                            if \"choices\" in chunk_data and chunk_data[\"choices\"]:\n                                delta = chunk_data[\"choices\"][0].get(\"delta\", {})\n                                if \"content\" in delta and delta[\"content\"]:\n                                    yield delta[\"content\"]\n                            if \"finish_reason\" in chunk_data and chunk_data[\"finish_reason\"]:\n                                yield FinishReason(chunk_data[\"finish_reason\"])\n                        except json.JSONDecodeError:\n                            continue",
+    "pattern_analysis": {
+      "api_sequence": [
+        "json.dumps",
+        "base64.b64encode",
+        "str.encode",
+        "bytes.decode",
+        "aiohttp.ClientSession",
+        "aiohttp.ClientSession.post",
+        "raise_for_status",
+        "aiohttp.ClientResponse.content",
+        "bytes.decode",
+        "json.loads"
+      ],
+      "api_sequence_with_args": [
+        "json.dumps(messages)",
+        "base64.b64encode(message_json.encode())",
+        "message_json.encode()",
+        "base64.b64encode(...).decode(errors=\"ignore\")",
+        "aiohttp.ClientSession(headers=headers)",
+        "aiohttp.ClientSession.post(api_endpoint, json=data, proxy=proxy)",
+        "raise_for_status(response)",
+        "response.content",
+        "chunk.decode()",
+        "json.loads(chunk_str.replace(\"data: \", \"\"))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "str.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "aiohttp.ClientSession",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "aiohttp.ClientSession.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "aiohttp.ClientResponse.content",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "from aiohttp import ClientSession\nimport base64\nimport json\nfrom ...requests.raise_for_status import raise_for_status\n\nasync def create_async_generator(cls, model, messages, proxy=None, stream=False, **kwargs):\n    api_endpoint = cls.api_endpoints[model]\n    headers = {\n        'accept': '*/*',\n        'accept-language': 'en-US,en;q=0.9',\n        'content-type': 'application/json',\n        'country-code': 'US',\n        'origin': 'https://www.autonomous.ai',\n        'referer': 'https://www.autonomous.ai/',\n        'time-zone': 'America/New_York',\n        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'\n    }\n\n    async with ClientSession(headers=headers) as session:\n        message_json = json.dumps(messages)\n        encoded_message = base64.b64encode(message_json.encode()).decode(errors=\"ignore\")\n        data = {\n            \"messages\": encoded_message,\n            \"threadId\": model,\n            \"stream\": stream,\n            \"aiAgent\": model\n        }\n        async with session.post(api_endpoint, json=data, proxy=proxy) as response:\n            await raise_for_status(response)\n            async for chunk in response.content:\n                if chunk:\n                    chunk_str = chunk.decode()\n                    if chunk_str == \"data: [DONE]\":\n                        continue\n                    try:\n                        chunk_data = json.loads(chunk_str.replace(\"data: \", \"\"))\n                        # ... further processing\n                    except json.JSONDecodeError:\n                        continue"
+    }
+  }
+]

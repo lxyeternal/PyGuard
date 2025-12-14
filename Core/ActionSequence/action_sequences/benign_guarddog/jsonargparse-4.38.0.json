@@ -1,0 +1,371 @@
+[
+  {
+    "pyfile": "_util.py",
+    "code_snippet": "class Path(PathDeprecations):\n    \"\"\"Stores a (possibly relative) path and the corresponding absolute path.\n\n    The absolute path can be obtained without having to remember the working\n    directory (or parent remote path) from when the object was created.\n\n    When a Path instance is created, it is checked that: the path exists,\n    whether it is a file or directory and whether it has the required access\n    permissions (f=file, d=directory, r=readable, w=writeable, x=executable,\n    c=creatable, u=url, s=fsspec or in uppercase meaning not, i.e., F=not-file,\n    D=not-directory, R=not-readable, W=not-writeable and X=not-executable).\n\n    The creatable flag \"c\" can be given one or two times. If give once, the\n    parent directory must exist and be writeable. If given twice, the parent\n    directory does not have to exist, but should be allowed to create.\n\n    An instance of Path class can also refer to the standard input or output.\n    To do that, path must be set with the value \"-\"; it is a common practice.\n    Then, getting the content or opening it will automatically be done on\n    standard input or output.\n    \"\"\"\n\n    _url_data: Optional[UrlData]\n    _file_scheme = re.compile(\"^file:///?\")\n\n    def __init__(\n        self,\n        path: Union[str, os.PathLike, \"Path\"],\n        mode: str = \"fr\",\n        cwd: Optional[Union[str, os.PathLike]] = None,\n        **kwargs,\n    ):\n        \"\"\"Initializer for Path instance.\n\n        Args:\n            path: The path to check and store.\n            mode: The required type and access permissions among [fdrwxcuFDRWX].\n            cwd: Working directory for relative paths. If None, os.getcwd() is used.\n\n        Raises:\n            ValueError: If the provided mode is invalid.\n            PathError: If the path does not exist or does not agree with the mode.\n        \"\"\"\n        self._deprecated_kwargs(kwargs)\n        self._check_mode(mode)\n        self._std_io = False\n\n        is_url = False\n        is_fsspec = False\n        if isinstance(path, Path):\n            self._std_io = path._std_io\n            is_url = path.is_url\n            is_fsspec = path.is_fsspec\n            url_data = path._url_data\n            cwd = path.cwd\n            abs_path = path.absolute\n            path = path.relative\n        elif isinstance(path, (str, os.PathLike)):\n            if path == \"-\":\n                self._std_io = True\n            path = os.fspath(path)\n            cwd = os.fspath(cwd) if cwd else None\n            abs_path = os.path.expanduser(path)\n            if self._file_scheme.match(abs_path):\n                abs_path = self._file_scheme.sub(\"\" if os.name == \"nt\" else \"/\", abs_path)\n            is_absolute = is_absolute_path(abs_path)\n            url_data = parse_url(abs_path)\n            cwd_url_data = parse_url(cwd or current_path_dir.get() or os.getcwd())\n            if (\"u\" in mode or \"s\" in mode) and (url_data or (cwd_url_data and not is_absolute)):\n                if cwd_url_data and not is_absolute:\n                    abs_path = resolve_relative_path(cwd_url_data.url_path + \"/\" + path)\n                    abs_path = cwd_url_data.scheme + abs_path\n                    url_data = parse_url(abs_path)\n                if cwd is None:\n                    cwd = current_path_dir.get() or os.getcwd()\n                if \"u\" in mode and url_support:\n                    is_url = True\n                elif \"s\" in mode and fsspec_support and known_to_fsspec(abs_path):\n                    is_fsspec = True\n            else:\n                if cwd is None:\n                    cwd = os.getcwd()\n                abs_path = abs_path if is_absolute else os.path.join(cwd, abs_path)\n                url_data = None\n        else:\n            raise PathError(\"Expected path to be a string, os.PathLike or a Path object.\")\n\n        if not self._skip_check and is_url:\n            if \"r\" in mode:\n                requests = import_requests(\"Path with URL support\")\n                try:\n                    requests.head(abs_path).raise_for_status()\n                except requests.HTTPError as ex:\n                    raise PathError(f\"{abs_path} HEAD not accessible :: {ex}\") from ex\n        elif not self._skip_check and is_fsspec:\n            fsspec_mode = \"\".join(c for c in mode if c in {\"r\", \"w\"})\n            if fsspec_mode:\n                fsspec = import_fsspec(\"Path\")\n                try:\n                    handle = fsspec.open(abs_path, fsspec_mode)\n                    handle.open()\n                    handle.close()\n                except (FileNotFoundError, KeyError) as ex:\n                    raise PathError(f\"Path does not exist: {abs_path!r}\") from ex\n                except PermissionError as ex:\n                    raise PathError(f\"Path exists but no permission to access: {abs_path!r}\") from ex\n        elif not self._skip_check and not self._std_io:\n            ptype = \"Directory\" if \"d\" in mode else \"File\"\n            if \"c\" in mode:\n                pdir = os.path.realpath(os.path.join(abs_path, \"..\"))\n                if not os.path.isdir(pdir) and mode.count(\"c\") == 2:\n                    ppdir = None\n                    while not os.path.isdir(pdir) and pdir != ppdir:\n                        ppdir = pdir\n                        pdir = os.path.realpath(os.path.join(pdir, \"..\"))\n                if not os.path.isdir(pdir):\n                    raise PathError(f\"{ptype} is not creatable since parent directory does not exist: {abs_path!r}\")\n                if not os.access(pdir, os.W_OK):\n                    raise PathError(f\"{ptype} is not creatable since parent directory not writeable: {abs_path!r}\")\n                if \"d\" in mode and os.access(abs_path, os.F_OK) and not os.path.isdir(abs_path):\n                    raise PathError(f\"{ptype} is not creatable since path already exists: {abs_path!r}\")\n                if \"f\" in mode and os.access(abs_path, os.F_OK) and not os.path.isfile(abs_path):\n                    raise PathError(f\"{ptype} is not creatable since path already exists: {abs_path!r}\")\n            elif \"d\" in mode or \"f\" in mode:\n                if not os.access(abs_path, os.F_OK):\n                    raise PathError(f\"{ptype} does not exist: {abs_path!r}\")\n                if \"d\" in mode and not os.path.isdir(abs_path):\n                    raise PathError(f\"Path is not a directory: {abs_path!r}\")\n                if \"f\" in mode and not (os.path.isfile(abs_path) or stat.S_ISFIFO(os.stat(abs_path).st_mode)):\n                    raise PathError(f\"Path is not a file: {abs_path!r}\")\n\n            if \"r\" in mode and not os.access(abs_path, os.R_OK):\n                raise PathError(f\"{ptype} is not readable: {abs_path!r}\")\n            if \"w\" in mode and not os.access(abs_path, os.W_OK):\n                raise PathError(f\"{ptype} is not writeable: {abs_path!r}\")\n            if \"x\" in mode and not os.access(abs_path, os.X_OK):\n                raise PathError(f\"{ptype} is not executable: {abs_path!r}\")\n            if \"D\" in mode and os.path.isdir(abs_path):\n                raise PathError(f\"Path is a directory: {abs_path!r}\")\n            if \"F\" in mode and (os.path.isfile(abs_path) or stat.S_ISFIFO(os.stat(abs_path).st_mode)):\n                raise PathError(f\"Path is a file: {abs_path!r}\")\n            if \"R\" in mode and os.access(abs_path, os.R_OK):\n                raise PathError(f\"{ptype} is readable: {abs_path!r}\")\n            if \"W\" in mode and os.access(abs_path, os.W_OK):\n                raise PathError(f\"{ptype} is writeable: {abs_path!r}\")\n            if \"X\" in mode and os.access(abs_path, os.X_OK):\n                raise PathError(f\"{ptype} is executable: {abs_path!r}\")\n\n        self._relative = path\n        self._absolute = abs_path\n        self._cwd = cwd\n        self._mode = mode\n        self._is_url = is_url\n        self._is_fsspec = is_fsspec\n        self._url_data = url_data\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "os.fspath",
+        "os.fspath",
+        "os.path.expanduser",
+        "os.name",
+        "os.getcwd",
+        "os.getcwd",
+        "os.getcwd",
+        "os.getcwd",
+        "os.path.join",
+        "os.getcwd",
+        "os.path.join",
+        "os.path.realpath",
+        "os.path.isdir",
+        "os.path.realpath",
+        "os.path.join",
+        "os.path.isdir",
+        "os.access",
+        "os.access",
+        "os.access",
+        "os.path.isdir",
+        "os.access",
+        "os.path.isfile",
+        "os.access",
+        "os.path.isfile",
+        "os.stat",
+        "os.access",
+        "os.access",
+        "os.access",
+        "os.access",
+        "os.path.isdir",
+        "os.path.isfile",
+        "os.stat",
+        "os.access",
+        "os.access",
+        "os.access"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(path, Path)",
+        "os.fspath(path)",
+        "os.fspath(cwd) if cwd else None",
+        "os.path.expanduser(path)",
+        "os.name",
+        "os.getcwd()",
+        "os.getcwd()",
+        "os.getcwd()",
+        "os.getcwd()",
+        "os.path.join(cwd, abs_path)",
+        "os.getcwd()",
+        "os.path.join(abs_path, \"..\")",
+        "os.path.realpath(os.path.join(abs_path, \"..\"))",
+        "os.path.isdir(pdir)",
+        "os.path.realpath(os.path.join(pdir, \"..\"))",
+        "os.path.isdir(pdir)",
+        "os.access(pdir, os.W_OK)",
+        "os.access(abs_path, os.F_OK)",
+        "os.path.isdir(abs_path)",
+        "os.access(abs_path, os.F_OK)",
+        "os.path.isfile(abs_path)",
+        "os.access(abs_path, os.F_OK)",
+        "os.path.isfile(abs_path)",
+        "os.stat(abs_path).st_mode",
+        "os.access(abs_path, os.F_OK)",
+        "os.access(abs_path, os.R_OK)",
+        "os.access(abs_path, os.W_OK)",
+        "os.access(abs_path, os.X_OK)",
+        "os.path.isdir(abs_path)",
+        "os.path.isfile(abs_path)",
+        "os.stat(abs_path).st_mode",
+        "os.access(abs_path, os.R_OK)",
+        "os.access(abs_path, os.W_OK)",
+        "os.access(abs_path, os.X_OK)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.fspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.fspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.expanduser",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.name",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "if isinstance(path, Path):\n    self._std_io = path._std_io\n    is_url = path.is_url\n    is_fsspec = path.is_fsspec\n    url_data = path._url_data\n    cwd = path.cwd\n    abs_path = path.absolute\n    path = path.relative\nelif isinstance(path, (str, os.PathLike)):\n    if path == \"-\":\n        self._std_io = True\n    path = os.fspath(path)\n    cwd = os.fspath(cwd) if cwd else None\n    abs_path = os.path.expanduser(path)\n    if self._file_scheme.match(abs_path):\n        abs_path = self._file_scheme.sub(\"\" if os.name == \"nt\" else \"/\", abs_path)\n    is_absolute = is_absolute_path(abs_path)\n    url_data = parse_url(abs_path)\n    cwd_url_data = parse_url(cwd or current_path_dir.get() or os.getcwd())\n    if (\"u\" in mode or \"s\" in mode) and (url_data or (cwd_url_data and not is_absolute)):\n        if cwd_url_data and not is_absolute:\n            abs_path = resolve_relative_path(cwd_url_data.url_path + \"/\" + path)\n            abs_path = cwd_url_data.scheme + abs_path\n            url_data = parse_url(abs_path)\n        if cwd is None:\n            cwd = current_path_dir.get() or os.getcwd()\n        if \"u\" in mode and url_support:\n            is_url = True\n        elif \"s\" in mode and fsspec_support and known_to_fsspec(abs_path):\n            is_fsspec = True\n    else:\n        if cwd is None:\n            cwd = os.getcwd()\n        abs_path = abs_path if is_absolute else os.path.join(cwd, abs_path)\n        url_data = None\nelse:\n    raise PathError(\"Expected path to be a string, os.PathLike or a Path object.\")\n\nif not self._skip_check and not self._std_io:\n    ptype = \"Directory\" if \"d\" in mode else \"File\"\n    if \"c\" in mode:\n        pdir = os.path.realpath(os.path.join(abs_path, \"..\"))\n        if not os.path.isdir(pdir) and mode.count(\"c\") == 2:\n            ppdir = None\n            while not os.path.isdir(pdir) and pdir != ppdir:\n                ppdir = pdir\n                pdir = os.path.realpath(os.path.join(pdir, \"..\"))\n        if not os.path.isdir(pdir):\n            raise PathError(f\"{ptype} is not creatable since parent directory does not exist: {abs_path!r}\")\n        if not os.access(pdir, os.W_OK):\n            raise PathError(f\"{ptype} is not creatable since parent directory not writeable: {abs_path!r}\")\n        if \"d\" in mode and os.access(abs_path, os.F_OK) and not os.path.isdir(abs_path):\n            raise PathError(f\"{ptype} is not creatable since path already exists: {abs_path!r}\")\n        if \"f\" in mode and os.access(abs_path, os.F_OK) and not os.path.isfile(abs_path):\n            raise PathError(f\"{ptype} is not creatable since path already exists: {abs_path!r}\")\n    elif \"d\" in mode or \"f\" in mode:\n        if not os.access(abs_path, os.F_OK):\n            raise PathError(f\"{ptype} does not exist: {abs_path!r}\")\n        if \"d\" in mode and not os.path.isdir(abs_path):\n            raise PathError(f\"Path is not a directory: {abs_path!r}\")\n        if \"f\" in mode and not (os.path.isfile(abs_path) or stat.S_ISFIFO(os.stat(abs_path).st_mode)):\n            raise PathError(f\"Path is not a file: {abs_path!r}\")\n\n    if \"r\" in mode and not os.access(abs_path, os.R_OK):\n        raise PathError(f\"{ptype} is not readable: {abs_path!r}\")\n    if \"w\" in mode and not os.access(abs_path, os.W_OK):\n        raise PathError(f\"{ptype} is not writeable: {abs_path!r}\")\n    if \"x\" in mode and not os.access(abs_path, os.X_OK):\n        raise PathError(f\"{ptype} is not executable: {abs_path!r}\")\n    if \"D\" in mode and os.path.isdir(abs_path):\n        raise PathError(f\"Path is a directory: {abs_path!r}\")\n    if \"F\" in mode and (os.path.isfile(abs_path) or stat.S_ISFIFO(os.stat(abs_path).st_mode)):\n        raise PathError(f\"Path is a file: {abs_path!r}\")\n    if \"R\" in mode and os.access(abs_path, os.R_OK):\n        raise PathError(f\"{ptype} is readable: {abs_path!r}\")\n    if \"W\" in mode and os.access(abs_path, os.W_OK):\n        raise PathError(f\"{ptype} is writeable: {abs_path!r}\")\n    if \"X\" in mode and os.access(abs_path, os.X_OK):\n        raise PathError(f\"{ptype} is executable: {abs_path!r}\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "jsonargparse-4.38.0",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "from subprocess import Popen, PIPE\nimport sys\nfrom distutils.command.sdist import sdist\n\nclass sdist_files_from_git(sdist):\n    def get_file_list(self):\n        popen = Popen(\n            ['git', 'ls-files'], stdout=PIPE, stderr=PIPE, universal_newlines=True\n        )\n        stdoutdata, stderrdata = popen.communicate()\n        if popen.returncode != 0:\n            print(stderrdata)\n            sys.exit()\n\n        def exclude(line):\n            for prefix in ['.', 'appveyor.yml', 'docs/', 'misc/']:\n                if line.startswith(prefix):\n                    return True\n            return False\n\n        for line in stdoutdata.splitlines():\n            if not exclude(line):\n                self.filelist.append(line)\n\n        # Ok\n        self.filelist.sort()\n        self.filelist.remove_duplicates()\n        self.write_manifest()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "sys.exit"
+      ],
+      "api_sequence_with_args": [
+        "subprocess.Popen(['git', 'ls-files'], stdout=PIPE, stderr=PIPE, universal_newlines=True)",
+        "subprocess.Popen.communicate()",
+        "sys.exit()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "from subprocess import Popen, PIPE\nimport sys\n\nclass sdist_files_from_git(sdist):\n    def get_file_list(self):\n        popen = Popen(\n            ['git', 'ls-files'], stdout=PIPE, stderr=PIPE, universal_newlines=True\n        )\n        stdoutdata, stderrdata = popen.communicate()\n        if popen.returncode != 0:\n            print(stderrdata)\n            sys.exit()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pygit2-1.17.0",
+      "total_matches": 1
+    }
+  }
+]

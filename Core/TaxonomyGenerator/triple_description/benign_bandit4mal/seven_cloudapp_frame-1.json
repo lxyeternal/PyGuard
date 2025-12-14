@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "package_name": "seven_cloudapp_frame-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/seven_cloudapp_frame-1.2.15.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "shakeshop_base_model.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/seven_cloudapp_frame-1.2.15/seven_cloudapp_frame-1.2.15/seven_cloudapp_frame/models/third/shakeshop_base_model.py",
+      "line_number": "68",
+      "type_description": "B820:get",
+      "context_snippet": "class ShakeShopBaseModel():\n    \"\"\"\n    :description: 抖店接口业务模型(IP白名单功能说明应用IP白名单功能:开发者需在开放平台控制台提前配置可信的IP白名单，只有属于IP白名单中的IP地址访问AP接口时，平台网关才允许通过，否则调用AP 接口将被拒绝)\n    \"\"\"\n    def __init__(self, context, app_key: str, app_secret: str, app_type=\"SELF\", code=None, shop_id: str = None, auth_subject_type: str = \"MiniApp\", proxy: str = None, test_mode=False, logging_error=None, logging_info=None):\n        \"\"\"\n        :description:  初始化实例，自用型应用传入shop_id用于初始化access token，工具型应用传入code换取access token（如初始化时未传入，可以在访问抖店API之前调用init_token(code)进行token的初始化。\n        :param context: 上下文\n        :param app_key: app_key\n        :param app_secret: app_secret\n        :param app_type: app_type(SELF或TOOL)\n        :param code: code\n        :param shop_id: 店铺ID\n        :param auth_subject_type:授权主体类型，配合auth_id字段使用，YunCang -云仓；WuLiuShang -物流商；WLGongYingShang -物流供应商；MiniApp -小程序；MCN-联盟MCN机构；DouKe-联盟抖客 ；Colonel-联盟团长；\n        :param proxy: 代理\n        :param test_mode: 是否测试沙盒\n        :param logging_error: logging_error\n        :param logging_info: logging_info\n        :return \n        :last_editors: HuangJianYi\n        \"\"\"\n        self.context = context\n        self.logging_link_error = logging_error\n        self.logging_link_info = logging_info\n        self.app_key = app_key\n        self.app_secret = app_secret\n        self.app_type = app_type\n        if self.app_type == \"SELF\" and not shop_id:\n            raise Exception('shop_id不能为空')\n        self.shop_id = shop_id\n        self.auth_subject_type = auth_subject_type\n        self.proxy = proxy\n        self.test_mode = test_mode\n        if self.test_mode:\n            self._gate_way = 'https://openapi-sandbox.jinritemai.com'\n        else:\n            self._gate_way = 'https://openapi-fxg.jinritemai.com'\n        self._version = 2\n        self.redis_token_key = f\"shakeshop_access_token:{str(app_key)}_{self.test_mode}\"\n        if shop_id:\n            self.redis_token_key += f\"_{shop_id}\"\n        redis_token = SevenHelper.redis_init(config_dict=config.get_value(\"platform_redis\")).get(self.redis_token_key)\n        if redis_token:\n            redis_token = json.loads(redis_token)\n        self._token = redis_token\n        self._sign_method = 'hmac-sha256'\n        if self._token:\n            if self._token.get('expires_in') - int(time.time()) < 3000:\n                self._refresh_token()\n        else:\n            exception_message = 'assess_token获取失败，请检查配置，店铺ID:' + str(shop_id)\n            if self.app_type == \"SELF\":\n                if self.init_token() == False:\n                    raise Exception(exception_message) \n            elif self.app_type == \"TOOL\" and code:\n                if self.init_token(code) == False:\n                    raise Exception(exception_message) ",
+      "hash_value": "7bcb12d39d04902be41d055d209067cc",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "class ShakeShopBaseModel():\n    \"\"\"\n    :description: 抖店接口业务模型(IP白名单功能说明应用IP白名单功能:开发者需在开放平台控制台提前配置可信的IP白名单，只有属于IP白名单中的IP地址访问AP接口时，平台网关才允许通过，否则调用AP 接口将被拒绝)\n    \"\"\"\n    def __init__(self, context, app_key: str, app_secret: str, app_type=\"SELF\", code=None, shop_id: str = None, auth_subject_type: str = \"MiniApp\", proxy: str = None, test_mode=False, logging_error=None, logging_info=None):\n        \"\"\"\n        :description:  初始化实例，自用型应用传入shop_id用于初始化access token，工具型应用传入code换取access token（如初始化时未传入，可以在访问抖店API之前调用init_token(code)进行token的初始化。\n        :param context: 上下文\n        :param app_key: app_key\n        :param app_secret: app_secret\n        :param app_type: app_type(SELF或TOOL)\n        :param code: code\n        :param shop_id: 店铺ID\n        :param auth_subject_type:授权主体类型，配合auth_id字段使用，YunCang -云仓；WuLiuShang -物流商；WLGongYingShang -物流供应商；MiniApp -小程序；MCN-联盟MCN机构；DouKe-联盟抖客 ；Colonel-联盟团长；\n        :param proxy: 代理\n        :param test_mode: 是否测试沙盒\n        :param logging_error: logging_error\n        :param logging_info: logging_info\n        :return \n        :last_editors: HuangJianYi\n        \"\"\"\n        self.context = context\n        self.logging_link_error = logging_error\n        self.logging_link_info = logging_info\n        self.app_key = app_key\n        self.app_secret = app_secret\n        self.app_type = app_type\n        if self.app_type == \"SELF\" and not shop_id:\n            raise Exception('shop_id不能为空')\n        self.shop_id = shop_id\n        self.auth_subject_type = auth_subject_type\n        self.proxy = proxy\n        self.test_mode = test_mode\n        if self.test_mode:\n            self._gate_way = 'https://openapi-sandbox.jinritemai.com'\n        else:\n            self._gate_way = 'https://openapi-fxg.jinritemai.com'\n        self._version = 2\n        self.redis_token_key = f\"shakeshop_access_token:{str(app_key)}_{self.test_mode}\"\n        if shop_id:\n            self.redis_token_key += f\"_{shop_id}\"\n        redis_token = SevenHelper.redis_init(config_dict=config.get_value(\"platform_redis\")).get(self.redis_token_key)\n        if redis_token:\n            redis_token = json.loads(redis_token)\n        self._token = redis_token\n        self._sign_method = 'hmac-sha256'\n        if self._token:\n            if self._token.get('expires_in') - int(time.time()) < 3000:\n                self._refresh_token()\n        else:\n            exception_message = 'assess_token获取失败，请检查配置，店铺ID:' + str(shop_id)\n            if self.app_type == \"SELF\":\n                if self.init_token() == False:\n                    raise Exception(exception_message) \n            elif self.app_type == \"TOOL\" and code:\n                if self.init_token(code) == False:\n                    raise Exception(exception_message) ",
+          "triple_sequences": [
+            {
+              "action_api": "SevenHelper.redis_init()",
+              "action_description": "Instantiates Redis class",
+              "action_id": "init_receiver_class",
+              "object": "config.get_value(\"platform_redis\")",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "SevenHelper.redis_init().get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self.redis_token_key",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "redis_token",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "self._refresh_token()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            },
+            {
+              "action_api": "self.init_token()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            },
+            {
+              "action_api": "self.init_token(code)",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "code",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

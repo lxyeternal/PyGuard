@@ -1,0 +1,111 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\nfrom pathlib import Path\n\ndef write_git_info_py(filename=\"spacy/git_info.py\"):\n    def _minimal_ext_cmd(cmd):\n        # construct minimal environment\n        env = {}\n        for k in [\"SYSTEMROOT\", \"PATH\", \"HOME\"]:\n            v = os.environ.get(k)\n            if v is not None:\n                env[k] = v\n        # LANGUAGE is used on win32\n        env[\"LANGUAGE\"] = \"C\"\n        env[\"LANG\"] = \"C\"\n        env[\"LC_ALL\"] = \"C\"\n        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)\n        return out\n\n    git_version = \"Unknown\"\n    if Path(\".git\").exists():\n        try:\n            out = _minimal_ext_cmd([\"git\", \"rev-parse\", \"--short\", \"HEAD\"])\n            git_version = out.strip().decode(\"ascii\")\n        except Exception:\n            pass\n    elif Path(filename).exists():\n        # must be a source distribution, use existing version file\n        try:\n            a = open(filename, \"r\")\n            lines = a.readlines()\n            git_version = lines[-1].split('\"')[1]\n        except Exception:\n            pass\n        finally:\n            a.close()\n\n    text = \"\"\"# THIS FILE IS GENERATED FROM SPACY SETUP.PY\n#\nGIT_VERSION = \\\"%(git_version)s\\\"\n\"\"\"\n    a = open(filename, \"w\")\n    try:\n        a.write(text % {\"git_version\": git_version})\n    finally:\n        a.close()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.check_output",
+        "pathlib.Path.exists",
+        "open",
+        "open.readlines",
+        "open.close",
+        "open",
+        "open.write",
+        "open.close"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(k)",
+        "subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)",
+        "pathlib.Path.exists('.git')",
+        "open(filename, 'r')",
+        "open.readlines()",
+        "open.close()",
+        "open(filename, 'w')",
+        "open.write(text % {\"git_version\": git_version})",
+        "open.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "pathlib.Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.readlines",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "open.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nfrom pathlib import Path\n\ndef write_git_info_py(filename=\"spacy/git_info.py\"):\n    def _minimal_ext_cmd(cmd):\n        env = {}\n        for k in [\"SYSTEMROOT\", \"PATH\", \"HOME\"]:\n            v = os.environ.get(k)\n            if v is not None:\n                env[k] = v\n        env[\"LANGUAGE\"] = \"C\"\n        env[\"LANG\"] = \"C\"\n        env[\"LC_ALL\"] = \"C\"\n        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)\n        return out\n\n    git_version = \"Unknown\"\n    if Path(\".git\").exists():\n        try:\n            out = _minimal_ext_cmd([\"git\", \"rev-parse\", \"--short\", \"HEAD\"])\n            git_version = out.strip().decode(\"ascii\")\n        except Exception:\n            pass\n    elif Path(filename).exists():\n        try:\n            a = open(filename, \"r\")\n            lines = a.readlines()\n            git_version = lines[-1].split('\"')[1]\n        except Exception:\n            pass\n        finally:\n            a.close()\n\n    text = \"\"\"# THIS FILE IS GENERATED FROM SPACY SETUP.PY\n#\nGIT_VERSION = \\\"%(git_version)s\\\"\n\"\"\"\n    a = open(filename, \"w\")\n    try:\n        a.write(text % {\"git_version\": git_version})\n    finally:\n        a.close()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "spacy-4.0.0.dev3",
+      "total_matches": 1
+    }
+  }
+]

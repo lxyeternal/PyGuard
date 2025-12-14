@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "from __future__ import with_statement\n\nimport sys\nimport os\nfrom textwrap import dedent\n\nname_space = 'ruamel'\npackage_name = 'ordereddict'\nfull_package_name = name_space + '.' + package_name\n\nexclude_files = [\n    'setup.py',\n]\n\nif __name__ == '__main__':\n    # put here so setup.py can be imported more easily\n    from setuptools import setup, find_packages, Extension\n    from setuptools.command import install_lib\n\n    module1 = Extension('_ordereddict',\n                        sources = ['ordereddict.c',],\n                       )\n\ndef get_version():\n    v_i = 'version_info = '\n    for line in open('__init__.py'):\n        if not line.startswith(v_i):\n            continue\n        s_e = line[len(v_i):].strip()[1:-1].split(', ')\n        elems = [x.strip()[1:-1] if x[0] in '\\'\"' else int(x) for x in s_e]\n        break\n    return elems\n\n\ndef _check_convert_version(tup):\n    \"\"\"create a PEP 386 pseudo-format conformant string from tuple tup\"\"\"\n    ret_val = str(tup[0])  # first is always digit\n    next_sep = \".\"  # separator for next extension, can be \"\" or \".\"\n    nr_digits = 0  # nr of adjacent digits in rest, to verify\n    post_dev = False  # are we processig post/dev\n    for x in tup[1:]:\n        if isinstance(x, int):\n            nr_digits += 1\n            if nr_digits > 2:\n                raise ValueError(\"too many consecutive digits \" + ret_val)\n            ret_val += next_sep + str(x)\n            next_sep = '.'\n            continue\n        first_letter = x[0].lower()\n        next_sep = ''\n        if first_letter in 'abcr':\n            if post_dev:\n                raise ValueError(\"release level specified after \"\n                                 \"post/dev:\" + x)\n            nr_digits = 0\n            ret_val += 'rc' if first_letter == 'r' else first_letter\n        elif first_letter in 'pd':\n            nr_digits = 1  # only one can follow\n            post_dev = True\n            ret_val += '.post' if first_letter == 'p' else '.dev'\n        else:\n            raise ValueError('First letter of \"' + x + '\" not recognised')\n    return ret_val\n\n\nversion_info = get_version()\nversion_str = _check_convert_version(version_info)\n\nclass MyInstallLib(install_lib.install_lib):\n    def run(self):\n        install_lib.install_lib.run(self)\n\n    def install(self):\n        fpp = full_package_name.split('.')  # full package path\n        full_exclude_files = [os.path.join(*(fpp + [x]))\n                              for x in exclude_files]\n        alt_files = []\n        outfiles = install_lib.install_lib.install(self)\n        for x in outfiles:\n            for full_exclude_file in full_exclude_files:\n                if full_exclude_file in x:\n                    os.remove(x)\n                    break\n            else:\n                alt_files.append(x)\n        return alt_files\n\nlong_description = \"\"\"\nA derivation of the pyton dictobject.c module that implements\nKey Insertion Order (KIO: the insertion order of\nnew keys is being tracked, updating values of existing keys does not\nchange the order), Key Value Insertion Order (KVIO: KIO, but updates change\norder), and Key Sorted Order (KSO: key are kept sorted).\n\nThe basic C structure is exented with a pointer to a list of item pointers.\nWhen a *new* key is added, this list is extended with a pointer to the item.\nThe implementation compacts the list of pointers on every deletion (unless\nthe last added key is removed, such as in popitem()). That\ninvolves a memmove of all the pointers behind the pointer to the item in\nquestion.\n\nThe .keys, .values, .items, .iterkeys, itervalues, iteritems, __iter__\nreturn things in the order of insertion.\n\n.popitem takes an optional argument (defaulting to -1), which is the\norder of the item.\n\nthe representation of the ordereddict is the same with Larosa/Foord:\n\"ordereddict([(key1, val1), (key2, val2)])\"\n\nsupport for slices\n\nAnd some more (see README.rst).\n\"\"\"\n\ndef main():\n    install_requires = []\n    packages = [full_package_name] + [(full_package_name + '.' + x) for x\n                                     in find_packages(exclude=['tests'])]\n\n    setup(\n        name=full_package_name,\n        version=version_str,\n        description='a version of dict that keeps keys in '\\\n                    'insertion resp. sorted order',\n        install_requires=install_requires,\n        long_description=open('README.rst').read(),\n        url='https://bitbucket.org/ruamel/' + package_name,\n        author='Anthon van der Neut',\n        author_email='a.van.der.neut@ruamel.eu',\n        license=\"MIT license\",\n        package_dir={full_package_name: '.'},\n        namespace_packages=[name_space],\n        packages=packages,\n        ext_modules = [module1],\n        cmdclass={'install_lib': MyInstallLib},\n        classifiers=[\n            'Development Status :: 5 - Production/Stable',\n            'Intended Audience :: System Administrators',\n            'License :: OSI Approved :: MIT License',\n            'Operating System :: POSIX :: Linux',\n            'Programming Language :: Python',\n        ],\n    )\n\nif __name__ == '__main__':\n    if os.name != 'nt' and len(sys.argv) > 1 and sys.argv[1] == 'sdist':\n        assert full_package_name == os.path.abspath(os.path.dirname(\n            __file__)).split('site-packages' + os.path.sep)[1].replace(\n                os.path.sep, '.')\n    main()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "os.path.join",
+        "os.remove",
+        "find_packages",
+        "open"
+      ],
+      "api_sequence_with_args": [
+        "open('__init__.py')",
+        "os.path.join(*(fpp + [x]))",
+        "os.remove(x)",
+        "find_packages(exclude=['tests'])",
+        "open('README.rst').read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "find_packages",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def get_version():\n    v_i = 'version_info = '\n    for line in open('__init__.py'):\n        if not line.startswith(v_i):\n            continue\n        s_e = line[len(v_i):].strip()[1:-1].split(', ')\n        elems = [x.strip()[1:-1] if x[0] in '\\'\"' else int(x) for x in s_e]\n        break\n    return elems\n\nclass MyInstallLib(install_lib.install_lib):\n    def install(self):\n        fpp = full_package_name.split('.')  # full package path\n        full_exclude_files = [os.path.join(*(fpp + [x]))\n                              for x in exclude_files]\n        alt_files = []\n        outfiles = install_lib.install_lib.install(self)\n        for x in outfiles:\n            for full_exclude_file in full_exclude_files:\n                if full_exclude_file in x:\n                    os.remove(x)\n                    break\n            else:\n                alt_files.append(x)\n        return alt_files\n\ndef main():\n    install_requires = []\n    packages = [full_package_name] + [(full_package_name + '.' + x) for x\n                                     in find_packages(exclude=['tests'])]\n\n    setup(\n        ...\n        long_description=open('README.rst').read(),\n        ...\n    )"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ruamel.ordereddict-0.4.15",
+      "total_matches": 1
+    }
+  }
+]

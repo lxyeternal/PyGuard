@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "snowflake_connector_python_nightly-2025.4.11",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/snowflake_connector_python_nightly-2025.4.11/snowflake_connector_python_nightly-2025.4.11/src/snowflake/connector/vendored/requests/utils.py",
+    "line_number": "296",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "295\t        with atomic_open(extracted_path) as file_handler:\n296\t            file_handler.write(zip_file.read(member))\n297\t    return extracted_path",
+    "context_snippet": "def extract_zipped_paths(path):\n    \"\"\"Replace nonexistent paths that look like they refer to a member of a zip\n    archive with the location of an extracted copy of the target, or else\n    just return the provided path unchanged.\n    \"\"\"\n    if os.path.exists(path):\n        # this is already a valid path, no need to do anything further\n        return path\n\n    # find the first valid part of the provided path and treat that as a zip archive\n    # assume the rest of the path is the name of a member in the archive\n    archive, member = os.path.split(path)\n    while archive and not os.path.exists(archive):\n        archive, prefix = os.path.split(archive)\n        if not prefix:\n            # If we don't check for an empty prefix after the split (in other words, archive remains unchanged after the split),\n            # we _can_ end up in an infinite loop on a rare corner case affecting a small number of users\n            break\n        member = \"/\".join([prefix, member])\n\n    if not zipfile.is_zipfile(archive):\n        return path\n\n    zip_file = zipfile.ZipFile(archive)\n    if member not in zip_file.namelist():\n        return path\n\n    # we have a valid zip archive and a valid member of that archive\n    tmp = tempfile.gettempdir()\n    extracted_path = os.path.join(tmp, member.split(\"/\")[-1])\n    if not os.path.exists(extracted_path):\n        # use read + write to avoid the creating nested folders, we only want the file, avoids mkdir racing condition\n        with atomic_open(extracted_path) as file_handler:\n            file_handler.write(zip_file.read(member))\n    return extracted_path\n\n@contextlib.contextmanager\ndef atomic_open(filename):\n    \"\"\"Write a file to the disk in an atomic fashion\"\"\"\n    tmp_descriptor, tmp_name = tempfile.mkstemp(dir=os.path.dirname(filename))\n    try:\n        with os.fdopen(tmp_descriptor, \"wb\") as tmp_handler:\n            yield tmp_handler\n        os.replace(tmp_name, filename)\n    except BaseException:\n        os.remove(tmp_name)\n        raise",
+    "hash_value": "ef9dd9064d8ce4f9859510946b77c09d"
+  }
+]

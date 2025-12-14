@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "controller.py",
+    "code_snippet": "import requests\nimport os\nimport logging\nfrom enum import Enum\nimport typing as t\nfrom sqlmesh.utils.errors import CICDBotError\n\nlogger = logging.getLogger(__name__)\n\nclass MergeStateStatus(str, Enum):\n    \"\"\"\n    https://docs.github.com/en/graphql/reference/enums#mergestatestatus\n    \"\"\"\n\n    BEHIND = \"behind\"\n    BLOCKED = \"blocked\"\n    CLEAN = \"clean\"\n    DIRTY = \"dirty\"\n    DRAFT = \"draft\"\n    HAS_HOOKS = \"has_hooks\"\n    UNKNOWN = \"unknown\"\n    UNSTABLE = \"unstable\"\n\n    @property\n    def is_behind(self) -> bool:\n        return self == MergeStateStatus.BEHIND\n\n    @property\n    def is_blocked(self) -> bool:\n        return self == MergeStateStatus.BLOCKED\n\n    @property\n    def is_clean(self) -> bool:\n        return self == MergeStateStatus.CLEAN\n\n    @property\n    def is_dirty(self) -> bool:\n        return self == MergeStateStatus.DIRTY\n\n    @property\n    def is_draft(self) -> bool:\n        return self == MergeStateStatus.DRAFT\n\n    @property\n    def is_has_hooks(self) -> bool:\n        return self == MergeStateStatus.HAS_HOOKS\n\n    @property\n    def is_unknown(self) -> bool:\n        return self == MergeStateStatus.UNKNOWN\n\n    @property\n    def is_unstable(self) -> bool:\n        return self == MergeStateStatus.UNSTABLE\n\nclass GithubController:\n    ...\n    def _get_merge_state_status(self) -> MergeStateStatus:\n        \"\"\"\n        This feature is currently in preview and therefore not available in the python module.\n        So we query GraphQL directly instead.\n        \"\"\"\n        headers = {\n            \"Authorization\": f\"Bearer {self._token}\",\n            \"Accept\": \"application/vnd.github.merge-info-preview+json\",\n        }\n        query = f\"\"\"{{\n            repository(owner: \"{self._event.pull_request_info.owner}\", name: \"{self._event.pull_request_info.repo}\") {{\n                pullRequest(number: {self._event.pull_request_info.pr_number}) {{\n                    title\n                    state\n                    mergeStateStatus\n                }}\n            }}\n        }}\"\"\"\n        request = requests.post(\n            os.environ[\"GITHUB_GRAPHQL_URL\"],\n            json={\"query\": query},\n            headers=headers,\n        )\n        if request.status_code == 200:\n            merge_status = MergeStateStatus(\n                request.json()[\"data\"][\"repository\"][\"pullRequest\"][\"mergeStateStatus\"].lower()\n            )\n            logger.debug(f\"Merge state status: {merge_status.value}\")\n            return merge_status\n        raise CICDBotError(f\"Unable to get merge state status. Error: {request.text}\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "requests.post",
+        "requests.models.Response.status_code",
+        "requests.models.Response.json",
+        "logger.debug",
+        "requests.models.Response.text"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"GITHUB_GRAPHQL_URL\"]",
+        "requests.post(os.environ[\"GITHUB_GRAPHQL_URL\"], json={\"query\": query}, headers=headers)",
+        "request.status_code",
+        "request.json()",
+        "logger.debug(f\"Merge state status: {merge_status.value}\")",
+        "request.text"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.models.Response.text",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import requests\nimport os\nimport logging\nfrom sqlmesh.utils.errors import CICDBotError\n\nlogger = logging.getLogger(__name__)\n\nclass GithubController:\n    ...\n    def _get_merge_state_status(self) -> MergeStateStatus:\n        headers = {\n            \"Authorization\": f\"Bearer {self._token}\",\n            \"Accept\": \"application/vnd.github.merge-info-preview+json\",\n        }\n        query = f\"\"\"{{\n            repository(owner: \"{self._event.pull_request_info.owner}\", name: \"{self._event.pull_request_info.repo}\") {{\n                pullRequest(number: {self._event.pull_request_info.pr_number}) {{\n                    title\n                    state\n                    mergeStateStatus\n                }}\n            }}\n        }}\"\"\"\n        request = requests.post(\n            os.environ[\"GITHUB_GRAPHQL_URL\"],\n            json={\"query\": query},\n            headers=headers,\n        )\n        if request.status_code == 200:\n            merge_status = MergeStateStatus(\n                request.json()[\"data\"][\"repository\"][\"pullRequest\"][\"mergeStateStatus\"].lower()\n            )\n            logger.debug(f\"Merge state status: {merge_status.value}\")\n            return merge_status\n        raise CICDBotError(f\"Unable to get merge state status. Error: {request.text}\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "sqlmesh-0.171.3.dev4",
+      "total_matches": 1
+    }
+  }
+]

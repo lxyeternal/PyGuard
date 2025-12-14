@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "package_name": "launchable-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/launchable-1.98.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "test_raw.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/launchable-1.98.0/launchable-1.98.0/tests/test_runners/test_raw.py",
+      "line_number": "302",
+      "type_description": "B832:write",
+      "context_snippet": "@responses.activate\n@mock.patch.dict(os.environ, {\"LAUNCHABLE_TOKEN\": CliTestCase.launchable_token})\ndef test_record_tests_junit_xml(self):\n    with tempfile.TemporaryDirectory() as tempdir:\n        test_path_file = os.path.join(tempdir, 'tests.xml')\n        test_path_file2 = os.path.join(tempdir, 'tests_2.xml')\n        # These timestamp variables are defined for testing timezone.\n        timestamp1 = dateutil.parser.parse(\"2021-10-05T12:34:00\")\n        timestamp2 = dateutil.parser.parse(\"2021-10-05T12:34:56\")\n        with open(test_path_file, 'w') as f:\n            f.write('\\n'.join([\n                '<?xml version=\"1.0\" encoding=\"UTF-8\"?>',\n                '<testsuites name=\"test_suite_name1\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"10.123\">',\n                f'  <testsuite name=\"test_suite_name2\" errors=\"0\" failures=\"0\" skipped=\"0\" timestamp=\"{timestamp1}\" time=\"10.123\" tests=\"1\">',   # noqa: E501\n                '    <testcase classname=\"test_class_name\" name=\"test_case_name\" time=\"10.123\">',\n                '    </testcase>',\n                '  </testsuite>',\n                '</testsuites>',\n            ]) + '\\n')\n\n        with open(test_path_file2, 'w') as f2:\n            f2.write('\\n'.join([\n                '<?xml version=\"1.0\" encoding=\"UTF-8\"?>',\n                '<testsuites name=\"test_suite_name3\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"12.345\">',\n                f'  <testsuite name=\"test_suite_name4\" errors=\"0\" failures=\"0\" skipped=\"0\" timestamp=\"{timestamp2}\" time=\"12.345\" tests=\"1\">',   # noqa: E501\n                '    <testcase classname=\"test_class_name2\" name=\"test_case_name2\" time=\"12.345\">',\n                '    </testcase>',\n                '  </testsuite>',\n                '</testsuites>',\n            ]) + '\\n')\n\n        # emulate launchable record build\n        write_build(self.build_name)\n\n        result = self.cli('record', 'tests', 'raw', test_path_file, test_path_file2, mix_stderr=False)\n        if result.exit_code != 0:\n            self.assertEqual(\n                result.exit_code,\n                0,\n                \"Exit code is not 0. The output is\\n\" + result.output + \"\\n\" + result.stderr)\n\n        # Check request body\n        payload = json.loads(gzip.decompress(self.find_request('/events').request.body).decode())\n        del payload['metadata']\n        self.assert_json_orderless_equal(payload, {\n            'events': [\n                {\n                    'testPath': [\n                        {'type': 'class', 'name': 'test_class_name'},\n                        {'type': 'testcase', 'name': 'test_case_name'},\n                    ],\n                    'duration': 10.123,\n                    'status': 1,\n                    'stdout': '',\n                    'stderr': '',\n                    'createdAt': timestamp1.replace(tzinfo=tzlocal()).isoformat(),\n                    'data': None,\n                    'type': 'case',\n                },\n                {\n                    'testPath': [\n                        {'type': 'class', 'name': 'test_class_name2'},\n                        {'type': 'testcase', 'name': 'test_case_name2'},\n                    ],\n                    'duration': 12.345,\n                    'status': 1,\n                    'stdout': '',\n                    'stderr': '',\n                    'createdAt': timestamp2.replace(tzinfo=tzlocal()).isoformat(),\n                    'data': None,\n                    'type': 'case',\n                },\n            ],\n            \"testRunner\": \"raw\",\n            \"group\": \"\",\n            \"noBuild\": False,\n            \"flavors\": [],\n            \"testSuite\": \"\",\n        })",
+      "hash_value": "e312b041c1b43859509e5685e9141286",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "@responses.activate\n@mock.patch.dict(os.environ, {\"LAUNCHABLE_TOKEN\": CliTestCase.launchable_token})\ndef test_record_tests_junit_xml(self):\n    with tempfile.TemporaryDirectory() as tempdir:\n        test_path_file = os.path.join(tempdir, 'tests.xml')\n        test_path_file2 = os.path.join(tempdir, 'tests_2.xml')\n        # These timestamp variables are defined for testing timezone.\n        timestamp1 = dateutil.parser.parse(\"2021-10-05T12:34:00\")\n        timestamp2 = dateutil.parser.parse(\"2021-10-05T12:34:56\")\n        with open(test_path_file, 'w') as f:\n            f.write('\\n'.join([\n                '<?xml version=\"1.0\" encoding=\"UTF-8\"?>',\n                '<testsuites name=\"test_suite_name1\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"10.123\">',\n                f'  <testsuite name=\"test_suite_name2\" errors=\"0\" failures=\"0\" skipped=\"0\" timestamp=\"{timestamp1}\" time=\"10.123\" tests=\"1\">',   # noqa: E501\n                '    <testcase classname=\"test_class_name\" name=\"test_case_name\" time=\"10.123\">',\n                '    </testcase>',\n                '  </testsuite>',\n                '</testsuites>',\n            ]) + '\\n')\n\n        with open(test_path_file2, 'w') as f2:\n            f2.write('\\n'.join([\n                '<?xml version=\"1.0\" encoding=\"UTF-8\"?>',\n                '<testsuites name=\"test_suite_name3\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"12.345\">',\n                f'  <testsuite name=\"test_suite_name4\" errors=\"0\" failures=\"0\" skipped=\"0\" timestamp=\"{timestamp2}\" time=\"12.345\" tests=\"1\">',   # noqa: E501\n                '    <testcase classname=\"test_class_name2\" name=\"test_case_name2\" time=\"12.345\">',\n                '    </testcase>',\n                '  </testsuite>',\n                '</testsuites>',\n            ]) + '\\n')\n\n        # emulate launchable record build\n        write_build(self.build_name)\n\n        result = self.cli('record', 'tests', 'raw', test_path_file, test_path_file2, mix_stderr=False)\n        if result.exit_code != 0:\n            self.assertEqual(\n                result.exit_code,\n                0,\n                \"Exit code is not 0. The output is\\n\" + result.output + \"\\n\" + result.stderr)\n\n        # Check request body\n        payload = json.loads(gzip.decompress(self.find_request('/events').request.body).decode())\n        del payload['metadata']\n        self.assert_json_orderless_equal(payload, {\n            'events': [\n                {\n                    'testPath': [\n                        {'type': 'class', 'name': 'test_class_name'},\n                        {'type': 'testcase', 'name': 'test_case_name'},\n                    ],\n                    'duration': 10.123,\n                    'status': 1,\n                    'stdout': '',\n                    'stderr': '',\n                    'createdAt': timestamp1.replace(tzinfo=tzlocal()).isoformat(),\n                    'data': None,\n                    'type': 'case',\n                },\n                {\n                    'testPath': [\n                        {'type': 'class', 'name': 'test_class_name2'},\n                        {'type': 'testcase', 'name': 'test_case_name2'},\n                    ],\n                    'duration': 12.345,\n                    'status': 1,\n                    'stdout': '',\n                    'stderr': '',\n                    'createdAt': timestamp2.replace(tzinfo=tzlocal()).isoformat(),\n                    'data': None,\n                    'type': 'case',\n                },\n            ],\n            \"testRunner\": \"raw\",\n            \"group\": \"\",\n            \"noBuild\": False,\n            \"flavors\": [],\n            \"testSuite\": \"\",\n        })",
+          "triple_sequences": [
+            {
+              "action_api": "tempfile.TemporaryDirectory()",
+              "action_description": "Creates temporary directory and returns its path",
+              "action_id": "create_temp_dir",
+              "object": "",
+              "object_description": "Temporary directory",
+              "object_id": "temporary_directory",
+              "intention_description": "Create temporary directory",
+              "intention_id": "create_temporary_directory"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "tempdir, 'tests.xml'",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "tempdir, 'tests_2.xml'",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "dateutil.parser.parse()",
+              "action_description": "Parses string into datetime object",
+              "action_id": "parse_datetime",
+              "object": "\"2021-10-05T12:34:00\"",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "dateutil.parser.parse()",
+              "action_description": "Parses string into datetime object",
+              "action_id": "parse_datetime",
+              "object": "\"2021-10-05T12:34:56\"",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "test_path_file, 'w'",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "file.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'\\n'.join([...]) + '\\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "test_path_file2, 'w'",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "file.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'\\n'.join([...]) + '\\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "write_build()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "self.build_name",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "self.cli()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "'record', 'tests', 'raw', test_path_file, test_path_file2, mix_stderr=False",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "gzip.decompress(self.find_request('/events').request.body).decode()",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "gzip.decompress()",
+              "action_description": "Decompresses zlib-compressed data",
+              "action_id": "decompress_data_zlib",
+              "object": "self.find_request('/events').request.body",
+              "object_description": "Decompressed data",
+              "object_id": "decompressed_data",
+              "intention_description": "Decompress zlib data",
+              "intention_id": "decompress_zlib_data"
+            },
+            {
+              "action_api": "str.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "del payload['metadata']",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "payload['metadata']",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Delete file content",
+              "intention_id": "delete_file_content"
+            },
+            {
+              "action_api": "self.assert_json_orderless_equal()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "payload, {...}",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

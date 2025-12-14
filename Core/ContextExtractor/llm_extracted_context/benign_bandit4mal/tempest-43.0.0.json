@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "tempest-43.0.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "ssh.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tempest-43.0.0/tempest-43.0.0/tempest/lib/common/ssh.py",
+    "line_number": "214",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "213\t                    if channel.recv_ready():\n214\t                        out_chunk = channel.recv(self.buf_size)\n215\t                        out_data_chunks += out_chunk,",
+    "context_snippet": "def exec_command(self, cmd, encoding=\"utf-8\"):\n    \"\"\"Execute the specified command on the server\n\n    Note that this method is reading whole command outputs to memory, thus\n    shouldn't be used for large outputs.\n\n    :param str cmd: Command to run at remote server.\n    :param str encoding: Encoding for result from paramiko.\n                         Result will not be decoded if None.\n    :returns: data read from standard output of the command.\n    :raises: SSHExecCommandFailed if command returns nonzero\n             status. The exception contains command status stderr content.\n    :raises: TimeoutException if cmd doesn't end when timeout expires.\n    \"\"\"\n    ssh = self._get_ssh_connection()\n    transport = ssh.get_transport()\n    with transport.open_session() as channel:\n        channel.fileno()  # Register event pipe\n        channel.exec_command(cmd)\n        channel.shutdown_write()\n\n        # If the executing host is linux-based, poll the channel\n        if self._can_system_poll():\n            out_data_chunks = []\n            err_data_chunks = []\n            poll = select.poll()\n            poll.register(channel, select.POLLIN)\n            start_time = time.time()\n\n            while True:\n                ready = poll.poll(self.channel_timeout)\n                if not any(ready):\n                    if not self._is_timed_out(start_time):\n                        continue\n                    raise exceptions.TimeoutException(\n                        \"Command: '{0}' executed on host '{1}'.\".format(\n                            cmd, self.host))\n                if not ready[0]:  # If there is nothing to read.\n                    continue\n                out_chunk = err_chunk = None\n                if channel.recv_ready():\n                    out_chunk = channel.recv(self.buf_size)\n                    out_data_chunks += out_chunk,\n                if channel.recv_stderr_ready():\n                    err_chunk = channel.recv_stderr(self.buf_size)\n                    err_data_chunks += err_chunk,\n                if not err_chunk and not out_chunk:\n                    break\n            out_data = b''.join(out_data_chunks)\n            err_data = b''.join(err_data_chunks)\n        # Just read from the channels\n        else:\n            out_file = channel.makefile('rb', self.buf_size)\n            err_file = channel.makefile_stderr('rb', self.buf_size)\n            out_data = out_file.read()\n            err_data = err_file.read()\n        if encoding:\n            out_data = out_data.decode(encoding)\n            err_data = err_data.decode(encoding)\n\n        exit_status = channel.recv_exit_status()\n\n    ssh.close()\n\n    if 0 != exit_status:\n        raise exceptions.SSHExecCommandFailed(\n            command=cmd, exit_status=exit_status,\n            stderr=err_data, stdout=out_data)\n    return out_data",
+    "hash_value": "7b221e39dfa5467dab971bdea5433529"
+  }
+]

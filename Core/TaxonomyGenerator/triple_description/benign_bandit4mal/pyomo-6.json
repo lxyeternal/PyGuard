@@ -1,0 +1,556 @@
+{
+  "metadata": {
+    "package_name": "pyomo-6",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/pyomo-6.9.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "util.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/scripting/util.py",
+      "line_number": "429",
+      "type_description": "B814:read",
+      "context_snippet": "def create_model(data):\n    \"\"\"\n    Create instance of Pyomo model.\n\n    Return:\n        model:      Model object.\n        instance:   Problem instance.\n        symbol_map: Symbol map created when writing model to a file.\n        filename:    Filename that a model instance was written to.\n    \"\"\"\n    #\n    if not data.options.runtime.logging == 'quiet':\n        sys.stdout.write('[%8.2f] Creating model\\n' % (time.time() - start_time))\n        sys.stdout.flush()\n    #\n    if data.options.runtime.profile_memory >= 1 and pympler_available:\n        global memory_data\n        mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n        data.local.max_memory = mem_used\n        print(\"   Total memory = %d bytes prior to model construction\" % mem_used)\n    #\n    # Find the Model objects\n    #\n    _models = {}\n    _model_IDS = set()\n    for _name, _obj in data.local.usermodel.__dict__.items():\n        if isinstance(_obj, Model) and id(_obj) not in _model_IDS:\n            _models[_name] = _obj\n            _model_IDS.add(id(_obj))\n    model_name = data.options.model.object_name\n    if len(_models) == 1:\n        _name = list(_models.keys())[0]\n        if model_name is None:\n            model_name = _name\n        elif model_name != _name:\n            msg = \"Model '%s' is not defined in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n    elif len(_models) > 1:\n        if model_name is None:\n            msg = \"Multiple models defined in file '%s'!\"\n            raise SystemExit(msg % data.options.model.filename)\n        elif not model_name in _models:\n            msg = \"Unknown model '%s' in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n\n    ep = ExtensionPoint(IPyomoScriptCreateModel)\n\n    if model_name is None:\n        if len(ep) == 0:\n            msg = (\n                \"A model is not defined and the 'pyomo_create_model' is not \"\n                \"provided in module %s\"\n            )\n            raise SystemExit(msg % data.options.model.filename)\n        elif len(ep) > 1:\n            msg = (\n                'Multiple model construction plugins have been registered in module %s!'\n            )\n            raise SystemExit(msg % data.options.model.filename)\n        else:\n            model_options = data.options.model.options.value()\n            tick = time.time()\n            model = ep.service().apply(\n                options=Bunch(**data.options), model_options=Bunch(**model_options)\n            )\n            if data.options.runtime.report_timing is True:\n                print(\n                    \"      %6.2f seconds required to construct instance\"\n                    % (time.time() - tick)\n                )\n                data.local.time_initial_import = None\n                tick = time.time()\n    else:\n        if model_name not in _models:\n            msg = \"Model '%s' is not defined in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n        model = _models[model_name]\n        if model is None:\n            msg = \"'%s' object is 'None' in module %s\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n        elif len(ep) > 0:\n            msg = (\n                \"Model construction function 'create_model' defined in \"\n                \"file '%s', but model is already constructed!\"\n            )\n            raise SystemExit(msg % data.options.model.filename)\n\n    #\n    # Print model\n    #\n    for ep in ExtensionPoint(IPyomoScriptPrintModel):\n        ep.apply(options=data.options, model=model)\n\n    #\n    # Create Problem Instance\n    #\n    ep = ExtensionPoint(IPyomoScriptCreateDataPortal)\n    if len(ep) > 1:\n        msg = 'Multiple model data construction plugins have been registered!'\n        raise SystemExit(msg)\n\n    if len(ep) == 1:\n        modeldata = ep.service().apply(options=data.options, model=model)\n    else:\n        modeldata = DataPortal()\n\n    if model._constructed:\n        #\n        # TODO: use a better test for ConcreteModel\n        #\n        instance = model\n        if (\n            data.options.runtime.report_timing is True\n            and not data.local.time_initial_import is None\n        ):\n            print(\n                \"      %6.2f seconds required to construct instance\"\n                % (data.local.time_initial_import)\n            )\n    else:\n        tick = time.time()\n        if len(data.options.data.files) > 1:\n            #\n            # Load a list of *.dat files\n            #\n            for file in data.options.data.files:\n                suffix = (file).split(\".\")[-1]\n                if suffix != \"dat\":\n                    msg = (\n                        'When specifying multiple data files, they must all '\n                        'be *.dat files.  File specified: %s'\n                    )\n                    raise SystemExit(msg % str(file))\n\n                modeldata.load(filename=file, model=model)\n\n            instance = model.create_instance(\n                modeldata,\n                namespaces=data.options.data.namespaces,\n                profile_memory=data.options.runtime.profile_memory,\n                report_timing=data.options.runtime.report_timing,\n            )\n\n        elif len(data.options.data.files) == 1:\n            #\n            # Load a *.dat file or process a *.py data file\n            #\n            suffix = (data.options.data.files[0]).split(\".\")[-1].lower()\n            if suffix == \"dat\":\n                instance = model.create_instance(\n                    data.options.data.files[0],\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            elif suffix == \"py\":\n                userdata = import_file(data.options.data.files[0], clear_cache=True)\n                if \"modeldata\" in dir(userdata):\n                    if len(ep) == 1:\n                        msg = (\n                            \"Cannot apply 'pyomo_create_modeldata' and use the\"\n                            \" 'modeldata' object that is provided in the model\"\n                        )\n                        raise SystemExit(msg)\n\n                    if userdata.modeldata is None:\n                        msg = \"'modeldata' object is 'None' in module %s\"\n                        raise SystemExit(msg % str(data.options.data.files[0]))\n\n                    modeldata = userdata.modeldata\n\n                else:\n                    if len(ep) == 0:\n                        msg = (\n                            \"Neither 'modeldata' nor 'pyomo_create_dataportal' \"\n                            'is defined in module %s'\n                        )\n                        raise SystemExit(msg % str(data.options.data.files[0]))\n\n                modeldata.read(model)\n                instance = model.create_instance(\n                    modeldata,\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            elif suffix == \"yml\" or suffix == 'yaml':\n                modeldata = yaml.load(\n                    open(data.options.data.files[0]), **yaml_load_args\n                )\n                instance = model.create_instance(\n                    modeldata,\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            else:\n                raise ValueError(\n                    \"Unknown data file type: \" + data.options.data.files[0]\n                )\n        else:\n            instance = model.create_instance(\n                modeldata,\n                namespaces=data.options.data.namespaces,\n                profile_memory=data.options.runtime.profile_memory,\n                report_timing=data.options.runtime.report_timing,\n            )\n        if data.options.runtime.report_timing is True:\n            print(\n                \"      %6.2f seconds required to construct instance\"\n                % (time.time() - tick)\n            )\n\n    #\n    modify_start_time = time.time()\n    for ep in ExtensionPoint(IPyomoScriptModifyInstance):\n        if data.options.runtime.report_timing is True:\n            tick = time.time()\n        ep.apply(options=data.options, model=model, instance=instance)\n        if data.options.runtime.report_timing is True:\n            print(\"      %6.2f seconds to apply %s\" % (time.time() - tick, type(ep)))\n            tick = time.time()\n    #\n    for transformation in data.options.transform:\n        with TransformationFactory(transformation) as xfrm:\n            instance = xfrm.create_using(instance)\n            if instance is None:\n                raise SystemExit(\n                    \"Unexpected error while applying \"\n                    \"transformation '%s'\" % transformation\n                )\n    #\n    if data.options.runtime.report_timing is True:\n        total_time = time.time() - modify_start_time\n        print(\"      %6.2f seconds required for problem transformations\" % total_time)\n\n    if is_debug_set(logger):\n        print(\"MODEL INSTANCE\")\n        instance.pprint()\n        print(\"\")\n\n    for ep in ExtensionPoint(IPyomoScriptPrintInstance):\n        ep.apply(options=data.options, instance=instance)\n\n    fname = None\n    smap_id = None\n    if not data.options.model.save_file is None:\n        if data.options.runtime.report_timing is True:\n            write_start_time = time.time()\n\n        if data.options.model.save_file == True:\n            if data.local.model_format in (ProblemFormat.cpxlp, ProblemFormat.lpxlp):\n                fname = (data.options.data.files[0])[:-3] + 'lp'\n            else:\n                fname = (data.options.data.files[0])[:-3] + str(data.local.model_format)\n            format = data.local.model_format\n        else:\n            fname = data.options.model.save_file\n            format = data.options.model.save_format\n\n        io_options = {}\n        if data.options.model.symbolic_solver_labels:\n            io_options['symbolic_solver_labels'] = True\n        if data.options.model.file_determinism is not None:\n            io_options['file_determinism'] = data.options.model.file_determinism\n        (fname, smap_id) = instance.write(\n            filename=fname, format=format, io_options=io_options\n        )\n\n        if not data.options.runtime.logging == 'quiet':\n            if not os.path.exists(fname):\n                print(\"ERROR: file \" + fname + \" has not been created!\")\n            else:\n                print(\"Model written to file '\" + str(fname) + \"'\")\n\n        if data.options.runtime.report_timing is True:\n            total_time = time.time() - write_start_time\n            print(\"      %6.2f seconds required to write file\" % total_time)\n\n        if data.options.runtime.profile_memory >= 2 and pympler_available:\n            print(\"\")\n            print(\"      Summary of objects following file output\")\n            post_file_output_summary = pympler.summary.summarize(\n                pympler.muppy.get_objects()\n            )\n            pympler.summary.print_(post_file_output_summary, limit=100)\n\n            print(\"\")\n\n    for ep in ExtensionPoint(IPyomoScriptSaveInstance):\n        ep.apply(options=data.options, instance=instance)\n\n    if data.options.runtime.profile_memory >= 1 and pympler_available:\n        mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n        if mem_used > data.local.max_memory:\n            data.local.max_memory = mem_used\n        print(\"   Total memory = %d bytes following Pyomo instance creation\" % mem_used)\n\n    return Bunch(\n        model=model,\n        instance=instance,\n        smap_id=smap_id,\n        filename=fname,\n        local=data.local,\n    )",
+      "hash_value": "70c8f8da3c521984e8e6272c94bbaf84",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def create_model(data):\n    \"\"\"\n    Create instance of Pyomo model.\n\n    Return:\n        model:      Model object.\n        instance:   Problem instance.\n        symbol_map: Symbol map created when writing model to a file.\n        filename:    Filename that a model instance was written to.\n    \"\"\"\n    #\n    if not data.options.runtime.logging == 'quiet':\n        sys.stdout.write('[%8.2f] Creating model\\n' % (time.time() - start_time))\n        sys.stdout.flush()\n    #\n    if data.options.runtime.profile_memory >= 1 and pympler_available:\n        global memory_data\n        mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n        data.local.max_memory = mem_used\n        print(\"   Total memory = %d bytes prior to model construction\" % mem_used)\n    #\n    # Find the Model objects\n    #\n    _models = {}\n    _model_IDS = set()\n    for _name, _obj in data.local.usermodel.__dict__.items():\n        if isinstance(_obj, Model) and id(_obj) not in _model_IDS:\n            _models[_name] = _obj\n            _model_IDS.add(id(_obj))\n    model_name = data.options.model.object_name\n    if len(_models) == 1:\n        _name = list(_models.keys())[0]\n        if model_name is None:\n            model_name = _name\n        elif model_name != _name:\n            msg = \"Model '%s' is not defined in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n    elif len(_models) > 1:\n        if model_name is None:\n            msg = \"Multiple models defined in file '%s'!\"\n            raise SystemExit(msg % data.options.model.filename)\n        elif not model_name in _models:\n            msg = \"Unknown model '%s' in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n\n    ep = ExtensionPoint(IPyomoScriptCreateModel)\n\n    if model_name is None:\n        if len(ep) == 0:\n            msg = (\n                \"A model is not defined and the 'pyomo_create_model' is not \"\n                \"provided in module %s\"\n            )\n            raise SystemExit(msg % data.options.model.filename)\n        elif len(ep) > 1:\n            msg = (\n                'Multiple model construction plugins have been registered in module %s!'\n            )\n            raise SystemExit(msg % data.options.model.filename)\n        else:\n            model_options = data.options.model.options.value()\n            tick = time.time()\n            model = ep.service().apply(\n                options=Bunch(**data.options), model_options=Bunch(**model_options)\n            )\n            if data.options.runtime.report_timing is True:\n                print(\n                    \"      %6.2f seconds required to construct instance\"\n                    % (time.time() - tick)\n                )\n                data.local.time_initial_import = None\n                tick = time.time()\n    else:\n        if model_name not in _models:\n            msg = \"Model '%s' is not defined in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n        model = _models[model_name]\n        if model is None:\n            msg = \"'%s' object is 'None' in module %s\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n        elif len(ep) > 0:\n            msg = (\n                \"Model construction function 'create_model' defined in \"\n                \"file '%s', but model is already constructed!\"\n            )\n            raise SystemExit(msg % data.options.model.filename)\n\n    #\n    # Print model\n    #\n    for ep in ExtensionPoint(IPyomoScriptPrintModel):\n        ep.apply(options=data.options, model=model)\n\n    #\n    # Create Problem Instance\n    #\n    ep = ExtensionPoint(IPyomoScriptCreateDataPortal)\n    if len(ep) > 1:\n        msg = 'Multiple model data construction plugins have been registered!'\n        raise SystemExit(msg)\n\n    if len(ep) == 1:\n        modeldata = ep.service().apply(options=data.options, model=model)\n    else:\n        modeldata = DataPortal()\n\n    if model._constructed:\n        #\n        # TODO: use a better test for ConcreteModel\n        #\n        instance = model\n        if (\n            data.options.runtime.report_timing is True\n            and not data.local.time_initial_import is None\n        ):\n            print(\n                \"      %6.2f seconds required to construct instance\"\n                % (data.local.time_initial_import)\n            )\n    else:\n        tick = time.time()\n        if len(data.options.data.files) > 1:\n            #\n            # Load a list of *.dat files\n            #\n            for file in data.options.data.files:\n                suffix = (file).split(\".\")[-1]\n                if suffix != \"dat\":\n                    msg = (\n                        'When specifying multiple data files, they must all '\n                        'be *.dat files.  File specified: %s'\n                    )\n                    raise SystemExit(msg % str(file))\n\n                modeldata.load(filename=file, model=model)\n\n            instance = model.create_instance(\n                modeldata,\n                namespaces=data.options.data.namespaces,\n                profile_memory=data.options.runtime.profile_memory,\n                report_timing=data.options.runtime.report_timing,\n            )\n\n        elif len(data.options.data.files) == 1:\n            #\n            # Load a *.dat file or process a *.py data file\n            #\n            suffix = (data.options.data.files[0]).split(\".\")[-1].lower()\n            if suffix == \"dat\":\n                instance = model.create_instance(\n                    data.options.data.files[0],\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            elif suffix == \"py\":\n                userdata = import_file(data.options.data.files[0], clear_cache=True)\n                if \"modeldata\" in dir(userdata):\n                    if len(ep) == 1:\n                        msg = (\n                            \"Cannot apply 'pyomo_create_modeldata' and use the\"\n                            \" 'modeldata' object that is provided in the model\"\n                        )\n                        raise SystemExit(msg)\n\n                    if userdata.modeldata is None:\n                        msg = \"'modeldata' object is 'None' in module %s\"\n                        raise SystemExit(msg % str(data.options.data.files[0]))\n\n                    modeldata = userdata.modeldata\n\n                else:\n                    if len(ep) == 0:\n                        msg = (\n                            \"Neither 'modeldata' nor 'pyomo_create_dataportal' \"\n                            'is defined in module %s'\n                        )\n                        raise SystemExit(msg % str(data.options.data.files[0]))\n\n                modeldata.read(model)\n                instance = model.create_instance(\n                    modeldata,\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            elif suffix == \"yml\" or suffix == 'yaml':\n                modeldata = yaml.load(\n                    open(data.options.data.files[0]), **yaml_load_args\n                )\n                instance = model.create_instance(\n                    modeldata,\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            else:\n                raise ValueError(\n                    \"Unknown data file type: \" + data.options.data.files[0]\n                )\n        else:\n            instance = model.create_instance(\n                modeldata,\n                namespaces=data.options.data.namespaces,\n                profile_memory=data.options.runtime.profile_memory,\n                report_timing=data.options.runtime.report_timing,\n            )\n        if data.options.runtime.report_timing is True:\n            print(\n                \"      %6.2f seconds required to construct instance\"\n                % (time.time() - tick)\n            )\n\n    #\n    modify_start_time = time.time()\n    for ep in ExtensionPoint(IPyomoScriptModifyInstance):\n        if data.options.runtime.report_timing is True:\n            tick = time.time()\n        ep.apply(options=data.options, model=model, instance=instance)\n        if data.options.runtime.report_timing is True:\n            print(\"      %6.2f seconds to apply %s\" % (time.time() - tick, type(ep)))\n            tick = time.time()\n    #\n    for transformation in data.options.transform:\n        with TransformationFactory(transformation) as xfrm:\n            instance = xfrm.create_using(instance)\n            if instance is None:\n                raise SystemExit(\n                    \"Unexpected error while applying \"\n                    \"transformation '%s'\" % transformation\n                )\n    #\n    if data.options.runtime.report_timing is True:\n        total_time = time.time() - modify_start_time\n        print(\"      %6.2f seconds required for problem transformations\" % total_time)\n\n    if is_debug_set(logger):\n        print(\"MODEL INSTANCE\")\n        instance.pprint()\n        print(\"\")\n\n    for ep in ExtensionPoint(IPyomoScriptPrintInstance):\n        ep.apply(options=data.options, instance=instance)\n\n    fname = None\n    smap_id = None\n    if not data.options.model.save_file is None:\n        if data.options.runtime.report_timing is True:\n            write_start_time = time.time()\n\n        if data.options.model.save_file == True:\n            if data.local.model_format in (ProblemFormat.cpxlp, ProblemFormat.lpxlp):\n                fname = (data.options.data.files[0])[:-3] + 'lp'\n            else:\n                fname = (data.options.data.files[0])[:-3] + str(data.local.model_format)\n            format = data.local.model_format\n        else:\n            fname = data.options.model.save_file\n            format = data.options.model.save_format\n\n        io_options = {}\n        if data.options.model.symbolic_solver_labels:\n            io_options['symbolic_solver_labels'] = True\n        if data.options.model.file_determinism is not None:\n            io_options['file_determinism'] = data.options.model.file_determinism\n        (fname, smap_id) = instance.write(\n            filename=fname, format=format, io_options=io_options\n        )\n\n        if not data.options.runtime.logging == 'quiet':\n            if not os.path.exists(fname):\n                print(\"ERROR: file \" + fname + \" has not been created!\")\n            else:\n                print(\"Model written to file '\" + str(fname) + \"'\")\n\n        if data.options.runtime.report_timing is True:\n            total_time = time.time() - write_start_time\n            print(\"      %6.2f seconds required to write file\" % total_time)\n\n        if data.options.runtime.profile_memory >= 2 and pympler_available:\n            print(\"\")\n            print(\"      Summary of objects following file output\")\n            post_file_output_summary = pympler.summary.summarize(\n                pympler.muppy.get_objects()\n            )\n            pympler.summary.print_(post_file_output_summary, limit=100)\n\n            print(\"\")\n\n    for ep in ExtensionPoint(IPyomoScriptSaveInstance):\n        ep.apply(options=data.options, instance=instance)\n\n    if data.options.runtime.profile_memory >= 1 and pympler_available:\n        mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n        if mem_used > data.local.max_memory:\n            data.local.max_memory = mem_used\n        print(\"   Total memory = %d bytes following Pyomo instance creation\" % mem_used)\n\n    return Bunch(\n        model=model,\n        instance=instance,\n        smap_id=smap_id,\n        filename=fname,\n        local=data.local,\n    )",
+          "triple_sequences": [
+            {
+              "action_api": "sys.stdout.write()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "'[%8.2f] Creating model\\n' % (time.time() - start_time)",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "sys.stdout.flush()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "pympler.muppy.get_objects()",
+              "action_description": "Retrieves system virtual memory statistics",
+              "action_id": "get_virtual_memory",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "pympler.muppy.get_size()",
+              "action_description": "Retrieves system virtual memory statistics",
+              "action_id": "get_virtual_memory",
+              "object": "pympler.muppy.get_objects()",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"   Total memory = %d bytes prior to model construction\" % mem_used",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "_obj, Model",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "id()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "_obj",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "raise SystemExit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "msg % (model_name, data.options.model.filename)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "ExtensionPoint()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "IPyomoScriptCreateModel",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "ep.service().apply()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "options=Bunch(**data.options), model_options=Bunch(**model_options)",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"      %6.2f seconds required to construct instance\" % (time.time() - tick)",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "raise SystemExit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "msg % (model_name, data.options.model.filename)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "ExtensionPoint()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "IPyomoScriptPrintModel",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "ep.apply()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "options=data.options, model=model",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "ExtensionPoint()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "IPyomoScriptCreateDataPortal",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "raise SystemExit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "msg",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "ep.service().apply()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "options=data.options, model=model",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "DataPortal()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "raise SystemExit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "msg % str(file)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "modeldata.load()",
+              "action_description": "Opens file for reading",
+              "action_id": "basic_read_operations",
+              "object": "filename=file, model=model",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "model.create_instance()",
+              "action_description": "Creates child process",
+              "action_id": "create_child_process",
+              "object": "modeldata, namespaces=data.options.data.namespaces, profile_memory=data.options.runtime.profile_memory, report_timing=data.options.runtime.report_timing",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "import_file()",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "data.options.data.files[0], clear_cache=True",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Import module dynamically",
+              "intention_id": "import_module_dynamically"
+            },
+            {
+              "action_api": "dir()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "userdata",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "raise SystemExit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "msg",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "modeldata.read()",
+              "action_description": "Opens file for reading",
+              "action_id": "basic_read_operations",
+              "object": "model",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "yaml.load()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "open(data.options.data.files[0]), **yaml_load_args",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "data.options.data.files[0]",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "raise ValueError()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "\"Unknown data file type: \" + data.options.data.files[0]",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"      %6.2f seconds required to construct instance\" % (time.time() - tick)",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "ExtensionPoint()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "IPyomoScriptModifyInstance",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "ep.apply()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "options=data.options, model=model, instance=instance",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"      %6.2f seconds to apply %s\" % (time.time() - tick, type(ep))",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "TransformationFactory()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "transformation",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "xfrm.create_using()",
+              "action_description": "Creates child process",
+              "action_id": "create_child_process",
+              "object": "instance",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "raise SystemExit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "\"Unexpected error while applying transformation '%s'\" % transformation",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"      %6.2f seconds required for problem transformations\" % total_time",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "is_debug_set()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "logger",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine required module presence",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "instance.pprint()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "ExtensionPoint()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "IPyomoScriptPrintInstance",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "ep.apply()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "options=data.options, instance=instance",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "instance.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "filename=fname, format=format, io_options=io_options",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "fname",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check file existence",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"ERROR: file \" + fname + \" has not been created!\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"Model written to file '\" + str(fname) + \"'\"",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"      %6.2f seconds required to write file\" % total_time",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "pympler.summary.summarize()",
+              "action_description": "Retrieves system virtual memory statistics",
+              "action_id": "get_virtual_memory",
+              "object": "pympler.muppy.get_objects()",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "pympler.summary.print_()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "post_file_output_summary, limit=100",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "ExtensionPoint()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "IPyomoScriptSaveInstance",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import required module",
+              "intention_id": "import_required_module"
+            },
+            {
+              "action_api": "ep.apply()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "options=data.options, instance=instance",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "pympler.muppy.get_objects()",
+              "action_description": "Retrieves system virtual memory statistics",
+              "action_id": "get_virtual_memory",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "pympler.muppy.get_size()",
+              "action_description": "Retrieves system virtual memory statistics",
+              "action_id": "get_virtual_memory",
+              "object": "pympler.muppy.get_objects()",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Retrieves standard output stream object",
+              "action_id": "get_stdout_stream",
+              "object": "\"   Total memory = %d bytes following Pyomo instance creation\" % mem_used",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

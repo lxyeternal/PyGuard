@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "vessl-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/vessl-0.1.195.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "kernel_cluster.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/vessl-0.1.195/vessl-0.1.195/vessl/kernel_cluster.py",
+      "line_number": "127",
+      "type_description": "B807:close",
+      "context_snippet": "def create_cluster(\n    param: CreateClusterParam,\n) -> ResponseKernelClusterInfo:\n    \"\"\"Create a VESSL cluster by installing VESSL agent to given Kubernetes\n    namespace. If you want to override the default organization, then pass\n    `organization_name` to `param`.\n\n    Args:\n        param(CreateClusterParam): Create cluster parameter.\n\n    Example:\n        ```python\n        vessl.install_cluster(\n            param=vessl.CreateClusterParam(\n                cluster_name=\"foo\",\n                ...\n            ),\n        )\n        ```\n    \"\"\"\n    agent_access_token = vessl_api.custom_cluster_key_api(\n        organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}),\n    ).access_token\n\n    logger.debug(f\"cluster name: '{param.cluster_name}'\")\n    logger.debug(f\"access token: '{agent_access_token}'\")\n\n    cluster_install_command = (\n        ClusterInstallCommandBuilder()\n        .with_kubeconfig(param.kubeconfig_path)\n        .with_cluster_name(param.cluster_name)\n        .with_provider_type(param.provider)\n        .with_namespace(param.kubernetes_namespace)\n        .with_access_token(agent_access_token)\n        .with_local_path_provisioner_enabled(param.enable_local_path_provisioner)\n        .with_longhorn_enabled(param.enable_longhorn)\n        .with_helm_values(param.extra_helm_values)\n        .with_pod_resource_path(param.pod_resource_path)\n        .build()\n    )\n\n    stream = os.popen(cluster_install_command)\n    output = stream.read()\n    if stream.close() is not None:\n        raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")\n    print(click.style(output, fg=\"blue\"))\n\n    logger.warn(\n        click.style(\n            \"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\",\n            fg=\"green\",\n        )\n    )\n    for attempts in range(18):\n        sleep(10)\n        try:\n            return vessl_api.custom_cluster_connectivity_api(\n                organization_name=_get_organization_name(\n                    **{\"organization_name\": param.organization_name}\n                ),\n                agent_access_token=agent_access_token,\n            )\n        except VesslApiException as e:\n            if e.code == \"NotFound\":\n                continue\n            raise e\n\n    raise ClusterNotFoundError(\n        \"Timeout for checking agent connection; Please check agent log for more information.\"\n    )",
+      "hash_value": "350c08e931b036344b716e912ab05747",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def create_cluster(\n    param: CreateClusterParam,\n) -> ResponseKernelClusterInfo:\n    \"\"\"Create a VESSL cluster by installing VESSL agent to given Kubernetes\n    namespace. If you want to override the default organization, then pass\n    `organization_name` to `param`.\n\n    Args:\n        param(CreateClusterParam): Create cluster parameter.\n\n    Example:\n        ```python\n        vessl.install_cluster(\n            param=vessl.CreateClusterParam(\n                cluster_name=\"foo\",\n                ...\n            ),\n        )\n        ```\n    \"\"\"\n    agent_access_token = vessl_api.custom_cluster_key_api(\n        organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}),\n    ).access_token\n\n    logger.debug(f\"cluster name: '{param.cluster_name}'\")\n    logger.debug(f\"access token: '{agent_access_token}'\")\n\n    cluster_install_command = (\n        ClusterInstallCommandBuilder()\n        .with_kubeconfig(param.kubeconfig_path)\n        .with_cluster_name(param.cluster_name)\n        .with_provider_type(param.provider)\n        .with_namespace(param.kubernetes_namespace)\n        .with_access_token(agent_access_token)\n        .with_local_path_provisioner_enabled(param.enable_local_path_provisioner)\n        .with_longhorn_enabled(param.enable_longhorn)\n        .with_helm_values(param.extra_helm_values)\n        .with_pod_resource_path(param.pod_resource_path)\n        .build()\n    )\n\n    stream = os.popen(cluster_install_command)\n    output = stream.read()\n    if stream.close() is not None:\n        raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")\n    print(click.style(output, fg=\"blue\"))\n\n    logger.warn(\n        click.style(\n            \"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\",\n            fg=\"green\",\n        )\n    )\n    for attempts in range(18):\n        sleep(10)\n        try:\n            return vessl_api.custom_cluster_connectivity_api(\n                organization_name=_get_organization_name(\n                    **{\"organization_name\": param.organization_name}\n                ),\n                agent_access_token=agent_access_token,\n            )\n        except VesslApiException as e:\n            if e.code == \"NotFound\":\n                continue\n            raise e\n\n    raise ClusterNotFoundError(\n        \"Timeout for checking agent connection; Please check agent log for more information.\"\n    )",
+          "triple_sequences": [
+            {
+              "action_api": "vessl_api.custom_cluster_key_api()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "organization_name=_get_organization_name(**{\"organization_name\": param.organization_name})",
+              "object_description": "Organization name string",
+              "object_id": "domain_name",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "ClusterInstallCommandBuilder().with_kubeconfig().with_cluster_name().with_provider_type().with_namespace().with_access_token().with_local_path_provisioner_enabled().with_longhorn_enabled().with_helm_values().with_pod_resource_path().build()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "param.kubeconfig_path, param.cluster_name, param.provider, param.kubernetes_namespace, agent_access_token, param.enable_local_path_provisioner, param.enable_longhorn, param.extra_helm_values, param.pod_resource_path",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Prepare executable string",
+              "intention_id": "prepare_executable_string"
+            },
+            {
+              "action_api": "os.popen()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "cluster_install_command",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "stream.read()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "stream.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "click.style(output, fg=\"blue\")",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "logger.warn()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "click.style(\"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\", fg=\"green\")",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "10",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "vessl_api.custom_cluster_connectivity_api()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}), agent_access_token=agent_access_token",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

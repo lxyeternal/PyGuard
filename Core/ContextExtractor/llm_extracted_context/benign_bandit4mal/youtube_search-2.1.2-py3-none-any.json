@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "youtube_search-2.1.2-py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/youtube_search-2.1.2-py3-none-any/youtube_search/__init__.py",
+    "line_number": "41",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "40\t                    res[\"id\"] = video_data.get(\"videoId\", None)\n41\t                    res[\"thumbnails\"] = [thumb.get(\"url\", None) for thumb in video_data.get(\"thumbnail\", {}).get(\"thumbnails\", [{}]) ]\n42\t                    res[\"title\"] = video_data.get(\"title\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)",
+    "context_snippet": "import requests\nimport urllib.parse\nimport json\n\n\nclass YoutubeSearch:\n    def __init__(self, search_terms: str, max_results=None):\n        self.search_terms = search_terms\n        self.max_results = max_results\n        self.videos = self._search()\n\n    def _search(self):\n        encoded_search = urllib.parse.quote_plus(self.search_terms)\n        BASE_URL = \"https://youtube.com\"\n        url = f\"{BASE_URL}/results?search_query={encoded_search}\"\n        response = requests.get(url).text\n        while \"ytInitialData\" not in response:\n            response = requests.get(url).text\n        results = self._parse_html(response)\n        if self.max_results is not None and len(results) > self.max_results:\n            return results[: self.max_results]\n        return results\n\n    def _parse_html(self, response):\n        results = []\n        start = (\n            response.index(\"ytInitialData\")\n            + len(\"ytInitialData\")\n            + 3\n        )\n        end = response.index(\"};\", start) + 1\n        json_str = response[start:end]\n        data = json.loads(json_str)\n\n        for contents in data[\"contents\"][\"twoColumnSearchResultsRenderer\"][\"primaryContents\"][\"sectionListRenderer\"][\"contents\"]:\n            for video in contents[\"itemSectionRenderer\"][\"contents\"]:\n                res = {}\n                if \"videoRenderer\" in video.keys():\n                    video_data = video.get(\"videoRenderer\", {})\n                    res[\"id\"] = video_data.get(\"videoId\", None)\n                    res[\"thumbnails\"] = [thumb.get(\"url\", None) for thumb in video_data.get(\"thumbnail\", {}).get(\"thumbnails\", [{}]) ]\n                    res[\"title\"] = video_data.get(\"title\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"long_desc\"] = video_data.get(\"descriptionSnippet\", {}).get(\"runs\", [{}])[0].get(\"text\", None)\n                    res[\"channel\"] = video_data.get(\"longBylineText\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"duration\"] = video_data.get(\"lengthText\", {}).get(\"simpleText\", 0)\n                    res[\"views\"] = video_data.get(\"viewCountText\", {}).get(\"simpleText\", 0)\n                    res[\"publish_time\"] = video_data.get(\"publishedTimeText\", {}).get(\"simpleText\", 0)\n                    res[\"url_suffix\"] = video_data.get(\"navigationEndpoint\", {}).get(\"commandMetadata\", {}).get(\"webCommandMetadata\", {}).get(\"url\", None)\n                    results.append(res)\n\n            if results:\n                return results\n        return results",
+    "hash_value": "646f6423833c5c7fa4fdf4f7a473744d"
+  }
+]

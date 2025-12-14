@@ -1,0 +1,148 @@
+[
+  {
+    "metadata": {
+      "package_name": "assemblyline_ui-4.6.0.dev5-py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "federated_lookup.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/assemblyline_ui-4.6.0.dev5-py3-none-any/assemblyline_ui/api/v4/federated_lookup.py",
+    "line_number": "302",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "301\n302\t    with APMAwareThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:\n303\t        # create searches for external sources",
+    "code_snippet": "@federated_lookup_api.route(\"/enrich/<tag_name>/<tag>/\", methods=[\"GET\"])\n@api_login(require_role=[ROLES.external_query])\ndef enrich_tags(tag_name: str, tag: str, **kwargs):\n    \"\"\"Search other services for additional information to enrich AL.\n\n    Variables:\n    tag_name => Tag to look up in the external system.\n    tag => Tag value to lookup. *Must be double URL encoded.*\n\n    Arguments: (optional)\n    classification  => Classification of the tag [Default: minimum configured classification]\n    sources         => | separated list of data sources. If empty, all configured sources are used.\n    max_timeout     => Maximum execution time for the call in seconds\n    limit           => limit the amount of returned results counted per source\n\n\n    Data Block:\n    None\n\n    API call examples:\n    /api/v4/federated_lookup/enrich/url/http%3A%2F%2Fmalicious.domain%2Fbad/\n    /api/v4/federated_lookup/enrich/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=vt|malware_bazar\n\n    Result example:\n    {                           # Dictionary of data source queried\n        \"vt\": {\n            \"error\": null,          # Error message returned by data source\n            \"items\": [              # list of results from the source\n                {\n                    \"link\": \"https://www.virustotal.com/gui/url/<id>\",   # link to results\n                    \"count\": 1,                                          # number of hits from the search\n                    \"classification\": \"TLP:C\",                           # classification of the search result\n                    \"confirmed\": true,                                   # Is the maliciousness attribution confirmed\n                    \"description\": \"\",                                   # Description of the findings\n                    \"malicious\": false,                                  # Is the file found malicious or not\n                    \"enrichment\": [                                      # Semi structured details about the tag\n                        {\n                            \"group\": \"yara_hits\",\n                            \"name\": \"https://github.com/my/yararules\", \"name_description\": \"source of rule\",\n                            \"value\": \"Base64_encoded_url\", \"value_description\": \"detects presence of b64 encoded URIs\",\n                        }\n                    ],\n                },\n                ...,\n            ],\n        },\n        ...,\n    }\n    \"\"\"\n    # re-encode the tag after being decoded going through flask/wsgi route\n    tag = ul.quote(tag, safe=\"\")\n    user = kwargs[\"user\"]\n    qp = parse_qp(request=request)\n    query_sources = qp[\"query_sources\"]\n\n    # validate what sources the user is allowed to submit requests to.\n    # this must first be checked against what systems the user is allowed to see\n    # additional tag level checking is then done later to provide feedback to user\n    available_sources = [\n        x for x in getattr(config.ui, \"external_sources\", [])\n        if Classification.is_accessible(user[\"classification\"], x.classification)\n    ]\n\n    with APMAwareThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:\n        # create searches for external sources\n        future_searches = {\n            executor.submit(\n                query_external,\n                query_type=\"details\",\n                user=user,\n                source=source,\n                tag_name=tag_name,\n                tag=tag,\n                tag_classification=qp[\"tag_classification\"],\n                limit=qp[\"limit\"],\n                timeout=qp[\"max_timeout\"]\n            ): source.name\n            for source in available_sources\n            if not query_sources or source.name in query_sources\n        }\n\n        # results = {src: {\"error\": str, \"items\": list}}\n        try:\n            results = {\n                future_searches[future]: future.result()\n                for future in concurrent.futures.as_completed(future_searches, timeout=qp[\"max_timeout\"])\n                if future.result() is not None\n            }\n        except concurrent.futures.TimeoutError:\n            # TimeoutError is raised after set time, not after the task is finished.\n            # This means tasks that have not completed are still running, they are not killed due to timeout.\n\n            # save results for anything that has finished\n            results = {}\n            for f, name in future_searches.items():\n                if f.done:\n                    results[name] = f.result()\n\n    return make_api_response(results)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ul.quote",
+        "parse_qp",
+        "getattr",
+        "Classification.is_accessible",
+        "os.cpu_count",
+        "APMAwareThreadPoolExecutor.__enter__",
+        "APMAwareThreadPoolExecutor.submit",
+        "concurrent.futures.as_completed",
+        "concurrent.futures.Future.result",
+        "concurrent.futures.Future.done",
+        "concurrent.futures.Future.result",
+        "make_api_response"
+      ],
+      "api_sequence_with_args": [
+        "ul.quote(tag, safe=\"\")",
+        "parse_qp(request=request)",
+        "getattr(config.ui, \"external_sources\", [])",
+        "Classification.is_accessible(user[\"classification\"], x.classification)",
+        "os.cpu_count()",
+        "APMAwareThreadPoolExecutor.__enter__()",
+        "APMAwareThreadPoolExecutor.submit(query_external, query_type=\"details\", user=user, source=source, tag_name=tag_name, tag=tag, tag_classification=qp[\"tag_classification\"], limit=qp[\"limit\"], timeout=qp[\"max_timeout\"])",
+        "concurrent.futures.as_completed(future_searches, timeout=qp[\"max_timeout\"])",
+        "concurrent.futures.Future.result()",
+        "concurrent.futures.Future.done",
+        "concurrent.futures.Future.result()",
+        "make_api_response(results)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ul.quote",
+          "id": "percent_encode_url",
+          "description": "Percent-encodes bytes for use in URL",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "parse_qp",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "Classification.is_accessible",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "APMAwareThreadPoolExecutor.__enter__",
+          "id": "init_thread_pool",
+          "description": "Initializes thread pool executor with specified worker count",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "APMAwareThreadPoolExecutor.submit",
+          "id": "submit_thread_function",
+          "description": "Submits function to thread pool for execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "concurrent.futures.as_completed",
+          "id": "list_threads",
+          "description": "Lists all currently alive threads",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "concurrent.futures.Future.result",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "concurrent.futures.Future.done",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "concurrent.futures.Future.result",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "make_api_response",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "@federated_lookup_api.route(\"/enrich/<tag_name>/<tag>/\", methods=[\"GET\"])\n@api_login(require_role=[ROLES.external_query])\ndef enrich_tags(tag_name: str, tag: str, **kwargs):\n    # re-encode the tag after being decoded going through flask/wsgi route\n    tag = ul.quote(tag, safe=\"\")\n    user = kwargs[\"user\"]\n    qp = parse_qp(request=request)\n    query_sources = qp[\"query_sources\"]\n\n    available_sources = [\n        x for x in getattr(config.ui, \"external_sources\", [])\n        if Classification.is_accessible(user[\"classification\"], x.classification)\n    ]\n\n    with APMAwareThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:\n        future_searches = {\n            executor.submit(\n                query_external,\n                query_type=\"details\",\n                user=user,\n                source=source,\n                tag_name=tag_name,\n                tag=tag,\n                tag_classification=qp[\"tag_classification\"],\n                limit=qp[\"limit\"],\n                timeout=qp[\"max_timeout\"]\n            ): source.name\n            for source in available_sources\n            if not query_sources or source.name in query_sources\n        }\n\n        try:\n            results = {\n                future_searches[future]: future.result()\n                for future in concurrent.futures.as_completed(future_searches, timeout=qp[\"max_timeout\"])\n                if future.result() is not None\n            }\n        except concurrent.futures.TimeoutError:\n            results = {}\n            for f, name in future_searches.items():\n                if f.done:\n                    results[name] = f.result()\n\n    return make_api_response(results)"
+    }
+  }
+]

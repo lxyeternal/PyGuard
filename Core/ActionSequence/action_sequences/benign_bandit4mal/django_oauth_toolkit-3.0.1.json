@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "django_oauth_toolkit-3.0.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_hybrid.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/django_oauth_toolkit-3.0.1/django_oauth_toolkit-3.0.1/tests/test_hybrid.py",
+    "line_number": "930",
+    "type_description": "B802:b64encode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "929\t        user_pass = \"{0}:{1}\".format(self.application.client_id, CLEARTEXT_SECRET)\n930\t        auth_string = base64.b64encode(user_pass.encode(\"utf-8\"))\n931\t        auth_headers = {",
+    "code_snippet": "def test_basic_auth_wrong_auth_type(self):\n    \"\"\"\n    Request an access token using basic authentication for client authentication\n    \"\"\"\n    self.client.login(username=\"hy_test_user\", password=\"123456\")\n    authorization_code = self.get_auth()\n\n    token_request_data = {\n        \"grant_type\": \"authorization_code\",\n        \"code\": authorization_code,\n        \"redirect_uri\": \"http://example.org\",\n    }\n\n    user_pass = \"{0}:{1}\".format(self.application.client_id, CLEARTEXT_SECRET)\n    auth_string = base64.b64encode(user_pass.encode(\"utf-8\"))\n    auth_headers = {\n        \"HTTP_AUTHORIZATION\": \"Wrong \" + auth_string.decode(\"utf-8\"),\n    }\n\n    response = self.client.post(reverse(\"oauth2_provider:token\"), data=token_request_data, **auth_headers)\n    self.assertEqual(response.status_code, 401)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.client.login",
+        "self.get_auth",
+        "base64.b64encode",
+        "str.encode",
+        "bytes.decode",
+        "self.client.post",
+        "reverse",
+        "self.assertEqual"
+      ],
+      "api_sequence_with_args": [
+        "self.client.login(username=\"hy_test_user\", password=\"123456\")",
+        "self.get_auth()",
+        "base64.b64encode(user_pass.encode(\"utf-8\"))",
+        "user_pass.encode(\"utf-8\")",
+        "auth_string.decode(\"utf-8\")",
+        "self.client.post(reverse(\"oauth2_provider:token\"), data=token_request_data, **auth_headers)",
+        "reverse(\"oauth2_provider:token\")",
+        "self.assertEqual(response.status_code, 401)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "str.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "user_pass = \"{0}:{1}\".format(self.application.client_id, CLEARTEXT_SECRET)\nauth_string = base64.b64encode(user_pass.encode(\"utf-8\"))\nauth_headers = {\n    \"HTTP_AUTHORIZATION\": \"Wrong \" + auth_string.decode(\"utf-8\"),\n}"
+    }
+  }
+]

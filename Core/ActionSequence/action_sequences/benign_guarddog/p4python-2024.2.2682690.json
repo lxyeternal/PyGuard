@@ -1,0 +1,261 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os, os.path, sys, re, shutil, stat, subprocess\n\nclass p4build_ext(build_ext_module):\n    \"\"\"Subclass of build subcommand for passing paths to compiler and linker\"\"\"\n\n    user_options = build_ext_module.user_options + [\n        ('ssl=', None, 'specify ssl library directory'),\n        ('apidir=', None, 'specify root of p4api directory'),\n    ]\n\n    def initialize_options(self, *args, **kwargs):\n        self.apidir = os.getenv(\"apidir\", None)\n        self.ssl = os.getenv(\"ssl\", None)\n        build_ext_module.initialize_options(self, *args, **kwargs)\n\n    def get_config(self, option):\n        config = ConfigParser()\n        config.read(P4_CONFIG_FILE)\n        dir = \"\"\n        if config.has_section(P4_CONFIG_SECTION):\n            if config.has_option(P4_CONFIG_SECTION, option):\n                dir = config.get(P4_CONFIG_SECTION, option)\n        return dir\n\n    def finalize_options(self):\n        global p4_api_dir, p4_ssl_dir\n\n        # options passed to \"build\" are copied into globals for use in \"build_ext\"\n        if p4_api_dir:\n            self.apidir = p4_api_dir\n\n        if p4_ssl_dir:\n            self.ssl = p4_ssl_dir\n\n        # if we didn't get values from the command line, check the config file\n        if not self.apidir:\n            self.apidir = self.get_config(P4_CONFIG_P4APIDIR)\n\n        if not self.ssl:\n            self.ssl = self.get_config(P4_CONFIG_SSLDIR)\n\n        build_ext_module.finalize_options(self)\n\n    def is_super(self):\n        rv = subprocess.check_output(\"id -u\", shell=True)\n        if int(rv) != 0:\n            return False\n        return True\n\n    def download_p4api(self, api_ver, ssl_ver):\n        global loaded_lib_from_ftp\n\n        print(\"Looking for P4 API {0} for SSL {1} on https://ftp.perforce.com\".format(api_ver, ssl_ver))\n\n        g_major, g_minor = P4APIFtp.get_glib_ver(self)\n        p4https = P4APIHttps()\n        url = p4https.get_url(g_minor, ssl_ver, api_ver)\n        api_dir, api_tarball= p4https.get_file(url)\n        print(\"Extracted {0} into {1}\".format(api_tarball, api_dir))\n\n        loaded_lib_from_ftp = True\n        return api_dir\n\n    # run strings on p4api librpc.a to get the version of OpenSSL needed\n    def get_ssl_version_from_p4api(self):\n        libpath = os.path.join(self.apidir, \"lib\", \"librpc.a\")\n\n        p1 = subprocess.Popen([\"strings\", libpath], stdout=subprocess.PIPE)\n        p2 = subprocess.Popen([\"grep\", \"^OpenSSL\"], stdin=p1.stdout, stdout=subprocess.PIPE)\n        p1.stdout.close()\n        out, err = p2.communicate()\n        sslstr = out.split()\n\n        return sslstr[1].decode(encoding='UTF-8')\n\n    @staticmethod\n    def build_ssl_lib(ssl_ver):\n\n        # not for windows\n        # get the openssl version needed\n        #   Now that p4api needs to know the ssl version, this call gets recursive.\n        #    ssl_ver = self.get_ssl_version_from_p4api(self)\n        if not ssl_ver:\n            ssl_ver = \"1.1.1\"    # default to latest ssl version\n\n        # try to download the SSL source from the ftp site\n        print(\"Downloading SSL {0} source from ftp.openssl.org\".format(ssl_ver))\n        (ssl_src_dir, tarball) = P4APIFtp(\"ssl\").get_ssl_src(ssl_ver)\n\n        print(\"Building SSL source in {0}\".format(ssl_src_dir))\n        ssl_from_ftp = True\n        ssl_lib_dir = P4APIFtp(\"ssl\").build_ssl(ssl_src_dir)\n\n        return ssl_lib_dir, ssl_src_dir, tarball, ssl_from_ftp\n\n    @staticmethod\n    def check_installed_ssl():\n        # not for windows\n        try:\n            (version_string, err) = subprocess.Popen([\"openssl\", \"version\"], stdout=subprocess.PIPE,\n                                                     stderr=subprocess.PIPE).communicate()\n        except IOError:\n            print(\"****************************************************\", file=sys.stderr)\n            print(\"No openssl in path and no ssl library path specified\", file=sys.stderr)\n            print(\"****************************************************\", file=sys.stderr)\n            return \"\", \"\"\n\n        if err:\n            print(\"****************************************************\", file=sys.stderr)\n            print(\"Cannot determine the version of openssl\", file=sys.stderr)\n            print(\"****************************************************\", file=sys.stderr)\n            return \"\", \"\"\n\n        if type(version_string) == bytes:\n            version_string = version_string.decode('utf8')\n\n        print(\"Found installed SSL version \" + version_string)\n\n        pattern = re.compile(r\"OpenSSL (\\d)\\.(\\d)\\.(\\d)(\\S+\\s?\\S*)?\\s+\\d+ \\S+ \\d+\")\n        match = pattern.match(version_string)\n        if match:\n            version = int(match.group(1)) * 100 + int(match.group(2)) * 10 + int(match.group(3)) * 1\n            if match.group(4) is None:\n                ver_only = str(match.group(1)) + \".\" + str(match.group(2)) + \".\" + str(match.group(3))\n            else:\n                ver_only = str(match.group(1)) + \".\" + str(match.group(2)) + \".\" + str(match.group(3)) + str(match.group(4))\n            if version >= MIN_SSL_VERSION:\n                release = match.group(4)\n                for p in os.environ[\"PATH\"].split(os.pathsep):\n                    pathToFile = os.path.join(p, \"openssl\")\n                    if os.path.exists(pathToFile) and os.access(pathToFile, os.X_OK):\n                        entry = subprocess.check_output(\"ldd {0} | grep libssl\".format(pathToFile),\n                                                        executable=\"/bin/bash\", shell=\"True\")\n                        if entry is not False:\n                            libpath = os.path.dirname(entry.split()[2])\n\n                        if os.path.exists(libpath) and os.path.isdir(libpath):\n                            print(\"Found installed SSL libraries \" + libpath.decode('utf-8'))\n                            return libpath, ver_only\n                        else:\n                            print(\"****************************************************\", file=sys.stderr)\n                            print(\"Calculated path {0} for SSL does not exist\".format(libpath), file=sys.stderr)\n                            print(\"****************************************************\", file=sys.stderr)\n                            return \"\", \"\"\n            else:\n                print(\"***************************************\", file=sys.stderr)\n                print(\"Minimum SSL release required is 1.0.0\", file=sys.stderr)\n                print(\"***************************************\", file=sys.stderr)\n        else:\n            print(\"****************************************************\", file=sys.stderr)\n            print(\"Cannot match OpenSSL Version string '{0}'\".format(version_string), file=sys.stderr)\n            print(\"****************************************************\", file=sys.stderr)\n\n        return \"\", \"\"\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.getenv",
+        "build_ext_module.initialize_options",
+        "ConfigParser.read",
+        "ConfigParser.has_section",
+        "ConfigParser.has_option",
+        "ConfigParser.get",
+        "subprocess.check_output",
+        "P4APIFtp.get_glib_ver",
+        "P4APIHttps.get_url",
+        "P4APIHttps.get_file",
+        "subprocess.Popen",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.exists",
+        "os.path.isdir",
+        "os.environ",
+        "os.pathsep",
+        "os.path.join",
+        "os.path.exists",
+        "os.access",
+        "subprocess.check_output"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv(\"apidir\", None)",
+        "os.getenv(\"ssl\", None)",
+        "build_ext_module.initialize_options(self, *args, **kwargs)",
+        "ConfigParser.read(P4_CONFIG_FILE)",
+        "ConfigParser.has_section(P4_CONFIG_SECTION)",
+        "ConfigParser.has_option(P4_CONFIG_SECTION, option)",
+        "ConfigParser.get(P4_CONFIG_SECTION, option)",
+        "subprocess.check_output(\"id -u\", shell=True)",
+        "P4APIFtp.get_glib_ver(self)",
+        "P4APIHttps.get_url(g_minor, ssl_ver, api_ver)",
+        "P4APIHttps.get_file(url)",
+        "subprocess.Popen([\"strings\", libpath], stdout=subprocess.PIPE)",
+        "subprocess.Popen([\"grep\", \"^OpenSSL\"], stdin=p1.stdout, stdout=subprocess.PIPE)",
+        "subprocess.Popen.communicate()",
+        "os.path.join(self.apidir, \"lib\", \"librpc.a\")",
+        "os.path.dirname(entry.split()[2])",
+        "os.path.exists(libpath)",
+        "os.path.isdir(libpath)",
+        "os.environ[\"PATH\"]",
+        "os.pathsep",
+        "os.path.join(p, \"openssl\")",
+        "os.path.exists(pathToFile)",
+        "os.access(pathToFile, os.X_OK)",
+        "subprocess.check_output(\"ldd {0} | grep libssl\".format(pathToFile), executable=\"/bin/bash\", shell=\"True\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "build_ext_module.initialize_options",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "ConfigParser.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "ConfigParser.has_section",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "ConfigParser.has_option",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "ConfigParser.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "P4APIFtp.get_glib_ver",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "P4APIHttps.get_url",
+          "id": "encode_url_query",
+          "description": "Encodes mapping object to URL query string",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "P4APIHttps.get_file",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.pathsep",
+          "id": "get_os_path_sep",
+          "description": "Retrieves operating system path separator",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.access",
+          "id": "change_file_mode_execute",
+          "description": "Changes file mode to add execute permission",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "def initialize_options(self, *args, **kwargs):\n    self.apidir = os.getenv(\"apidir\", None)\n    self.ssl = os.getenv(\"ssl\", None)\n    build_ext_module.initialize_options(self, *args, **kwargs)\n\ndef get_config(self, option):\n    config = ConfigParser()\n    config.read(P4_CONFIG_FILE)\n    dir = \"\"\n    if config.has_section(P4_CONFIG_SECTION):\n        if config.has_option(P4_CONFIG_SECTION, option):\n            dir = config.get(P4_CONFIG_SECTION, option)\n    return dir\n\ndef is_super(self):\n    rv = subprocess.check_output(\"id -u\", shell=True)\n    if int(rv) != 0:\n        return False\n    return True\n\ndef download_p4api(self, api_ver, ssl_ver):\n    g_major, g_minor = P4APIFtp.get_glib_ver(self)\n    p4https = P4APIHttps()\n    url = p4https.get_url(g_minor, ssl_ver, api_ver)\n    api_dir, api_tarball = p4https.get_file(url)\n    return api_dir\n\ndef get_ssl_version_from_p4api(self):\n    libpath = os.path.join(self.apidir, \"lib\", \"librpc.a\")\n    p1 = subprocess.Popen([\"strings\", libpath], stdout=subprocess.PIPE)\n    p2 = subprocess.Popen([\"grep\", \"^OpenSSL\"], stdin=p1.stdout, stdout=subprocess.PIPE)\n    p1.stdout.close()\n    out, err = p2.communicate()\n    sslstr = out.split()\n    return sslstr[1].decode(encoding='UTF-8')\n\n@staticmethod\ndef check_installed_ssl():\n    try:\n        (version_string, err) = subprocess.Popen([\"openssl\", \"version\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()\n    except IOError:\n        return \"\", \"\"\n    if err:\n        return \"\", \"\"\n    if type(version_string) == bytes:\n        version_string = version_string.decode('utf8')\n    pattern = re.compile(r\"OpenSSL (\\d)\\.(\\d)\\.(\\d)(\\S+\\s?\\S*)?\\s+\\d+ \\S+ \\d+\")\n    match = pattern.match(version_string)\n    if match:\n        version = int(match.group(1)) * 100 + int(match.group(2)) * 10 + int(match.group(3)) * 1\n        if match.group(4) is None:\n            ver_only = str(match.group(1)) + \".\" + str(match.group(2)) + \".\" + str(match.group(3))\n        else:\n            ver_only = str(match.group(1)) + \".\" + str(match.group(2)) + \".\" + str(match.group(3)) + str(match.group(4))\n        if version >= MIN_SSL_VERSION:\n            release = match.group(4)\n            for p in os.environ[\"PATH\"].split(os.pathsep):\n                pathToFile = os.path.join(p, \"openssl\")\n                if os.path.exists(pathToFile) and os.access(pathToFile, os.X_OK):\n                    entry = subprocess.check_output(\"ldd {0} | grep libssl\".format(pathToFile), executable=\"/bin/bash\", shell=\"True\")\n                    if entry is not False:\n                        libpath = os.path.dirname(entry.split()[2])\n                    if os.path.exists(libpath) and os.path.isdir(libpath):\n                        return libpath, ver_only\n                    else:\n                        return \"\", \"\"\n        else:\n            return \"\", \"\"\n    else:\n        return \"\", \"\"\n    return \"\", \"\""
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "p4python-2024.2.2682690",
+      "total_matches": 5
+    }
+  }
+]

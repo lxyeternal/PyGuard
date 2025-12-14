@@ -1,0 +1,58 @@
+[
+  {
+    "metadata": {
+      "package_name": "gsd-3.4.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_fl.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/gsd-3.4.2/gsd-3.4.2/gsd/test/test_fl.py",
+    "line_number": "828",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "827\n828\t        check_v1_file_read(f)\n829",
+    "code_snippet": "def test_gsd_v1_read():\n    \"\"\"Test that the GSD v2 API can read v1 files.\"\"\"\n    values = list(range(127))\n    values_str = [str(v) for v in values]\n    values_str.sort()\n\n    # test that we can:\n    # 1) Read chunk values correctly\n    # 2) Iterate through chunk names correctly\n    def check_v1_file_read(f):\n        assert f.gsd_version == (1, 0)\n\n        for frame in range(5):\n            random.shuffle(values)\n            for value in values:\n                data = numpy.array([value * 13], dtype=numpy.int32)\n                data_read = f.read_chunk(frame=frame, name=str(value))\n                numpy.testing.assert_array_equal(data, data_read)\n\n        chunk_names = f.find_matching_chunk_names('')\n        chunk_names.sort()\n        assert chunk_names == values_str\n\n    # test with the C implemantation\n    with gsd.fl.open(\n        name=test_path / 'test_gsd_v1.gsd',\n        mode='r',\n        application='test_gsd_v1',\n        schema='none',\n        schema_version=[1, 2],\n    ) as f:\n        check_v1_file_read(f)\n\n    # and the pure Python implementation\n    with gsd.pygsd.GSDFile(\n        file=open(str(test_path / 'test_gsd_v1.gsd'), mode='rb')\n    ) as f:\n        assert f.gsd_version == (1, 0)\n\n        check_v1_file_read(f)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "gsd.fl.open",
+        "gsd.pygsd.GSDFile",
+        "open"
+      ],
+      "api_sequence_with_args": [
+        "gsd.fl.open(name=test_path / 'test_gsd_v1.gsd', mode='r', application='test_gsd_v1', schema='none', schema_version=[1, 2])",
+        "gsd.pygsd.GSDFile(file=open(str(test_path / 'test_gsd_v1.gsd'), mode='rb'))",
+        "open(str(test_path / 'test_gsd_v1.gsd'), mode='rb')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "gsd.fl.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "gsd.pygsd.GSDFile",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def test_gsd_v1_read():\n    def check_v1_file_read(f):\n        assert f.gsd_version == (1, 0)\n        for frame in range(5):\n            random.shuffle(values)\n            for value in values:\n                data = numpy.array([value * 13], dtype=numpy.int32)\n                data_read = f.read_chunk(frame=frame, name=str(value))\n                numpy.testing.assert_array_equal(data, data_read)\n        chunk_names = f.find_matching_chunk_names('')\n        chunk_names.sort()\n        assert chunk_names == values_str\n\n    with gsd.fl.open(\n        name=test_path / 'test_gsd_v1.gsd',\n        mode='r',\n        application='test_gsd_v1',\n        schema='none',\n        schema_version=[1, 2],\n    ) as f:\n        check_v1_file_read(f)\n\n    with gsd.pygsd.GSDFile(\n        file=open(str(test_path / 'test_gsd_v1.gsd'), mode='rb')\n    ) as f:\n        assert f.gsd_version == (1, 0)\n        check_v1_file_read(f)"
+    }
+  }
+]

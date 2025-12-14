@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "expand_builtins.py",
+    "code_snippet": "import builtins\nimport gast as ast\nfrom pythran.analyses import Globals, Locals\nfrom pythran.passmanager import Transformation\nfrom pythran.syntax import PythranSyntaxError\nfrom pythran.tables import MODULES\n\nclass ExpandBuiltins(Transformation):\n    \"\"\"\n    Expands all builtins into full paths.\n\n    >>> import gast as ast\n    >>> from pythran import passmanager, backend\n    >>> node = ast.parse(\"def foo(): return list()\")\n    >>> pm = passmanager.PassManager(\"test\")\n    >>> _, node = pm.apply(ExpandBuiltins, node)\n    >>> print(pm.dump(backend.Python, node))\n    def foo():\n        return builtins.list()\n    \"\"\"\n\n    def __init__(self):\n        Transformation.__init__(self, Locals, Globals)\n\n    def visit_Name(self, node):\n        s = node.id\n        if s in ('None', 'True', 'False'):\n            self.update = True\n            return ast.Constant(getattr(builtins, s), None)\n        if(isinstance(node.ctx, ast.Load) and\n           s not in self.locals[node] and\n           s not in self.globals and\n           s in MODULES['builtins']):\n            if s == 'getattr':\n                raise PythranSyntaxError(\"You fool! Trying a getattr?\", node)\n            self.update = True\n            return ast.Attribute(\n                ast.Name('builtins', ast.Load(), None, None),\n                s,\n                node.ctx)\n        else:\n            return node\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ast.parse",
+        "passmanager.PassManager.apply",
+        "backend.Python",
+        "passmanager.PassManager.dump"
+      ],
+      "api_sequence_with_args": [
+        "ast.parse(\"def foo(): return list()\")",
+        "passmanager.PassManager.apply(ExpandBuiltins, node)",
+        "backend.Python",
+        "passmanager.PassManager.dump(backend.Python, node)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ast.parse",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "passmanager.PassManager.apply",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "backend.Python",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "passmanager.PassManager.dump",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import gast as ast\nfrom pythran import passmanager, backend\nnode = ast.parse(\"def foo(): return list()\")\npm = passmanager.PassManager(\"test\")\n_, node = pm.apply(ExpandBuiltins, node)\nprint(pm.dump(backend.Python, node))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pythran-0.17.0",
+      "total_matches": 1
+    }
+  }
+]

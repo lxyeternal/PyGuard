@@ -1,0 +1,83 @@
+[
+  {
+    "metadata": {
+      "package_name": "schema_salad-8.9.20250408123006",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "cpp_codegen.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/schema_salad-8.9.20250408123006/schema_salad-8.9.20250408123006/schema_salad/cpp_codegen.py",
+    "line_number": "196",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "195\t            target.write(f\"{fullInd}{ind}{ind}addYamlField(n, {q(field.name)}, member);\\n\")\n196\t            target.write(f\"{fullInd}{ind}}}\\n\")\n197",
+    "code_snippet": "def writeImplDefinition(\n    self, target: IO[str], fullInd: str, ind: str, common_namespace: str\n) -> None:\n    \"\"\"Write definition with implementation.\"\"\"\n    extends = list(map(safename2, self.extends))\n\n    # Declaring default destructor\n    if self.abstract:\n        target.write(\n            f\"{fullInd}inline {self.namespace}::{self.classname}::~{self.classname}() = default;\\n\"\n        )\n\n    # Write toYaml function\n    target.write(\n        f\"{fullInd}inline auto {self.namespace}::{self.classname}::toYaml([[maybe_unused]] \"\n        f\"::{common_namespace}::store_config const& config) const -> YAML::Node {{\\n\"\n        f\"{fullInd}{ind}using ::{common_namespace}::toYaml;\\n\"\n        f\"{fullInd}{ind}auto n = YAML::Node{{}};\\n\"\n        f\"{fullInd}{ind}if (config.generateTags) {{\\n\"\n        f'{fullInd}{ind}{ind}n.SetTag(\"{self.classname}\");\\n'\n        f\"{fullInd}{ind}}}\\n\"\n    )\n    for e in extends:\n        target.write(f\"{fullInd}{ind}n = mergeYaml(n, {e}::toYaml(config));\\n\")\n\n    for field in self.fields:\n        fieldname = safename(field.name)\n\n        target.write(f\"{fullInd}{ind}{{\\n\")\n        target.write(f\"{fullInd}{ind}{ind} auto member = toYaml(*{fieldname}, config);\\n\")\n        if field.typeDSL:\n            target.write(f\"{fullInd}{ind}{ind} member = simplifyType(member, config);\\n\")\n        target.write(\n            f\"{fullInd}{ind}{ind} member = convertListToMap(member, \"\n            f\"{q(field.mapSubject)}, {q(field.mapPredicate)}, config);\\n\"\n        )\n        target.write(f\"{fullInd}{ind}{ind}addYamlField(n, {q(field.name)}, member);\\n\")\n        target.write(f\"{fullInd}{ind}}}\\n\")\n\n    target.write(f\"{fullInd}{ind}return n;\\n{fullInd}}}\\n\")\n\n    # Write fromYaml function\n    functionname = f\"{self.namespace}::{self.classname}::fromYaml\"\n    target.write(\n        f\"{fullInd}inline void {functionname}([[maybe_unused]] YAML::Node const& n) {{\\n\"\n        f\"{fullInd}{ind}using ::{common_namespace}::fromYaml;\\n\"\n    )\n    for e in extends:\n        target.write(f\"{fullInd}{ind}{e}::fromYaml(n);\\n\")\n\n    for field in self.fields:\n        fieldname = safename(field.name)\n        expandType = \"\"\n        if field.typeDSL:\n            expandType = \"expandType\"\n\n        target.write(\n            f\"{fullInd}{ind}{{\\n\"\n            f\"{fullInd}{ind}{ind}auto nodeAsList = convertMapToList(\"\n            f\"n[{q(field.name)}], {q(field.mapSubject)}, {q(field.mapPredicate)});\\n\"\n            f\"{fullInd}{ind}{ind}auto expandedNode = {expandType}(nodeAsList);\\n\"\n            f\"{fullInd}{ind}{ind}fromYaml(expandedNode, *{fieldname});\\n\"\n            f\"{fullInd}{ind}}}\\n\"\n        )\n\n    target.write(f\"{fullInd}}}\\n\")\n\n    # write type detection function\n    if not self.abstract:\n        e = f\"::{self.namespace}::{self.classname}\"\n        target.write(\n            f\"namespace {common_namespace} {{\\n\"\n            f\"template <>\\n\"\n            f\"struct DetectAndExtractFromYaml<{e}> {{\\n\"\n            f\"    auto operator()(YAML::Node const& n) const -> std::optional<{e}> {{\\n\"\n            f\"        if (!n.IsDefined()) return std::nullopt;\\n\"\n            f\"        if (!n.IsMap()) return std::nullopt;\\n\"\n            f\"        auto res = {e}{{}};\\n\\n\"\n        )\n        for field in self.fields:\n            fieldname = safename(field.name)\n            target.write(\n                f\"        if constexpr (::{common_namespace}::IsConstant<\"\n                f\"decltype(res.{fieldname})::value_t>::value) try {{\\n\"\n                f\"            fromYaml(n[{q(field.name)}], *res.{fieldname});\\n\"\n                \"            fromYaml(n, res);\\n\"\n                \"            return res;\\n\"\n                f\"        }} catch(...) {{}}\\n\\n\"\n            )\n        target.write(\"        return std::nullopt;\\n    }\\n};\\n}\\n\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write",
+        "target.write"
+      ],
+      "api_sequence_with_args": [
+        "target.write(f\"{fullInd}inline {self.namespace}::{self.classname}::~{self.classname}() = default;\\n\")",
+        "target.write(f\"{fullInd}inline auto {self.namespace}::{self.classname}::toYaml([[maybe_unused]] ::{common_namespace}::store_config const& config) const -> YAML::Node {{\\n\" f\"{fullInd}{ind}using ::{common_namespace}::toYaml;\\n\" f\"{fullInd}{ind}auto n = YAML::Node{{}};\\n\" f\"{fullInd}{ind}if (config.generateTags) {{\\n\" f'{fullInd}{ind}{ind}n.SetTag(\"{self.classname}\");\\n' f\"{fullInd}{ind}}}\\n\")",
+        "target.write(f\"{fullInd}{ind}n = mergeYaml(n, {e}::toYaml(config));\\n\")",
+        "target.write(f\"{fullInd}{ind}{{\\n\")",
+        "target.write(f\"{fullInd}{ind}{ind} auto member = toYaml(*{fieldname}, config);\\n\")",
+        "target.write(f\"{fullInd}{ind}{ind} member = simplifyType(member, config);\\n\")",
+        "target.write(f\"{fullInd}{ind}{ind} member = convertListToMap(member, \" f\"{q(field.mapSubject)}, {q(field.mapPredicate)}, config);\\n\")",
+        "target.write(f\"{fullInd}{ind}{ind}addYamlField(n, {q(field.name)}, member);\\n\")",
+        "target.write(f\"{fullInd}{ind}}}\\n\")",
+        "target.write(f\"{fullInd}{ind}return n;\\n{fullInd}}}\\n\")",
+        "target.write(f\"{fullInd}inline void {functionname}([[maybe_unused]] YAML::Node const& n) {{\\n\" f\"{fullInd}{ind}using ::{common_namespace}::fromYaml;\\n\")",
+        "target.write(f\"{fullInd}{ind}{e}::fromYaml(n);\\n\")",
+        "target.write(f\"{fullInd}{ind}{{\\n\" f\"{fullInd}{ind}{ind}auto nodeAsList = convertMapToList(\" f\"n[{q(field.name)}], {q(field.mapSubject)}, {q(field.mapPredicate)});\\n\" f\"{fullInd}{ind}{ind}auto expandedNode = {expandType}(nodeAsList);\\n\" f\"{fullInd}{ind}{ind}fromYaml(expandedNode, *{fieldname});\\n\" f\"{fullInd}{ind}}}\\n\")",
+        "target.write(f\"{fullInd}}}\\n\")",
+        "target.write(f\"namespace {common_namespace} {{\\n\" f\"template <>\\n\" f\"struct DetectAndExtractFromYaml<{e}> {{\\n\" f\"    auto operator()(YAML::Node const& n) const -> std::optional<{e}> {{\\n\" f\"        if (!n.IsDefined()) return std::nullopt;\\n\" f\"        if (!n.IsMap()) return std::nullopt;\\n\" f\"        auto res = {e}{{}};\\n\\n\")",
+        "target.write(f\"        if constexpr (::{common_namespace}::IsConstant<\" f\"decltype(res.{fieldname})::value_t>::value) try {{\\n\" f\"            fromYaml(n[{q(field.name)}], *res.{fieldname});\\n\" \"            fromYaml(n, res);\\n\" \"            return res;\\n\" f\"        }} catch(...) {{}}\\n\\n\")",
+        "target.write(\"        return std::nullopt;\\n    }\\n};\\n}\\n\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "target.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "def writeImplDefinition(self, target: IO[str], fullInd: str, ind: str, common_namespace: str) -> None:\n    # ...\n    if self.abstract:\n        target.write(f\"{fullInd}inline {self.namespace}::{self.classname}::~{self.classname}() = default;\\n\")\n    # ...\n    target.write(f\"{fullInd}inline auto {self.namespace}::{self.classname}::toYaml([[maybe_unused]] ::{common_namespace}::store_config const& config) const -> YAML::Node {{\\n\" f\"{fullInd}{ind}using ::{common_namespace}::toYaml;\\n\" f\"{fullInd}{ind}auto n = YAML::Node{{}};\\n\" f\"{fullInd}{ind}if (config.generateTags) {{\\n\" f'{fullInd}{ind}{ind}n.SetTag(\"{self.classname}\");\\n' f\"{fullInd}{ind}}}\\n\")\n    # ...\n    for e in extends:\n        target.write(f\"{fullInd}{ind}n = mergeYaml(n, {e}::toYaml(config));\\n\")\n    for field in self.fields:\n        fieldname = safename(field.name)\n        target.write(f\"{fullInd}{ind}{{\\n\")\n        target.write(f\"{fullInd}{ind}{ind} auto member = toYaml(*{fieldname}, config);\\n\")\n        if field.typeDSL:\n            target.write(f\"{fullInd}{ind}{ind} member = simplifyType(member, config);\\n\")\n        target.write(f\"{fullInd}{ind}{ind} member = convertListToMap(member, \" f\"{q(field.mapSubject)}, {q(field.mapPredicate)}, config);\\n\")\n        target.write(f\"{fullInd}{ind}{ind}addYamlField(n, {q(field.name)}, member);\\n\")\n        target.write(f\"{fullInd}{ind}}}\\n\")\n    target.write(f\"{fullInd}{ind}return n;\\n{fullInd}}}\\n\")\n    # ...\n    functionname = f\"{self.namespace}::{self.classname}::fromYaml\"\n    target.write(f\"{fullInd}inline void {functionname}([[maybe_unused]] YAML::Node const& n) {{\\n\" f\"{fullInd}{ind}using ::{common_namespace}::fromYaml;\\n\")\n    for e in extends:\n        target.write(f\"{fullInd}{ind}{e}::fromYaml(n);\\n\")\n    for field in self.fields:\n        fieldname = safename(field.name)\n        expandType = \"\"\n        if field.typeDSL:\n            expandType = \"expandType\"\n        target.write(f\"{fullInd}{ind}{{\\n\" f\"{fullInd}{ind}{ind}auto nodeAsList = convertMapToList(\" f\"n[{q(field.name)}], {q(field.mapSubject)}, {q(field.mapPredicate)});\\n\" f\"{fullInd}{ind}{ind}auto expandedNode = {expandType}(nodeAsList);\\n\" f\"{fullInd}{ind}{ind}fromYaml(expandedNode, *{fieldname});\\n\" f\"{fullInd}{ind}}}\\n\")\n    target.write(f\"{fullInd}}}\\n\")\n    # ...\n    if not self.abstract:\n        e = f\"::{self.namespace}::{self.classname}\"\n        target.write(f\"namespace {common_namespace} {{\\n\" f\"template <>\\n\" f\"struct DetectAndExtractFromYaml<{e}> {{\\n\" f\"    auto operator()(YAML::Node const& n) const -> std::optional<{e}> {{\\n\" f\"        if (!n.IsDefined()) return std::nullopt;\\n\" f\"        if (!n.IsMap()) return std::nullopt;\\n\" f\"        auto res = {e}{{}};\\n\\n\")\n        for field in self.fields:\n            fieldname = safename(field.name)\n            target.write(f\"        if constexpr (::{common_namespace}::IsConstant<\" f\"decltype(res.{fieldname})::value_t>::value) try {{\\n\" f\"            fromYaml(n[{q(field.name)}], *res.{fieldname});\\n\" \"            fromYaml(n, res);\\n\" \"            return res;\\n\" f\"        }} catch(...) {{}}\\n\\n\")\n        target.write(\"        return std::nullopt;\\n    }\\n};\\n}\\n\")"
+    }
+  }
+]

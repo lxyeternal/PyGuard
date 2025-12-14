@@ -1,0 +1,287 @@
+[
+  {
+    "pyfile": "commands.py",
+    "code_snippet": "import pyperclip\nfrom PIL import Image, ImageGrab\nimport os\nimport tempfile\nfrom pathlib import Path\n\nclass Commands:\n    ...\n    def cmd_paste(self, args):\n        \"\"\"Paste image/text from the clipboard into the chat.\\\n        Optionally provide a name for the image.\"\"\"\n        try:\n            # Check for image first\n            image = ImageGrab.grabclipboard()\n            if isinstance(image, Image.Image):\n                if args.strip():\n                    filename = args.strip()\n                    ext = os.path.splitext(filename)[1].lower()\n                    if ext in (\".jpg\", \".jpeg\", \".png\"):\n                        basename = filename\n                    else:\n                        basename = f\"{filename}.png\"\n                else:\n                    basename = \"clipboard_image.png\"\n\n                temp_dir = tempfile.mkdtemp()\n                temp_file_path = os.path.join(temp_dir, basename)\n                image_format = \"PNG\" if basename.lower().endswith(\".png\") else \"JPEG\"\n                image.save(temp_file_path, image_format)\n\n                abs_file_path = Path(temp_file_path).resolve()\n\n                # Check if a file with the same name already exists in the chat\n                existing_file = next(\n                    (f for f in self.coder.abs_fnames if Path(f).name == abs_file_path.name), None\n                )\n                if existing_file:\n                    self.coder.abs_fnames.remove(existing_file)\n                    self.io.tool_output(f\"Replaced existing image in the chat: {existing_file}\")\n\n                self.coder.abs_fnames.add(str(abs_file_path))\n                self.io.tool_output(f\"Added clipboard image to the chat: {abs_file_path}\")\n                self.coder.check_added_files()\n\n                return\n\n            # If not an image, try to get text\n            text = pyperclip.paste()\n            if text:\n                self.io.tool_output(text)\n                return text\n\n            self.io.tool_error(\"No image or text content found in clipboard.\")\n            return\n\n        except Exception as e:\n            self.io.tool_error(f\"Error processing clipboard content: {e}\")\n\n    def cmd_copy(self, args):\n        \"Copy the last assistant message to the clipboard\"\n        all_messages = self.coder.done_messages + self.coder.cur_messages\n        assistant_messages = [msg for msg in reversed(all_messages) if msg[\"role\"] == \"assistant\"]\n\n        if not assistant_messages:\n            self.io.tool_error(\"No assistant messages found to copy.\")\n            return\n\n        last_assistant_message = assistant_messages[0][\"content\"]\n\n        try:\n            pyperclip.copy(last_assistant_message)\n            preview = (\n                last_assistant_message[:50] + \"...\"\n                if len(last_assistant_message) > 50\n                else last_assistant_message\n            )\n            self.io.tool_output(f\"Copied last assistant message to clipboard. Preview: {preview}\")\n        except pyperclip.PyperclipException as e:\n            self.io.tool_error(f\"Failed to copy to clipboard: {str(e)}\")\n            self.io.tool_output(\n                \"You may need to install xclip or xsel on Linux, or pbcopy on macOS.\"\n            )\n        except Exception as e:\n            self.io.tool_error(f\"An unexpected error occurred while copying to clipboard: {str(e)}\")\n\n    def cmd_copy_context(self, args=None):\n        \"\"\"Copy the current chat context as markdown, suitable to paste into a web UI\"\"\"\n\n        chunks = self.coder.format_chat_chunks()\n\n        markdown = \"\"\n\n        # Only include specified chunks in order\n        for messages in [chunks.repo, chunks.readonly_files, chunks.chat_files]:\n            for msg in messages:\n                # Only include user messages\n                if msg[\"role\"] != \"user\":\n                    continue\n\n                content = msg[\"content\"]\n\n                # Handle image/multipart content\n                if isinstance(content, list):\n                    for part in content:\n                        if part.get(\"type\") == \"text\":\n                            markdown += part[\"text\"] + \"\\n\\n\"\n                else:\n                    markdown += content + \"\\n\\n\"\n\n        args = args or \"\"\n        markdown += f\"\"\"\nJust tell me how to edit the files to make the changes.\nDon't give me back entire files.\nJust show me the edits I need to make.\n\n{args}\n\"\"\"\n\n        try:\n            pyperclip.copy(markdown)\n            self.io.tool_output(\"Copied code context to clipboard.\")\n        except pyperclip.PyperclipException as e:\n            self.io.tool_error(f\"Failed to copy to clipboard: {str(e)}\")\n            self.io.tool_output(\n                \"You may need to install xclip or xsel on Linux, or pbcopy on macOS.\"\n            )\n        except Exception as e:\n            self.io.tool_error(f\"An unexpected error occurred while copying to clipboard: {str(e)}\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "PIL.ImageGrab.grabclipboard",
+        "isinstance",
+        "os.path.splitext",
+        "os.path.join",
+        "tempfile.mkdtemp",
+        "PIL.Image.Image.save",
+        "pathlib.Path.resolve",
+        "pathlib.Path.name",
+        "pyperclip.paste",
+        "pyperclip.copy",
+        "pyperclip.copy"
+      ],
+      "api_sequence_with_args": [
+        "ImageGrab.grabclipboard()",
+        "isinstance(image, Image.Image)",
+        "os.path.splitext(filename)",
+        "os.path.join(temp_dir, basename)",
+        "tempfile.mkdtemp()",
+        "image.save(temp_file_path, image_format)",
+        "Path(temp_file_path).resolve()",
+        "Path(f).name",
+        "pyperclip.paste()",
+        "pyperclip.copy(last_assistant_message)",
+        "pyperclip.copy(markdown)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "PIL.ImageGrab.grabclipboard",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "tempfile.mkdtemp",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "PIL.Image.Image.save",
+          "id": "save_image_file",
+          "description": "Saves image to file in PNG format",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "image_processing"
+        },
+        {
+          "api_name": "pathlib.Path.resolve",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "pathlib.Path.name",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "from PIL import Image, ImageGrab\nimport os\nimport tempfile\nfrom pathlib import Path\nimport pyperclip\n\nclass Commands:\n    def cmd_paste(self, args):\n        try:\n            image = ImageGrab.grabclipboard()\n            if isinstance(image, Image.Image):\n                if args.strip():\n                    filename = args.strip()\n                    ext = os.path.splitext(filename)[1].lower()\n                    if ext in (\".jpg\", \".jpeg\", \".png\"):\n                        basename = filename\n                    else:\n                        basename = f\"{filename}.png\"\n                else:\n                    basename = \"clipboard_image.png\"\n\n                temp_dir = tempfile.mkdtemp()\n                temp_file_path = os.path.join(temp_dir, basename)\n                image_format = \"PNG\" if basename.lower().endswith(\".png\") else \"JPEG\"\n                image.save(temp_file_path, image_format)\n\n                abs_file_path = Path(temp_file_path).resolve()\n\n                existing_file = next(\n                    (f for f in self.coder.abs_fnames if Path(f).name == abs_file_path.name), None\n                )\n                # ...\n                return\n\n            text = pyperclip.paste()\n            if text:\n                self.io.tool_output(text)\n                return text\n            # ...\n        except Exception as e:\n            self.io.tool_error(f\"Error processing clipboard content: {e}\")\n\n    def cmd_copy(self, args):\n        # ...\n        try:\n            pyperclip.copy(last_assistant_message)\n            # ...\n        except pyperclip.PyperclipException as e:\n            self.io.tool_error(f\"Failed to copy to clipboard: {str(e)}\")\n            self.io.tool_output(\n                \"You may need to install xclip or xsel on Linux, or pbcopy on macOS.\"\n            )\n        except Exception as e:\n            self.io.tool_error(f\"An unexpected error occurred while copying to clipboard: {str(e)}\")\n\n    def cmd_copy_context(self, args=None):\n        # ...\n        try:\n            pyperclip.copy(markdown)\n            self.io.tool_output(\"Copied code context to clipboard.\")\n        except pyperclip.PyperclipException as e:\n            self.io.tool_error(f\"Failed to copy to clipboard: {str(e)}\")\n            self.io.tool_output(\n                \"You may need to install xclip or xsel on Linux, or pbcopy on macOS.\"\n            )\n        except Exception as e:\n            self.io.tool_error(f\"An unexpected error occurred while copying to clipboard: {str(e)}\")"
+    }
+  },
+  {
+    "pyfile": "copypaste.py",
+    "code_snippet": "import threading\nimport time\n\nimport pyperclip\n\n\nclass ClipboardWatcher:\n    \"\"\"Watches clipboard for changes and updates IO placeholder\"\"\"\n\n    def __init__(self, io, verbose=False):\n        self.io = io\n        self.verbose = verbose\n        self.stop_event = None\n        self.watcher_thread = None\n        self.last_clipboard = None\n        self.io.clipboard_watcher = self\n\n    def start(self):\n        \"\"\"Start watching clipboard for changes\"\"\"\n        self.stop_event = threading.Event()\n        self.last_clipboard = pyperclip.paste()\n\n        def watch_clipboard():\n            while not self.stop_event.is_set():\n                try:\n                    current = pyperclip.paste()\n                    if current != self.last_clipboard:\n                        self.last_clipboard = current\n                        self.io.interrupt_input()\n                        self.io.placeholder = current\n                        if len(current.splitlines()) > 1:\n                            self.io.placeholder = \"\\n\" + self.io.placeholder + \"\\n\"\n\n                    time.sleep(0.5)\n                except Exception as e:\n                    if self.verbose:\n                        from aider.dump import dump\n\n                        dump(f\"Clipboard watcher error: {e}\")\n                    continue\n\n        self.watcher_thread = threading.Thread(target=watch_clipboard, daemon=True)\n        self.watcher_thread.start()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "pyperclip.paste",
+        "pyperclip.paste"
+      ],
+      "api_sequence_with_args": [
+        "pyperclip.paste()",
+        "pyperclip.paste()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "import pyperclip\n\nclass ClipboardWatcher:\n    def start(self):\n        self.stop_event = threading.Event()\n        self.last_clipboard = pyperclip.paste()\n\n        def watch_clipboard():\n            while not self.stop_event.is_set():\n                try:\n                    current = pyperclip.paste()\n                    if current != self.last_clipboard:\n                        self.last_clipboard = current\n                        self.io.interrupt_input()\n                        self.io.placeholder = current\n                        if len(current.splitlines()) > 1:\n                            self.io.placeholder = \"\\n\" + self.io.placeholder + \"\\n\"\n                    time.sleep(0.5)\n                except Exception as e:\n                    if self.verbose:\n                        from aider.dump import dump\n                        dump(f\"Clipboard watcher error: {e}\")\n                    continue\n        self.watcher_thread = threading.Thread(target=watch_clipboard, daemon=True)\n        self.watcher_thread.start()"
+    }
+  },
+  {
+    "pyfile": "recording_audio.py",
+    "code_snippet": "import os\nimport tempfile\nimport requests\n\n# Load environment variables from .env file\nfrom dotenv import load_dotenv\nload_dotenv()\n\nOPENAI_API_KEY = os.environ.get(\"OPENAI_API_KEY\")\nVOICE = \"onyx\"  # Options: alloy, echo, fable, onyx, nova, shimmer\nMP3_BITRATE = \"32k\"  # Lower bitrate for smaller files\n\ndef check_ffmpeg():\n    \"\"\"Check if FFmpeg is available.\"\"\"\n    try:\n        subprocess.run([\"ffmpeg\", \"-version\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        return True\n    except (subprocess.SubprocessError, FileNotFoundError):\n        return False\n\ndef compress_audio(input_file, output_file, bitrate=MP3_BITRATE):\n    \"\"\"Compress audio file using FFmpeg.\"\"\"\n    if not check_ffmpeg():\n        print(\"Warning: FFmpeg not found, skipping compression\")\n        return False\n\n    try:\n        subprocess.run(\n            [\n                \"ffmpeg\",\n                \"-i\",\n                input_file,\n                \"-b:a\",\n                bitrate,\n                \"-ac\",\n                \"1\",  # Mono audio\n                \"-y\",  # Overwrite output file\n                output_file,\n            ],\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n        )\n        return True\n    except subprocess.SubprocessError as e:\n        print(f\"Error compressing audio: {e}\")\n        return False\n\ndef generate_audio_openai(text, output_file, voice=VOICE, bitrate=MP3_BITRATE):\n    \"\"\"Generate audio using OpenAI TTS API and compress it.\"\"\"\n    if not OPENAI_API_KEY:\n        print(\"Error: OPENAI_API_KEY environment variable not set\")\n        return False\n\n    url = \"https://api.openai.com/v1/audio/speech\"\n    headers = {\"Authorization\": f\"Bearer {OPENAI_API_KEY}\", \"Content-Type\": \"application/json\"}\n    data = {\"model\": \"tts-1\", \"input\": text, \"voice\": voice}\n\n    try:\n        response = requests.post(url, headers=headers, json=data)\n\n        if response.status_code == 200:\n            # Use a temporary file for the initial audio\n            with tempfile.NamedTemporaryFile(suffix=\".mp3\", delete=False) as temp_file:\n                temp_path = temp_file.name\n                temp_file.write(response.content)\n\n            # Get original file size\n            original_size = os.path.getsize(temp_path)\n\n            # Compress the audio to reduce file size\n            success = compress_audio(temp_path, output_file, bitrate)\n\n            # If compression failed or FFmpeg not available, use the original file\n            if not success:\n                with open(output_file, \"wb\") as f:\n                    f.write(response.content)\n                print(f\"  ℹ Using original file: {original_size} bytes\")\n            else:\n                compressed_size = os.path.getsize(output_file)\n                reduction = (1 - compressed_size / original_size) * 100\n                print(\n                    f\"  ℹ Compressed: {original_size} → {compressed_size} bytes ({reduction:.1f}%\"\n                    \" reduction)\"\n                )\n\n            # Clean up the temporary file\n            try:\n                os.unlink(temp_path)\n            except OSError:\n                pass\n\n            return True\n        else:\n            print(f\"Error: {response.status_code}, {response.text}\")\n            return False\n    except Exception as e:\n        print(f\"Exception during API call: {e}\")\n        return False",
+    "pattern_analysis": {
+      "api_sequence": [
+        "dotenv.load_dotenv",
+        "os.environ.get",
+        "requests.post",
+        "tempfile.NamedTemporaryFile",
+        "tempfile.NamedTemporaryFile.write",
+        "os.path.getsize",
+        "subprocess.run",
+        "os.unlink",
+        "open",
+        "open.write",
+        "os.path.getsize"
+      ],
+      "api_sequence_with_args": [
+        "dotenv.load_dotenv()",
+        "os.environ.get(\"OPENAI_API_KEY\")",
+        "requests.post(url, headers=headers, json=data)",
+        "tempfile.NamedTemporaryFile(suffix=\".mp3\", delete=False)",
+        "tempfile.NamedTemporaryFile.write(response.content)",
+        "os.path.getsize(temp_path)",
+        "subprocess.run([\"ffmpeg\", \"-i\", input_file, \"-b:a\", bitrate, \"-ac\", \"1\", \"-y\", output_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "os.unlink(temp_path)",
+        "open(output_file, \"wb\")",
+        "open.write(response.content)",
+        "os.path.getsize(output_file)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "dotenv.load_dotenv",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "tempfile.NamedTemporaryFile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "tempfile.NamedTemporaryFile.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.getsize",
+          "id": "get_disk_usage",
+          "description": "Retrieves disk usage statistics (total, used, free) for given path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "system_resource_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.getsize",
+          "id": "get_disk_usage",
+          "description": "Retrieves disk usage statistics (total, used, free) for given path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "system_resource_information"
+        }
+      ],
+      "contextual_code": "from dotenv import load_dotenv\nload_dotenv()\n\nOPENAI_API_KEY = os.environ.get(\"OPENAI_API_KEY\")\n\nimport requests\nimport tempfile\nimport os\nimport subprocess\n\ndef check_ffmpeg():\n    try:\n        subprocess.run([\"ffmpeg\", \"-version\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        return True\n    except (subprocess.SubprocessError, FileNotFoundError):\n        return False\n\ndef compress_audio(input_file, output_file, bitrate):\n    if not check_ffmpeg():\n        return False\n    try:\n        subprocess.run([\n            \"ffmpeg\", \"-i\", input_file, \"-b:a\", bitrate, \"-ac\", \"1\", \"-y\", output_file\n        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        return True\n    except subprocess.SubprocessError:\n        return False\n\ndef generate_audio_openai(text, output_file, voice, bitrate):\n    if not OPENAI_API_KEY:\n        return False\n    url = \"https://api.openai.com/v1/audio/speech\"\n    headers = {\"Authorization\": f\"Bearer {OPENAI_API_KEY}\", \"Content-Type\": \"application/json\"}\n    data = {\"model\": \"tts-1\", \"input\": text, \"voice\": voice}\n    try:\n        response = requests.post(url, headers=headers, json=data)\n        if response.status_code == 200:\n            with tempfile.NamedTemporaryFile(suffix=\".mp3\", delete=False) as temp_file:\n                temp_path = temp_file.name\n                temp_file.write(response.content)\n            original_size = os.path.getsize(temp_path)\n            success = compress_audio(temp_path, output_file, bitrate)\n            if not success:\n                with open(output_file, \"wb\") as f:\n                    f.write(response.content)\n            else:\n                compressed_size = os.path.getsize(output_file)\n            try:\n                os.unlink(temp_path)\n            except OSError:\n                pass\n            return True\n        else:\n            return False\n    except Exception:\n        return False"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "aider_chat-0.81.2",
+      "total_matches": 6
+    }
+  }
+]

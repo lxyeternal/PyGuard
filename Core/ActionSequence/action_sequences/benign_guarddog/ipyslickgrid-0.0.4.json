@@ -1,0 +1,351 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "from setuptools import setup, find_packages, Command\nfrom setuptools.command.sdist import sdist\nfrom setuptools.command.build_py import build_py\nfrom setuptools.command.egg_info import egg_info\nfrom subprocess import check_call\nimport os\nimport sys\nimport platform\nfrom os.path import (\n    join, dirname, abspath, exists\n)\n\nhere = dirname(abspath(__file__))\nnode_root = join(here, 'js')\nis_repo = exists(join(here, '.git'))\n\nnpm_path = os.pathsep.join([\n    join(node_root, 'node_modules', '.bin'),\n                os.environ.get('PATH', os.defpath),\n])\n\nfrom distutils import log\nlog.set_verbosity(log.DEBUG)\nlog.info('setup.py entered')\nlog.info('$PATH=%s' % os.environ['PATH'])\n\nLONG_DESCRIPTION = 'An Interactive Grid for Sorting and Filtering DataFrames in Jupyter Notebook'\n\ndef js_prerelease(command, strict=False):\n    \"\"\"decorator for building minified js/css prior to another command\"\"\"\n    class DecoratedCommand(command):\n        def run(self):\n            jsdeps = self.distribution.get_command_obj('jsdeps')\n            if not is_repo and all(exists(t) for t in jsdeps.targets):\n                # sdist, nothing to do\n                command.run(self)\n                return\n\n            try:\n                self.distribution.run_command('jsdeps')\n            except Exception as e:\n                missing = [t for t in jsdeps.targets if not exists(t)]\n                if strict or missing:\n                    log.warn('rebuilding js and css failed')\n                    if missing:\n                        log.error('missing files: %s' % missing)\n                    raise e\n                else:\n                    log.warn('rebuilding js and css failed (not a problem)')\n                    log.warn(str(e))\n            command.run(self)\n            update_package_data(self.distribution)\n    return DecoratedCommand\n\ndef update_package_data(distribution):\n    \"\"\"update package_data to catch changes during setup\"\"\"\n    build_py = distribution.get_command_obj('build_py')\n    # distribution.package_data = find_package_data()\n    # re-init build_py options which load package_data\n    build_py.finalize_options()\n\nclass NPM(Command):\n    description = 'install package.json dependencies using npm'\n\n    user_options = []\n\n    node_modules = join(node_root, 'node_modules')\n\n    targets = [\n        join(here, 'ipyslickgrid', 'static', 'extension.js'),\n        join(here, 'ipyslickgrid', 'static', 'index.js')\n    ]\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    def has_npm(self):\n        try:\n            check_call(['npm', '--version'])\n            return True\n        except:\n            return False\n\n    def should_run_npm_install(self):\n        package_json = join(node_root, 'package.json')\n        node_modules_exists = exists(self.node_modules)\n        return self.has_npm()\n\n    def run(self):\n        has_npm = self.has_npm()\n        if not has_npm:\n            log.error(\"`npm` unavailable.  If you're running this command using sudo, make sure `npm` is available to sudo\")\n\n        env = os.environ.copy()\n        env['PATH'] = npm_path\n\n        if self.should_run_npm_install():\n            log.info(\"Installing build dependencies with npm.  This may take a while...\")\n            check_call(['npm', 'install'], cwd=node_root, stdout=sys.stdout, stderr=sys.stderr)\n            os.utime(self.node_modules, None)\n\n        for t in self.targets:\n            if not exists(t):\n                msg = 'Missing file: %s' % t\n                if not has_npm:\n                    msg += '\\nnpm is required to build a development version of a widget extension'\n                raise ValueError(msg)\n\n        # update package data in case this created new files\n        update_package_data(self.distribution)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.abspath",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.environ.get",
+        "os.pathsep.join",
+        "distutils.log.set_verbosity",
+        "distutils.log.info",
+        "distutils.log.info",
+        "os.environ.__getitem__",
+        "os.path.join",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "os.environ.copy",
+        "os.path.join",
+        "os.path.exists",
+        "subprocess.check_call",
+        "os.utime",
+        "os.path.exists",
+        "distutils.log.error",
+        "distutils.log.info",
+        "subprocess.check_call",
+        "os.utime",
+        "os.path.exists",
+        "distutils.log.error",
+        "distutils.log.warn",
+        "distutils.log.warn",
+        "distutils.log.warn"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(os.path.abspath(__file__))",
+        "os.path.abspath(__file__)",
+        "os.path.join(here, 'js')",
+        "os.path.join(here, '.git')",
+        "os.path.join(node_root, 'node_modules', '.bin')",
+        "os.path.exists(os.path.join(here, '.git'))",
+        "os.path.join(node_root, 'package.json')",
+        "os.environ.get('PATH', os.defpath)",
+        "os.pathsep.join([join(node_root, 'node_modules', '.bin'), os.environ.get('PATH', os.defpath)])",
+        "distutils.log.set_verbosity(distutils.log.DEBUG)",
+        "distutils.log.info('setup.py entered')",
+        "distutils.log.info('$PATH=%s' % os.environ['PATH'])",
+        "os.environ['PATH']",
+        "os.path.join(node_root, 'package.json')",
+        "os.path.join(node_root, 'node_modules')",
+        "os.path.exists(self.node_modules)",
+        "os.path.join(here, 'ipyslickgrid', 'static', 'extension.js')",
+        "os.path.exists(t)",
+        "os.environ.copy()",
+        "os.path.join(node_root, 'package.json')",
+        "os.path.exists(self.node_modules)",
+        "subprocess.check_call(['npm', '--version'])",
+        "os.utime(self.node_modules, None)",
+        "os.path.exists(t)",
+        "distutils.log.error('`npm` unavailable.  If you\\'re running this command using sudo, make sure `npm` is available to sudo')",
+        "distutils.log.info('Installing build dependencies with npm.  This may take a while...')",
+        "subprocess.check_call(['npm', 'install'], cwd=node_root, stdout=sys.stdout, stderr=sys.stderr)",
+        "os.utime(self.node_modules, None)",
+        "os.path.exists(t)",
+        "distutils.log.error('Missing file: %s' % t)",
+        "distutils.log.warn('rebuilding js and css failed')",
+        "distutils.log.warn('rebuilding js and css failed (not a problem)')",
+        "distutils.log.warn(str(e))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.pathsep.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "distutils.log.set_verbosity",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "distutils.log.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "distutils.log.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.utime",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "distutils.log.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "distutils.log.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.utime",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "distutils.log.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "distutils.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "distutils.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "distutils.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "from setuptools import setup, find_packages, Command\nfrom subprocess import check_call\nimport os\nimport sys\nfrom os.path import join, dirname, abspath, exists\nfrom distutils import log\n\nhere = dirname(abspath(__file__))\nnode_root = join(here, 'js')\nis_repo = exists(join(here, '.git'))\nnpm_path = os.pathsep.join([\n    join(node_root, 'node_modules', '.bin'),\n    os.environ.get('PATH', os.defpath),\n])\n\nlog.set_verbosity(log.DEBUG)\nlog.info('setup.py entered')\nlog.info('$PATH=%s' % os.environ['PATH'])\n\nclass NPM(Command):\n    node_modules = join(node_root, 'node_modules')\n    targets = [\n        join(here, 'ipyslickgrid', 'static', 'extension.js'),\n        join(here, 'ipyslickgrid', 'static', 'index.js')\n    ]\n    def has_npm(self):\n        try:\n            check_call(['npm', '--version'])\n            return True\n        except:\n            return False\n    def should_run_npm_install(self):\n        package_json = join(node_root, 'package.json')\n        node_modules_exists = exists(self.node_modules)\n        return self.has_npm()\n    def run(self):\n        has_npm = self.has_npm()\n        if not has_npm:\n            log.error(\"`npm` unavailable.  If you're running this command using sudo, make sure `npm` is available to sudo\")\n        env = os.environ.copy()\n        env['PATH'] = npm_path\n        if self.should_run_npm_install():\n            log.info(\"Installing build dependencies with npm.  This may take a while...\")\n            check_call(['npm', 'install'], cwd=node_root, stdout=sys.stdout, stderr=sys.stderr)\n            os.utime(self.node_modules, None)\n        for t in self.targets:\n            if not exists(t):\n                msg = 'Missing file: %s' % t\n                if not has_npm:\n                    msg += '\\nnpm is required to build a development version of a widget extension'\n                raise ValueError(msg)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ipyslickgrid-0.0.4",
+      "total_matches": 4
+    }
+  }
+]

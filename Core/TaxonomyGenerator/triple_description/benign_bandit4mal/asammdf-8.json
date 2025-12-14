@@ -1,0 +1,206 @@
+{
+  "metadata": {
+    "package_name": "asammdf-8",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/asammdf-8.2.9.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "mdf_v4.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asammdf-8.2.9/asammdf-8.2.9/src/asammdf/blocks/mdf_v4.py",
+      "line_number": "10161",
+      "type_description": "B815:write",
+      "context_snippet": "def save(\n    self,\n    dst: WritableBufferType | StrPathType,\n    overwrite: bool = False,\n    compression: CompressionType = v4c.CompressionAlgorithm.NO_COMPRESSION,\n    progress=None,\n    add_history_block: bool = True,\n) -> Path:\n    \"\"\"Save MDF to *dst*. If overwrite is *True* then the destination file\n    is overwritten, otherwise the file name is appended with '.<cntr>', were\n    '<cntr>' is the first counter that produces a new file name\n    (that does not already exist in the filesystem).\n\n    Parameters\n    ----------\n    dst : str\n        destination file name\n    overwrite : bool\n        overwrite flag, default *False*\n    compression : int\n        use compressed data blocks, default 0; valid since version 4.10\n\n        * 0 - no compression\n        * 1 - deflate (slower, but produces smaller files)\n        * 2 - transposition + deflate (slowest, but produces\n          the smallest files)\n\n    add_history_block : bool\n        option to add file history block\n\n    Returns\n    -------\n    output_file : pathlib.Path\n        path to saved file\n\n    \"\"\"\n\n    if is_file_like(dst):\n        dst_ = dst\n        file_like = True\n        if hasattr(dst, \"name\"):\n            dst = Path(dst.name)\n        else:\n            dst = Path(\"__file_like.mf4\")\n        dst_.seek(0)\n        suffix = \".mf4\"\n    else:\n        file_like = False\n        suffix = Path(dst).suffix.lower()\n\n        dst = Path(dst).with_suffix(\".mf4\")\n\n        destination_dir = dst.parent\n        destination_dir.mkdir(parents=True, exist_ok=True)\n\n        if overwrite is False:\n            if dst.is_file():\n                cntr = 0\n                while True:\n                    name = dst.with_suffix(f\".{cntr}.mf4\")\n                    if not name.exists():\n                        break\n                    else:\n                        cntr += 1\n                message = (\n                    f'Destination file \"{dst}\" already exists '\n                    f'and \"overwrite\" is False. Saving MDF file as \"{name}\"'\n                )\n                logger.warning(message)\n                dst = name\n\n        if dst == self.name:\n            destination = dst.with_suffix(\".savetemp\")\n        else:\n            destination = dst\n\n        dst_ = open(destination, \"wb+\")\n\n    if not self.file_history:\n        comment = \"created\"\n    else:\n        comment = \"updated\"\n\n    if add_history_block:\n        fh = FileHistory()\n        fh.comment = f\"\"\"<FHcomment>\n<TX>{comment}</TX>\n<tool_id>{tool.__tool__}</tool_id>\n<tool_vendor>{tool.__vendor__}</tool_vendor>\n<tool_version>{tool.__version__}</tool_version>\n</FHcomment>\"\"\"\n\n        self.file_history.append(fh)\n\n    cg_map = {}\n\n    try:\n        defined_texts = {\"\": 0, b\"\": 0}\n        cc_map = {}\n        si_map = {}\n\n        groups_nr = len(self.groups)\n\n        write = dst_.write\n        tell = dst_.tell\n        seek = dst_.seek\n\n        blocks = []\n\n        write(bytes(self.identification))\n\n        self.header.to_blocks(dst_.tell(), blocks)\n        for block in blocks:\n            write(bytes(block))\n",
+      "hash_value": "8c2920128d71f8392f1a82f7de2d4a6f",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def save(\n    self,\n    dst: WritableBufferType | StrPathType,\n    overwrite: bool = False,\n    compression: CompressionType = v4c.CompressionAlgorithm.NO_COMPRESSION,\n    progress=None,\n    add_history_block: bool = True,\n) -> Path:\n    \"\"\"Save MDF to *dst*. If overwrite is *True* then the destination file\n    is overwritten, otherwise the file name is appended with '.<cntr>', were\n    '<cntr>' is the first counter that produces a new file name\n    (that does not already exist in the filesystem).\n\n    Parameters\n    ----------\n    dst : str\n        destination file name\n    overwrite : bool\n        overwrite flag, default *False*\n    compression : int\n        use compressed data blocks, default 0; valid since version 4.10\n\n        * 0 - no compression\n        * 1 - deflate (slower, but produces smaller files)\n        * 2 - transposition + deflate (slowest, but produces\n          the smallest files)\n\n    add_history_block : bool\n        option to add file history block\n\n    Returns\n    -------\n    output_file : pathlib.Path\n        path to saved file\n\n    \"\"\"\n\n    if is_file_like(dst):\n        dst_ = dst\n        file_like = True\n        if hasattr(dst, \"name\"):\n            dst = Path(dst.name)\n        else:\n            dst = Path(\"__file_like.mf4\")\n        dst_.seek(0)\n        suffix = \".mf4\"\n    else:\n        file_like = False\n        suffix = Path(dst).suffix.lower()\n\n        dst = Path(dst).with_suffix(\".mf4\")\n\n        destination_dir = dst.parent\n        destination_dir.mkdir(parents=True, exist_ok=True)\n\n        if overwrite is False:\n            if dst.is_file():\n                cntr = 0\n                while True:\n                    name = dst.with_suffix(f\".{cntr}.mf4\")\n                    if not name.exists():\n                        break\n                    else:\n                        cntr += 1\n                message = (\n                    f'Destination file \"{dst}\" already exists '\n                    f'and \"overwrite\" is False. Saving MDF file as \"{name}\"'\n                )\n                logger.warning(message)\n                dst = name\n\n        if dst == self.name:\n            destination = dst.with_suffix(\".savetemp\")\n        else:\n            destination = dst\n\n        dst_ = open(destination, \"wb+\")\n\n    if not self.file_history:\n        comment = \"created\"\n    else:\n        comment = \"updated\"\n\n    if add_history_block:\n        fh = FileHistory()\n        fh.comment = f\"\"\"<FHcomment>\n<TX>{comment}</TX>\n<tool_id>{tool.__tool__}</tool_id>\n<tool_vendor>{tool.__vendor__}</tool_vendor>\n<tool_version>{tool.__version__}</tool_version>\n</FHcomment>\"\"\"\n\n        self.file_history.append(fh)\n\n    cg_map = {}\n\n    try:\n        defined_texts = {\"\": 0, b\"\": 0}\n        cc_map = {}\n        si_map = {}\n\n        groups_nr = len(self.groups)\n\n        write = dst_.write\n        tell = dst_.tell\n        seek = dst_.seek\n\n        blocks = []\n\n        write(bytes(self.identification))\n\n        self.header.to_blocks(dst_.tell(), blocks)\n        for block in blocks:\n            write(bytes(block))\n",
+          "triple_sequences": [
+            {
+              "action_api": "Path(dst.name)",
+              "action_description": "Path object and status operations (creating Path objects, retrieving file status)",
+              "action_id": "path_object_operations",
+              "object": "dst.name",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "Path('__file_like.mf4')",
+              "action_description": "Path object and status operations (creating Path objects, retrieving file status)",
+              "action_id": "path_object_operations",
+              "object": "__file_like.mf4",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "dst_.seek(0)",
+              "action_description": "Moves buffer pointer to start",
+              "action_id": "move_buffer_pointer",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "Path(dst).suffix.lower()",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "dst",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "Path(dst).with_suffix('.mf4')",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "dst, '.mf4'",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "dst.parent",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "dst",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "destination_dir.mkdir(parents=True, exist_ok=True)",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "destination_dir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "dst.is_file()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "dst",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine file presence",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "dst.with_suffix(f'.{cntr}.mf4')",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "dst, f'.{cntr}.mf4'",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "name.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "name",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine file presence",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "logger.warning()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "message",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "dst.with_suffix('.savetemp')",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "dst, '.savetemp'",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "open(destination, 'wb+')",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "destination, 'wb+'",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "FileHistory()",
+              "action_description": "Instantiates Filezilla class",
+              "action_id": "init_filezilla_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.file_history.append(fh)",
+              "action_description": "Basic write operations (file opening operations for writing)",
+              "action_id": "basic_write_operations",
+              "object": "fh",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "write(bytes(self.identification))",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "bytes(self.identification)",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.header.to_blocks(dst_.tell(), blocks)",
+              "action_description": "Path object and status operations (creating Path objects, retrieving file status)",
+              "action_id": "path_object_operations",
+              "object": "dst_.tell(), blocks",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "write(bytes(block))",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "bytes(block)",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

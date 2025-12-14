@@ -1,0 +1,131 @@
+[
+  {
+    "pyfile": "discord.py",
+    "code_snippet": "import re\nimport requests\nfrom json import dumps\nfrom datetime import timedelta\nfrom datetime import datetime\nfrom datetime import timezone\n\nfrom .base import NotifyBase\nfrom ..common import NotifyImageSize\nfrom ..common import NotifyFormat\nfrom ..common import NotifyType\nfrom ..utils.parse import parse_bool, validate_regex\nfrom ..locale import gettext_lazy as _\nfrom ..attachment.base import AttachBase\n\nclass NotifyDiscord(NotifyBase):\n    \"\"\"\n    A wrapper to Discord Notifications\n\n    \"\"\"\n    # The default descriptive name associated with the Notification\n    service_name = 'Discord'\n\n    # The services URL\n    service_url = 'https://discord.com/'\n\n    # The default secure protocol\n    secure_protocol = 'discord'\n\n    # A URL that takes you to the setup/help of the specific protocol\n    setup_url = 'https://github.com/caronc/apprise/wiki/Notify_discord'\n\n    # Discord Webhook\n    notify_url = 'https://discord.com/api/webhooks'\n\n    # Support attachments\n    attachment_support = True\n\n    # Allows the user to specify the NotifyImageSize object\n    image_size = NotifyImageSize.XY_256\n\n    # Discord is kind enough to return how many more requests we're allowed to\n    # continue to make within it's header response as:\n    # X-RateLimit-Reset: The epoc time (in seconds) we can expect our\n    #                    rate-limit to be reset.\n    # X-RateLimit-Remaining: an integer identifying how many requests we're\n    #                        still allow to make.\n    request_rate_per_sec = 0\n\n    # Taken right from google.auth.helpers:\n    clock_skew = timedelta(seconds=10)\n\n    # The maximum allowable characters allowed in the body per message\n    body_maxlen = 2000\n\n    # The 2000 characters above defined by the body_maxlen include that of the\n    # title.  Setting this to True ensures overflow options behave properly\n    overflow_amalgamate_title = True\n\n    # Discord has a limit of the number of fields you can include in an\n    # embeds message. This value allows the discord message to safely\n    # break into multiple messages to handle these cases.\n    discord_max_fields = 10\n\n    # Define object templates\n    templates = (\n        '{schema}://{webhook_id}/{webhook_token}',\n        '{schema}://{botname}@{webhook_id}/{webhook_token}',\n    )\n\n    # Define our template tokens\n    template_tokens = dict(NotifyBase.template_tokens, **{\n        'botname': {\n            'name': _('Bot Name'),\n            'type': 'string',\n            'map_to': 'user',\n        },\n        'webhook_id': {\n            'name': _('Webhook ID'),\n            'type': 'string',\n            'private': True,\n            'required': True,\n        },\n        'webhook_token': {\n            'name': _('Webhook Token'),\n            'type': 'string',\n            'private': True,\n            'required': True,\n        },\n    })\n\n    # Define our template arguments\n    template_args = dict(NotifyBase.template_args, **{\n        'tts': {\n            'name': _('Text To Speech'),\n            'type': 'bool',\n            'default': False,\n        },\n        'avatar': {\n            'name': _('Avatar Image'),\n            'type': 'bool',\n            'default': True,\n        },\n        'avatar_url': {\n            'name': _('Avatar URL'),\n            'type': 'string',\n        },\n        'href': {\n            'name': _('URL'),\n            'type': 'string',\n        },\n        'url': {\n            'alias_of': 'href',\n        },\n        # Send a message to the specified thread within a webhook's channel.\n        # The thread will automatically be unarchived.\n        'thread': {\n            'name': _('Thread ID'),\n            'type': 'string',\n        },\n        'footer': {\n            'name': _('Display Footer'),\n            'type': 'bool',\n            'default': False,\n        },\n        'footer_logo': {\n            'name': _('Footer Logo'),\n            'type': 'bool',\n            'default': True,\n        },\n        'fields': {\n            'name': _('Use Fields'),\n            'type': 'bool',\n            'default': True,\n        },\n        'image': {\n            'name': _('Include Image'),\n            'type': 'bool',\n            'default': False,\n            'map_to': 'include_image',\n        },\n    })\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": ""
+    }
+  },
+  {
+    "pyfile": "telegram.py",
+    "code_snippet": "    # Telegram uses the http protocol with JSON requests\n    notify_url = 'https://api.telegram.org/bot'\n\n    def send_media(self, target, notify_type, payload={}, attach=None):\n        \"\"\"\n        Sends a sticker based on the specified notify type\n\n        \"\"\"\n\n        # Prepare our Headers\n        headers = {\n            'User-Agent': self.app_id,\n        }\n\n        # Our function name and payload are determined on the path\n        function_name = 'SendPhoto'\n        key = 'photo'\n        path = None\n\n        if isinstance(attach, AttachBase):\n            if not attach:\n                # We could not access the attachment\n                self.logger.error(\n                    'Could not access attachment {}.'.format(\n                        attach.url(privacy=True)))\n                return False\n\n            self.logger.debug(\n                'Posting Telegram attachment {}'.format(\n                    attach.url(privacy=True)))\n\n            # Store our path to our file\n            path = attach.path\n            file_name = attach.name\n            mimetype = attach.mimetype\n\n            # Process our attachment\n            function_name, key = \\\n                next(((x['function_name'], x['key']) for x in self.mime_lookup\n                     if x['regex'].match(mimetype)))  # pragma: no cover\n\n        else:\n            attach = self.image_path(notify_type) if attach is None else attach\n            if attach is None:\n                # Nothing specified to send\n                return True\n\n            # Take on specified attachent as path\n            path = attach\n            file_name = os.path.basename(path)\n\n        url = '%s%s/%s' % (\n            self.notify_url,\n            self.bot_token,\n            function_name,\n        )\n\n        # Always call throttle before any remote server i/o is made;\n        # Telegram throttles to occur before sending the image so that\n        # content can arrive together.\n        self.throttle()\n\n        # Extract our target\n        chat_id, topic = target\n\n        payload['chat_id'] = chat_id\n        if topic:\n            payload['message_thread_id'] = topic\n\n        try:\n            with open(path, 'rb') as f:\n                # Configure file payload (for upload)\n                files = {key: (file_name, f)}\n\n                self.logger.debug(\n                    'Telegram attachment POST URL: %s (cert_verify=%r)' % (\n                        url, self.verify_certificate))\n\n                r = requests.post(\n                    url,\n                    headers=headers,\n                    files=files,\n                    data=payload,\n                    verify=self.verify_certificate,\n                    timeout=self.request_timeout,\n                )\n\n                if r.status_code != requests.codes.ok:\n                    # We had a problem\n                    status_str = NotifyTelegram\\\n                        .http_response_code_lookup(r.status_code)\n\n                    self.logger.warning(\n                        'Failed to send Telegram attachment: '\n                        '{}{}error={}.'.format(\n                            status_str,\n                            ', ' if status_str else '',\n                            r.status_code))\n\n                    self.logger.debug(\n                        'Response Details:\\r\\n{}'.format(r.content))\n\n                    return False\n\n                # Content was sent successfully if we got here\n                return True\n\n        except requests.RequestException as e:\n            self.logger.warning(\n                'A connection error occurred posting Telegram '\n                'attachment.')\n            self.logger.debug('Socket Exception: %s' % str(e))\n\n        except (IOError, OSError):\n            # IOError is present for backwards compatibility with Python\n            # versions older then 3.3.  >= 3.3 throw OSError now.\n\n            # Could not open and/or read the file; this is not a problem since\n            # we scan a lot of default paths.\n            self.logger.error(\n                'File can not be opened for read: {}'.format(path))\n\n        return False\n\n# Global variable used by send_media and other methods\nnotify_url = 'https://api.telegram.org/bot'\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "attach.url",
+        "self.logger.error",
+        "attach.url",
+        "self.logger.debug",
+        "attach.url",
+        "os.path.basename",
+        "self.throttle",
+        "open",
+        "requests.post"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(attach, AttachBase)",
+        "attach.url(privacy=True)",
+        "self.logger.error('Could not access attachment {}.'.format(attach.url(privacy=True)))",
+        "attach.url(privacy=True)",
+        "self.logger.debug('Posting Telegram attachment {}'.format(attach.url(privacy=True)))",
+        "attach.url(privacy=True)",
+        "os.path.basename(path)",
+        "self.throttle()",
+        "open(path, 'rb')",
+        "requests.post(url, headers=headers, files=files, data=payload, verify=self.verify_certificate, timeout=self.request_timeout)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "attach.url",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "attach.url",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "attach.url",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.throttle",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "def send_media(self, target, notify_type, payload={}, attach=None):\n    headers = {\n        'User-Agent': self.app_id,\n    }\n    function_name = 'SendPhoto'\n    key = 'photo'\n    path = None\n    if isinstance(attach, AttachBase):\n        if not attach:\n            self.logger.error(\n                'Could not access attachment {}.'.format(\n                    attach.url(privacy=True)))\n            return False\n        self.logger.debug(\n            'Posting Telegram attachment {}'.format(\n                attach.url(privacy=True)))\n        path = attach.path\n        file_name = attach.name\n        mimetype = attach.mimetype\n        function_name, key = \\\n            next(((x['function_name'], x['key']) for x in self.mime_lookup\n                 if x['regex'].match(mimetype)))\n    else:\n        attach = self.image_path(notify_type) if attach is None else attach\n        if attach is None:\n            return True\n        path = attach\n        file_name = os.path.basename(path)\n    url = '%s%s/%s' % (\n        self.notify_url,\n        self.bot_token,\n        function_name,\n    )\n    self.throttle()\n    chat_id, topic = target\n    payload['chat_id'] = chat_id\n    if topic:\n        payload['message_thread_id'] = topic\n    try:\n        with open(path, 'rb') as f:\n            files = {key: (file_name, f)}\n            self.logger.debug(\n                'Telegram attachment POST URL: %s (cert_verify=%r)' % (\n                    url, self.verify_certificate))\n            r = requests.post(\n                url,\n                headers=headers,\n                files=files,\n                data=payload,\n                verify=self.verify_certificate,\n                timeout=self.request_timeout,\n            )\n            if r.status_code != requests.codes.ok:\n                status_str = NotifyTelegram\\\n                    .http_response_code_lookup(r.status_code)\n                self.logger.warning(\n                    'Failed to send Telegram attachment: '\n                    '{}{}error={}.'.format(\n                        status_str,\n                        ', ' if status_str else '',\n                        r.status_code))\n                self.logger.debug(\n                    'Response Details:\\r\\n{}'.format(r.content))\n                return False\n            return True\n    except requests.RequestException as e:\n        self.logger.warning(\n            'A connection error occurred posting Telegram '\n            'attachment.')\n        self.logger.debug('Socket Exception: %s' % str(e))\n    except (IOError, OSError):\n        self.logger.error(\n            'File can not be opened for read: {}'.format(path))\n    return False"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "apprise-1.9.3",
+      "total_matches": 3
+    }
+  }
+]

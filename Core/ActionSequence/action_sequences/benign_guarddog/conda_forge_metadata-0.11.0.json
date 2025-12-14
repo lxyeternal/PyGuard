@@ -1,0 +1,111 @@
+[
+  {
+    "pyfile": "repodata.py",
+    "code_snippet": "import os\nimport requests\nfrom functools import lru_cache\nfrom logging import getLogger\n\nlogger = getLogger(__name__)\n\n@lru_cache\ndef all_labels(use_remote_cache: bool = False) -> list[str]:\n    if use_remote_cache:\n        r = requests.get(\n            \"https://raw.githubusercontent.com/conda-forge/\"\n            \"by-the-numbers/main/data/labels.json\"\n        )\n        r.raise_for_status()\n        return r.json()\n\n    if token := os.environ.get(\"BINSTAR_TOKEN\"):\n        label_info = requests.get(\n            \"https://api.anaconda.org/channels/conda-forge\",\n            headers={\"Authorization\": f\"token {token}\"},\n        ).json()\n\n        return sorted(label for label in label_info if \"/\" not in label)\n\n    logger.info(\"No token detected. Fetching labels from anaconda.org HTML. Slow...\")\n    r = requests.get(\"https://anaconda.org/conda-forge/repo\")\n    r.raise_for_status()\n    html = r.text\n    import bs4\n    soup = bs4.BeautifulSoup(html, \"html.parser\")\n    labels = []\n    len_prefix = len(\"/conda-forge/repo?label=\")\n    for element in soup.select(\"ul#Label > li > a\"):\n        href = element.get(\"href\")\n        if not href:\n            continue\n        label = href[len_prefix:]\n        if label and label not in (\"all\", \"empty\") and \"/\" not in label:\n            labels.append(label)\n    return sorted(labels)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "requests.get",
+        "requests.get",
+        "requests.get",
+        "requests.get.raise_for_status",
+        "requests.get.json",
+        "logger.info",
+        "requests.get",
+        "requests.get.raise_for_status"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"BINSTAR_TOKEN\")",
+        "requests.get(\"https://raw.githubusercontent.com/conda-forge/by-the-numbers/main/data/labels.json\")",
+        "requests.get(\"https://api.anaconda.org/channels/conda-forge\", headers={\"Authorization\": f\"token {token}\"})",
+        "requests.get(\"https://anaconda.org/conda-forge/repo\")",
+        "requests.get.raise_for_status()",
+        "requests.get.json()",
+        "logger.info(\"No token detected. Fetching labels from anaconda.org HTML. Slow...\")",
+        "requests.get(\"https://anaconda.org/conda-forge/repo\")",
+        "requests.get.raise_for_status()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\nfrom logging import getLogger\n\nlogger = getLogger(__name__)\n\ndef all_labels(use_remote_cache: bool = False) -> list[str]:\n    if use_remote_cache:\n        r = requests.get(\n            \"https://raw.githubusercontent.com/conda-forge/\"\n            \"by-the-numbers/main/data/labels.json\"\n        )\n        r.raise_for_status()\n        return r.json()\n\n    if token := os.environ.get(\"BINSTAR_TOKEN\"):\n        label_info = requests.get(\n            \"https://api.anaconda.org/channels/conda-forge\",\n            headers={\"Authorization\": f\"token {token}\"},\n        ).json()\n\n        return sorted(label for label in label_info if \"/\" not in label)\n\n    logger.info(\"No token detected. Fetching labels from anaconda.org HTML. Slow...\")\n    r = requests.get(\"https://anaconda.org/conda-forge/repo\")\n    r.raise_for_status()\n    html = r.text\n    import bs4\n    soup = bs4.BeautifulSoup(html, \"html.parser\")\n    labels = []\n    len_prefix = len(\"/conda-forge/repo?label=\")\n    for element in soup.select(\"ul#Label > li > a\"):\n        href = element.get(\"href\")\n        if not href:\n            continue\n        label = href[len_prefix:]\n        if label and label not in (\"all\", \"empty\") and \"/\" not in label:\n            labels.append(label)\n    return sorted(labels)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "conda_forge_metadata-0.11.0",
+      "total_matches": 1
+    }
+  }
+]

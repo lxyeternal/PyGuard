@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "_common_impl.py",
+    "code_snippet": "import builtins\nimport warnings\nfrom importlib import import_module\nfrom typing import Callable, Optional, Tuple, TypeVar, Any\n\nfrom jsons._cache import cached\nfrom jsons._compatibility_impl import get_union_params\nfrom jsons.exceptions import UnknownClassError\n\nNoneType = type(None)\nJSON_KEYS = (str, int, float, bool, NoneType)\nVALID_TYPES = (str, int, float, bool, list, tuple, set, dict, NoneType)\nMETA_ATTR = '-meta'  # The name of the attribute holding meta info.\nT = TypeVar('T')\n\n\ndef get_cls_from_str(cls_str: str, source: object, fork_inst) -> type:\n    cls = getattr(builtins, cls_str, None)\n    if cls:\n        return cls\n    if '[' in cls_str and ']' in cls_str:\n        return _get_generic_cls_from_str(cls_str, source, fork_inst)\n    try:\n        splitted = cls_str.split('.')\n        module_name = '.'.join(splitted[:-1])\n        cls_name = splitted[-1]\n        cls_module = import_module(module_name)\n        cls = getattr(cls_module, cls_name)\n    except (ImportError, AttributeError, ValueError):\n        cls = _lookup_announced_class(cls_str, source, fork_inst)\n    return cls\n\n\ndef _get_generic_cls_from_str(cls_str: str, source: object, fork_inst) -> type:\n    # If cls_str represents a generic type, try to parse the sub types.\n    origin_str, subtypes_str = cls_str.split('[')\n    subtypes_str = subtypes_str[0:-1]  # Remove the ']'.\n    origin = get_cls_from_str(origin_str, source, fork_inst)\n    subtypes = [get_cls_from_str(s.strip(), source, fork_inst)\n                for s in subtypes_str.split(',')]\n    return origin[tuple(subtypes)]\n\n\ndef _lookup_announced_class(\n        cls_str: str,\n        source: object,\n        fork_inst: type) -> type:\n    cls = fork_inst._announced_classes.get(cls_str)\n    if not cls:\n        msg = ('Could not find a suitable type for \"{}\". Make sure it can be '\n               'imported or that is has been announced.'.format(cls_str))\n        raise UnknownClassError(msg, source, cls_str)\n    return cls\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.getattr",
+        "importlib.import_module",
+        "builtins.getattr"
+      ],
+      "api_sequence_with_args": [
+        "builtins.getattr(builtins, cls_str, None)",
+        "importlib.import_module(module_name)",
+        "builtins.getattr(cls_module, cls_name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "importlib.import_module",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "def get_cls_from_str(cls_str: str, source: object, fork_inst) -> type:\n    cls = getattr(builtins, cls_str, None)\n    if cls:\n        return cls\n    if '[' in cls_str and ']' in cls_str:\n        return _get_generic_cls_from_str(cls_str, source, fork_inst)\n    try:\n        splitted = cls_str.split('.')\n        module_name = '.'.join(splitted[:-1])\n        cls_name = splitted[-1]\n        cls_module = import_module(module_name)\n        cls = getattr(cls_module, cls_name)\n    except (ImportError, AttributeError, ValueError):\n        cls = _lookup_announced_class(cls_str, source, fork_inst)\n    return cls"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "jsons-1.6.3",
+      "total_matches": 1
+    }
+  }
+]

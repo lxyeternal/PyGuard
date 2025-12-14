@@ -1,0 +1,421 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport glob\nimport subprocess\nimport sys\nimport platform\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.install import install\nfrom distutils.sysconfig import get_python_lib\n\n# ... (other code omitted for brevity)\n\n# define post-build-ext and post-install operation for mac OS\nif('darwin' in sys.platform):\n    class PostInstall(install):\n        \"\"\" Post installation - run install_name_tool on Darwin \"\"\"\n        def run(self):\n            install.run(self)\n            clipath = os.getenv('IBM_DB_HOME')\n            if not clipath:\n                # no IBM_DB_HOME during install, keep current value\n                return\n\n            for so in glob.glob(get_python_lib()+r'/ibm_db*.so'):\n                os.system(\"install_name_tool -change @loader_path/clidriver/lib/libdb2.dylib {}/lib/libdb2.dylib {}\".format(clipath, so))\n\n    class PostBuildExt(build_ext):\n        \"\"\" Post build_ext - update db2 dynamic lib to use loader_path on Darwin \"\"\"\n        def run(self):\n            build_ext.run(self)\n            clipath = os.getenv('IBM_DB_HOME', '@loader_path/clidriver')\n            for so in glob.glob(self.build_lib+r'/ibm_db*.so'):\n                os.system(\"install_name_tool -change libdb2.dylib {}/lib/libdb2.dylib {}\".format(clipath, so))\n\n    cmd_class = dict(install = PostInstall, build_ext = PostBuildExt)\n\n# define post-build-ext and post-install operation for ZOS platform   \nif('zos' in sys.platform):\n    class PostInstall(install):\n        def run(self):\n            install.run(self)\n            for so in glob.glob(get_python_lib()+r'/ibm_db*.egg/ibm_db*.so'):\n                os.system(\"chtag -r \" + get_python_lib() + r\"/ibm_db*.egg/ibm_db*.so\")\n            for so in glob.glob(get_python_lib()+r'/ibm_db*.so'):\n                try:\n                    os.system(\"chtag -r \" + get_python_lib() + r\"/ibm_db*.so\")\n                except:\n                    _printOnly(\"Could not change file tag information\")\n\n    class PostBuildExt(build_ext):\n        def run(self):\n            build_ext.run(self)\n            for so in glob.glob(self.build_lib+r'/ibm_db*.so'):\n                try:\n                    os.system(\"chtag -r \" + self.build_lib + r\"/ibm_db*.so\")\n                except:\n                    _printOnly(\"Could not change file tag information\")\n\n    cmd_class = dict(install = PostInstall, build_ext = PostBuildExt)\n\n# ... (other code omitted for brevity)\n\nif 'zos' == sys.platform:\n    #ibm_db_include = \"//'{} .SDSNC.H'\" % ibm_db_home\n    #dataset_include = \"//'{} .SDSNC.H'\" % ibm_db_home\n    if(('DB2_INC' not in os.environ)):\n        dataset_include = \"//'{} .SDSNC.H'\" % ibm_db_home\n    else:\n        sdsnc_h = os.environ['DB2_INC']\n        dataset_include = \"//'{}'\" % sdsnc_h\n    include_dir = 'sdsnc.h'\n    #library = ['dsnao64c'] \n    library = []\n    library_x = \"libdsnao64c.x\"\n    library_so = \"libdsnao64c.so\" # fake, but helpful for gen_lib_options in cpython/Lib/distutils/ccompiler.py\n    ibm_db_lib = '.'\n    if not os.path.isfile(library_x):\n        #with open(\"//'{} .SDSNMACS(DSNAO64C)'\" % ibm_db_home, \"rt\", encoding='cp1047_oe') as x_in:\n            #with open(library_x, \"wt\", encoding='cp1047_oe') as x_out:\n                #x_out.write(''.join([\"%-80s\" % x for x in x_in.read().split('\\n')]))\n        #command = ['tso', \"oput '{}.SDSNMACS(DSNAO64C)' '{}'\".format(ibm_db_home, os.path.join(os.getcwd(), library_x))]\n        if (('DB2_MACS' not in os.environ)):\n            subprocess.run(['tso', \"oput '{}.SDSNMACS(DSNAO64C)' '{}'\".format(ibm_db_home, os.path.join(os.getcwd(), library_x))])\n        else:\n            sdsn_macs = os.environ['DB2_MACS']\n            subprocess.run(['tso', \"oput '{}(DSNAO64C)' '{}'\".format(sdsn_macs, os.path.join(os.getcwd(), library_x))])\n    if not os.path.isdir(include_dir):\n        os.mkdir(include_dir)\n        subprocess.run(['cp', dataset_include, include_dir])\n        for f in glob.glob(os.path.join(include_dir, '*')):\n            subprocess.run(['chtag', '-tc', '1047', f])\n            os.rename(f, '{}.h'.format(f))\n    if not os.path.isfile(library_so):\n        with open(library_so, \"wb\") as x_out:\n            pass\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.platform",
+        "os.getenv",
+        "glob.glob",
+        "get_python_lib",
+        "os.system",
+        "build_ext.run",
+        "os.getenv",
+        "glob.glob",
+        "os.system",
+        "install.run",
+        "glob.glob",
+        "get_python_lib",
+        "os.system",
+        "glob.glob",
+        "get_python_lib",
+        "os.system",
+        "glob.glob",
+        "build_ext.run",
+        "glob.glob",
+        "os.system",
+        "os.environ",
+        "os.environ",
+        "os.path.isfile",
+        "os.environ",
+        "os.getcwd",
+        "os.path.join",
+        "subprocess.run",
+        "os.environ",
+        "os.getcwd",
+        "os.path.join",
+        "subprocess.run",
+        "os.path.isdir",
+        "os.mkdir",
+        "subprocess.run",
+        "glob.glob",
+        "os.path.join",
+        "subprocess.run",
+        "os.rename",
+        "os.path.isfile",
+        "open"
+      ],
+      "api_sequence_with_args": [
+        "sys.platform",
+        "os.getenv('IBM_DB_HOME')",
+        "glob.glob(get_python_lib()+r'/ibm_db*.so')",
+        "get_python_lib()",
+        "os.system(\"install_name_tool -change @loader_path/clidriver/lib/libdb2.dylib {}/lib/libdb2.dylib {}\".format(clipath, so))",
+        "build_ext.run(self)",
+        "os.getenv('IBM_DB_HOME', '@loader_path/clidriver')",
+        "glob.glob(self.build_lib+r'/ibm_db*.so')",
+        "os.system(\"install_name_tool -change libdb2.dylib {}/lib/libdb2.dylib {}\".format(clipath, so))",
+        "install.run(self)",
+        "glob.glob(get_python_lib()+r'/ibm_db*.egg/ibm_db*.so')",
+        "get_python_lib()",
+        "os.system(\"chtag -r \" + get_python_lib() + r\"/ibm_db*.egg/ibm_db*.so\")",
+        "glob.glob(get_python_lib()+r'/ibm_db*.so')",
+        "get_python_lib()",
+        "os.system(\"chtag -r \" + get_python_lib() + r\"/ibm_db*.so\")",
+        "glob.glob(self.build_lib+r'/ibm_db*.so')",
+        "build_ext.run(self)",
+        "glob.glob(self.build_lib+r'/ibm_db*.so')",
+        "os.system(\"chtag -r \" + self.build_lib + r\"/ibm_db*.so\")",
+        "os.environ",
+        "os.environ['DB2_INC']",
+        "os.path.isfile(library_x)",
+        "os.environ",
+        "os.getcwd()",
+        "os.path.join(os.getcwd(), library_x)",
+        "subprocess.run(['tso', \"oput '{}.SDSNMACS(DSNAO64C)' '{}'\".format(ibm_db_home, os.path.join(os.getcwd(), library_x))])",
+        "os.environ",
+        "os.getcwd()",
+        "os.path.join(os.getcwd(), library_x)",
+        "subprocess.run(['tso', \"oput '{}(DSNAO64C)' '{}'\".format(sdsn_macs, os.path.join(os.getcwd(), library_x))])",
+        "os.path.isdir(include_dir)",
+        "os.mkdir(include_dir)",
+        "subprocess.run(['cp', dataset_include, include_dir])",
+        "glob.glob(os.path.join(include_dir, '*'))",
+        "os.path.join(include_dir, '*')",
+        "subprocess.run(['chtag', '-tc', '1047', f])",
+        "os.rename(f, '{}.h'.format(f))",
+        "os.path.isfile(library_so)",
+        "open(library_so, \"wb\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.platform",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "distutils.sysconfig.get_python_lib",
+          "id": "get_site_packages",
+          "description": "Returns list of all global site-packages directories",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "setuptools.command.build_ext.build_ext.run",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "setuptools.command.install.install.run",
+          "id": "exec_setuptools_install",
+          "description": "Executes setuptools installation procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "distutils.sysconfig.get_python_lib",
+          "id": "get_site_packages",
+          "description": "Returns list of all global site-packages directories",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "distutils.sysconfig.get_python_lib",
+          "id": "get_site_packages",
+          "description": "Returns list of all global site-packages directories",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "setuptools.command.build_ext.build_ext.run",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ['DB2_INC']",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.rename",
+          "id": "rename_file",
+          "description": "Renames file or moves it to new location",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "import os\nimport glob\nimport subprocess\nimport sys\nimport platform\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.install import install\nfrom distutils.sysconfig import get_python_lib\n\n# define post-build-ext and post-install operation for mac OS\nif('darwin' in sys.platform):\n    class PostInstall(install):\n        def run(self):\n            install.run(self)\n            clipath = os.getenv('IBM_DB_HOME')\n            if not clipath:\n                return\n            for so in glob.glob(get_python_lib()+r'/ibm_db*.so'):\n                os.system(\"install_name_tool -change @loader_path/clidriver/lib/libdb2.dylib {}/lib/libdb2.dylib {}\".format(clipath, so))\n\n    class PostBuildExt(build_ext):\n        def run(self):\n            build_ext.run(self)\n            clipath = os.getenv('IBM_DB_HOME', '@loader_path/clidriver')\n            for so in glob.glob(self.build_lib+r'/ibm_db*.so'):\n                os.system(\"install_name_tool -change libdb2.dylib {}/lib/libdb2.dylib {}\".format(clipath, so))\n\n# define post-build-ext and post-install operation for ZOS platform   \nif('zos' in sys.platform):\n    class PostInstall(install):\n        def run(self):\n            install.run(self)\n            for so in glob.glob(get_python_lib()+r'/ibm_db*.egg/ibm_db*.so'):\n                os.system(\"chtag -r \" + get_python_lib() + r\"/ibm_db*.egg/ibm_db*.so\")\n            for so in glob.glob(get_python_lib()+r'/ibm_db*.so'):\n                try:\n                    os.system(\"chtag -r \" + get_python_lib() + r\"/ibm_db*.so\")\n                except:\n                    _printOnly(\"Could not change file tag information\")\n\n    class PostBuildExt(build_ext):\n        def run(self):\n            build_ext.run(self)\n            for so in glob.glob(self.build_lib+r'/ibm_db*.so'):\n                try:\n                    os.system(\"chtag -r \" + self.build_lib + r\"/ibm_db*.so\")\n                except:\n                    _printOnly(\"Could not change file tag information\")\n\nif 'zos' == sys.platform:\n    if(('DB2_INC' not in os.environ)):\n        dataset_include = \"//'{} .SDSNC.H'\" % ibm_db_home\n    else:\n        sdsnc_h = os.environ['DB2_INC']\n        dataset_include = \"//'{}'\" % sdsnc_h\n    include_dir = 'sdsnc.h'\n    library = []\n    library_x = \"libdsnao64c.x\"\n    library_so = \"libdsnao64c.so\"\n    ibm_db_lib = '.'\n    if not os.path.isfile(library_x):\n        if (('DB2_MACS' not in os.environ)):\n            subprocess.run(['tso', \"oput '{}.SDSNMACS(DSNAO64C)' '{}'\".format(ibm_db_home, os.path.join(os.getcwd(), library_x))])\n        else:\n            sdsn_macs = os.environ['DB2_MACS']\n            subprocess.run(['tso', \"oput '{}(DSNAO64C)' '{}'\".format(sdsn_macs, os.path.join(os.getcwd(), library_x))])\n    if not os.path.isdir(include_dir):\n        os.mkdir(include_dir)\n        subprocess.run(['cp', dataset_include, include_dir])\n        for f in glob.glob(os.path.join(include_dir, '*')):\n            subprocess.run(['chtag', '-tc', '1047', f])\n            os.rename(f, '{}.h'.format(f))\n    if not os.path.isfile(library_so):\n        with open(library_so, \"wb\") as x_out:\n            pass"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ibm_db-3.2.6",
+      "total_matches": 9
+    }
+  }
+]

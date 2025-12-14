@@ -1,0 +1,78 @@
+[
+  {
+    "metadata": {
+      "package_name": "dataengine-0.0.91",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "redact_utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dataengine-0.0.91/dataengine-0.0.91/dataengine/utilities/redact_utils.py",
+    "line_number": "600",
+    "type_description": "B839:pool",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "599\t    # Set processes to 1 less than cpu count\n600\t    with Pool(\n601\t        processes=max(1, multiprocessing.cpu_count() - 1)\n602\t    ) as executor:",
+    "code_snippet": "def generate_redact_map(\n        text_list: List[str], redact_type: str,\n        find_function: Callable[[str], Set[Any]],\n        regex_function: Callable[[Any], re.Pattern]\n    ) -> Dict[str, Dict[str, Union[str, str]]]:\n    \"\"\"\n    Generate a redaction map for a list of text items based on specified find\n    and regex functions.\n\n    Args:\n        text_list (List[str]):\n            A list of text items to be processed for redaction.\n        redact_type (str):\n            A string indicating the type of redaction.\n        find_function (Callable[[str], List[str]]):\n            A function that takes a string and returns a set of matches.\n        regex_function (Callable[[str], str]):\n            A function that gives regex pattern that covers all permutations\n            of a certain type of string.\n\n    Returns:\n        Dict[str, Dict[str, Union[str, str]]]:\n            A dictionary containing the redaction mappings. Each key is a\n            redaction label and each value is another dictionary containing\n            the original match and its regex pattern.\n    \"\"\"\n    # Set processes to 1 less than cpu count\n    with Pool(\n        processes=max(1, multiprocessing.cpu_count() - 1)\n    ) as executor:\n        results = list(executor.map(find_function, text_list))\n    # Get unique matches\n    unique_matches = set(itertools.chain.from_iterable(results))\n    # Return redact map\n    return {\n        f\"[REDACTED:{redact_type}:{{}}]\".format(index + 1): {\n            \"original\": match, \"regex\": regex_function(match)\n        } for index, match in enumerate(unique_matches)}",
+    "pattern_analysis": {
+      "api_sequence": [
+        "multiprocessing.cpu_count",
+        "itertools.chain.from_iterable",
+        "executor.map",
+        "set",
+        "enumerate"
+      ],
+      "api_sequence_with_args": [
+        "multiprocessing.cpu_count()",
+        "itertools.chain.from_iterable(results)",
+        "executor.map(find_function, text_list)",
+        "set(itertools.chain.from_iterable(results))",
+        "enumerate(unique_matches)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "itertools.chain.from_iterable",
+          "id": "apply_lambda_to_lists",
+          "description": "Applies lambda function to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "executor.map",
+          "id": "submit_thread_function",
+          "description": "Submits function to thread pool for execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "set",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "enumerate",
+          "id": "apply_lambda_to_lists",
+          "description": "Applies lambda function to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        }
+      ],
+      "contextual_code": "with Pool(processes=max(1, multiprocessing.cpu_count() - 1)) as executor:\n    results = list(executor.map(find_function, text_list))\nunique_matches = set(itertools.chain.from_iterable(results))\nreturn {\n    f\"[REDACTED:{redact_type}:{{}}]\".format(index + 1): {\n        \"original\": match, \"regex\": regex_function(match)\n    } for index, match in enumerate(unique_matches)\n}"
+    }
+  }
+]

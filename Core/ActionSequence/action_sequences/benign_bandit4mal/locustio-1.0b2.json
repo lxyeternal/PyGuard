@@ -1,0 +1,109 @@
+[
+  {
+    "metadata": {
+      "package_name": "locustio-1.0b2",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_web.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/locustio-1.0b2/locustio-1.0b2/locust/test/test_web.py",
+    "line_number": "303",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "302\t    def test_index_with_basic_auth_enabled_correct_credentials(self):\n303\t        self.assertEqual(200, requests.get(\"http://127.0.0.1:%i/?ele=phino\" % self.web_port, auth=('john', 'doe')).status_code)\n304",
+    "code_snippet": "class TestWebUIAuth(LocustTestCase):\n    def setUp(self):\n        super(TestWebUIAuth, self).setUp()\n\n        parser = get_parser(default_config_files=[])\n        options = parser.parse_args([\"--web-auth\", \"john:doe\"])\n        self.runner = Runner(self.environment)\n        self.stats = self.runner.stats\n        self.web_ui = self.environment.create_web_ui(\"127.0.0.1\", 0, auth_credentials=options.web_auth)\n        self.web_ui.app.view_functions[\"request_stats\"].clear_cache()\n        gevent.sleep(0.01)\n        self.web_port = self.web_ui.server.server_port\n\n    def tearDown(self):\n        super(TestWebUIAuth, self).tearDown()\n        self.web_ui.stop()\n        self.runner.quit()\n\n    def test_index_with_basic_auth_enabled_correct_credentials(self):\n        self.assertEqual(200, requests.get(\"http://127.0.0.1:%i/?ele=phino\" % self.web_port, auth=('john', 'doe')).status_code)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "get_parser",
+        "argparse.ArgumentParser.parse_args",
+        "Runner",
+        "Runner.stats",
+        "Environment.create_web_ui",
+        "WebUI.server.server_port",
+        "requests.get"
+      ],
+      "api_sequence_with_args": [
+        "get_parser(default_config_files=[])",
+        "argparse.ArgumentParser.parse_args([\"--web-auth\", \"john:doe\"])",
+        "Runner(self.environment)",
+        "Runner.stats",
+        "Environment.create_web_ui(\"127.0.0.1\", 0, auth_credentials=options.web_auth)",
+        "WebUI.server.server_port",
+        "requests.get(\"http://127.0.0.1:%i/?ele=phino\" % self.web_port, auth=('john', 'doe'))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "def test_index_with_basic_auth_enabled_correct_credentials(self):\n    self.assertEqual(200, requests.get(\"http://127.0.0.1:%i/?ele=phino\" % self.web_port, auth=('john', 'doe')).status_code)"
+    }
+  },
+  {
+    "pyfile": "test_log.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/locustio-1.0b2/locustio-1.0b2/locust/test/test_log.py",
+    "line_number": "83",
+    "type_description": "B803:gethostname",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "82\t        self.assertIn(\n83\t            \"%s/INFO/custom_logger: test\" % socket.gethostname(),\n84\t            output,",
+    "code_snippet": "    def test_logging_output(self):\n        with temporary_file(textwrap.dedent(\"\"\"\n            import logging\n            from locust import User, task, constant\n            \n            custom_logger = logging.getLogger(\"custom_logger\")\n            \n            class MyUser(User):\n                wait_time = constant(2)\n                @task\n                def my_task(self):\n                    print(\"running my_task\")\n                    logging.info(\"custom log message\")\n                    custom_logger.info(\"test\")\n        \"\"\")) as file_path:\n            output = subprocess.check_output([\n                \"locust\", \n                \"-f\", file_path, \n                \"-u\", \"1\",\n                \"-r\", \"1\",\n                \"-t\", \"1\",\n                \"--headless\",\n            ], stderr=subprocess.STDOUT, timeout=10).decode(\"utf-8\")\n        \n        self.assertIn(\n            \"%s/INFO/locust.main: Run time limit set to 1 seconds\" % socket.gethostname(),\n            output,\n        )\n        self.assertIn(\n            \"%s/INFO/locust.main: Time limit reached. Stopping Locust.\" % socket.gethostname(),\n            output,\n        )\n        self.assertIn(\n            \"%s/INFO/locust.main: Shutting down (exit code 0), bye.\" % socket.gethostname(),\n            output,\n        )\n        self.assertIn(\n            \"\\nrunning my_task\\n\",\n            output,\n        )\n        # check that custom message of root logger is also printed\n        self.assertIn(\n            \"%s/INFO/root: custom log message\" % socket.gethostname(),\n            output,\n        )\n        # check that custom message of custom_logger is also printed\n        self.assertIn(\n            \"%s/INFO/custom_logger: test\" % socket.gethostname(),\n            output,\n        )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "temporary_file",
+        "subprocess.check_output",
+        "subprocess.STDOUT",
+        "socket.gethostname"
+      ],
+      "api_sequence_with_args": [
+        "temporary_file(textwrap.dedent(\"\"\"\n            import logging\n            from locust import User, task, constant\n            \n            custom_logger = logging.getLogger(\"custom_logger\")\n            \n            class MyUser(User):\n                wait_time = constant(2)\n                @task\n                def my_task(self):\n                    print(\"running my_task\")\n                    logging.info(\"custom log message\")\n                    custom_logger.info(\"test\")\n        \"\"\"))",
+        "subprocess.check_output([\"locust\", \"-f\", file_path, \"-u\", \"1\", \"-r\", \"1\", \"-t\", \"1\", \"--headless\"], stderr=subprocess.STDOUT, timeout=10)",
+        "subprocess.STDOUT",
+        "socket.gethostname()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "temporary_file",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.STDOUT",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "socket.gethostname",
+          "id": "get_hostname",
+          "description": "Retrieves current host name",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        }
+      ],
+      "contextual_code": "with temporary_file(textwrap.dedent(\"\"\"\n            import logging\n            from locust import User, task, constant\n            \n            custom_logger = logging.getLogger(\"custom_logger\")\n            \n            class MyUser(User):\n                wait_time = constant(2)\n                @task\n                def my_task(self):\n                    print(\"running my_task\")\n                    logging.info(\"custom log message\")\n                    custom_logger.info(\"test\")\n        \"\"\")) as file_path:\n    output = subprocess.check_output([\n        \"locust\", \n        \"-f\", file_path, \n        \"-u\", \"1\",\n        \"-r\", \"1\",\n        \"-t\", \"1\",\n        \"--headless\",\n    ], stderr=subprocess.STDOUT, timeout=10).decode(\"utf-8\")\n\nself.assertIn(\n    \"%s/INFO/locust.main: Run time limit set to 1 seconds\" % socket.gethostname(),\n    output,\n)\nself.assertIn(\n    \"%s/INFO/locust.main: Time limit reached. Stopping Locust.\" % socket.gethostname(),\n    output,\n)\nself.assertIn(\n    \"%s/INFO/locust.main: Shutting down (exit code 0), bye.\" % socket.gethostname(),\n    output,\n)\nself.assertIn(\n    \"\\nrunning my_task\\n\",\n    output,\n)\nself.assertIn(\n    \"%s/INFO/root: custom log message\" % socket.gethostname(),\n    output,\n)\nself.assertIn(\n    \"%s/INFO/custom_logger: test\" % socket.gethostname(),\n    output,\n)"
+    }
+  }
+]

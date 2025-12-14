@@ -1,0 +1,271 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport shutil\nimport sys\nimport sysconfig\nimport subprocess\nfrom glob import glob\nfrom setuptools import setup, Command, Extension\n\n# ... (other code omitted for brevity)\n\ndef check_call(args):\n    try:\n        subprocess.check_call(args)\n    except subprocess.CalledProcessError:\n        executable = args[0]\n        command = [a for a in args if not a.startswith('-')][-1]\n        raise RuntimeError(command + ' failed for ' + executable)\n\nclass SpherogramRelease(Command):\n    user_options = [('install', 'i', 'install the release into each Python')]\n    def initialize_options(self):\n        self.install = False\n    def finalize_options(self):\n        pass\n    def run(self):\n        if os.path.exists('build'):\n            shutil.rmtree('build')\n        if os.path.exists('dist'):\n            shutil.rmtree('dist')\n\n        pythons = os.environ.get('RELEASE_PYTHONS', sys.executable).split(',')\n        for python in pythons:\n            check_call([python, 'setup.py', 'build'])\n            check_call([python, 'setup.py', 'test'])\n            if self.install:\n                check_call([python, 'setup.py', 'pip_install'])\n            else:\n                check_call([python, 'setup.py', 'bdist_wheel'])\n\n        # Build sdist using the *first* specified Python\n        check_call([pythons[0], 'setup.py', 'sdist'])\n\n        # Double-check the Linux wheels\n        if sys.platform.startswith('linux'):\n            for name in os.listdir('dist'):\n                if name.endswith('.whl'):\n                    subprocess.check_call(['auditwheel', 'repair', os.path.join('dist', name)])\n\nclass SpherogramPipInstall(Command):\n    user_options = []\n    def initialize_options(self):\n        pass\n    def finalize_options(self):\n        pass\n    def run(self):\n        python = sys.executable\n        check_call([python, 'setup.py', 'bdist_wheel'])\n        egginfo = 'spherogram.egg-info'\n        if os.path.exists(egginfo):\n            shutil.rmtree(egginfo)\n        wheels = glob('dist' + os.sep + '*.whl')\n        new_wheel = max(wheels, key=os.path.getmtime)\n        check_call([python, '-m', 'pip', 'uninstall', '-y', 'spherogram'])\n        check_call([python, '-m', 'pip', 'install', '--upgrade',\n                    '--upgrade-strategy', 'only-if-needed',\n                    new_wheel])\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "shutil.rmtree",
+        "os.path.exists",
+        "shutil.rmtree",
+        "os.environ.get",
+        "sys.executable",
+        "check_call",
+        "check_call",
+        "check_call",
+        "check_call",
+        "check_call",
+        "sys.platform.startswith",
+        "os.listdir",
+        "os.path.join",
+        "subprocess.check_call",
+        "sys.executable",
+        "check_call",
+        "os.path.exists",
+        "shutil.rmtree",
+        "glob",
+        "os.sep",
+        "os.path.getmtime",
+        "max",
+        "check_call",
+        "check_call"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists('build')",
+        "shutil.rmtree('build')",
+        "os.path.exists('dist')",
+        "shutil.rmtree('dist')",
+        "os.environ.get('RELEASE_PYTHONS', sys.executable)",
+        "sys.executable",
+        "check_call([python, 'setup.py', 'build'])",
+        "check_call([python, 'setup.py', 'test'])",
+        "check_call([python, 'setup.py', 'pip_install'])",
+        "check_call([python, 'setup.py', 'bdist_wheel'])",
+        "check_call([pythons[0], 'setup.py', 'sdist'])",
+        "sys.platform.startswith('linux')",
+        "os.listdir('dist')",
+        "os.path.join('dist', name)",
+        "subprocess.check_call(['auditwheel', 'repair', os.path.join('dist', name)])",
+        "sys.executable",
+        "check_call([python, 'setup.py', 'bdist_wheel'])",
+        "os.path.exists(egginfo)",
+        "shutil.rmtree(egginfo)",
+        "glob('dist' + os.sep + '*.whl')",
+        "os.sep",
+        "os.path.getmtime",
+        "max(wheels, key=os.path.getmtime)",
+        "check_call([python, '-m', 'pip', 'uninstall', '-y', 'spherogram'])",
+        "check_call([python, '-m', 'pip', 'install', '--upgrade', '--upgrade-strategy', 'only-if-needed', new_wheel])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.listdir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.sep",
+          "id": "get_os_path_sep",
+          "description": "Retrieves operating system path separator",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.path.getmtime",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "max",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nimport sys\nimport subprocess\nfrom glob import glob\n\n# --- Sensitive API usage ---\ndef check_call(args):\n    try:\n        subprocess.check_call(args)\n    except subprocess.CalledProcessError:\n        executable = args[0]\n        command = [a for a in args if not a.startswith('-')][-1]\n        raise RuntimeError(command + ' failed for ' + executable)\n\nclass SpherogramRelease(Command):\n    def run(self):\n        if os.path.exists('build'):\n            shutil.rmtree('build')\n        if os.path.exists('dist'):\n            shutil.rmtree('dist')\n\n        pythons = os.environ.get('RELEASE_PYTHONS', sys.executable).split(',')\n        for python in pythons:\n            check_call([python, 'setup.py', 'build'])\n            check_call([python, 'setup.py', 'test'])\n            if self.install:\n                check_call([python, 'setup.py', 'pip_install'])\n            else:\n                check_call([python, 'setup.py', 'bdist_wheel'])\n\n        check_call([pythons[0], 'setup.py', 'sdist'])\n\n        if sys.platform.startswith('linux'):\n            for name in os.listdir('dist'):\n                if name.endswith('.whl'):\n                    subprocess.check_call(['auditwheel', 'repair', os.path.join('dist', name)])\n\nclass SpherogramPipInstall(Command):\n    def run(self):\n        python = sys.executable\n        check_call([python, 'setup.py', 'bdist_wheel'])\n        egginfo = 'spherogram.egg-info'\n        if os.path.exists(egginfo):\n            shutil.rmtree(egginfo)\n        wheels = glob('dist' + os.sep + '*.whl')\n        new_wheel = max(wheels, key=os.path.getmtime)\n        check_call([python, '-m', 'pip', 'uninstall', '-y', 'spherogram'])\n        check_call([python, '-m', 'pip', 'install', '--upgrade', '--upgrade-strategy', 'only-if-needed', new_wheel])"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "spherogram-2.3",
+      "total_matches": 4
+    }
+  }
+]

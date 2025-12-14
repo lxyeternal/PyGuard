@@ -1,0 +1,456 @@
+{
+  "metadata": {
+    "package_name": "evo-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/evo-1.31.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "main_evo.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/evo-1.31.1/evo-1.31.1/evo/main_evo.py",
+      "line_number": "158",
+      "type_description": "B814:read",
+      "context_snippet": "def main() -> None:\n    import sys\n    import argparse\n    import argcomplete\n    main_parser = argparse.ArgumentParser()\n    shared_parser = argparse.ArgumentParser(add_help=False)\n    sub_parsers = main_parser.add_subparsers(dest=\"subcommand\")\n    sub_parsers.required = True\n    pkg_parser = sub_parsers.add_parser(\n        \"pkg\", description=\"show infos of the package\",\n        parents=[shared_parser])\n    pkg_parser.add_argument(\"--info\", help=\"show the package description\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--version\", help=\"print the package version\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--pyversion\", help=\"print the Python version\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--license\", help=\"print the package license\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--location\", help=\"print the package path\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--logfile\", help=\"print the logfile path\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--open_log\", help=\"open the package logfile\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--clear_log\", help=\"clear package logfile\",\n                            action=\"store_true\")\n    cat_parser = sub_parsers.add_parser(\n        \"cat_log\", description=\"pipe stdin to global evo logfile\"\n        \" or print logfile to stdout (if no stdin)\", parents=[shared_parser])\n    cat_parser.add_argument(\"-l\", \"--loglevel\", help=\"loglevel of the message\",\n                            default=\"info\",\n                            choices=[\"error\", \"warning\", \"info\", \"debug\"])\n    cat_parser.add_argument(\"-m\", \"--message\",\n                            help=\"explicit message instead of pipe\")\n    cat_parser.add_argument(\"-s\", \"--source\",\n                            help=\"source name to use for the log message\")\n    cat_parser.add_argument(\"--clear_log\", help=\"clear logfile before exiting\",\n                            action=\"store_true\")\n    argcomplete.autocomplete(main_parser)\n    if len(sys.argv[1:]) == 0:\n        sys.argv.extend([\"pkg\", \"--info\"])  # cheap trick because YOLO\n    args = main_parser.parse_args()\n    line_end = \"\\n\" if sys.stdout.isatty() else \"\"\n\n    if args.subcommand == \"pkg\":\n        if not len(sys.argv) > 2:\n            pkg_parser.print_help()\n            sys.exit(1)\n        if args.license:\n            print(open(PACKAGE_BASE_PATH / \"LICENSE\").read())\n        if args.info:\n            main_parser.print_usage()\n            print(DESC)\n        if args.version:\n            print(__version__, end=line_end)\n        if args.pyversion:\n            import platform as pf\n            print(pf.python_version(), end=line_end)\n        if args.location:\n            print(PACKAGE_BASE_PATH, end=line_end)\n        if args.logfile or args.open_log:\n            print(settings.GLOBAL_LOGFILE_PATH, end=line_end)\n            if not settings.GLOBAL_LOGFILE_PATH.exists():\n                print(\n                    \"no logfile found - run: \"\n                    \"evo_config set global_logfile_enabled\", end=line_end)\n                sys.exit(1)\n            if args.open_log:\n                import webbrowser\n                webbrowser.open(str(settings.GLOBAL_LOGFILE_PATH))\n        if args.clear_log:\n            from evo.tools import user\n            if user.confirm(\"clear logfile? (y/n)\"):\n                open(settings.GLOBAL_LOGFILE_PATH, mode='w')\n\n    elif args.subcommand == \"cat_log\":\n        if os.name == \"nt\":\n            print(\"cat_log feature not available on Windows\")\n            sys.exit(1)\n        if not args.message and sys.stdin.isatty():\n            if not settings.GLOBAL_LOGFILE_PATH.exists():\n                print(\n                    \"no logfile found - run: \"\n                    \"evo_config set global_logfile_enabled\", end=line_end)\n            else:\n                print(open(settings.GLOBAL_LOGFILE_PATH).read(), end=\"\")\n        elif not settings.SETTINGS.global_logfile_enabled:\n            print(\"logfile disabled\", end=line_end)\n            sys.exit(1)\n        else:\n            import logging\n            logger = logging.getLogger(__name__)\n            from evo.tools import log\n            file_fmt = log.DEFAULT_LONG_FMT\n            if args.source:\n                file_fmt = file_fmt.replace(\n                    \"%(module)s.%(funcName)s():%(lineno)s\", args.source)\n            log.configure_logging(silent=True, file_fmt=file_fmt)\n            if not args.message:\n                msg = sys.stdin.read()\n            else:\n                msg = args.message\n            getattr(logger, args.loglevel)(msg)\n        if args.clear_log:\n            open(settings.GLOBAL_LOGFILE_PATH, mode='w')",
+      "hash_value": "1c8cdb60635952bab52e0932d04cc97e",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def main() -> None:\n    import sys\n    import argparse\n    import argcomplete\n    main_parser = argparse.ArgumentParser()\n    shared_parser = argparse.ArgumentParser(add_help=False)\n    sub_parsers = main_parser.add_subparsers(dest=\"subcommand\")\n    sub_parsers.required = True\n    pkg_parser = sub_parsers.add_parser(\n        \"pkg\", description=\"show infos of the package\",\n        parents=[shared_parser])\n    pkg_parser.add_argument(\"--info\", help=\"show the package description\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--version\", help=\"print the package version\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--pyversion\", help=\"print the Python version\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--license\", help=\"print the package license\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--location\", help=\"print the package path\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--logfile\", help=\"print the logfile path\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--open_log\", help=\"open the package logfile\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--clear_log\", help=\"clear package logfile\",\n                            action=\"store_true\")\n    cat_parser = sub_parsers.add_parser(\n        \"cat_log\", description=\"pipe stdin to global evo logfile\"\n        \" or print logfile to stdout (if no stdin)\", parents=[shared_parser])\n    cat_parser.add_argument(\"-l\", \"--loglevel\", help=\"loglevel of the message\",\n                            default=\"info\",\n                            choices=[\"error\", \"warning\", \"info\", \"debug\"])\n    cat_parser.add_argument(\"-m\", \"--message\",\n                            help=\"explicit message instead of pipe\")\n    cat_parser.add_argument(\"-s\", \"--source\",\n                            help=\"source name to use for the log message\")\n    cat_parser.add_argument(\"--clear_log\", help=\"clear logfile before exiting\",\n                            action=\"store_true\")\n    argcomplete.autocomplete(main_parser)\n    if len(sys.argv[1:]) == 0:\n        sys.argv.extend([\"pkg\", \"--info\"])  # cheap trick because YOLO\n    args = main_parser.parse_args()\n    line_end = \"\\n\" if sys.stdout.isatty() else \"\"\n\n    if args.subcommand == \"pkg\":\n        if not len(sys.argv) > 2:\n            pkg_parser.print_help()\n            sys.exit(1)\n        if args.license:\n            print(open(PACKAGE_BASE_PATH / \"LICENSE\").read())\n        if args.info:\n            main_parser.print_usage()\n            print(DESC)\n        if args.version:\n            print(__version__, end=line_end)\n        if args.pyversion:\n            import platform as pf\n            print(pf.python_version(), end=line_end)\n        if args.location:\n            print(PACKAGE_BASE_PATH, end=line_end)\n        if args.logfile or args.open_log:\n            print(settings.GLOBAL_LOGFILE_PATH, end=line_end)\n            if not settings.GLOBAL_LOGFILE_PATH.exists():\n                print(\n                    \"no logfile found - run: \"\n                    \"evo_config set global_logfile_enabled\", end=line_end)\n                sys.exit(1)\n            if args.open_log:\n                import webbrowser\n                webbrowser.open(str(settings.GLOBAL_LOGFILE_PATH))\n        if args.clear_log:\n            from evo.tools import user\n            if user.confirm(\"clear logfile? (y/n)\"):\n                open(settings.GLOBAL_LOGFILE_PATH, mode='w')\n\n    elif args.subcommand == \"cat_log\":\n        if os.name == \"nt\":\n            print(\"cat_log feature not available on Windows\")\n            sys.exit(1)\n        if not args.message and sys.stdin.isatty():\n            if not settings.GLOBAL_LOGFILE_PATH.exists():\n                print(\n                    \"no logfile found - run: \"\n                    \"evo_config set global_logfile_enabled\", end=line_end)\n            else:\n                print(open(settings.GLOBAL_LOGFILE_PATH).read(), end=\"\")\n        elif not settings.SETTINGS.global_logfile_enabled:\n            print(\"logfile disabled\", end=line_end)\n            sys.exit(1)\n        else:\n            import logging\n            logger = logging.getLogger(__name__)\n            from evo.tools import log\n            file_fmt = log.DEFAULT_LONG_FMT\n            if args.source:\n                file_fmt = file_fmt.replace(\n                    \"%(module)s.%(funcName)s():%(lineno)s\", args.source)\n            log.configure_logging(silent=True, file_fmt=file_fmt)\n            if not args.message:\n                msg = sys.stdin.read()\n            else:\n                msg = args.message\n            getattr(logger, args.loglevel)(msg)\n        if args.clear_log:\n            open(settings.GLOBAL_LOGFILE_PATH, mode='w')",
+          "triple_sequences": [
+            {
+              "action_api": "argparse.ArgumentParser()",
+              "action_description": "Creates argument parser object",
+              "action_id": "create_sql_cursor",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "main_parser.add_subparsers()",
+              "action_description": "Creates subparsers for argument parser",
+              "action_id": "create_sql_cursor",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "sub_parsers.add_parser()",
+              "action_description": "Creates argument parser object",
+              "action_id": "create_sql_cursor",
+              "object": "\"pkg\", description=\"show infos of the package\", parents=[shared_parser]",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "pkg_parser.add_argument()",
+              "action_description": "Adds argument to argument parser",
+              "action_id": "add_http_header",
+              "object": "--info, --version, --pyversion, --license, --location, --logfile, --open_log, --clear_log",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "sub_parsers.add_parser()",
+              "action_description": "Creates argument parser object",
+              "action_id": "create_sql_cursor",
+              "object": "\"cat_log\", description=\"pipe stdin to global evo logfile or print logfile to stdout (if no stdin)\", parents=[shared_parser]",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "cat_parser.add_argument()",
+              "action_description": "Adds argument to argument parser",
+              "action_id": "add_http_header",
+              "object": "-l, --loglevel, -m, --message, -s, --source, --clear_log",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "argcomplete.autocomplete()",
+              "action_description": "Enables command-line argument autocompletion",
+              "action_id": "enable_discord_intents",
+              "object": "main_parser",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare argument for shortcut",
+              "intention_id": "prepare_shortcut_argument"
+            },
+            {
+              "action_api": "main_parser.parse_args()",
+              "action_description": "Parses command-line arguments",
+              "action_id": "get_cmd_args",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access command line arguments",
+              "intention_id": "access_command_line_arguments"
+            },
+            {
+              "action_api": "sys.stdout.isatty()",
+              "action_description": "Checks if standard output is a terminal",
+              "action_id": "check_window_enabled",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "pkg_parser.print_help()",
+              "action_description": "Prints help message for argument parser",
+              "action_id": "get_cmd_args",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "sys.exit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "1",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "open(PACKAGE_BASE_PATH / \"LICENSE\")",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "PACKAGE_BASE_PATH / \"LICENSE\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Access file content",
+              "intention_id": "access_file_content"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "main_parser.print_usage()",
+              "action_description": "Prints usage message for argument parser",
+              "action_id": "get_cmd_args",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "print(DESC)",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "DESC",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "print(__version__)",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "__version__",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "import platform as pf",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "platform",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import module dynamically",
+              "intention_id": "import_module_dynamically"
+            },
+            {
+              "action_api": "pf.python_version()",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system version",
+              "intention_id": "get_operating_system_version"
+            },
+            {
+              "action_api": "print(PACKAGE_BASE_PATH)",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "PACKAGE_BASE_PATH",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "print(settings.GLOBAL_LOGFILE_PATH)",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "settings.GLOBAL_LOGFILE_PATH",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "settings.GLOBAL_LOGFILE_PATH.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "settings.GLOBAL_LOGFILE_PATH",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "print(\"no logfile found - run: evo_config set global_logfile_enabled\")",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "\"no logfile found - run: evo_config set global_logfile_enabled\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "sys.exit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "1",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "webbrowser.open()",
+              "action_description": "Opens file with associated application",
+              "action_id": "open_file_app",
+              "object": "str(settings.GLOBAL_LOGFILE_PATH)",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file",
+              "intention_id": "open_file"
+            },
+            {
+              "action_api": "user.confirm()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "\"clear logfile? (y/n)\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Collect user input",
+              "intention_id": "collect_user_input"
+            },
+            {
+              "action_api": "open(settings.GLOBAL_LOGFILE_PATH, mode='w')",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "settings.GLOBAL_LOGFILE_PATH",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.name",
+              "action_description": "Retrieves operating system identifier",
+              "action_id": "get_os_id",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system name",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "print(\"cat_log feature not available on Windows\")",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "\"cat_log feature not available on Windows\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "sys.exit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "1",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "sys.stdin.isatty()",
+              "action_description": "Checks if standard input is a terminal",
+              "action_id": "check_window_enabled",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "settings.GLOBAL_LOGFILE_PATH.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "settings.GLOBAL_LOGFILE_PATH",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "print(\"no logfile found - run: evo_config set global_logfile_enabled\")",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "\"no logfile found - run: evo_config set global_logfile_enabled\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "open(settings.GLOBAL_LOGFILE_PATH)",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "settings.GLOBAL_LOGFILE_PATH",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Access file content",
+              "intention_id": "access_file_content"
+            },
+            {
+              "action_api": "file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "settings.SETTINGS.global_logfile_enabled",
+              "action_description": "Checks attribute value",
+              "action_id": "check_window_enabled",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "print(\"logfile disabled\")",
+              "action_description": "Prints value to standard output",
+              "action_id": "get_stdout_stream",
+              "object": "\"logfile disabled\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "sys.exit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "1",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "logging.getLogger()",
+              "action_description": "Retrieves logger object",
+              "action_id": "get_process_info",
+              "object": "__name__",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "log.configure_logging()",
+              "action_description": "Configures logging for application",
+              "action_id": "set_builtin_attr",
+              "object": "silent=True, file_fmt=file_fmt",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "sys.stdin.read()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect user input",
+              "intention_id": "collect_user_input"
+            },
+            {
+              "action_api": "getattr(logger, args.loglevel)()",
+              "action_description": "Logs message with specified loglevel",
+              "action_id": "get_process_info",
+              "object": "msg",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "open(settings.GLOBAL_LOGFILE_PATH, mode='w')",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "settings.GLOBAL_LOGFILE_PATH",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

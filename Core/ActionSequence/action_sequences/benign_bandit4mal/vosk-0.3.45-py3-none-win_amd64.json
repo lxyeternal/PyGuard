@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "vosk-0.3.45-py3-none-win_amd64",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/vosk-0.3.45-py3-none-win_amd64/vosk/__init__.py",
+    "line_number": "115",
+    "type_description": "B819:urlretrieve",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "114\t            reporthook = self.download_progress_hook(t)\n115\t            urlretrieve(MODEL_PRE_URL + str(model_name.name) + \".zip\",\n116\t                    str(model_name) + \".zip\", reporthook=reporthook, data=None)\n117\t            t.total = t.n",
+    "code_snippet": "from urllib.request import urlretrieve\nfrom zipfile import ZipFile\nfrom tqdm import tqdm\nMODEL_PRE_URL = \"https://alphacephei.com/vosk/models/\"\nclass Model:\n    def download_model(self, model_name):\n        if not (model_name.parent).exists():\n            (model_name.parent).mkdir(parents=True)\n        with tqdm(unit=\"B\", unit_scale=True, unit_divisor=1024, miniters=1,\n                desc=(MODEL_PRE_URL + str(model_name.name) + \".zip\").rsplit(\"/\",\n                    maxsplit=1)[-1]) as t:\n            reporthook = self.download_progress_hook(t)\n            urlretrieve(MODEL_PRE_URL + str(model_name.name) + \".zip\",\n                    str(model_name) + \".zip\", reporthook=reporthook, data=None)\n            t.total = t.n\n            with ZipFile(str(model_name) + \".zip\", \"r\") as model_ref:\n                model_ref.extractall(model_name.parent)\n            Path(str(model_name) + \".zip\").unlink()\n    def download_progress_hook(self, t):\n        last_b = [0]\n        def update_to(b=1, bsize=1, tsize=None):\n            if tsize not in (None, -1):\n                t.total = tsize\n            displayed = t.update((b - last_b[0]) * bsize)\n            last_b[0] = b\n            return displayed\n        return update_to",
+    "pattern_analysis": {
+      "api_sequence": [
+        "pathlib.Path.exists",
+        "pathlib.Path.mkdir",
+        "tqdm.tqdm",
+        "Model.download_progress_hook",
+        "urllib.request.urlretrieve",
+        "zipfile.ZipFile",
+        "zipfile.ZipFile.extractall",
+        "pathlib.Path.unlink"
+      ],
+      "api_sequence_with_args": [
+        "pathlib.Path.exists(model_name.parent)",
+        "pathlib.Path.mkdir(model_name.parent, parents=True)",
+        "tqdm.tqdm(unit=\"B\", unit_scale=True, unit_divisor=1024, miniters=1, desc=...)",
+        "Model.download_progress_hook(t)",
+        "urllib.request.urlretrieve(MODEL_PRE_URL + str(model_name.name) + \".zip\", str(model_name) + \".zip\", reporthook=reporthook, data=None)",
+        "zipfile.ZipFile(str(model_name) + \".zip\", \"r\")",
+        "zipfile.ZipFile.extractall(model_ref, model_name.parent)",
+        "pathlib.Path.unlink(Path(str(model_name) + \".zip\"))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pathlib.Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "pathlib.Path.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "tqdm.tqdm",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "Model.download_progress_hook",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "zipfile.ZipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.extractall",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "pathlib.Path.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "from urllib.request import urlretrieve\nfrom zipfile import ZipFile\nfrom tqdm import tqdm\nfrom pathlib import Path\nMODEL_PRE_URL = \"https://alphacephei.com/vosk/models/\"\nclass Model:\n    def download_model(self, model_name):\n        if not (model_name.parent).exists():\n            (model_name.parent).mkdir(parents=True)\n        with tqdm(unit=\"B\", unit_scale=True, unit_divisor=1024, miniters=1,\n                desc=(MODEL_PRE_URL + str(model_name.name) + \".zip\").rsplit(\"/\",\n                    maxsplit=1)[-1]) as t:\n            reporthook = self.download_progress_hook(t)\n            urlretrieve(MODEL_PRE_URL + str(model_name.name) + \".zip\",\n                    str(model_name) + \".zip\", reporthook=reporthook, data=None)\n            t.total = t.n\n            with ZipFile(str(model_name) + \".zip\", \"r\") as model_ref:\n                model_ref.extractall(model_name.parent)\n            Path(str(model_name) + \".zip\").unlink()"
+    }
+  }
+]

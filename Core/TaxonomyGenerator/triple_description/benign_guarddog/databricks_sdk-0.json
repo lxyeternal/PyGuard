@@ -1,0 +1,145 @@
+{
+  "metadata": {
+    "package_name": "databricks_sdk-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/databricks_sdk-0.49.0.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "credentials_provider.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/databricks_sdk-0.49.0/databricks_sdk-0.49.0/databricks/sdk/credentials_provider.py",
+      "line_number": "331",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "@oauth_credentials_strategy(\"github-oidc-azure\", [\"host\", \"azure_client_id\"])\ndef github_oidc_azure(cfg: \"Config\") -> Optional[CredentialsProvider]:\n    if \"ACTIONS_ID_TOKEN_REQUEST_TOKEN\" not in os.environ:\n        # not in GitHub actions\n        return None\n\n    # Client ID is the minimal thing we need, as otherwise we get AADSTS700016: Application with\n    # identifier 'https://token.actions.githubusercontent.com' was not found in the directory '...'.\n    if not cfg.is_azure:\n        return None\n\n    # See https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers\n    headers = {\"Authorization\": f\"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}\"}\n    endpoint = f\"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=api://AzureADTokenExchange\"\n    response = requests.get(endpoint, headers=headers)\n    if not response.ok:\n        return None\n\n    # get the ID Token with aud=api://AzureADTokenExchange sub=repo:org/repo:environment:name\n    response_json = response.json()\n    if \"value\" not in response_json:\n        return None\n\n    logger.info(\n        \"Configured AAD token for GitHub Actions OIDC (%s)\",\n        cfg.azure_client_id,\n    )\n    params = {\n        \"client_assertion_type\": \"urn:ietf:params:oauth:client-assertion-type:jwt-bearer\",\n        \"resource\": cfg.effective_azure_login_app_id,\n        \"client_assertion\": response_json[\"value\"],\n    }\n    aad_endpoint = cfg.arm_environment.active_directory_endpoint\n    if not cfg.azure_tenant_id:\n        # detect Azure AD Tenant ID if it's not specified directly\n        token_endpoint = cfg.oidc_endpoints.token_endpoint\n        cfg.azure_tenant_id = token_endpoint.replace(aad_endpoint, \"\").split(\"/\")[0]\n    inner = ClientCredentials(\n        client_id=cfg.azure_client_id,\n        client_secret=\"\",  # we have no (rotatable) secrets in OIDC flow\n        token_url=f\"{aad_endpoint}{cfg.azure_tenant_id}/oauth2/token\",\n        endpoint_params=params,\n        use_params=True,\n        disable_async=not cfg.enable_experimental_async_token_refresh,\n    )\n\n    def refreshed_headers() -> Dict[str, str]:\n        token = inner.token()\n        return {\"Authorization\": f\"{token.token_type} {token.access_token}\"}\n\n    def token() -> Token:\n        return inner.token()\n\n    return OAuthCredentialsProvider(refreshed_headers, token)",
+      "hash_value": "91eb301fca66f4081092c44f472bbe82",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "@oauth_credentials_strategy(\"github-oidc-azure\", [\"host\", \"azure_client_id\"])\ndef github_oidc_azure(cfg: \"Config\") -> Optional[CredentialsProvider]:\n    if \"ACTIONS_ID_TOKEN_REQUEST_TOKEN\" not in os.environ:\n        # not in GitHub actions\n        return None\n\n    # Client ID is the minimal thing we need, as otherwise we get AADSTS700016: Application with\n    # identifier 'https://token.actions.githubusercontent.com' was not found in the directory '...'.\n    if not cfg.is_azure:\n        return None\n\n    # See https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers\n    headers = {\"Authorization\": f\"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}\"}\n    endpoint = f\"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=api://AzureADTokenExchange\"\n    response = requests.get(endpoint, headers=headers)\n    if not response.ok:\n        return None\n\n    # get the ID Token with aud=api://AzureADTokenExchange sub=repo:org/repo:environment:name\n    response_json = response.json()\n    if \"value\" not in response_json:\n        return None\n\n    logger.info(\n        \"Configured AAD token for GitHub Actions OIDC (%s)\",\n        cfg.azure_client_id,\n    )\n    params = {\n        \"client_assertion_type\": \"urn:ietf:params:oauth:client-assertion-type:jwt-bearer\",\n        \"resource\": cfg.effective_azure_login_app_id,\n        \"client_assertion\": response_json[\"value\"],\n    }\n    aad_endpoint = cfg.arm_environment.active_directory_endpoint\n    if not cfg.azure_tenant_id:\n        # detect Azure AD Tenant ID if it's not specified directly\n        token_endpoint = cfg.oidc_endpoints.token_endpoint\n        cfg.azure_tenant_id = token_endpoint.replace(aad_endpoint, \"\").split(\"/\")[0]\n    inner = ClientCredentials(\n        client_id=cfg.azure_client_id,\n        client_secret=\"\",  # we have no (rotatable) secrets in OIDC flow\n        token_url=f\"{aad_endpoint}{cfg.azure_tenant_id}/oauth2/token\",\n        endpoint_params=params,\n        use_params=True,\n        disable_async=not cfg.enable_experimental_async_token_refresh,\n    )\n\n    def refreshed_headers() -> Dict[str, str]:\n        token = inner.token()\n        return {\"Authorization\": f\"{token.token_type} {token.access_token}\"}\n\n    def token() -> Token:\n        return inner.token()\n\n    return OAuthCredentialsProvider(refreshed_headers, token)",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.__contains__()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "cfg.is_azure",
+              "action_description": "Checks if specified path exists and is a directory",
+              "action_id": "check_directory_exists",
+              "object": "cfg.is_azure",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine operating system",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "os.environ.__getitem__()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.__getitem__()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "ACTIONS_ID_TOKEN_REQUEST_URL",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "requests.get()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "endpoint",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "response.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "response",
+              "object_description": "HTTP response remote content",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "Configured AAD token for GitHub Actions OIDC (%s)",
+              "object_description": "Log level",
+              "object_id": "log_level",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "token_endpoint.replace()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "token_endpoint.replace(aad_endpoint, \"\")",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "str.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "split(\"/\")[0]",
+              "object_description": "Path segment",
+              "object_id": "path_segment",
+              "intention_description": "Prepare directory path",
+              "intention_id": "prepare_directory_path"
+            },
+            {
+              "action_api": "ClientCredentials()",
+              "action_description": "Instantiates Sender class",
+              "action_id": "init_sender_class",
+              "object": "client_id=cfg.azure_client_id, client_secret=\"\", token_url=f\"{aad_endpoint}{cfg.azure_tenant_id}/oauth2/token\", endpoint_params=params, use_params=True, disable_async=not cfg.enable_experimental_async_token_refresh",
+              "object_description": "Account credentials",
+              "object_id": "account_credentials",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "inner.token()",
+              "action_description": "Retrieves current one-time password",
+              "action_id": "get_totp_password",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "OAuthCredentialsProvider()",
+              "action_description": "Instantiates Sender class",
+              "action_id": "init_sender_class",
+              "object": "refreshed_headers, token",
+              "object_description": "Account credentials",
+              "object_id": "account_credentials",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

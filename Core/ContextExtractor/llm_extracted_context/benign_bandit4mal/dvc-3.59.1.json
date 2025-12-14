@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "dvc-3.59.1",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_data.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dvc-3.59.1/dvc-3.59.1/tests/func/api/test_data.py",
+    "line_number": "88",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "87\n88\t    assert api.read(\"version\", repo=repo_url, rev=\"branch\") == \"branchver\"\n89",
+    "context_snippet": "def test_open_external(tmp_dir, erepo_dir, cloud):\n    erepo_dir.add_remote(config=cloud.config)\n\n    with erepo_dir.chdir():\n        erepo_dir.dvc_gen(\"version\", \"master\", commit=\"add version\")\n\n        with erepo_dir.branch(\"branch\", new=\"True\"):\n            # NOTE: need file to be other size for Mac\n            erepo_dir.dvc_gen(\"version\", \"branchver\", commit=\"add version\")\n\n    assert erepo_dir.dvc.push(all_branches=True) == 2\n\n    # Remove cache to force download\n    remove(erepo_dir.dvc.cache.local.path)\n\n    # Using file url to force clone to tmp repo\n    repo_url = f\"file://{erepo_dir.as_posix()}\"\n    with api.open(\"version\", repo=repo_url) as fd:\n        assert fd.read() == \"master\"\n\n    assert api.read(\"version\", repo=repo_url, rev=\"branch\") == \"branchver\"",
+    "hash_value": "af3a9f37a702ea9932641e0479b580ab"
+  },
+  {
+    "pyfile": "test_checkout.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dvc-3.59.1/dvc-3.59.1/tests/func/test_checkout.py",
+    "line_number": "411",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "410\t    with open(cache, \"a\", encoding=\"utf-8\") as fd:\n411\t        fd.write(\"destroy cache\")\n412",
+    "context_snippet": "@pytest.mark.xfail(reason=\"values relpath\")\ndef test_checkout_stats_on_failure(tmp_dir, dvc, scm):\n    tmp_dir.dvc_gen(\n        {\"foo\": \"foo\", \"dir\": {\"subdir\": {\"file\": \"file\"}}, \"other\": \"other\"},\n        commit=\"initial\",\n    )\n    stage = load_file(dvc, \"foo.dvc\").stage\n    tmp_dir.dvc_gen({\"foo\": \"foobar\", \"other\": \"other other\"}, commit=\"second\")\n\n    # corrupt cache\n    cache = stage.outs[0].cache_path\n    os.chmod(cache, 0o644)\n    with open(cache, \"a\", encoding=\"utf-8\") as fd:\n        fd.write(\"destroy cache\")\n\n    scm.checkout(\"HEAD~\")\n    with pytest.raises(CheckoutError) as exc:\n        dvc.checkout(force=True)\n\n    assert exc.value.stats == {\n        **empty_checkout,\n        \"failed\": [\"foo\"],\n        \"modified\": [\"other\"],\n    }\n",
+    "hash_value": "0d7537d4fd907ce3965103b61e18a049"
+  }
+]

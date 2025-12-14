@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "utils.py",
+    "code_snippet": "import os\nimport subprocess\nfrom pathlib import Path\nfrom safety.constants import PROJECT_CONFIG\nfrom sys import platform\n\ndef is_os_supported():\n    return platform in [\"linux\", \"linux2\", \"darwin\", \"win32\"]\n\nclass PipInstallCommand(PipCommand):\n    ...\n    def __run_scan(self):\n        if not is_os_supported():\n            return\n\n        target = os.getcwd()\n        if Path(os.path.join(target, PROJECT_CONFIG)).is_file():\n            try:\n                subprocess.Popen(\n                    [\"safety\", \"scan\"],\n                    stdout=subprocess.DEVNULL,\n                    stderr=subprocess.DEVNULL,\n                    stdin=subprocess.DEVNULL,\n                    start_new_session=True,\n                )\n            except Exception:\n                pass\n    ...\n\n# Helper/context dependencies:\n# - is_os_supported() is defined above and used to check platform support\n# - PROJECT_CONFIG is imported from safety.constants\n# - os, subprocess, Path are imported at the top\n# - The function is a method of PipInstallCommand, which is a subclass of PipCommand\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getcwd",
+        "os.path.join",
+        "pathlib.Path.is_file",
+        "subprocess.Popen"
+      ],
+      "api_sequence_with_args": [
+        "os.getcwd()",
+        "os.path.join(target, PROJECT_CONFIG)",
+        "pathlib.Path.is_file()",
+        "subprocess.Popen([\"safety\", \"scan\"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, start_new_session=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "pathlib.Path.is_file",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nfrom pathlib import Path\nfrom safety.constants import PROJECT_CONFIG\nfrom sys import platform\n\ndef is_os_supported():\n    return platform in [\"linux\", \"linux2\", \"darwin\", \"win32\"]\n\nclass PipInstallCommand(PipCommand):\n    def __run_scan(self):\n        if not is_os_supported():\n            return\n\n        target = os.getcwd()\n        if Path(os.path.join(target, PROJECT_CONFIG)).is_file():\n            try:\n                subprocess.Popen(\n                    [\"safety\", \"scan\"],\n                    stdout=subprocess.DEVNULL,\n                    stderr=subprocess.DEVNULL,\n                    stdin=subprocess.DEVNULL,\n                    start_new_session=True,\n                )\n            except Exception:\n                pass"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "safety-3.4.0b6",
+      "total_matches": 1
+    }
+  }
+]

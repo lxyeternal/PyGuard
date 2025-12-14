@@ -1,0 +1,241 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# --- Match 1 (Line 198): subprocess.run(cmd, shell=True, check=True) ---\n\n# Relevant imports and global variables\nimport sysconfig\nimport subprocess\nimport distutils.ccompiler\nimport os\n\nclass build_test_extension(Command):\n    description = \"Compiles APSW test loadable extension\"\n\n    user_options = []\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        name = \"testextension.sqlext\"\n\n        def v(n):\n            return sysconfig.get_config_var(n)\n\n        # unixy platforms have this, and is necessary to match the 32/64 bitness of Python itself\n        if v(\"CC\"):\n            cc = f\"{ v('CC') } { v('CFLAGS') } { v('CCSHARED') } -Isqlite3 -c src/testextension.c\"\n            ld = f\"{ v('LDSHARED') } testextension.o -o { name }\"\n\n            for cmd in cc, ld:\n                print(cmd)\n                subprocess.run(cmd, shell=True, check=True)\n        else:\n            # windows mostly\n            compiler = distutils.ccompiler.new_compiler(verbose=True)\n            compiler.add_include_dir(\"sqlite3\")\n            compiler.add_include_dir(\".\")\n            preargs = [\"/Gd\"] if \"msvc\" in str(compiler.__class__).lower() else [\"-fPIC\"]\n            objs = compiler.compile([\"src/testextension.c\"], extra_preargs=preargs)\n            compiler.link_shared_object(objs, name)\n\n# --- Match 2 (Line 311): subprocess.check_call([\"./configure\"], cwd=\"sqlite3\") ---\n\n# Relevant imports and global variables\nimport subprocess\nimport os\nimport shutil\nimport sys\nimport tarfile\nimport re\nimport time\n\nclass fetch(Command):\n    description = \"Automatically downloads SQLite and components\"\n    user_options = [\n        (\"version=\", None, f\"Which version of SQLite/components to get (default { sqliteversion(version) })\"),\n        (\"missing-checksum-ok\", None, \"Continue on a missing checksum (default abort)\"),\n        (\"sqlite\", None, \"Download SQLite amalgamation\"),\n        (\"all\", None, \"Download all downloadable components\"),\n    ]\n    fetch_options = [\"sqlite\"]\n    boolean_options = fetch_options + [\"all\", \"missing-checksum-ok\"]\n\n    def initialize_options(self):\n        self.version = None\n        self.sqlite = False\n        self.all = False\n        self.missing_checksum_ok = False\n\n    def finalize_options(self):\n        global fetch_parts\n        if self.version in (\"self\", None):\n            self.version = sqliteversion(version)\n        if self.all:\n            for i in self.fetch_options:\n                setattr(self, i, True)\n        for i in self.fetch_options:\n            fetch_parts.append(i)\n\n    def run(self):\n        # work out the version\n        if self.version == \"latest\":\n            write(\"  Getting download page to work out latest SQLite version\")\n            page = self.download(\"https://sqlite.org/download.html\", text=True, checksum=False)\n            match = re.search(r\"sqlite-amalgamation-3([0-9][0-9])([0-9][0-9])([0-9][0-9])\\.zip\", page)\n            if match:\n                self.version = \"3.%d.%d.%d\" % tuple([int(match.group(n)) for n in range(1, 4)])\n                assert self.version.endswith(\".0\")  # sqlite doesn't use last component so we do now\n                self.version = sqliteversion(self.version)\n            else:\n                write(\"Unable to determine latest SQLite version.  Use --version=VERSION\", sys.stderr)\n                write(\"to set version - eg setup.py fetch --version=3.6.18\", sys.stderr)\n                sys.exit(17)\n            write(\"    Version is \" + self.version)\n        # now get each selected component\n        downloaded = 0\n\n        v = [int(x) for x in self.version.split(\".\")]\n        assert len(v) == 3\n        v.append(0)\n        self.webversion = \"%d%02d%02d%02d\" % tuple(v)\n\n        ## The amalgamation\n        if self.sqlite:\n            write(\"  Getting the SQLite amalgamation\")\n\n            AURL = \"https://sqlite.org/sqlite-autoconf-%s.tar.gz\" % (self.webversion,)\n\n            AURL = fixup_download_url(AURL)\n\n            data = self.download(AURL, checksum=True)\n\n            if os.path.exists(\"sqlite3\"):\n                shutil.rmtree(\"sqlite3\")\n\n            # if you get an exception here it is likely that you don't have the python zlib module\n            import zlib\n\n            tar = tarfile.open(\"nonexistentname to keep old python happy\", \"r\", data)\n            configmember = None\n            kwargs = {}\n            if sys.version_info >= (3, 11, 4):\n                kwargs[\"filter\"] = \"tar\"\n            for member in tar.getmembers():\n                tar.extract(member, **kwargs)\n                # find first file named configure\n                if not configmember and member.name.endswith(\"/configure\"):\n                    configmember = member\n            tar.close()\n            # the directory name has changed a bit with each release so try to work out what it is\n            if not configmember:\n                write(\"Unable to determine directory it extracted to.\", dest=sys.stderr)\n                sys.exit(19)\n            dirname = configmember.name.split(\"/\")[0]\n            os.rename(dirname, \"sqlite3\")\n            if sys.platform != \"win32\":\n                write(\"    Running configure to work out SQLite compilation flags\")\n                subprocess.check_call([\"./configure\"], cwd=\"sqlite3\")\n            downloaded += 1\n\n        if not downloaded:\n            write(\"You didn't specify any components to fetch.  Use\")\n            write(\"   setup.py fetch --help\")\n            write(\"for a list and details\")\n            raise ValueError(\"No components downloaded\")\n\n    # ... (other methods omitted for brevity)\n\n# --- Match 3 (Line 834): cflags = subprocess.run([\"icu-config\", \"--cppflags\"], **skw).stdout.strip() ---\n# --- Match 4 (Line 835): ldflags = subprocess.run([\"icu-config\", \"--ldflags\"], **skw).stdout.strip() ---\n\n# Relevant imports and dataclass\nimport subprocess\nimport shutil\nimport contextlib\nfrom dataclasses import dataclass\n\n@dataclass\nclass IcuConfig:\n    tool: str\n    cflags: str\n    ldflags: str\n\ndef get_icu_config() -> IcuConfig | None:\n    skw = {\"text\": True, \"capture_output\": True}\n    cflags = ldflags = \"\"\n\n    if shutil.which(\"pkg-config\"):\n        with contextlib.suppress(subprocess.CalledProcessError):\n            cflags = subprocess.run([\"pkg-config\", \"--cflags\", \"icu-io\"], **skw).stdout.strip()\n        with contextlib.suppress(subprocess.CalledProcessError):\n            ldflags = subprocess.run([\"pkg-config\", \"--libs\", \"icu-io\"], **skw).stdout.strip()\n        if cflags or ldflags:\n            return IcuConfig(tool=\"pkg-config\", cflags=cflags, ldflags=ldflags)\n    if shutil.which(\"icu-config\"):\n        cflags = subprocess.run([\"icu-config\", \"--cppflags\"], **skw).stdout.strip()\n        ldflags = subprocess.run([\"icu-config\", \"--ldflags\"], **skw).stdout.strip()\n        return IcuConfig(tool=\"icu-config\", cflags=cflags, ldflags=ldflags)\n\n    return None\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sysconfig.get_config_var",
+        "sysconfig.get_config_var",
+        "sysconfig.get_config_var",
+        "subprocess.run",
+        "subprocess.run",
+        "distutils.ccompiler.new_compiler",
+        "distutils.ccompiler.CCompiler.add_include_dir",
+        "distutils.ccompiler.CCompiler.add_include_dir",
+        "distutils.ccompiler.CCompiler.compile",
+        "distutils.ccompiler.CCompiler.link_shared_object",
+        "os.path.exists",
+        "shutil.rmtree",
+        "tarfile.open",
+        "tarfile.TarFile.getmembers",
+        "tarfile.TarFile.extract",
+        "tarfile.TarFile.close",
+        "os.rename",
+        "subprocess.check_call",
+        "shutil.which",
+        "subprocess.run",
+        "shutil.which",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "sysconfig.get_config_var('CC')",
+        "sysconfig.get_config_var('CFLAGS')",
+        "sysconfig.get_config_var('CCSHARED')",
+        "subprocess.run(cmd, shell=True, check=True)",
+        "subprocess.run(cmd, shell=True, check=True)",
+        "distutils.ccompiler.new_compiler(verbose=True)",
+        "compiler.add_include_dir('sqlite3')",
+        "compiler.add_include_dir('.')",
+        "compiler.compile(['src/testextension.c'], extra_preargs=preargs)",
+        "compiler.link_shared_object(objs, name)",
+        "os.path.exists('sqlite3')",
+        "shutil.rmtree('sqlite3')",
+        "tarfile.open('nonexistentname to keep old python happy', 'r', data)",
+        "tar.getmembers()",
+        "tar.extract(member, **kwargs)",
+        "tar.close()",
+        "os.rename(dirname, 'sqlite3')",
+        "subprocess.check_call(['./configure'], cwd='sqlite3')",
+        "shutil.which('pkg-config')",
+        "subprocess.run(['pkg-config', '--cflags', 'icu-io'], **skw)",
+        "shutil.which('icu-config')",
+        "subprocess.run(['icu-config', '--cppflags'], **skw)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sysconfig.get_config_var",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sysconfig.get_config_var",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sysconfig.get_config_var",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "distutils.ccompiler.new_compiler",
+          "id": "init_setup_class",
+          "description": "Instantiates Setup class",
+          "first_id": "data_exfiltration",
+          "second_id": "data_transmission_channels",
+          "third_id": "exfiltration_channel_establishment"
+        },
+        {
+          "api_name": "distutils.ccompiler.CCompiler.add_include_dir",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "distutils.ccompiler.CCompiler.add_include_dir",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "distutils.ccompiler.CCompiler.compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "distutils.ccompiler.CCompiler.link_shared_object",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "tarfile.TarFile.getmembers",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "tarfile.TarFile.extract",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "tarfile.TarFile.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.rename",
+          "id": "rename_file",
+          "description": "Renames file or moves it to new location",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "# --- Context: build_test_extension.run ---\nimport sysconfig\nimport subprocess\nimport distutils.ccompiler\nimport os\n\nclass build_test_extension(Command):\n    def run(self):\n        name = \"testextension.sqlext\"\n        def v(n):\n            return sysconfig.get_config_var(n)\n        if v(\"CC\"):\n            cc = f\"{ v('CC') } { v('CFLAGS') } { v('CCSHARED') } -Isqlite3 -c src/testextension.c\"\n            ld = f\"{ v('LDSHARED') } testextension.o -o { name }\"\n            for cmd in cc, ld:\n                print(cmd)\n                subprocess.run(cmd, shell=True, check=True)\n        else:\n            compiler = distutils.ccompiler.new_compiler(verbose=True)\n            compiler.add_include_dir(\"sqlite3\")\n            compiler.add_include_dir(\".\")\n            preargs = [\"/Gd\"] if \"msvc\" in str(compiler.__class__).lower() else [\"-fPIC\"]\n            objs = compiler.compile([\"src/testextension.c\"], extra_preargs=preargs)\n            compiler.link_shared_object(objs, name)\n\n# --- Context: fetch.run ---\nimport subprocess\nimport os\nimport shutil\nimport tarfile\n\nclass fetch(Command):\n    def run(self):\n        if self.sqlite:\n            if os.path.exists(\"sqlite3\"):\n                shutil.rmtree(\"sqlite3\")\n            import zlib\n            tar = tarfile.open(\"nonexistentname to keep old python happy\", \"r\", data)\n            configmember = None\n            kwargs = {}\n            for member in tar.getmembers():\n                tar.extract(member, **kwargs)\n                if not configmember and member.name.endswith(\"/configure\"):\n                    configmember = member\n            tar.close()\n            if not configmember:\n                write(\"Unable to determine directory it extracted to.\", dest=sys.stderr)\n                sys.exit(19)\n            dirname = configmember.name.split(\"/\")[0]\n            os.rename(dirname, \"sqlite3\")\n            if sys.platform != \"win32\":\n                subprocess.check_call([\"./configure\"], cwd=\"sqlite3\")\n\n# --- Context: get_icu_config ---\nimport subprocess\nimport shutil\nimport contextlib\nfrom dataclasses import dataclass\n\n@dataclass\nclass IcuConfig:\n    tool: str\n    cflags: str\n    ldflags: str\n\ndef get_icu_config() -> IcuConfig | None:\n    skw = {\"text\": True, \"capture_output\": True}\n    cflags = ldflags = \"\"\n    if shutil.which(\"pkg-config\"):\n        with contextlib.suppress(subprocess.CalledProcessError):\n            cflags = subprocess.run([\"pkg-config\", \"--cflags\", \"icu-io\"], **skw).stdout.strip()\n        with contextlib.suppress(subprocess.CalledProcessError):\n            ldflags = subprocess.run([\"pkg-config\", \"--libs\", \"icu-io\"], **skw).stdout.strip()\n        if cflags or ldflags:\n            return IcuConfig(tool=\"pkg-config\", cflags=cflags, ldflags=ldflags)\n    if shutil.which(\"icu-config\"):\n        cflags = subprocess.run([\"icu-config\", \"--cppflags\"], **skw).stdout.strip()\n        ldflags = subprocess.run([\"icu-config\", \"--ldflags\"], **skw).stdout.strip()\n        return IcuConfig(tool=\"icu-config\", cflags=cflags, ldflags=ldflags)\n    return None"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "apsw-3.49.1.0",
+      "total_matches": 4
+    }
+  }
+]

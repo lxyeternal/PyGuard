@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\n\ndef get_git_hash():\n\n    def _minimal_ext_cmd(cmd):\n        # construct minimal environment\n        env = {}\n        for k in ['SYSTEMROOT', 'PATH', 'HOME']:\n            v = os.environ.get(k)\n            if v is not None:\n                env[k] = v\n        # LANGUAGE is used on win32\n        env['LANGUAGE'] = 'C'\n        env['LANG'] = 'C'\n        env['LC_ALL'] = 'C'\n        out = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env).communicate()[0]\n        return out\n\n    try:\n        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])\n        sha = out.strip().decode('ascii')\n    except OSError:\n        sha = 'unknown'\n\n    return sha",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "bytes.strip",
+        "bytes.decode"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(k)",
+        "subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)",
+        "subprocess.Popen.communicate()",
+        "out.strip()",
+        "out.strip().decode('ascii')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "bytes.strip",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\n\ndef get_git_hash():\n    def _minimal_ext_cmd(cmd):\n        env = {}\n        for k in ['SYSTEMROOT', 'PATH', 'HOME']:\n            v = os.environ.get(k)\n            if v is not None:\n                env[k] = v\n        env['LANGUAGE'] = 'C'\n        env['LANG'] = 'C'\n        env['LC_ALL'] = 'C'\n        out = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env).communicate()[0]\n        return out\n\n    try:\n        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])\n        sha = out.strip().decode('ascii')\n    except OSError:\n        sha = 'unknown'\n    return sha"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "basicsr-1.4.2",
+      "total_matches": 1
+    }
+  }
+]

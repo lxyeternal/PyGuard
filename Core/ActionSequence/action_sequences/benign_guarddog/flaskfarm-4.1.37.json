@@ -1,0 +1,205 @@
+[
+  {
+    "pyfile": "discord.py",
+    "code_snippet": "import os\nimport random\nimport time\nimport traceback\n\nimport requests\n\ntry:\n    from discord_webhook import DiscordEmbed, DiscordWebhook\nexcept:\n    os.system('pip3 install discord-webhook')\n\n# 2023-10-13 by flaskfarm\n# 웹훅 URL이 git에 노출되면 중단.\n# base64로 인코딩.\nimport base64\n\nfrom discord_webhook import DiscordEmbed, DiscordWebhook\n\nfrom . import logger\n\nwebhook_list = [\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyODM4MzE4MzI4MjIyNy9ORXpNWFBmT05vbUU3bl8xck1iT0ZWQUI4ZmlXN21vRFlGYnJHRk03UlJSWF90ZGMyS0lxY2hWcXV6VF8wVm5ZUEJRVQ==').decode('utf-8'), # 1\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyODc5MzExMzU4MzY3Ni94dEZlWnRWbkhEUGc4aFBYZkZDMkFidUtDSmlwNjQ0d1RQMDFJalVncTR5ODB6XzZCRi1kTFctemlEdGNlWF84RXVtRw==').decode('utf-8'), # 2\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyODkyMTA4MTgxMDk1NS9xOUVYZndHYll6bHdwM1MtMnpxUmxZcnJYWS1nTUttTTRlTUd0YW8zNTF1d1c2N0U2ckNFUW0zWDJhbDJURnFXMHR4cw==').decode('utf-8'), # 3\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTA4MzA0NDg1MTc3My9jVU1YRkVERHQ2emtWOW90Mmd5dlpYeVlOZV9VcGtmcmZhTzg5aHZoLVdod0c0Z24zOGJhT19DVkg2Z0N4clFraVZRcA==').decode('utf-8'), # 4\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTE4MzAwMzQ5MjM5Mi9CVXl1U3lKTHc1cktHdFRKOWhqRDk3SklKWW9HSTZ6SnJ4MzdLX0s4TkVKU3ZTYlZ4aC0tMVFRMEFZbTJFa0tzaEJRcQ==').decode('utf-8'), # 5\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTI4OTQ4ODQ5NDY0My9XLWhZck95QTBza2M1dUdVTkpyenU4ZHFSMVF0QmMtOVAzMW45RHhQWkhVLXptdEZ3MWVLWTE0dlZubkRUV25EU2ZRTw==').decode('utf-8'), # 6\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTQwOTExODQzNzQ2OS95NDRjVTkwM1hLS2NyaWFidERHMzRuMzZfRkZsMF9TV2p4b0lWMlBZY0dxNWxyU1dxVWt5ZklkZlcwM0FFVDJObThMaQ==').decode('utf-8'), # 7\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTQ5NTQyNDYxODQ5Ni9PSnFlVHRhZ1FtVGFrU2VNQkRucVhZRTJieWRuX2cweHV2VTA0WmdKS3NjWEQydkVHbHBWYzdhQWZMQ0ZYSXNTbTN5OQ==').decode('utf-8'), # 8\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTU4NzE2NjY0MjM2OC9PeG9NRllUT1dOWmcwS3pfQ3k2ZXowX2laQnpqbm02QVkyTjJfMWhaVHhYdWxPRm5oZ0lsOGxxcUVYNVVWRWhyMHJNcw==').decode('utf-8'), # 9\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTY4OTM3NzYzNjQ3Mi9iblgyYTNsWjI1R2NZZ1g4Sy1JeXZVcS1TMV9zYmhkbEtoSTI4eWp6SWdHOHRyekFWMXBKUkgxYkdrdmhzMVNUNS1uMg==').decode('utf-8'), # 10\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTgwMTg0MzY5MTY4Mi96OUFocjZjNmxaS1VyWV9TRmhfODVQeEVlSjJuQW8wMXlHS3RCUWpNNnJmR3JGVXdvQ1oyQ3NJYmlTMHQ1NDZwU3NUUg==').decode('utf-8'), # 11\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTk0NjQyMTM2Njg0NC9BYnFVRlJCN0dzb3ktUkdfMzBLNXZkNm9XUWRnbkpDZ1ctTlpBbkFRN0N2TzdsNjRfeXRkY0ZHUkhLV2RldE1jQzhTSw==').decode('utf-8'), # 12\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDExNjAyNjQyMTM0OC82dG1NOTA2eV9QTHJ3WGFxcGNZS25OMEJIQjlDTkxJT1dJeTdpc3Exbm9VMHJxU2V0NzI2R1Y4Zk9Ua2pCbDZacXMxVA==').decode('utf-8'), # 13\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDIwMTExMjA3MjM2My9DYkdkcVdvd3hCcTV3ck1hck0taGZqajVIbFJ2VFFWa0tuZUVaVl9yMlc1UkxHZFZpWW15VzZZcl9PbEJCZG5KWk1wNw==').decode('utf-8'), # 14\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDI5MTUwNzcyNDQwOC9UanJFc08zSTJyT3l0d0ZvVFhUSlNTOXphaDJpbG9CcVk3TzhHMHZWbDROTmI0aGpaaDNjVGo0cGNla2lxa3RqaGRPTg==').decode('utf-8'), # 15\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDM3NDQ4NzgzNDc3NC85ZFpodjZfajRuT0hpbGtMaFVVc1B6OVFKa2dqQ3BJZ19PWE55YnZtV1BiQlNVdmRZWC1IVW5UM3RneDlKdnZlYjVMZw==').decode('utf-8'), # 16\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDU2ODkzMTU2OTc3NC82MTFBVTg0ZUZBcXllWlktQ2lPbnozbm4zSHg3ZldwQUNCbjlMTFNENUFJdHRkYjVHSm9pV3B1dHpxdEVHZ3l0RHlXYg==').decode('utf-8'), # 17\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDY3MzkxMDgwMDM4Ni9jbEZvZHEwREhGNUlvYUtVRXVRcXNGbnB3OXZoZUx1RU1qbVJFNjQyRUZGa21wYXBwMzhYWDNPMmZKWUVSdjMzY0tORg==').decode('utf-8'), # 18\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDc0OTMyMDE5NjE5OC8weE1vZ2o5UXRCM1NGZE5KYk04STk1LU9XQzI2Zm1WTWpjelpSX2REY2hnblZoUk1QelVzRHFlYTc0QUdISFRFVWFVZQ==').decode('utf-8'), # 19\n    base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDg0NTMxNTIyMzU2Mi9HWVItZUo2WFltdy1VMHRkWWY5QXdnU2JVZFpSb1k4aWx2MlVxaVJBSnlBdDBsYWV5ck1tSzJmRGp5T1YyenBJUUR2bA==').decode('utf-8'), # 20\n]\n\nclass SupportDiscord(object):\n\n    # RSS에서 자막 올린거\n    @classmethod    \n    def discord_cdn(cls, byteio=None, filepath=None, filename=None, webhook_url=\"https://discord.com/api/webhooks/1050549730964410470/ttge1ggOfIxrCSeTmYbIIsUWyMGAQj-nN6QBgwZTqLcHtUKcqjZ8wFWSWAhHmZne57t7\", content='', retry=True):\n        data = None\n        if webhook_url is None:\n            webhook_url =  webhook_list[random.randint(0,9)] \n\n        try:\n            webhook = DiscordWebhook(url=webhook_url, content=content)\n            if byteio is None and filepath is not None:\n                import io\n                with open(filepath, 'rb') as fh:\n                    byteio = io.BytesIO(fh.read())\n                \n            webhook.add_file(file=byteio.getvalue(), filename=filename)\n            embed = DiscordEmbed()\n            response = webhook.execute()\n            data = None\n            if type(response) == type([]):\n                if len(response) > 0:\n                    data = response[0].json()\n            else:\n                data = response.json()    \n            \n            if data is not None and 'attachments' in data:\n                target = data['attachments'][0]['url']\n                if requests.get(target).status_code == 200:\n                    return target\n            if retry:\n                time.sleep(1)\n                return cls.discord_proxy_image_localfile(filepath, retry=False)\n        except Exception as e: \n            logger.error(f\"Exception:{str(e)}\")\n            logger.error(traceback.format_exc())\n            if retry:\n                time.sleep(1)\n                return cls.discord_proxy_image_localfile(filepath, retry=False)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "base64.b64decode",
+        "DiscordWebhook",
+        "open",
+        "io.BytesIO",
+        "byteio.getvalue",
+        "DiscordWebhook.add_file",
+        "DiscordEmbed",
+        "DiscordWebhook.execute",
+        "response.json",
+        "requests.get",
+        "time.sleep",
+        "SupportDiscord.discord_proxy_image_localfile",
+        "logger.error",
+        "traceback.format_exc",
+        "logger.error",
+        "time.sleep",
+        "SupportDiscord.discord_proxy_image_localfile"
+      ],
+      "api_sequence_with_args": [
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyODM4MzE4MzI4MjIyNy9ORXpNWFBmT05vbUU3bl8xck1iT0ZWQUI4ZmlXN21vRFlGYnJHRk03UlJSWF90ZGMyS0lxY2hWcXV6VF8wVm5ZUEJRVQ==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyODc5MzExMzU4MzY3Ni94dEZlWnRWbkhEUGc4aFBYZkZDMkFidUtDSmlwNjQ0d1RQMDFJalVncTR5ODB6XzZCRi1kTFctemlEdGNlWF84RXVtRw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyODkyMTA4MTgxMDk1NS9xOUVYZndHYll6bHdwM1MtMnpxUmxZcnJYWS1nTUttTTRlTUd0YW8zNTF1d1c2N0U2ckNFUW0zWDJhbDJURnFXMHR4cw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTA4MzA0NDg1MTc3My9jVU1YRkVERHQ2emtWOW90Mmd5dlpYeVlOZV9VcGtmcmZhTzg5aHZoLVdod0c0Z24zOGJhT19DVkg2Z0N4clFraVZRcA==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTE4MzAwMzQ5MjM5Mi9CVXl1U3lKTHc1cktHdFRKOWhqRDk3SklKWW9HSTZ6SnJ4MzdLX0s4TkVKU3ZTYlZ4aC0tMVFRMEFZbTJFa0tzaEJRcQ==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTI4OTQ4ODQ5NDY0My9XLWhZck95QTBza2M1dUdVTkpyenU4ZHFSMVF0QmMtOVAzMW45RHhQWkhVLXptdEZ3MWVLWTE0dlZubkRUV25EU2ZRTw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTQwOTExODQzNzQ2OS95NDRjVTkwM1hLS2NyaWFidERHMzRuMzZfRkZsMF9TV2p4b0lWMlBZY0dxNWxyU1dxVWt5ZklkZlcwM0FFVDJObThMaQ==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTQ5NTQyNDYxODQ5Ni9PSnFlVHRhZ1FtVGFrU2VNQkRucVhZRTJieWRuX2cweHV2VTA0WmdKS3NjWEQydkVHbHBWYzdhQWZMQ0ZYSXNTbTN5OQ==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTU4NzE2NjY0MjM2OC9PeG9NRllUT1dOWmcwS3pfQ3k2ZXowX2laQnpqbm02QVkyTjJfMWhaVHhYdWxPRm5oZ0lsOGxxcUVYNVVWRWhyMHJNcw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTY4OTM3NzYzNjQ3Mi9iblgyYTNsWjI1R2NZZ1g4Sy1JeXZVcS1TMV9zYmhkbEtoSTI4eWp6SWdHOHRyekFWMXBKUkgxYkdrdmhzMVNUNS1uMg==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTgwMTg0MzY5MTY4Mi96OUFocjZjNmxaS1VyWV9TRmhfODVQeEVlSjJuQW8wMXlHS3RCUWpNNnJmR3JGVXdvQ1oyQ3NJYmlTMHQ1NDZwU3NUUg==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIyOTk0NjQyMTM2Njg0NC9BYnFVRlJCN0dzb3ktUkdfMzBLNXZkNm9XUWRnbkpDZ1ctTlpBbkFRN0N2TzdsNjRfeXRkY0ZHUkhLV2RldE1jQzhTSw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDExNjAyNjQyMTM0OC82dG1NOTA2eV9QTHJ3WGFxcGNZS25OMEJIQjlDTkxJT1dJeTdpc3Exbm9VMHJxU2V0NzI2R1Y4Zk9Ua2pCbDZacXMxVA==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDIwMTExMjA3MjM2My9DYkdkcVdvd3hCcTV3ck1hck0taGZqajVIbFJ2VFFWa0tuZUVaVl9yMlc1UkxHZFZpWW15VzZZcl9PbEJCZG5KWk1wNw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDI5MTUwNzcyNDQwOC9UanJFc08zSTJyT3l0d0ZvVFhUSlNTOXphaDJpbG9CcVk3TzhHMHZWbDROTmI0aGpaaDNjVGo0cGNla2lxa3RqaGRPTg==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDM3NDQ4NzgzNDc3NC85ZFpodjZfajRuT0hpbGtMaFVVc1B6OVFKa2dqQ3BJZ19PWE55YnZtV1BiQlNVdmRZWC1IVW5UM3RneDlKdnZlYjVMZw==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDU2ODkzMTU2OTc3NC82MTFBVTg0ZUZBcXllWlktQ2lPbnozbm4zSHg3ZldwQUNCbjlMTFNENUFJdHRkYjVHSm9pV3B1dHpxdEVHZ3l0RHlXYg==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDY3MzkxMDgwMDM4Ni9jbEZvZHEwREhGNUlvYUtVRXVRcXNGbnB3OXZoZUx1RU1qbVJFNjQyRUZGa21wYXBwMzhYWDNPMmZKWUVSdjMzY0tORg==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDc0OTMyMDE5NjE5OC8weE1vZ2o5UXRCM1NGZE5KYk04STk1LU9XQzI2Zm1WTWpjelpSX2REY2hnblZoUk1QelVzRHFlYTc0QUdISFRFVWFVZQ==')",
+        "base64.b64decode(b'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTE2MjIzMDg0NTMxNTIyMzU2Mi9HWVItZUo2WFltdy1VMHRkWWY5QXdnU2JVZFpSb1k4aWx2MlVxaVJBSnlBdDBsYWV5ck1tSzJmRGp5T1YyenBJUUR2bA==')",
+        "DiscordWebhook(url=webhook_url, content=content)",
+        "open(filepath, 'rb')",
+        "io.BytesIO(fh.read())",
+        "byteio.getvalue()",
+        "DiscordWebhook.add_file(file=byteio.getvalue(), filename=filename)",
+        "DiscordEmbed()",
+        "DiscordWebhook.execute()",
+        "response.json()",
+        "requests.get(target)",
+        "time.sleep(1)",
+        "SupportDiscord.discord_proxy_image_localfile(filepath, retry=False)",
+        "logger.error(f\"Exception:{str(e)}\")",
+        "traceback.format_exc()",
+        "logger.error(traceback.format_exc())",
+        "time.sleep(1)",
+        "SupportDiscord.discord_proxy_image_localfile(filepath, retry=False)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "base64.b64decode",
+          "id": "decode_base64_to_bytes",
+          "description": "Decodes base64-encoded string to bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "DiscordWebhook",
+          "id": "create_discord_webhook",
+          "description": "Creates Discord webhook object from URL and session",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_object_creation"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "byteio.getvalue",
+          "id": "get_buffer_bytes",
+          "description": "Retrieves bytes value from in-memory buffer",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "DiscordWebhook.add_file",
+          "id": "send_discord_file",
+          "description": "Sends file to Discord channel",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_message_operations"
+        },
+        {
+          "api_name": "DiscordEmbed",
+          "id": "create_discord_embed",
+          "description": "Creates Discord embed object with specified content",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_object_creation"
+        },
+        {
+          "api_name": "DiscordWebhook.execute",
+          "id": "send_discord_webhook",
+          "description": "Sends message to Discord channel via webhook",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_message_operations"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "SupportDiscord.discord_proxy_image_localfile",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "traceback.format_exc",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        }
+      ],
+      "contextual_code": "import base64\nimport random\nimport time\nimport traceback\nimport requests\nfrom discord_webhook import DiscordEmbed, DiscordWebhook\nfrom . import logger\n\nwebhook_list = [\n    base64.b64decode(b'...').decode('utf-8'), # ... repeated for each webhook\n    ...\n]\n\nclass SupportDiscord(object):\n    @classmethod    \n    def discord_cdn(cls, byteio=None, filepath=None, filename=None, webhook_url=\"https://discord.com/api/webhooks/1050549730964410470/ttge1ggOfIxrCSeTmYbIIsUWyMGAQj-nN6QBgwZTqLcHtUKcqjZ8wFWSWAhHmZne57t7\", content='', retry=True):\n        data = None\n        if webhook_url is None:\n            webhook_url =  webhook_list[random.randint(0,9)] \n        try:\n            webhook = DiscordWebhook(url=webhook_url, content=content)\n            if byteio is None and filepath is not None:\n                import io\n                with open(filepath, 'rb') as fh:\n                    byteio = io.BytesIO(fh.read())\n            webhook.add_file(file=byteio.getvalue(), filename=filename)\n            embed = DiscordEmbed()\n            response = webhook.execute()\n            data = None\n            if type(response) == type([]):\n                if len(response) > 0:\n                    data = response[0].json()\n            else:\n                data = response.json()    \n            if data is not None and 'attachments' in data:\n                target = data['attachments'][0]['url']\n                if requests.get(target).status_code == 200:\n                    return target\n            if retry:\n                time.sleep(1)\n                return cls.discord_proxy_image_localfile(filepath, retry=False)\n        except Exception as e: \n            logger.error(f\"Exception:{str(e)}\")\n            logger.error(traceback.format_exc())\n            if retry:\n                time.sleep(1)\n                return cls.discord_proxy_image_localfile(filepath, retry=False)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "flaskfarm-4.1.37",
+      "total_matches": 1
+    }
+  }
+]

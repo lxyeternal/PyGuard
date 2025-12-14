@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "torpy-1.1.6",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "socks.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/torpy-1.1.6/torpy-1.1.6/torpy/cli/socks.py",
+    "line_number": "164",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "163\t            logger.exception('[socks] csock close by exception')\n164\t            csock.close()\n165\t            self.client_sock = None",
+    "context_snippet": "class Socks5(threading.Thread):\n    def __init__(self, circuit, client_sock, client_addr):\n        if client_addr[0] == '127.0.0.1':\n            thread_name = 'Socks-%s' % client_addr[1]\n        else:\n            thread_name = 'Socks-%s:%s' % (client_addr[0], client_addr[1])\n        super().__init__(name=thread_name)\n        self.circuit = circuit\n        self.client_sock = client_sock\n        self.client_addr = client_addr\n\n    def error(self, err=b'\\x01\\0'):\n        try:\n            self.client_sock.send(b'\\x05' + err)\n            self.client_sock.close()\n            self.client_sock = None\n        except BaseException:\n            pass\n\n    @contextmanager\n    def create_socket(self, dst, port):\n        logger.info('[socks] Connecting to %s:%s', dst, port)\n        with self.circuit.create_stream((dst, port)) as tor_stream:\n            yield tor_stream.create_socket()\n            logger.debug('[socks] Closing stream #%x', tor_stream.id)\n\n    def run(self):\n        csock = self.client_sock\n        try:\n            ver = csock.recv(1)\n            if ver != b'\\x05':\n                return self.error(b'\\xff')\n            nmeth, = array.array('B', csock.recv(1))\n            _ = recv_exact(csock, nmeth)  # read methods\n            csock.send(b'\\x05\\0')\n            hbuf = recv_exact(csock, 4)\n            if not hbuf:\n                return self.error()\n\n            ver, cmd, rsv, atyp = list(hbuf)\n            if ver != 5 and cmd != 1:\n                return self.error()\n\n            if atyp == 1:\n                dst = '.'.join(str(i) for i in recv_exact(csock, 4))\n            elif atyp == 3:\n                n, = array.array('B', csock.recv(1))\n                dst = recv_exact(csock, n).decode()\n            elif atyp == 4:\n                dst = ':'.join(recv_exact(csock, 2).hex() for _ in range(8))\n                # TODO: ipv6\n                return self.error()\n            else:\n                return self.error()\n\n            port = int(recv_exact(csock, 2).hex(), 16)\n\n            with self.create_socket(dst, port) as ssock:\n                SocksProxy(ssock, csock).run()\n        except Exception:\n            logger.exception('[socks] csock close by exception')\n            csock.close()\n            self.client_sock = None",
+    "hash_value": "a76393022678dd24d4f2e55c6e9050e5"
+  }
+]

@@ -1,0 +1,381 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# Relevant imports\nimport os\nimport shutil\nimport sys\nimport subprocess\nfrom setuptools import setup\nfrom setuptools.command.install import install\nfrom pathlib import Path\n\n# Global variables and constants used\nSPARK_HOME = os.getenv('SPARK_HOME')\nTEMP_PATH = \"deps\"\nVERSION_PATH = \"VERSION\"\nJARS_TARGET = os.path.join(TEMP_PATH, \"jars\")\nSCALA_SPARK_DIR = Path(\"../scala-spark-sdk\")\nUBER_JAR_NAME_PREFIX = \"sagemaker-feature-store-spark-sdk\"\nUBER_JAR_NAME = f\"{UBER_JAR_NAME_PREFIX}.jar\"\n\nin_spark_sdk = os.path.isfile(SCALA_SPARK_DIR / \"build.sbt\")\n# read the contents of your README file\nthis_directory = Path(__file__).parent\nlong_description = (this_directory / \"README.md\").read_text()\n\n# Helper functions used\n\ndef read(fname):\n    return open(os.path.join(os.path.dirname(__file__), fname)).read()\n\ndef read_version():\n    return read(VERSION_PATH).strip()\n\n# Custom install class used in setup()\nclass CustomInstall(install):\n    def run(self):\n        install.run(self)\n        spark_home_dir = os.environ.get('SPARK_HOME', None)\n        if spark_home_dir:\n            uber_jar_target = Path(spark_home_dir) / \"jars\" / UBER_JAR_NAME\n\n            jars_in_deps = os.listdir(Path(os.getcwd()) / Path(JARS_TARGET))\n            uber_jar_name = [jar for jar in jars_in_deps if jar.startswith(UBER_JAR_NAME_PREFIX)].pop()\n            uber_jar_dir = Path(os.getcwd()) / Path(JARS_TARGET) / uber_jar_name\n\n            print(f\"Copying feature store uber jar to {uber_jar_target}\")\n            shutil.copy(uber_jar_dir, uber_jar_target)\n\n        else:\n            print(\"Environment variable SPARK_HOME is not set, dependent jars are not installed to SPARK_HOME.\")\n        print(\"Installation finished.\")\n\n# Main installation logic\nprint(\"Starting the installation of SageMaker FeatureStore pyspark...\")\nif in_spark_sdk:\n    shutil.copyfile(os.path.join(\"..\", VERSION_PATH), VERSION_PATH)\n\n    if not os.path.exists(TEMP_PATH):\n        os.mkdir(TEMP_PATH)\n\n    # use sbt to package the scala uber jar\n    p = subprocess.Popen(\"sbt assembly\".split(),\n                         stdout=subprocess.PIPE,\n                         stderr=subprocess.PIPE,\n                         cwd=SCALA_SPARK_DIR)\n    p.communicate()\n\n    # retrieve all jars under 'assembly-output'\n    classpath = []\n    assembly_output_dir = SCALA_SPARK_DIR / \"assembly-output\"\n    assembly_output_files = os.listdir(assembly_output_dir)\n    for output_file in assembly_output_files:\n        file_path = assembly_output_dir / output_file\n        if output_file.endswith(\".jar\") and os.path.exists(file_path):\n            classpath.append(file_path)\n\n    if len(classpath) == 0:\n        print(\"Failed to retrieve the jar classpath. Can't package\")\n        exit(-1)\n\n    if not os.path.exists(JARS_TARGET):\n        os.mkdir(JARS_TARGET)\n\n    uber_jar_path = [jar for jar in classpath if os.path.basename(jar).startswith(UBER_JAR_NAME_PREFIX)].pop()\n    target_path = os.path.join(JARS_TARGET, UBER_JAR_NAME)\n    shutil.copy(uber_jar_path, target_path)\n\nelse:\n    if not os.path.exists(JARS_TARGET):\n        print(\"You need to be in the sagemaker-feature-store-spark root folder to package\", file=sys.stderr)\n        exit(-1)\n\n# The setup() call (cmd-overwrite flagged line)\nsetup(\n    name=\"sagemaker_feature_store_pyspark\",\n    author=\"Amazon Web Services\",\n\n    long_description=long_description,\n    long_description_content_type=\"text/markdown\",\n    keywords=\"ML Amazon AWS AI FeatureStore SageMaker\",\n\n    version=read_version(),\n    description=\"Amazon SageMaker FeatureStore PySpark Bindings\",\n    license=\"Apache License 2.0\",\n    zip_safe=False,\n\n    packages=[\"feature_store_pyspark\",\n              \"feature_store_pyspark.jars\"],\n\n    package_dir={\n        \"feature_store_pyspark\": \"src/feature_store_pyspark\",\n        \"feature_store_pyspark.jars\": \"deps/jars\"\n    },\n    include_package_data=True,\n\n    scripts=[\"bin/feature-store-pyspark-dependency-jars\"],\n\n    package_data={\n        \"feature_store_pyspark.jars\": [\"*.jar\"],\n    },\n\n    install_requires=[],\n\n    cmdclass={\n        'install': CustomInstall\n    }\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.path.isfile",
+        "Path.parent",
+        "Path.__truediv__",
+        "Path.read_text",
+        "os.path.dirname",
+        "open",
+        "os.path.join",
+        "os.path.dirname",
+        "open",
+        "os.environ.get",
+        "Path.__truediv__",
+        "os.getcwd",
+        "Path.__truediv__",
+        "os.listdir",
+        "os.getcwd",
+        "Path.__truediv__",
+        "os.path.basename",
+        "shutil.copy",
+        "os.path.join",
+        "shutil.copyfile",
+        "os.path.exists",
+        "os.mkdir",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "Path.__truediv__",
+        "os.listdir",
+        "Path.__truediv__",
+        "os.path.exists",
+        "os.path.basename",
+        "os.path.exists",
+        "os.mkdir",
+        "os.path.basename",
+        "shutil.copy",
+        "os.path.exists",
+        "setup"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv('SPARK_HOME')",
+        "os.path.isfile(SCALA_SPARK_DIR / 'build.sbt')",
+        "Path(__file__).parent",
+        "this_directory / 'README.md'",
+        "(this_directory / 'README.md').read_text()",
+        "os.path.dirname(__file__)",
+        "open(os.path.join(os.path.dirname(__file__), fname))",
+        "os.path.join(os.path.dirname(__file__), fname)",
+        "os.path.dirname(__file__)",
+        "open(os.path.join(os.path.dirname(__file__), fname))",
+        "os.environ.get('SPARK_HOME', None)",
+        "Path(spark_home_dir) / 'jars' / UBER_JAR_NAME",
+        "os.getcwd()",
+        "Path(os.getcwd()) / Path(JARS_TARGET)",
+        "os.listdir(Path(os.getcwd()) / Path(JARS_TARGET))",
+        "os.getcwd()",
+        "Path(os.getcwd()) / Path(JARS_TARGET) / uber_jar_name",
+        "[jar for jar in jars_in_deps if jar.startswith(UBER_JAR_NAME_PREFIX)].pop()",
+        "shutil.copy(uber_jar_dir, uber_jar_target)",
+        "os.path.join('..', VERSION_PATH)",
+        "shutil.copyfile(os.path.join('..', VERSION_PATH), VERSION_PATH)",
+        "os.path.exists(TEMP_PATH)",
+        "os.mkdir(TEMP_PATH)",
+        "subprocess.Popen('sbt assembly'.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=SCALA_SPARK_DIR)",
+        "p.communicate()",
+        "SCALA_SPARK_DIR / 'assembly-output'",
+        "os.listdir(assembly_output_dir)",
+        "assembly_output_dir / output_file",
+        "os.path.exists(file_path)",
+        "os.path.basename(jar)",
+        "os.path.exists(JARS_TARGET)",
+        "os.mkdir(JARS_TARGET)",
+        "os.path.basename(jar)",
+        "shutil.copy(uber_jar_path, target_path)",
+        "os.path.exists(JARS_TARGET)",
+        "setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "Path.parent",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.read_text",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.listdir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.listdir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "setup",
+          "id": "exec_setuptools_install",
+          "description": "Executes setuptools installation procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "# Global variables and constants used\nSPARK_HOME = os.getenv('SPARK_HOME')\nTEMP_PATH = \"deps\"\nVERSION_PATH = \"VERSION\"\nJARS_TARGET = os.path.join(TEMP_PATH, \"jars\")\nSCALA_SPARK_DIR = Path(\"../scala-spark-sdk\")\nUBER_JAR_NAME_PREFIX = \"sagemaker-feature-store-spark-sdk\"\nUBER_JAR_NAME = f\"{UBER_JAR_NAME_PREFIX}.jar\"\n\nin_spark_sdk = os.path.isfile(SCALA_SPARK_DIR / \"build.sbt\")\nthis_directory = Path(__file__).parent\nlong_description = (this_directory / \"README.md\").read_text()\n\ndef read(fname):\n    return open(os.path.join(os.path.dirname(__file__), fname)).read()\n\ndef read_version():\n    return read(VERSION_PATH).strip()\n\nclass CustomInstall(install):\n    def run(self):\n        install.run(self)\n        spark_home_dir = os.environ.get('SPARK_HOME', None)\n        if spark_home_dir:\n            uber_jar_target = Path(spark_home_dir) / \"jars\" / UBER_JAR_NAME\n            jars_in_deps = os.listdir(Path(os.getcwd()) / Path(JARS_TARGET))\n            uber_jar_name = [jar for jar in jars_in_deps if jar.startswith(UBER_JAR_NAME_PREFIX)].pop()\n            uber_jar_dir = Path(os.getcwd()) / Path(JARS_TARGET) / uber_jar_name\n            shutil.copy(uber_jar_dir, uber_jar_target)\n\nif in_spark_sdk:\n    shutil.copyfile(os.path.join(\"..\", VERSION_PATH), VERSION_PATH)\n    if not os.path.exists(TEMP_PATH):\n        os.mkdir(TEMP_PATH)\n    p = subprocess.Popen(\"sbt assembly\".split(),\n                         stdout=subprocess.PIPE,\n                         stderr=subprocess.PIPE,\n                         cwd=SCALA_SPARK_DIR)\n    p.communicate()\n    classpath = []\n    assembly_output_dir = SCALA_SPARK_DIR / \"assembly-output\"\n    assembly_output_files = os.listdir(assembly_output_dir)\n    for output_file in assembly_output_files:\n        file_path = assembly_output_dir / output_file\n        if output_file.endswith(\".jar\") and os.path.exists(file_path):\n            classpath.append(file_path)\n    if len(classpath) == 0:\n        exit(-1)\n    if not os.path.exists(JARS_TARGET):\n        os.mkdir(JARS_TARGET)\n    uber_jar_path = [jar for jar in classpath if os.path.basename(jar).startswith(UBER_JAR_NAME_PREFIX)].pop()\n    target_path = os.path.join(JARS_TARGET, UBER_JAR_NAME)\n    shutil.copy(uber_jar_path, target_path)\nelse:\n    if not os.path.exists(JARS_TARGET):\n        exit(-1)\n\nsetup(\n    name=\"sagemaker_feature_store_pyspark\",\n    author=\"Amazon Web Services\",\n    long_description=long_description,\n    long_description_content_type=\"text/markdown\",\n    keywords=\"ML Amazon AWS AI FeatureStore SageMaker\",\n    version=read_version(),\n    description=\"Amazon SageMaker FeatureStore PySpark Bindings\",\n    license=\"Apache License 2.0\",\n    zip_safe=False,\n    packages=[\"feature_store_pyspark\",\n              \"feature_store_pyspark.jars\"],\n    package_dir={\n        \"feature_store_pyspark\": \"src/feature_store_pyspark\",\n        \"feature_store_pyspark.jars\": \"deps/jars\"\n    },\n    include_package_data=True,\n    scripts=[\"bin/feature-store-pyspark-dependency-jars\"],\n    package_data={\n        \"feature_store_pyspark.jars\": [\"*.jar\"],\n    },\n    install_requires=[],\n    cmdclass={\n        'install': CustomInstall\n    }\n)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "sagemaker_feature_store_pyspark-1.1.3",
+      "total_matches": 2
+    }
+  }
+]

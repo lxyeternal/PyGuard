@@ -1,0 +1,296 @@
+{
+  "metadata": {
+    "package_name": "whoosh-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/whoosh-2.7.4.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "compound.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/whoosh-2.7.4/Whoosh-2.7.4/src/whoosh/filedb/compound.py",
+      "line_number": "319",
+      "type_description": "B815:write",
+      "context_snippet": "class CompoundWriter(object):\n    def __init__(self, tempstorage, buffersize=32 * 1024):\n        assert isinstance(buffersize, int)\n        self._tempstorage = tempstorage\n        self._tempname = \"%s.ctmp\" % random_name()\n        self._temp = tempstorage.create_file(self._tempname, mode=\"w+b\")\n        self._buffersize = buffersize\n        self._streams = {}\n\n    def create_file(self, name):\n        ss = self.SubStream(self._temp, self._buffersize)\n        self._streams[name] = ss\n        return StructFile(ss)\n\n    def _readback(self):\n        temp = self._temp\n        for name, substream in self._streams.items():\n            substream.close()\n\n            def gen():\n                for f, offset, length in substream.blocks:\n                    if f is None:\n                        f = temp\n                    f.seek(offset)\n                    yield f.read(length)\n\n            yield (name, gen)\n        temp.close()\n        self._tempstorage.delete_file(self._tempname)\n\n    def save_as_compound(self, dbfile):\n        basepos = dbfile.tell()\n        dbfile.write_long(0)  # Directory offset\n        dbfile.write_int(0)  # Directory length\n\n        directory = {}\n        for name, blocks in self._readback():\n            filestart = dbfile.tell()\n            for block in blocks():\n                dbfile.write(block)\n            directory[name] = {\"offset\": filestart,\n                               \"length\": dbfile.tell() - filestart}\n\n        CompoundStorage.write_dir(dbfile, basepos, directory)\n\n    def save_as_files(self, storage, name_fn):\n        for name, blocks in self._readback():\n            f = storage.create_file(name_fn(name))\n            for block in blocks():\n                f.write(block)\n            f.close()\n\n    class SubStream(object):\n        def __init__(self, dbfile, buffersize):\n            self._dbfile = dbfile\n            self._buffersize = buffersize\n            self._buffer = BytesIO()\n            self.blocks = []\n\n        def tell(self):\n            return sum(b[2] for b in self.blocks) + self._buffer.tell()\n\n        def write(self, inbytes):\n            bio = self._buffer\n            buflen = bio.tell()\n            length = buflen + len(inbytes)\n            if length >= self._buffersize:\n                offset = self._dbfile.tell()\n                self._dbfile.write(bio.getvalue()[:buflen])\n                self._dbfile.write(inbytes)\n\n                self.blocks.append((None, offset, length))\n                self._buffer.seek(0)\n            else:\n                bio.write(inbytes)\n\n        def close(self):\n            bio = self._buffer\n            length = bio.tell()\n            if length:\n                self.blocks.append((bio, 0, length))",
+      "hash_value": "603a348fb7333035bf9d4b274d5693f4",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "class CompoundWriter(object):\n    def __init__(self, tempstorage, buffersize=32 * 1024):\n        assert isinstance(buffersize, int)\n        self._tempstorage = tempstorage\n        self._tempname = \"%s.ctmp\" % random_name()\n        self._temp = tempstorage.create_file(self._tempname, mode=\"w+b\")\n        self._buffersize = buffersize\n        self._streams = {}\n\n    def create_file(self, name):\n        ss = self.SubStream(self._temp, self._buffersize)\n        self._streams[name] = ss\n        return StructFile(ss)\n\n    def _readback(self):\n        temp = self._temp\n        for name, substream in self._streams.items():\n            substream.close()\n\n            def gen():\n                for f, offset, length in substream.blocks:\n                    if f is None:\n                        f = temp\n                    f.seek(offset)\n                    yield f.read(length)\n\n            yield (name, gen)\n        temp.close()\n        self._tempstorage.delete_file(self._tempname)\n\n    def save_as_compound(self, dbfile):\n        basepos = dbfile.tell()\n        dbfile.write_long(0)  # Directory offset\n        dbfile.write_int(0)  # Directory length\n\n        directory = {}\n        for name, blocks in self._readback():\n            filestart = dbfile.tell()\n            for block in blocks():\n                dbfile.write(block)\n            directory[name] = {\"offset\": filestart,\n                               \"length\": dbfile.tell() - filestart}\n\n        CompoundStorage.write_dir(dbfile, basepos, directory)\n\n    def save_as_files(self, storage, name_fn):\n        for name, blocks in self._readback():\n            f = storage.create_file(name_fn(name))\n            for block in blocks():\n                f.write(block)\n            f.close()\n\n    class SubStream(object):\n        def __init__(self, dbfile, buffersize):\n            self._dbfile = dbfile\n            self._buffersize = buffersize\n            self._buffer = BytesIO()\n            self.blocks = []\n\n        def tell(self):\n            return sum(b[2] for b in self.blocks) + self._buffer.tell()\n\n        def write(self, inbytes):\n            bio = self._buffer\n            buflen = bio.tell()\n            length = buflen + len(inbytes)\n            if length >= self._buffersize:\n                offset = self._dbfile.tell()\n                self._dbfile.write(bio.getvalue()[:buflen])\n                self._dbfile.write(inbytes)\n\n                self.blocks.append((None, offset, length))\n                self._buffer.seek(0)\n            else:\n                bio.write(inbytes)\n\n        def close(self):\n            bio = self._buffer\n            length = bio.tell()\n            if length:\n                self.blocks.append((bio, 0, length))",
+          "triple_sequences": [
+            {
+              "action_api": "random_name()",
+              "action_description": "Generate random string",
+              "action_id": "generate_random_string",
+              "object": "",
+              "object_description": "Random string",
+              "object_id": "random_string",
+              "intention_description": "Create random file name",
+              "intention_id": "create_random_filename"
+            },
+            {
+              "action_api": "tempstorage.create_file()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "self._tempname, mode=\"w+b\"",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "self._streams[name] = ss",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "name, ss",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Prepare file for temporary storage",
+              "intention_id": "prepare_file_temp_storage"
+            },
+            {
+              "action_api": "StructFile()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "ss",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Prepare file for temporary storage",
+              "intention_id": "prepare_file_temp_storage"
+            },
+            {
+              "action_api": "substream.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "substream",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "f.seek()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "offset",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "f.read()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "length",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "temp.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "temp",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "self._tempstorage.delete_file()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self._tempname",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "dbfile.tell()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "dbfile.write_long()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "dbfile.write_int()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "dbfile.tell()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "dbfile.write()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "block",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "dbfile.tell()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "CompoundStorage.write_dir()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "dbfile, basepos, directory",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "storage.create_file()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "name_fn(name)",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "block",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "f.close()",
+              "action_description": "Closes the opened file",
+              "action_id": "close_file",
+              "object": "f",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Close file",
+              "intention_id": "close_file"
+            },
+            {
+              "action_api": "BytesIO()",
+              "action_description": "Creates in-memory bytes buffer from encoded string",
+              "action_id": "create_memory_bytes",
+              "object": "",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self._buffer.tell()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "self._dbfile.tell()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "self._dbfile.write()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "bio.getvalue()[:buflen]",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._dbfile.write()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "inbytes",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self._buffer.seek()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "bio.write()",
+              "action_description": "Basic write operations (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "inbytes",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "bio.tell()",
+              "action_description": "Basic read operations (file opening operations for reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "metadata": {
+      "package_name": "multiprocess-0.70.17",
+      "total_matches": 7,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "pool.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/pypy3.10/multiprocess/pool.py",
+    "line_number": "708",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "707\t        util.debug('joining worker handler')\n708\t        if threading.current_thread() is not worker_handler:\n709\t            worker_handler.join()",
+    "context_snippet": "    @classmethod\n    def _terminate_pool(cls, taskqueue, inqueue, outqueue, pool, change_notifier,\n                        worker_handler, task_handler, result_handler, cache):\n        # this is guaranteed to only be called once\n        util.debug('finalizing pool')\n\n        # Notify that the worker_handler state has been changed so the\n        # _handle_workers loop can be unblocked (and exited) in order to\n        # send the finalization sentinel all the workers.\n        worker_handler._state = TERMINATE\n        change_notifier.put(None)\n\n        task_handler._state = TERMINATE\n\n        util.debug('helping task handler/workers to finish')\n        cls._help_stuff_finish(inqueue, task_handler, len(pool))\n\n        if (not result_handler.is_alive()) and (len(cache) != 0):\n            raise AssertionError(\n                \"Cannot have cache with result_hander not alive\")\n\n        result_handler._state = TERMINATE\n        change_notifier.put(None)\n        outqueue.put(None)                  # sentinel\n\n        # We must wait for the worker handler to exit before terminating\n        # workers because we don't want workers to be restarted behind our back.\n        util.debug('joining worker handler')\n        if threading.current_thread() is not worker_handler:\n            worker_handler.join()\n\n        # Terminate workers which haven't already finished.\n        if pool and hasattr(pool[0], 'terminate'):\n            util.debug('terminating workers')\n            for p in pool:\n                if p.exitcode is None:\n                    p.terminate()\n\n        util.debug('joining task handler')\n        if threading.current_thread() is not task_handler:\n            task_handler.join()\n\n        util.debug('joining result handler')\n        if threading.current_thread() is not result_handler:\n            result_handler.join()\n\n        if pool and hasattr(pool[0], 'terminate'):\n            util.debug('joining pool workers')\n            for p in pool:\n                if p.is_alive():\n                    # worker has not yet exited\n                    util.debug('cleaning up worker %d' % p.pid)\n                    p.join()",
+    "hash_value": "55553c848063af5f4b11c60674802254"
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/pypy3.10/multiprocess/tests/__init__.py",
+    "line_number": "5167",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5166\t            p.start()\n5167\t            child_conn.close()\n5168\t            address = conn.recv()",
+    "context_snippet": "def test_spawn_close(self):\n    # We test that a pipe connection can be closed by parent\n    # process immediately after child is spawned.  On Windows this\n    # would have sometimes failed on old versions because\n    # child_conn would be closed before the child got a chance to\n    # duplicate it.\n    conn, child_conn = self.Pipe()\n\n    p = self.Process(target=self._echo, args=(child_conn,))\n    p.daemon = True\n    p.start()\n    child_conn.close()    # this might complete before child initializes\n\n    msg = latin('hello')\n    conn.send_bytes(msg)\n    self.assertEqual(conn.recv_bytes(), msg)\n\n    conn.send_bytes(SENTINEL)\n    conn.close()\n    p.join()",
+    "hash_value": "d2c3747c57c0ed99f5b4e0763e30b891"
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.12/multiprocess/tests/__init__.py",
+    "line_number": "5363",
+    "type_description": "B805:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5362\t        signal.signal(signal.SIGUSR1, handler)\n5363\t        conn.send('ready')\n5364\t        x = conn.recv()",
+    "context_snippet": "class TestIgnoreEINTR(unittest.TestCase):\n\n    # Sending CONN_MAX_SIZE bytes into a multiprocessing pipe must block\n    CONN_MAX_SIZE = max(support.PIPE_MAX_SIZE, support.SOCK_MAX_SIZE)\n\n    @classmethod\n    def _test_ignore(cls, conn):\n        def handler(signum, frame):\n            pass\n        signal.signal(signal.SIGUSR1, handler)\n        conn.send('ready')\n        x = conn.recv()\n        conn.send(x)\n        conn.send_bytes(b'x' * cls.CONN_MAX_SIZE)\n",
+    "hash_value": "7d1c972a6ca7dd895f07ede7467c0d38"
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.10/multiprocess/tests/__init__.py",
+    "line_number": "4972",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4971\t            conn = l.accept()\n4972\t            self.assertEqual(conn.recv(), 456)\n4973\t            conn.close()",
+    "context_snippet": "class TestTimeouts(unittest.TestCase):\n    @classmethod\n    def _test_timeout(cls, child, address):\n        time.sleep(1)\n        child.send(123)\n        child.close()\n        conn = multiprocessing.connection.Client(address)\n        conn.send(456)\n        conn.close()\n\n    def test_timeout(self):\n        old_timeout = socket.getdefaulttimeout()\n        try:\n            socket.setdefaulttimeout(0.1)\n            parent, child = multiprocessing.Pipe(duplex=True)\n            l = multiprocessing.connection.Listener(family='AF_INET')\n            p = multiprocessing.Process(target=self._test_timeout,\n                                        args=(child, l.address))\n            p.start()\n            child.close()\n            self.assertEqual(parent.recv(), 123)\n            parent.close()\n            conn = l.accept()\n            self.assertEqual(conn.recv(), 456)\n            conn.close()\n            l.close()\n            join_process(p)\n        finally:\n            socket.setdefaulttimeout(old_timeout)",
+    "hash_value": "a4334abb4a27260d9f6cda904aa66ec4"
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.11/multiprocess/tests/__init__.py",
+    "line_number": "3774",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3773\t        w.close()\n3774\t        self.assertEqual(conn.recv(), 'foobar'*2)\n3775",
+    "context_snippet": "class _TestPicklingConnections(BaseTestCase):\n\n    ALLOWED_TYPES = ('processes',)\n\n    @classmethod\n    def tearDownClass(cls):\n        from multiprocess import resource_sharer\n        resource_sharer.stop(timeout=support.LONG_TIMEOUT)\n\n    @classmethod\n    def child_access(cls, conn):\n        w = conn.recv()\n        w.send('all is well')\n        w.close()\n\n        r = conn.recv()\n        msg = r.recv()\n        conn.send(msg*2)\n\n        conn.close()\n\n    def test_access(self):\n        # On Windows, if we do not specify a destination pid when\n        # using DupHandle then we need to be careful to use the\n        # correct access flags for DuplicateHandle(), or else\n        # DupHandle.detach() will raise PermissionError.  For example,\n        # for a read only pipe handle we should use\n        # access=FILE_GENERIC_READ.  (Unfortunately\n        # DUPLICATE_SAME_ACCESS does not work.)\n        conn, child_conn = self.Pipe()\n        p = self.Process(target=self.child_access, args=(child_conn,))\n        p.daemon = True\n        p.start()\n        child_conn.close()\n\n        r, w = self.Pipe(duplex=False)\n        conn.send(w)\n        w.close()\n        self.assertEqual(r.recv(), 'all is well')\n        r.close()\n\n        r, w = self.Pipe(duplex=False)\n        conn.send(r)\n        r.close()\n        w.send('foobar')\n        w.close()\n        self.assertEqual(conn.recv(), 'foobar'*2)\n\n        p.join()\n",
+    "hash_value": "f3f67df69f96cef3a7c1bbdafb56045c"
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.8/multiprocess/tests/__init__.py",
+    "line_number": "3041",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3040\t        self.assertEqual(conn.send(seq), None)\n3041\t        self.assertEqual(conn.recv(), seq)\n3042",
+    "context_snippet": "def test_connection(self):\n    conn, child_conn = self.Pipe()\n\n    p = self.Process(target=self._echo, args=(child_conn,))\n    p.daemon = True\n    p.start()\n\n    seq = [1, 2.25, None]\n    msg = latin('hello world')\n    longmsg = msg * 10\n    arr = array.array('i', list(range(4)))\n\n    if self.TYPE == 'processes':\n        self.assertEqual(type(conn.fileno()), int)\n\n    self.assertEqual(conn.send(seq), None)\n    self.assertEqual(conn.recv(), seq)\n\n    self.assertEqual(conn.send_bytes(msg), None)\n    self.assertEqual(conn.recv_bytes(), msg)\n\n    if self.TYPE == 'processes':\n        buffer = array.array('i', [0]*10)\n        expected = list(arr) + [0] * (10 - len(arr))\n        self.assertEqual(conn.send_bytes(arr), None)\n        self.assertEqual(conn.recv_bytes_into(buffer),\n                         len(arr) * buffer.itemsize)\n        self.assertEqual(list(buffer), expected)\n\n        buffer = array.array('i', [0]*10)\n        expected = [0] * 3 + list(arr) + [0] * (10 - 3 - len(arr))\n        self.assertEqual(conn.send_bytes(arr), None)\n        self.assertEqual(conn.recv_bytes_into(buffer, 3 * buffer.itemsize),\n                         len(arr) * buffer.itemsize)\n        self.assertEqual(list(buffer), expected)\n\n        buffer = bytearray(latin(' ' * 40))\n        self.assertEqual(conn.send_bytes(longmsg), None)\n        try:\n            res = conn.recv_bytes_into(buffer)\n        except multiprocessing.BufferTooShort as e:\n            self.assertEqual(e.args, (longmsg,))\n        else:\n            self.fail('expected BufferTooShort, got %s' % res)\n\n    poll = TimingWrapper(conn.poll)\n\n    self.assertEqual(poll(), False)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n\n    self.assertEqual(poll(-1), False)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n\n    self.assertEqual(poll(TIMEOUT1), False)\n    self.assertTimingAlmostEqual(poll.elapsed, TIMEOUT1)\n\n    conn.send(None)\n    time.sleep(.1)\n\n    self.assertEqual(poll(TIMEOUT1), True)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n\n    self.assertEqual(conn.recv(), None)\n\n    really_big_msg = latin('X') * (1024 * 1024 * 16)   # 16Mb\n    conn.send_bytes(really_big_msg)\n    self.assertEqual(conn.recv_bytes(), really_big_msg)\n\n    conn.send_bytes(SENTINEL)                          # tell child to quit\n    child_conn.close()\n\n    if self.TYPE == 'processes':\n        self.assertEqual(conn.readable, True)\n        self.assertEqual(conn.writable, True)\n        self.assertRaises(EOFError, conn.recv)\n        self.assertRaises(EOFError, conn.recv_bytes)\n\n    p.join()",
+    "hash_value": "f2a12951c768b295a9301d2f3b1b3689"
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.11/multiprocess/tests/__init__.py",
+    "line_number": "3683",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3682\n3683\t        address, msg = conn.recv()\n3684\t        client = socket.socket()",
+    "context_snippet": "    @classmethod\n    def _remote(cls, conn):\n        for (address, msg) in iter(conn.recv, None):\n            client = cls.connection.Client(address)\n            client.send(msg.upper())\n            client.close()\n\n        address, msg = conn.recv()\n        client = socket.socket()\n        client.connect(address)\n        client.sendall(msg.upper())\n        client.close()\n\n        conn.close()",
+    "hash_value": "7be741880050f25095c7a700bc1d7699"
+  }
+]

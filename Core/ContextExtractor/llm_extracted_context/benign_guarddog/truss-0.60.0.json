@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "truss-0.60.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/truss-0.60.0.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/truss-0.60.0/truss-0.60.0/truss-chains/truss_chains/remote_chainlet/utils.py",
+    "line_number": "214",
+    "type_description": "obfuscation",
+    "original_snippet": "exception_cls = getattr(builtins, error.exception_cls_name, None)",
+    "context_snippet": "def _resolve_exception_class(error: definitions.RemoteErrorDetail) -> Type[Exception]:\n    \"\"\"Tries to find the exception class in builtins or imported libs,\n    falls back to `definitions.GenericRemoteError` if not found.\"\"\"\n    exception_cls = None\n    if error.exception_module_name is None:\n        exception_cls = getattr(builtins, error.exception_cls_name, None)\n    else:\n        if mod := sys.modules.get(error.exception_module_name):\n            exception_cls = getattr(mod, error.exception_cls_name, None)\n\n    if exception_cls is None:\n        logging.warning(\n            f\"Could not resolve exception with name `{error.exception_cls_name}` \"\n            f\"and module `{error.exception_module_name}` - fall back to \"\n            f\"`{definitions.GenericRemoteException.__name__}`.\"\n        )\n        exception_cls = definitions.GenericRemoteException\n\n    if issubclass(exception_cls, pydantic.ValidationError):\n        # Cannot re-raise naively.\n        # https://github.com/pydantic/pydantic/issues/6734.\n        exception_cls = definitions.GenericRemoteException\n\n    return exception_cls",
+    "hash_value": "2a026395dbb83397eca93433e1f48430",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "inference_server_starter.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/truss-0.60.0/truss-0.60.0/truss/templates/control/control/helpers/inference_server_starter.py",
+    "line_number": "48",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "resp = requests.post(patch_ping_url, json=payload)",
+    "context_snippet": "import os\nfrom logging import Logger\n\nimport requests\nfrom anyio import to_thread\nfrom helpers.inference_server_controller import InferenceServerController\nfrom tenacity import Retrying, stop_after_attempt, wait_exponential\n\n\ndef inference_server_startup_flow(\n    inference_server_controller: InferenceServerController, logger: Logger\n) -> None:\n    \"\"\"\n    Perform the inference server startup flow\n\n    Inference server startup flow supports checking for patches. If a patch ping\n    url is provided then we hit that url to start the sync mechanism. The ping\n    calls with current truss hash. The patch ping endpoint should return a\n    response indicating, either that the supplied hash is current or that the\n    request has been accepted. Acceptance of request means that a patch will be\n    supplied soon to the truss (by calling of /control/patch endpoint).\n\n    If we find that our hash is current, we start the inference server\n    immediately. Otherwise, we delay the start to when the patch is supplied.\n\n    The goal is to start the inference server as soon as we have the latest\n    code, but not before.\n    Example responses:\n    {\"is_current\": true}\n    {\"accepted\": true}\n    \"\"\"\n    patch_ping_url = os.environ.get(\"PATCH_PING_URL_TRUSS\")\n    if patch_ping_url is None:\n        inference_server_controller.start()\n        return\n\n    truss_hash = inference_server_controller.truss_hash()\n    payload = {\"truss_hash\": truss_hash}\n\n    for attempt in Retrying(\n        stop=stop_after_attempt(15), wait=wait_exponential(multiplier=2, min=1, max=4)\n    ):\n        with attempt:\n            try:\n                logger.info(\n                    f\"Pinging {patch_ping_url} for patch with hash {truss_hash}\"\n                )\n                resp = requests.post(patch_ping_url, json=payload)\n                resp.raise_for_status()\n                resp_body = resp.json()\n\n                # If hash is current start inference server, otherwise delay that\n                # for when patch is applied.\n                if \"is_current\" in resp_body and resp_body[\"is_current\"] is True:\n                    logger.info(\"Hash is current, starting inference server\")\n                    inference_server_controller.start()\n            except Exception as exc:  # noqa\n                logger.warning(f\"Patch ping attempt failed with error {exc}\")\n                raise exc",
+    "hash_value": "a3f9e7ecf8e98a9abf6258f72b33327b",
+    "detection_index": 1
+  }
+]

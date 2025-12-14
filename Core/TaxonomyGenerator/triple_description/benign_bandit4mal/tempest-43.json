@@ -1,0 +1,256 @@
+{
+  "metadata": {
+    "package_name": "tempest-43",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/tempest-43.0.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "ssh.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tempest-43.0.0/tempest-43.0.0/tempest/lib/common/ssh.py",
+      "line_number": "214",
+      "type_description": "B809:recv",
+      "context_snippet": "def exec_command(self, cmd, encoding=\"utf-8\"):\n    \"\"\"Execute the specified command on the server\n\n    Note that this method is reading whole command outputs to memory, thus\n    shouldn't be used for large outputs.\n\n    :param str cmd: Command to run at remote server.\n    :param str encoding: Encoding for result from paramiko.\n                         Result will not be decoded if None.\n    :returns: data read from standard output of the command.\n    :raises: SSHExecCommandFailed if command returns nonzero\n             status. The exception contains command status stderr content.\n    :raises: TimeoutException if cmd doesn't end when timeout expires.\n    \"\"\"\n    ssh = self._get_ssh_connection()\n    transport = ssh.get_transport()\n    with transport.open_session() as channel:\n        channel.fileno()  # Register event pipe\n        channel.exec_command(cmd)\n        channel.shutdown_write()\n\n        # If the executing host is linux-based, poll the channel\n        if self._can_system_poll():\n            out_data_chunks = []\n            err_data_chunks = []\n            poll = select.poll()\n            poll.register(channel, select.POLLIN)\n            start_time = time.time()\n\n            while True:\n                ready = poll.poll(self.channel_timeout)\n                if not any(ready):\n                    if not self._is_timed_out(start_time):\n                        continue\n                    raise exceptions.TimeoutException(\n                        \"Command: '{0}' executed on host '{1}'.\".format(\n                            cmd, self.host))\n                if not ready[0]:  # If there is nothing to read.\n                    continue\n                out_chunk = err_chunk = None\n                if channel.recv_ready():\n                    out_chunk = channel.recv(self.buf_size)\n                    out_data_chunks += out_chunk,\n                if channel.recv_stderr_ready():\n                    err_chunk = channel.recv_stderr(self.buf_size)\n                    err_data_chunks += err_chunk,\n                if not err_chunk and not out_chunk:\n                    break\n            out_data = b''.join(out_data_chunks)\n            err_data = b''.join(err_data_chunks)\n        # Just read from the channels\n        else:\n            out_file = channel.makefile('rb', self.buf_size)\n            err_file = channel.makefile_stderr('rb', self.buf_size)\n            out_data = out_file.read()\n            err_data = err_file.read()\n        if encoding:\n            out_data = out_data.decode(encoding)\n            err_data = err_data.decode(encoding)\n\n        exit_status = channel.recv_exit_status()\n\n    ssh.close()\n\n    if 0 != exit_status:\n        raise exceptions.SSHExecCommandFailed(\n            command=cmd, exit_status=exit_status,\n            stderr=err_data, stdout=out_data)\n    return out_data",
+      "hash_value": "7b221e39dfa5467dab971bdea5433529",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def exec_command(self, cmd, encoding=\"utf-8\"):\n    \"\"\"Execute the specified command on the server\n\n    Note that this method is reading whole command outputs to memory, thus\n    shouldn't be used for large outputs.\n\n    :param str cmd: Command to run at remote server.\n    :param str encoding: Encoding for result from paramiko.\n                         Result will not be decoded if None.\n    :returns: data read from standard output of the command.\n    :raises: SSHExecCommandFailed if command returns nonzero\n             status. The exception contains command status stderr content.\n    :raises: TimeoutException if cmd doesn't end when timeout expires.\n    \"\"\"\n    ssh = self._get_ssh_connection()\n    transport = ssh.get_transport()\n    with transport.open_session() as channel:\n        channel.fileno()  # Register event pipe\n        channel.exec_command(cmd)\n        channel.shutdown_write()\n\n        # If the executing host is linux-based, poll the channel\n        if self._can_system_poll():\n            out_data_chunks = []\n            err_data_chunks = []\n            poll = select.poll()\n            poll.register(channel, select.POLLIN)\n            start_time = time.time()\n\n            while True:\n                ready = poll.poll(self.channel_timeout)\n                if not any(ready):\n                    if not self._is_timed_out(start_time):\n                        continue\n                    raise exceptions.TimeoutException(\n                        \"Command: '{0}' executed on host '{1}'.\".format(\n                            cmd, self.host))\n                if not ready[0]:  # If there is nothing to read.\n                    continue\n                out_chunk = err_chunk = None\n                if channel.recv_ready():\n                    out_chunk = channel.recv(self.buf_size)\n                    out_data_chunks += out_chunk,\n                if channel.recv_stderr_ready():\n                    err_chunk = channel.recv_stderr(self.buf_size)\n                    err_data_chunks += err_chunk,\n                if not err_chunk and not out_chunk:\n                    break\n            out_data = b''.join(out_data_chunks)\n            err_data = b''.join(err_data_chunks)\n        # Just read from the channels\n        else:\n            out_file = channel.makefile('rb', self.buf_size)\n            err_file = channel.makefile_stderr('rb', self.buf_size)\n            out_data = out_file.read()\n            err_data = err_file.read()\n        if encoding:\n            out_data = out_data.decode(encoding)\n            err_data = err_data.decode(encoding)\n\n        exit_status = channel.recv_exit_status()\n\n    ssh.close()\n\n    if 0 != exit_status:\n        raise exceptions.SSHExecCommandFailed(\n            command=cmd, exit_status=exit_status,\n            stderr=err_data, stdout=out_data)\n    return out_data",
+          "triple_sequences": [
+            {
+              "action_api": "self._get_ssh_connection()",
+              "action_description": "Creates HTTP connection to specified host",
+              "action_id": "create_http_connection",
+              "object": "self.host",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Connect to remote server",
+              "intention_id": "connect_remote_server"
+            },
+            {
+              "action_api": "ssh.get_transport()",
+              "action_description": "Creates new socket object",
+              "action_id": "create_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "transport.open_session()",
+              "action_description": "Creates new socket object",
+              "action_id": "create_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "channel.fileno()",
+              "action_description": "Retrieves file descriptor for socket object",
+              "action_id": "get_socket_fd",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "channel.exec_command(cmd)",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "cmd",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "channel.shutdown_write()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            },
+            {
+              "action_api": "select.poll()",
+              "action_description": "Waits for events",
+              "action_id": "wait_for_events",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "poll.register(channel, select.POLLIN)",
+              "action_description": "Waits for events",
+              "action_id": "wait_for_events",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "poll.poll(self.channel_timeout)",
+              "action_description": "Waits for events",
+              "action_id": "wait_for_events",
+              "object": "self.channel_timeout",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "channel.recv_ready()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "channel.recv(self.buf_size)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "self.buf_size",
+              "object_description": "Buffer size",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "channel.recv_stderr_ready()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "channel.recv_stderr(self.buf_size)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "self.buf_size",
+              "object_description": "Buffer size",
+              "object_id": "",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "b''.join(out_data_chunks)",
+              "action_description": "Copies memory from source to destination buffer",
+              "action_id": "copy_memory",
+              "object": "out_data_chunks",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "b''.join(err_data_chunks)",
+              "action_description": "Copies memory from source to destination buffer",
+              "action_id": "copy_memory",
+              "object": "err_data_chunks",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "channel.makefile('rb', self.buf_size)",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "self.buf_size",
+              "object_description": "Buffer size",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "channel.makefile_stderr('rb', self.buf_size)",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "self.buf_size",
+              "object_description": "Buffer size",
+              "object_id": "",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "out_file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "err_file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "out_data.decode(encoding)",
+              "action_description": "Decodes bytes using specified codec",
+              "action_id": "decode_bytes_codec",
+              "object": "encoding",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "err_data.decode(encoding)",
+              "action_description": "Decodes bytes using specified codec",
+              "action_id": "decode_bytes_codec",
+              "object": "encoding",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "channel.recv_exit_status()",
+              "action_description": "Retrieves process information",
+              "action_id": "get_process_info",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "ssh.close()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

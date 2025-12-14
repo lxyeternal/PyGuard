@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "localstack_core-4.3.1.dev45",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "provider.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/localstack_core-4.3.1.dev45/localstack_core-4.3.1.dev45/localstack-core/localstack/services/dynamodb/provider.py",
+    "line_number": "2091",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2090\t    schema = SchemaExtractor.get_table_schema(table_name, account_id, region_name)\n2091\t    for index in schema[\"Table\"].get(\"GlobalSecondaryIndexes\", []):\n2092\t        if index[\"IndexName\"] == index_name:",
+    "context_snippet": "def get_global_secondary_index(account_id: str, region_name: str, table_name: str, index_name: str):\n    schema = SchemaExtractor.get_table_schema(table_name, account_id, region_name)\n    for index in schema[\"Table\"].get(\"GlobalSecondaryIndexes\", []):\n        if index[\"IndexName\"] == index_name:\n            return index\n    raise ResourceNotFoundException(\"Index not found\")",
+    "hash_value": "9502dca9aec7d15fa04dfb4e8ebe1ca8"
+  },
+  {
+    "pyfile": "integration.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/localstack_core-4.3.1.dev45/localstack_core-4.3.1.dev45/localstack-core/localstack/services/apigateway/legacy/integration.py",
+    "line_number": "359",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "358\t        uri = (\n359\t            invocation_context.integration.get(\"uri\")\n360\t            or invocation_context.integration.get(\"integrationUri\")",
+    "context_snippet": "def invoke(self, invocation_context: ApiInvocationContext):\n    self.validate_integration_method(invocation_context)\n    uri = (\n        invocation_context.integration.get(\"uri\")\n        or invocation_context.integration.get(\"integrationUri\")\n        or \"\"\n    )\n    invocation_context.context = get_event_request_context(invocation_context)\n    relative_path, query_string_params = extract_query_string_params(\n        path=invocation_context.path_with_query_string\n    )\n    try:\n        path_params = extract_path_params(\n            path=relative_path, extracted_path=invocation_context.resource_path\n        )\n        invocation_context.path_params = path_params\n    except Exception:\n        pass\n\n    func_arn = uri\n    if \":lambda:path\" in uri:\n        func_arn = uri.split(\":lambda:path\")[1].split(\"functions/\")[1].split(\"/invocations\")[0]\n\n    if invocation_context.authorizer_type:\n        invocation_context.context[\"authorizer\"] = invocation_context.authorizer_result\n\n    payload = self.request_templates.render(invocation_context)\n\n    result = self.process_apigateway_invocation(\n        func_arn=func_arn,\n        path=relative_path,\n        payload=payload,\n        invocation_context=invocation_context,\n        query_string_params=query_string_params,\n    )\n\n    response = LambdaResponse()\n    response.headers.update({\"content-type\": \"application/json\"})\n    parsed_result = json.loads(str(result or \"{}\"))\n    parsed_result = common.json_safe(parsed_result)\n    parsed_result = {} if parsed_result is None else parsed_result\n\n    if set(parsed_result) - {\n        \"body\",\n        \"statusCode\",\n        \"headers\",\n        \"isBase64Encoded\",\n        \"multiValueHeaders\",\n    }:\n        LOG.warning(\n            'Lambda output should follow the next JSON format: { \"isBase64Encoded\": true|false, \"statusCode\": httpStatusCode, \"headers\": { \"headerName\": \"headerValue\", ... },\"body\": \"...\"}\\n Lambda output: %s',\n            parsed_result,\n        )\n        response.status_code = 502\n        response._content = json.dumps({\"message\": \"Internal server error\"})\n        return response\n\n    response.status_code = int(parsed_result.get(\"statusCode\", 200))\n    parsed_headers = parsed_result.get(\"headers\", {})\n    if parsed_headers is not None:\n        response.headers.update(parsed_headers)\n    try:\n        result_body = parsed_result.get(\"body\")\n        if isinstance(result_body, dict):\n            response._content = json.dumps(result_body)\n        else:\n            body_bytes = to_bytes(result_body or \"\")\n            if parsed_result.get(\"isBase64Encoded\", False):\n                body_bytes = base64.b64decode(body_bytes)\n            response._content = body_bytes\n    except Exception as e:\n        LOG.warning(\"Couldn't set Lambda response content: %s\", e)\n        response._content = \"{}\"\n    response.multi_value_headers = parsed_result.get(\"multiValueHeaders\") or {}\n\n    # apply custom response template\n    self.update_content_length(response)\n    invocation_context.response = response\n\n    return invocation_context.response",
+    "hash_value": "895d9e1dff3cfb7607e51f5c10b055a8"
+  },
+  {
+    "pyfile": "tcp_proxy.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/localstack_core-4.3.1.dev45/localstack_core-4.3.1.dev45/localstack-core/localstack/utils/server/tcp_proxy.py",
+    "line_number": "68",
+    "type_description": "B806:sendall",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "67\t                        elif s == s_dst:\n68\t                            s_src.sendall(data)\n69\t        except Exception as e:",
+    "context_snippet": "def _handle_request(self, s_src: socket.socket):\n    try:\n        s_dst = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n        with s_src as s_src, s_dst as s_dst:\n            s_dst.connect((self._target_address, self._target_port))\n\n            sockets = [s_src, s_dst]\n            while not self._stopped.is_set():\n                s_read, _, _ = select.select(sockets, [], [], 1)\n\n                for s in s_read:\n                    data = s.recv(self._buffer_size)\n                    if not data:\n                        return\n\n                    if s == s_src:\n                        forward, response = data, None\n                        if self._handler:\n                            forward, response = self._handler(data)\n                        if forward is not None:\n                            s_dst.sendall(forward)\n                        elif response is not None:\n                            s_src.sendall(response)\n                            return\n                    elif s == s_dst:\n                        s_src.sendall(data)\n    except Exception as e:\n        LOG.error(\n            \"Error while handling request from %s to %s:%s: %s\",\n            s_src.getpeername(),\n            self._target_address,\n            self._target_port,\n            e,\n        )",
+    "hash_value": "d1897ec165e3768442ace7a7e5eb80fb"
+  }
+]

@@ -1,0 +1,187 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os, sys, glob, shutil, re, sysconfig, traceback, io, subprocess\n\nINFOLINES=[]\n\ndef infoline(t,\n        pfx='#####',\n        add=True,\n        ):\n    bn = splitext(basename(sys.argv[0]))[0]\n    ver = '.'.join(map(str,sys.version_info[:3]))\n    s = '%s %s-python-%s-%s: %s' % (pfx, bn, ver, sysconfig_platform, t)\n    print(s)\n    if add: INFOLINES.append(s)\n\ndef showTraceback(s):\n    buf = io.StringIO()\n    print(s,file=buf)\n    if verbose>2:\n        traceback.print_exc(file=buf)\n    for l in buf.getvalue().split('\\n'):\n        infoline(l,pfx='!!!!!',add=False)\n\ndef spCall(cmd,*args,**kwds):\n    r = subprocess.call(\n            cmd,\n            stderr = subprocess.STDOUT,\n            stdout = subprocess.DEVNULL if kwds.pop('dropOutput',False) else None,\n            timeout = kwds.pop('timeout',3600),\n            )\n    if verbose>=3:\n        infoline('%r --> %s' % (' '.join(cmd),r), pfx='!!!!!' if r else '#####', add=False)\n    return r\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.splitext",
+        "os.path.basename",
+        "sys.argv",
+        "sys.version_info",
+        "print",
+        "io.StringIO",
+        "print",
+        "traceback.print_exc",
+        "io.StringIO.getvalue",
+        "subprocess.call"
+      ],
+      "api_sequence_with_args": [
+        "os.path.splitext(os.path.basename(sys.argv[0]))",
+        "os.path.basename(sys.argv[0])",
+        "sys.argv[0]",
+        "sys.version_info[:3]",
+        "print(s)",
+        "io.StringIO()",
+        "print(s, file=buf)",
+        "traceback.print_exc(file=buf)",
+        "buf.getvalue()",
+        "subprocess.call(cmd, stderr=subprocess.STDOUT, stdout=subprocess.DEVNULL if kwds.pop('dropOutput',False) else None, timeout=kwds.pop('timeout',3600))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "io.StringIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "traceback.print_exc",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "io.StringIO.getvalue",
+          "id": "get_buffer_bytes",
+          "description": "Retrieves bytes value from in-memory buffer",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import os, sys, io, subprocess, traceback\n\ndef infoline(t, pfx='#####', add=True):\n    bn = os.path.splitext(os.path.basename(sys.argv[0]))[0]\n    ver = '.'.join(map(str, sys.version_info[:3]))\n    s = '%s %s-python-%s-%s: %s' % (pfx, bn, ver, sysconfig_platform, t)\n    print(s)\n    if add: INFOLINES.append(s)\n\ndef showTraceback(s):\n    buf = io.StringIO()\n    print(s, file=buf)\n    if verbose > 2:\n        traceback.print_exc(file=buf)\n    for l in buf.getvalue().split('\\n'):\n        infoline(l, pfx='!!!!!', add=False)\n\ndef spCall(cmd, *args, **kwds):\n    r = subprocess.call(\n        cmd,\n        stderr=subprocess.STDOUT,\n        stdout=subprocess.DEVNULL if kwds.pop('dropOutput', False) else None,\n        timeout=kwds.pop('timeout', 3600),\n    )\n    if verbose >= 3:\n        infoline('%r --> %s' % (' '.join(cmd), r), pfx='!!!!!' if r else '#####', add=False)\n    return r"
+    }
+  },
+  {
+    "pyfile": "rl_safe_eval.py",
+    "code_snippet": "import sys, os, ast, re, weakref, time, copy, math, types\n\n__rl_safe_builtins__ = {}  # constructed below\n\ndef safer_globals(g=None):\n    if g is None:\n        g = sys._getframe(1).f_globals.copy()\n    for name in ('__annotations__', '__doc__', '__loader__', '__name__', '__package__', '__spec__'):\n        if name in g:\n            del g[name]\n    g['__builtins__'] = __rl_safe_builtins__.copy()\n    return g\n\nclass __RL_SAFE_ENV__:\n    __time_time__ = time.time\n    __weakref_ref__ = weakref.ref\n    __slicetype__ = type(slice(0))\n    def __init__(self, timeout=None, allowed_magic_methods=None, allowed_magic_names=None):\n        self.timeout = timeout if timeout is not None else self.__rl_tmax__\n        self.allowed_magic_methods = __fix_set__(allowed_magic_methods, __allowed_magic_methods__)\n        self.allowed_magic_names = __fix_set__(allowed_magic_names)\n        import builtins\n        self.__rl_gen_range__ = builtins.range\n\n        self.__rl_real_iter__ = builtins.iter\n\n        class __rl_dict__(dict):\n            def __new__(cls, *args,**kwds):\n                if len(args)==1 and not isinstance(args[0],dict):\n                    try:\n                        it = self.__real_iter__(args[0])\n                    except TypeError:\n                        pass\n                    else:\n                        args = (self.__rl_getiter__(it),)\n                return dict.__new__(cls,*args,**kwds)\n\n        class __rl_missing_func__:\n            def __init__(self,name):\n                self.__name__ = name\n            def __call__(self,*args,**kwds):\n                raise BadCode('missing global %s' % self.__name__)\n\n        self.real_bi = builtins\n        self.bi_replace = (\n                ('open',__rl_missing_func__('open')),\n                ('iter',self.__rl_getiter__),\n                )\n\n        __rl_safe_builtins__.update({_:getattr(builtins,_) for _ in\n            ('''None False True abs bool callable chr complex divmod float hash hex id int\n        isinstance issubclass len oct ord range repr round slice str tuple setattr\n        classmethod staticmethod property divmod next object getattr dict iter pow list\n        type max min sum enumerate zip hasattr filter map any all sorted reversed range\n        set frozenset\n\n        ArithmeticError AssertionError AttributeError BaseException BufferError BytesWarning\n        DeprecationWarning EOFError EnvironmentError Exception FloatingPointError FutureWarning\n        GeneratorExit IOError ImportError ImportWarning IndentationError IndexError KeyError\n        KeyboardInterrupt LookupError MemoryError NameError NotImplementedError OSError\n        OverflowError PendingDeprecationWarning ReferenceError RuntimeError RuntimeWarning\n        StopIteration SyntaxError SyntaxWarning SystemError SystemExit TabError TypeError\n        UnboundLocalError UnicodeDecodeError UnicodeEncodeError UnicodeError UnicodeTranslateError\n        UnicodeWarning UserWarning ValueError Warning ZeroDivisionError\n        __build_class__'''\n                ).split()})\n\n        self.__rl_builtins__ = __rl_builtins__ = {_:__rl_missing_func__(_) for _ in dir(builtins) if callable(getattr(builtins,_))}\n        __rl_builtins__.update(__rl_safe_builtins__)\n\n        #these are used in the tree visitor\n        __rl_builtins__['__rl_add__'] = self.__rl_add__\n        __rl_builtins__['__rl_mult__'] = self.__rl_mult__\n        __rl_builtins__['__rl_pow__'] = self.__rl_pow__\n        __rl_builtins__['__rl_sd__'] = self.__rl_sd__\n        __rl_builtins__['__rl_augAssign__'] = self.__rl_augAssign__\n        __rl_builtins__['__rl_getitem__'] = self.__rl_getitem__\n        __rl_builtins__['__rl_getattr__'] = self.__rl_getattr__\n        __rl_builtins__['__rl_getiter__'] = self.__rl_getiter__\n        __rl_builtins__['__rl_max_len__'] = self.__rl_max_len__\n        __rl_builtins__['__rl_max_pow_digits__'] = self.__rl_max_pow_digits__\n        __rl_builtins__['__rl_iter_unpack_sequence__'] = self.__rl_iter_unpack_sequence__\n        __rl_builtins__['__rl_unpack_sequence__'] = self.__rl_unpack_sequence__\n        __rl_builtins__['__rl_apply__'] = lambda func,*args,**kwds: self.__rl_apply__(func,args,kwds)\n        __rl_builtins__['__rl_SafeIter__'] = __rl_SafeIter__\n\n        #these are tested builtins\n        __rl_builtins__['getattr'] = self.__rl_getattr__\n        __rl_builtins__['dict'] = __rl_dict__\n        __rl_builtins__['iter'] = self.__rl_getiter__\n        __rl_builtins__['pow'] = self.__rl_pow__\n        __rl_builtins__['list'] = self.__rl_list__\n        __rl_builtins__['type'] = self.__rl_type__\n        __rl_builtins__['max'] = self.__rl_max__\n        __rl_builtins__['min'] = self.__rl_min__\n        __rl_builtins__['sum'] = self.__rl_sum__\n        __rl_builtins__['enumerate'] = self.__rl_enumerate__\n        __rl_builtins__['zip'] = self.__rl_zip__\n        __rl_builtins__['hasattr'] = self.__rl_hasattr__\n        __rl_builtins__['filter'] = self.__rl_filter__\n        __rl_builtins__['map'] = self.__rl_map__\n        __rl_builtins__['any'] = self.__rl_any__\n        __rl_builtins__['all'] = self.__rl_all__\n        __rl_builtins__['sorted'] = self.__rl_sorted__\n        __rl_builtins__['reversed'] = self.__rl_reversed__\n        __rl_builtins__['range'] = self.__rl_range__\n        __rl_builtins__['set'] = self.__rl_set__\n        __rl_builtins__['frozenset'] = self.__rl_frozenset__\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys._getframe",
+        "weakref.ref",
+        "time.time"
+      ],
+      "api_sequence_with_args": [
+        "sys._getframe(1)",
+        "weakref.ref",
+        "time.time"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys._getframe",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "weakref.ref",
+          "id": "get_hardware_address",
+          "description": "Retrieves hardware address as 48-bit integer",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "import sys, os, ast, re, weakref, time, copy, math, types\n\ndef safer_globals(g=None):\n    if g is None:\n        g = sys._getframe(1).f_globals.copy()\n    ...\n\nclass __RL_SAFE_ENV__:\n    __time_time__ = time.time\n    __weakref_ref__ = weakref.ref\n    ...\n    def __init__(self, timeout=None, allowed_magic_methods=None, allowed_magic_names=None):\n        self.timeout = timeout if timeout is not None else self.__rl_tmax__\n        ...\n"
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "code_snippet": "import builtins\nrl_exec = getattr(builtins,'exec')\ndel builtins",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.exec"
+      ],
+      "api_sequence_with_args": [
+        "builtins.exec"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import builtins\nrl_exec = getattr(builtins,'exec')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "reportlab-4.3.1",
+      "total_matches": 4
+    }
+  }
+]

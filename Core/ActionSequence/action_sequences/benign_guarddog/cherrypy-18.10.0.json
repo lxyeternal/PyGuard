@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "reprconf.py",
+    "code_snippet": "import builtins\nimport sys\n\ndef modules(modulePath):\n    \"\"\"Load a module and retrieve a reference to that module.\"\"\"\n    __import__(modulePath)\n    return sys.modules[modulePath]\n\nclass _Builder:\n\n    def build(self, o):\n        m = getattr(self, 'build_' + o.__class__.__name__, None)\n        if m is None:\n            raise TypeError('unrepr does not recognize %s' %\n                            repr(o.__class__.__name__))\n        return m(o)\n\n    def build_Name(self, o):\n        name = o.id\n        if name == 'None':\n            return None\n        if name == 'True':\n            return True\n        if name == 'False':\n            return False\n\n        # See if the Name is a package or module. If it is, import it.\n        try:\n            return modules(name)\n        except ImportError:\n            pass\n\n        # See if the Name is in builtins.\n        try:\n            return getattr(builtins, name)\n        except AttributeError:\n            pass\n\n        raise TypeError('unrepr could not resolve the name %s' % repr(name))",
+    "pattern_analysis": {
+      "api_sequence": [
+        "__import__",
+        "sys.modules",
+        "getattr"
+      ],
+      "api_sequence_with_args": [
+        "__import__(modulePath)",
+        "sys.modules[modulePath]",
+        "getattr(builtins, name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "__import__",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "import builtins\nimport sys\n\ndef modules(modulePath):\n    __import__(modulePath)\n    return sys.modules[modulePath]\n\nclass _Builder:\n    def build_Name(self, o):\n        name = o.id\n        try:\n            return modules(name)\n        except ImportError:\n            pass\n        try:\n            return getattr(builtins, name)\n        except AttributeError:\n            pass"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "cherrypy-18.10.0",
+      "total_matches": 1
+    }
+  }
+]

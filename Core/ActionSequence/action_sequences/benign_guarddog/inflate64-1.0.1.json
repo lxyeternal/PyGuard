@@ -1,0 +1,41 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "#!/usr/bin/env python3\nimport os\nimport sys\n\nfrom setuptools import Extension, setup\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.egg_info import egg_info\n\n\nsources = [\n    \"src/lib/deflate.c\",\n    \"src/lib/deflate_tree.c\",\n    \"src/lib/inflate.c\",\n    \"src/lib/inflate_tree.c\",\n    \"src/lib/util.c\",\n    \"src/lib/static_tables.c\"\n]\npackages = [\"inflate64\"]\nkwargs = {\"include_dirs\": [\"src/lib\", \"src/ext\"], \"library_dirs\": [], \"libraries\": [], \"sources\": sources, \"define_macros\": []}\n# binary extension\nkwargs[\"name\"] = \"inflate64._inflate64\"\nkwargs[\"sources\"].append(\"src/ext/_inflate64module.c\")\nbinary_extension = Extension(**kwargs)\n_deflate64_extension = Extension(\"inflate64._inflate64\", sources)\n\ndef has_option(option):\n    if option in sys.argv:\n        sys.argv = [s for s in sys.argv if s != option]\n        return True\n    else:\n        return False\n\nWARNING_AS_ERROR = has_option(\"--warning-as-error\")\n\nclass build_ext_compiler_check(build_ext):\n    def build_extensions(self):\n        for extension in self.extensions:\n            if self.compiler.compiler_type.lower() in (\"unix\", \"mingw32\"):\n                if WARNING_AS_ERROR:\n                    extension.extra_compile_args.append(\"-Werror\")\n            elif self.compiler.compiler_type.lower() == \"msvc\":\n                # /GF eliminates duplicate strings\n                # /Gy does function level linking\n                more_options = [\"/GF\", \"/Gy\", \"/wd4996\"]\n                if WARNING_AS_ERROR:\n                    more_options.append(\"/WX\")\n                extension.extra_compile_args.extend(more_options)\n        super().build_extensions()\n\n# Work around pypa/setuptools#436.\nclass my_egg_info(egg_info):\n    def run(self):\n        try:\n            os.remove(os.path.join(self.egg_info, \"SOURCES.txt\"))\n        except FileNotFoundError:\n            pass\n        super().run()\n\nsetup(\n    ext_modules=[binary_extension],\n    package_dir={\"\": \"src\"},\n    packages=packages,\n    cmdclass={\"build_ext\": build_ext_compiler_check, \"egg_info\": my_egg_info},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.remove"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(self.egg_info, \"SOURCES.txt\")",
+        "os.remove(os.path.join(self.egg_info, \"SOURCES.txt\"))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "import os\nfrom setuptools.command.egg_info import egg_info\n\nclass my_egg_info(egg_info):\n    def run(self):\n        try:\n            os.remove(os.path.join(self.egg_info, \"SOURCES.txt\"))\n        except FileNotFoundError:\n            pass\n        super().run()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "inflate64-1.0.1",
+      "total_matches": 1
+    }
+  }
+]

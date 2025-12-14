@@ -1,0 +1,86 @@
+{
+  "metadata": {
+    "package_name": "docutils-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/docutils-0.21.2.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "misc.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/docutils-0.21.2/docutils-0.21.2/docutils/parsers/rst/directives/misc.py",
+      "line_number": "285",
+      "type_description": "B818:urlopen",
+      "context_snippet": "from urllib.request import urlopen\nfrom urllib.error import URLError\n\nclass Raw(Directive):\n\n    \"\"\"\n    Pass through content unchanged\n\n    Content is included in output based on type argument\n\n    Content may be included inline (content section of directive) or\n    imported from a file or url.\n    \"\"\"\n\n    required_arguments = 1\n    optional_arguments = 0\n    final_argument_whitespace = True\n    option_spec = {'file': directives.path,\n                   'url': directives.uri,\n                   'encoding': directives.encoding,\n                   'class': directives.class_option}\n    has_content = True\n\n    def run(self):\n        settings = self.state.document.settings\n        if (not settings.raw_enabled\n            or (not settings.file_insertion_enabled\n                and ('file' in self.options or 'url' in self.options))):\n            raise self.warning('\"%s\" directive disabled.' % self.name)\n        attributes = {'format': ' '.join(self.arguments[0].lower().split())}\n        encoding = self.options.get('encoding', settings.input_encoding)\n        error_handler = settings.input_encoding_error_handler\n        if self.content:\n            if 'file' in self.options or 'url' in self.options:\n                raise self.error(\n                    '\"%s\" directive may not both specify an external file '\n                    'and have content.' % self.name)\n            text = '\\n'.join(self.content)\n        elif 'file' in self.options:\n            if 'url' in self.options:\n                raise self.error(\n                    'The \"file\" and \"url\" options may not be simultaneously '\n                    'specified for the \"%s\" directive.' % self.name)\n            path = adapt_path(self.options['file'],\n                              self.state.document.current_source,\n                              settings.root_prefix)\n            try:\n                raw_file = io.FileInput(source_path=path,\n                                        encoding=encoding,\n                                        error_handler=error_handler)\n            except OSError as error:\n                raise self.severe(f'Problems with \"{self.name}\" directive '\n                                  f'path:\\n{io.error_string(error)}.')\n            else:\n                # TODO: currently, raw input files are recorded as\n                # dependencies even if not used for the chosen output format.\n                settings.record_dependencies.add(path)\n            try:\n                text = raw_file.read()\n            except UnicodeError as error:\n                raise self.severe(f'Problem with \"{self.name}\" directive:\\n'\n                                  + io.error_string(error))\n            attributes['source'] = path\n        elif 'url' in self.options:\n            source = self.options['url']\n            try:\n                raw_text = urlopen(source).read()\n            except (URLError, OSError) as error:\n                raise self.severe(f'Problems with \"{self.name}\" directive URL '\n                                  f'\"{self.options[\"url\"]}\":\\n'\n                                  f'{io.error_string(error)}.')\n            raw_file = io.StringInput(source=raw_text, source_path=source,\n                                      encoding=encoding,\n                                      error_handler=error_handler)\n            try:\n                text = raw_file.read()\n            except UnicodeError as error:\n                raise self.severe(f'Problem with \"{self.name}\" directive:\\n'\n                                  + io.error_string(error))\n            attributes['source'] = source\n        else:\n            # This will always fail because there is no content.\n            self.assert_has_content()\n        raw_node = nodes.raw('', text, classes=self.options.get('class', []),\n                             **attributes)\n        (raw_node.source,\n         raw_node.line) = self.state_machine.get_source_and_line(self.lineno)\n        return [raw_node]",
+      "hash_value": "68c9624bc2266ee60abe808a6314f081",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "from urllib.request import urlopen\nfrom urllib.error import URLError\n\nclass Raw(Directive):\n\n    \"\"\"\n    Pass through content unchanged\n\n    Content is included in output based on type argument\n\n    Content may be included inline (content section of directive) or\n    imported from a file or url.\n    \"\"\"\n\n    required_arguments = 1\n    optional_arguments = 0\n    final_argument_whitespace = True\n    option_spec = {'file': directives.path,\n                   'url': directives.uri,\n                   'encoding': directives.encoding,\n                   'class': directives.class_option}\n    has_content = True\n\n    def run(self):\n        settings = self.state.document.settings\n        if (not settings.raw_enabled\n            or (not settings.file_insertion_enabled\n                and ('file' in self.options or 'url' in self.options))):\n            raise self.warning('\"%s\" directive disabled.' % self.name)\n        attributes = {'format': ' '.join(self.arguments[0].lower().split())}\n        encoding = self.options.get('encoding', settings.input_encoding)\n        error_handler = settings.input_encoding_error_handler\n        if self.content:\n            if 'file' in self.options or 'url' in self.options:\n                raise self.error(\n                    '\"%s\" directive may not both specify an external file '\n                    'and have content.' % self.name)\n            text = '\\n'.join(self.content)\n        elif 'file' in self.options:\n            if 'url' in self.options:\n                raise self.error(\n                    'The \"file\" and \"url\" options may not be simultaneously '\n                    'specified for the \"%s\" directive.' % self.name)\n            path = adapt_path(self.options['file'],\n                              self.state.document.current_source,\n                              settings.root_prefix)\n            try:\n                raw_file = io.FileInput(source_path=path,\n                                        encoding=encoding,\n                                        error_handler=error_handler)\n            except OSError as error:\n                raise self.severe(f'Problems with \"{self.name}\" directive '\n                                  f'path:\\n{io.error_string(error)}.')\n            else:\n                # TODO: currently, raw input files are recorded as\n                # dependencies even if not used for the chosen output format.\n                settings.record_dependencies.add(path)\n            try:\n                text = raw_file.read()\n            except UnicodeError as error:\n                raise self.severe(f'Problem with \"{self.name}\" directive:\\n'\n                                  + io.error_string(error))\n            attributes['source'] = path\n        elif 'url' in self.options:\n            source = self.options['url']\n            try:\n                raw_text = urlopen(source).read()\n            except (URLError, OSError) as error:\n                raise self.severe(f'Problems with \"{self.name}\" directive URL '\n                                  f'\"{self.options[\"url\"]}\":\\n'\n                                  f'{io.error_string(error)}.')\n            raw_file = io.StringInput(source=raw_text, source_path=source,\n                                      encoding=encoding,\n                                      error_handler=error_handler)\n            try:\n                text = raw_file.read()\n            except UnicodeError as error:\n                raise self.severe(f'Problem with \"{self.name}\" directive:\\n'\n                                  + io.error_string(error))\n            attributes['source'] = source\n        else:\n            # This will always fail because there is no content.\n            self.assert_has_content()\n        raw_node = nodes.raw('', text, classes=self.options.get('class', []),\n                             **attributes)\n        (raw_node.source,\n         raw_node.line) = self.state_machine.get_source_and_line(self.lineno)\n        return [raw_node]",
+          "triple_sequences": [
+            {
+              "action_api": "urlopen()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "source",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "urlopen().read()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "urlopen(source)",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Decode downloaded content",
+              "intention_id": "decode_downloaded_content"
+            },
+            {
+              "action_api": "io.FileInput()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "io.FileInput.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "raw_file",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "io.StringInput()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "raw_text, source",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "io.StringInput.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "raw_file",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

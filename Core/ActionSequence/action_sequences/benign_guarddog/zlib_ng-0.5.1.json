@@ -1,0 +1,351 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import functools\nimport os\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nZLIB_NG_SOURCE = os.path.join(\"src\", \"zlib_ng\", \"zlib-ng\")\n\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  'bsd' in sys.platform)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\n# Since pip builds in a temp directory by default, setting a fixed file in\n# /tmp works during the entire session.\nDEFAULT_CACHE_FILE = Path(tempfile.gettempdir()\n                          ).absolute() / \".zlib_ng_build_cache\"\nBUILD_CACHE = os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE\")\nBUILD_CACHE_FILE = Path(os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE_FILE\",\n                                       DEFAULT_CACHE_FILE))\n\n@functools.lru_cache(maxsize=None)\ndef build_zlib_ng():\n    # Check for cache\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"zlib-ng.h\").exists():\n                return str(cache_path)\n\n    # Creating temporary directories\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ZLIB_NG_SOURCE, build_dir)\n\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:  # sched_getaffinity not available on all platforms\n        cpu_count = os.cpu_count() or 1  # os.cpu_count() can return None\n    # Build environment is a copy of OS environment to allow user to influence\n    # it.\n    build_env = os.environ.copy()\n    build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    # Add -fPIC flag to allow static compilation\n    run_args = dict(cwd=build_dir, env=build_env)\n    if sys.platform == \"darwin\":  # Cmake does not work properly\n        subprocess.run([os.path.join(build_dir, \"configure\")], **run_args)\n        make_program = \"gmake\" if shutil.which(\"gmake\") else \"make\"\n        subprocess.run([make_program, \"libz-ng.a\"], **run_args)\n    elif sys.platform == \"linux\":\n        subprocess.run([os.path.join(build_dir, \"configure\")], **run_args)\n        subprocess.run([\"make\", \"libz-ng.a\", \"-j\", str(cpu_count)], **run_args)\n    else:\n        subprocess.run([\"cmake\", build_dir], **run_args)\n        # Do not create test suite and do not perform tests to shorten build times.\n        # There is no need when stable releases of zlib-ng are used.\n        subprocess.run([\"cmake\", \"--build\", build_dir, \"--config\", \"Release\",\n                        \"--target\", \"zlibstatic\",\n                        \"-j\", str(cpu_count)], **run_args)\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)\n    return build_dir",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "sys.platform.startswith",
+        "sys.platform.startswith",
+        "sys.platform",
+        "sys.platform.startswith",
+        "tempfile.gettempdir",
+        "Path.absolute",
+        "os.environ.get",
+        "os.environ.get",
+        "Path",
+        "os.environ.get",
+        "Path",
+        "Path.exists",
+        "Path.read_text",
+        "Path",
+        "Path.exists",
+        "tempfile.mktemp",
+        "shutil.copytree",
+        "hasattr",
+        "os.sched_getaffinity",
+        "os.cpu_count",
+        "os.environ.copy",
+        "os.environ.get",
+        "shutil.which",
+        "os.path.join",
+        "subprocess.run",
+        "shutil.which",
+        "subprocess.run",
+        "os.path.join",
+        "subprocess.run",
+        "subprocess.run",
+        "subprocess.run",
+        "Path.write_text"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(\"src\", \"zlib_ng\", \"zlib-ng\")",
+        "sys.platform.startswith(\"linux\")",
+        "sys.platform.startswith(\"darwin\")",
+        "'bsd' in sys.platform",
+        "sys.platform.startswith(\"win\")",
+        "tempfile.gettempdir()",
+        "Path(tempfile.gettempdir()).absolute()",
+        "os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE\")",
+        "os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE_FILE\", DEFAULT_CACHE_FILE)",
+        "Path(os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE_FILE\", DEFAULT_CACHE_FILE))",
+        "os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE\")",
+        "Path(BUILD_CACHE_FILE.read_text())",
+        "Path(BUILD_CACHE_FILE.read_text()).exists()",
+        "Path(BUILD_CACHE_FILE.read_text())",
+        "(cache_path / \"zlib-ng.h\").exists()",
+        "tempfile.mktemp()",
+        "shutil.copytree(ZLIB_NG_SOURCE, build_dir)",
+        "hasattr(os, \"sched_getaffinity\")",
+        "os.sched_getaffinity(0)",
+        "os.cpu_count()",
+        "os.environ.copy()",
+        "os.environ.get(\"CFLAGS\", \"\")",
+        "shutil.which(\"gmake\")",
+        "os.path.join(build_dir, \"configure\")",
+        "subprocess.run([os.path.join(build_dir, \"configure\")], **run_args)",
+        "shutil.which(\"gmake\")",
+        "subprocess.run([make_program, \"libz-ng.a\"], **run_args)",
+        "os.path.join(build_dir, \"configure\")",
+        "subprocess.run([os.path.join(build_dir, \"configure\")], **run_args)",
+        "subprocess.run([\"make\", \"libz-ng.a\", \"-j\", str(cpu_count)], **run_args)",
+        "subprocess.run([\"cmake\", build_dir], **run_args)",
+        "subprocess.run([\"cmake\", \"--build\", build_dir, \"--config\", \"Release\", \"--target\", \"zlibstatic\", \"-j\", str(cpu_count)], **run_args)",
+        "BUILD_CACHE_FILE.write_text(build_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "tempfile.gettempdir",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "Path.absolute",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "Path.read_text",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "tempfile.mktemp",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.sched_getaffinity",
+          "id": "get_cpu_count",
+          "description": "Retrieves CPU affinity (closest: get_cpu_count, not in taxonomy, so map to get_os_info)",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "os.cpu_count",
+          "id": "get_os_info",
+          "description": "Retrieves operating system information",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "Path.write_text",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\nZLIB_NG_SOURCE = os.path.join(\"src\", \"zlib_ng\", \"zlib-ng\")\n\nSYSTEM_IS_UNIX = (sys.platform.startswith(\"linux\") or\n                  sys.platform.startswith(\"darwin\") or\n                  'bsd' in sys.platform)\nSYSTEM_IS_WINDOWS = sys.platform.startswith(\"win\")\n\nDEFAULT_CACHE_FILE = Path(tempfile.gettempdir()).absolute() / \".zlib_ng_build_cache\"\nBUILD_CACHE = os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE\")\nBUILD_CACHE_FILE = Path(os.environ.get(\"PYTHON_ZLIB_NG_BUILD_CACHE_FILE\", DEFAULT_CACHE_FILE))\n\ndef build_zlib_ng():\n    if BUILD_CACHE:\n        if BUILD_CACHE_FILE.exists():\n            cache_path = Path(BUILD_CACHE_FILE.read_text())\n            if (cache_path / \"zlib-ng.h\").exists():\n                return str(cache_path)\n    build_dir = tempfile.mktemp()\n    shutil.copytree(ZLIB_NG_SOURCE, build_dir)\n    if hasattr(os, \"sched_getaffinity\"):\n        cpu_count = len(os.sched_getaffinity(0))\n    else:\n        cpu_count = os.cpu_count() or 1\n    build_env = os.environ.copy()\n    build_env[\"CFLAGS\"] = build_env.get(\"CFLAGS\", \"\") + \" -fPIC\"\n    run_args = dict(cwd=build_dir, env=build_env)\n    if sys.platform == \"darwin\":\n        subprocess.run([os.path.join(build_dir, \"configure\")], **run_args)\n        make_program = \"gmake\" if shutil.which(\"gmake\") else \"make\"\n        subprocess.run([make_program, \"libz-ng.a\"], **run_args)\n    elif sys.platform == \"linux\":\n        subprocess.run([os.path.join(build_dir, \"configure\")], **run_args)\n        subprocess.run([\"make\", \"libz-ng.a\", \"-j\", str(cpu_count)], **run_args)\n    else:\n        subprocess.run([\"cmake\", build_dir], **run_args)\n        subprocess.run([\"cmake\", \"--build\", build_dir, \"--config\", \"Release\", \"--target\", \"zlibstatic\", \"-j\", str(cpu_count)], **run_args)\n    if BUILD_CACHE:\n        BUILD_CACHE_FILE.write_text(build_dir)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "zlib_ng-0.5.1",
+      "total_matches": 4
+    }
+  }
+]

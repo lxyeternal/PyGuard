@@ -1,0 +1,111 @@
+[
+  {
+    "pyfile": "keyio.py",
+    "code_snippet": "import builtins\n\n# ... (other imports and code omitted for brevity)\n\ndef _new_rsa_key(spec):\n    if \"name\" not in spec:\n        if \"/\" in spec[\"key\"]:\n            (head, tail) = os.path.split(spec[\"key\"])\n            spec[\"path\"] = head\n            spec[\"name\"] = tail\n        else:\n            spec[\"name\"] = spec[\"key\"]\n    return rsa_init(spec)\n\n\ndef build_keyjar(key_conf, kid_template=\"\", keyjar=None, kidd=None):\n    \"\"\"\n    Create a KeyJar from keys.\n\n    Configuration of the type:\n    keys = [\n        {\"type\": \"RSA\", \"key\": \"cp_keys/key.pem\", \"use\": [\"enc\", \"sig\"]},\n        {\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"sig\"]},\n        {\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"enc\"]}\n    ]\n\n    :param key_conf: The key configuration\n    :param kid_template: A template by which to build the kids\n    :return: a tuple consisting of a JWKS dictionary, a KeyJar instance\n        and a representation of which kids that can be used for what.\n        Note the JWKS contains private key information !!\n    \"\"\"\n    if keyjar is None:\n        keyjar = KeyJar()\n\n    if kidd is None:\n        kidd = {\"sig\": {}, \"enc\": {}}\n\n    kid = 0\n    jwks: Dict[str, List[Dict[str, str]]] = {\"keys\": []}\n\n    for spec in key_conf:\n        typ = spec[\"type\"].upper()\n\n        if typ == \"RSA\":\n            if \"key\" in spec:\n                error_to_catch = getattr(\n                    builtins, \"FileNotFoundError\", getattr(builtins, \"IOError\")\n                )\n                try:\n                    kb = KeyBundle(\n                        source=\"file://%s\" % spec[\"key\"],\n                        fileformat=\"der\",\n                        keytype=typ,\n                        keyusage=spec[\"use\"],\n                    )\n                except error_to_catch:\n                    kb = _new_rsa_key(spec)\n                except Exception:\n                    raise\n            else:\n                kb = rsa_init(spec)\n        elif typ == \"EC\":\n            kb = ec_init(spec)\n\n        for k in kb.keys():\n            if kid_template:\n                k.kid = kid_template % kid\n                kid += 1\n            else:\n                k.add_kid()\n            kidd[k.use][k.kty] = k.kid\n\n        jwks[\"keys\"].extend([k.serialize() for k in kb.keys() if k.kty != \"oct\"])\n\n        keyjar.add_kb(\"\", kb)\n\n    return jwks, keyjar, kidd\n\n# Data dependencies:\n# - 'builtins' is imported at the top\n# - 'KeyBundle', 'rsa_init', 'ec_init', 'KeyJar' are all defined in this module\n# - 'error_to_catch' is defined as the result of getattr(builtins, \"FileNotFoundError\", getattr(builtins, \"IOError\"))\n# - 'spec' is each element of 'key_conf', a list of key configuration dicts\n# - 'kb' is a KeyBundle instance\n# - 'k' is a key object from kb.keys()\n# - 'kid_template', 'kid', 'kidd', 'jwks', 'keyjar' are all local variables in build_keyjar\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.split",
+        "KeyBundle",
+        "KeyBundle.keys",
+        "k.add_kid",
+        "kidd[k.use][k.kty] = k.kid",
+        "k.serialize",
+        "keyjar.add_kb",
+        "rsa_init",
+        "ec_init"
+      ],
+      "api_sequence_with_args": [
+        "os.path.split(spec[\"key\"])",
+        "KeyBundle(source=\"file://%s\" % spec[\"key\"], fileformat=\"der\", keytype=typ, keyusage=spec[\"use\"])",
+        "KeyBundle.keys()",
+        "k.add_kid()",
+        "kidd[k.use][k.kty] = k.kid",
+        "k.serialize()",
+        "keyjar.add_kb(\"\", kb)",
+        "rsa_init(spec)",
+        "ec_init(spec)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "KeyBundle",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "KeyBundle.keys",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "k.add_kid",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "kidd[k.use][k.kty] = k.kid",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "k.serialize",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "keyjar.add_kb",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "rsa_init",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "ec_init",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        }
+      ],
+      "contextual_code": "def _new_rsa_key(spec):\n    if \"name\" not in spec:\n        if \"/\" in spec[\"key\"]:\n            (head, tail) = os.path.split(spec[\"key\"])\n            spec[\"path\"] = head\n            spec[\"name\"] = tail\n        else:\n            spec[\"name\"] = spec[\"key\"]\n    return rsa_init(spec)\n\n\ndef build_keyjar(key_conf, kid_template=\"\", keyjar=None, kidd=None):\n    if keyjar is None:\n        keyjar = KeyJar()\n    if kidd is None:\n        kidd = {\"sig\": {}, \"enc\": {}}\n    kid = 0\n    jwks: Dict[str, List[Dict[str, str]]] = {\"keys\": []}\n    for spec in key_conf:\n        typ = spec[\"type\"].upper()\n        if typ == \"RSA\":\n            if \"key\" in spec:\n                error_to_catch = getattr(\n                    builtins, \"FileNotFoundError\", getattr(builtins, \"IOError\")\n                )\n                try:\n                    kb = KeyBundle(\n                        source=\"file://%s\" % spec[\"key\"],\n                        fileformat=\"der\",\n                        keytype=typ,\n                        keyusage=spec[\"use\"],\n                    )\n                except error_to_catch:\n                    kb = _new_rsa_key(spec)\n                except Exception:\n                    raise\n            else:\n                kb = rsa_init(spec)\n        elif typ == \"EC\":\n            kb = ec_init(spec)\n        for k in kb.keys():\n            if kid_template:\n                k.kid = kid_template % kid\n                kid += 1\n            else:\n                k.add_kid()\n            kidd[k.use][k.kty] = k.kid\n        jwks[\"keys\"].extend([k.serialize() for k in kb.keys() if k.kty != \"oct\"])\n        keyjar.add_kb(\"\", kb)\n    return jwks, keyjar, kidd"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "oic-1.7.0",
+      "total_matches": 2
+    }
+  }
+]

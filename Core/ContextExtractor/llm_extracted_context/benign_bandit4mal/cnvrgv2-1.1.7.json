@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "cnvrgv2-1.1.7",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "data_owner_files.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/cnvrgv2-1.1.7/cnvrgv2-1.1.7/tests/e2e/data_owner_e2e/data_owner_files.py",
+    "line_number": "635",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "634\t        with open('modified_both', 'r') as f:\n635\t            assert f.read() == \"file changed locally\"\n636",
+    "context_snippet": "def data_owner_sync_complex(self, tmpdir, data_owner):\n\n    def create_full(paths):\n        for path in paths:\n            if \"/\" in path:\n                os.makedirs(os.path.dirname(path))\n\n            if not path.endswith(\"/\"):\n                open(path, \"a\").close()\n\n    init_paths = [\"a/del_server/c/f1\", \"del_folder_local/f2\", \"remove_on_server\", \"remove_local\",\n                  \"mod_local_del_server\", \"modified_both\"]\n    os.chdir(tmpdir.strpath)\n    create_full(init_paths)\n\n    data_owner.put_files([\".\"])\n    data_owner.clone()\n\n    modified_both = open(\"modified_both\", \"a\")\n    modified_both.write(\"file changed remotely\")\n    modified_both.close()\n    data_owner.put_files([\"modified_both\"])\n\n    create_full([\"new_folder_server/file.txt\"])\n    data_owner.put_files([\"new_folder_server/\"])\n\n    os.chdir(data_owner.slug)\n\n    os.remove(\"remove_local\")\n    shutil.rmtree(\"del_folder_local\")\n\n    mod_local_del_server = open(\"mod_local_del_server\", \"a\")\n    mod_local_del_server.write(\"file changed locally\")\n    mod_local_del_server.close()\n\n    modified_both = open(\"modified_both\", \"a\")\n    modified_both.write(\"file changed locally\")\n    modified_both.close()\n\n    data_owner.remove_files([\"remove_on_server\"])\n    data_owner.remove_files([\"mod_local_del_server\"])\n    data_owner.remove_files([\"a/b\"])\n\n    create_full([\"new_folder_local/file.txt\"])\n\n    commit_sha1 = data_owner.sync()\n\n    # testing\n    assert commit_sha1 == data_owner.local_commit\n    assert commit_sha1 is not None\n\n    server_folders = []\n    for folder in list(data_owner.list_folders()):\n        server_folders.append(folder._attributes[\"fullpath\"])\n\n    server_files = []\n    for file in list(data_owner.list_files()):\n        server_files.append(file._attributes[\"fullpath\"])\n\n    assert os.path.exists(\"modified_both.conflict\")\n    assert os.path.exists(\"new_folder_server\")\n    assert \"new_folder_local/\" in server_folders\n    assert \"remove_local\" not in server_files\n    assert \"del_folder_local/f2\" not in server_files\n    assert \"remove_on_server\" not in server_folders\n\n    with open('modified_both', 'r') as f:\n        assert f.read() == \"file changed locally\"\n\n    assert not os.path.exists(\"remove_on_server\")\n    assert not os.path.exists(\"mod_local_del_server\")\n",
+    "hash_value": "0c11c941d0161aeab531ec5e007ce829"
+  }
+]

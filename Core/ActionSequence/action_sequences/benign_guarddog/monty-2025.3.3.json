@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "tasks.py",
+    "code_snippet": "import datetime\nimport glob\nimport json\nimport os\nimport re\nfrom typing import TYPE_CHECKING\n\nimport requests\nfrom invoke import task\n\nfrom monty import __version__ as ver\nfrom monty.os import cd\n\nif TYPE_CHECKING:\n    from invoke import Context\n\nNEW_VER = datetime.datetime.today().strftime(\"%Y.%-m.%-d\")\n\n@task\ndef release_github(ctx: Context) -> None:\n    with open(\"docs/changelog.md\", encoding=\"utf-8\") as f:\n        contents = f.read()\n    toks = re.split(\"##\", contents)\n    desc = toks[1].strip()\n    payload = {\n        \"tag_name\": f\"v{NEW_VER}\",\n        \"target_commitish\": \"master\",\n        \"name\": f\"v{NEW_VER}\",\n        \"body\": desc,\n        \"draft\": False,\n        \"prerelease\": False,\n    }\n\n    response = requests.post(\n        \"https://api.github.com/repos/materialsvirtuallab/monty/releases\",\n        data=json.dumps(payload),\n        headers={\"Authorization\": \"token \" + os.environ[\"GITHUB_RELEASES_TOKEN\"]},\n    )\n    print(response.text)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "re.split",
+        "file.read",
+        "requests.post",
+        "response.text"
+      ],
+      "api_sequence_with_args": [
+        "open('docs/changelog.md', encoding='utf-8')",
+        "re.split('##', contents)",
+        "file.read()",
+        "requests.post('https://api.github.com/repos/materialsvirtuallab/monty/releases', data=json.dumps(payload), headers={'Authorization': 'token ' + os.environ['GITHUB_RELEASES_TOKEN']})",
+        "response.text"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.split",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.text",
+          "id": "get_response_unicode",
+          "description": "Retrieves response body as Unicode string",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def release_github(ctx: Context) -> None:\n    with open(\"docs/changelog.md\", encoding=\"utf-8\") as f:\n        contents = f.read()\n    toks = re.split(\"##\", contents)\n    desc = toks[1].strip()\n    payload = {\n        \"tag_name\": f\"v{NEW_VER}\",\n        \"target_commitish\": \"master\",\n        \"name\": f\"v{NEW_VER}\",\n        \"body\": desc,\n        \"draft\": False,\n        \"prerelease\": False,\n    }\n\n    response = requests.post(\n        \"https://api.github.com/repos/materialsvirtuallab/monty/releases\",\n        data=json.dumps(payload),\n        headers={\"Authorization\": \"token \" + os.environ[\"GITHUB_RELEASES_TOKEN\"]},\n    )\n    print(response.text)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "monty-2025.3.3",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "package_name": "torpy-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/torpy-1.1.6.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "socks.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/torpy-1.1.6/torpy-1.1.6/torpy/cli/socks.py",
+      "line_number": "164",
+      "type_description": "B807:close",
+      "context_snippet": "class Socks5(threading.Thread):\n    def __init__(self, circuit, client_sock, client_addr):\n        if client_addr[0] == '127.0.0.1':\n            thread_name = 'Socks-%s' % client_addr[1]\n        else:\n            thread_name = 'Socks-%s:%s' % (client_addr[0], client_addr[1])\n        super().__init__(name=thread_name)\n        self.circuit = circuit\n        self.client_sock = client_sock\n        self.client_addr = client_addr\n\n    def error(self, err=b'\\x01\\0'):\n        try:\n            self.client_sock.send(b'\\x05' + err)\n            self.client_sock.close()\n            self.client_sock = None\n        except BaseException:\n            pass\n\n    @contextmanager\n    def create_socket(self, dst, port):\n        logger.info('[socks] Connecting to %s:%s', dst, port)\n        with self.circuit.create_stream((dst, port)) as tor_stream:\n            yield tor_stream.create_socket()\n            logger.debug('[socks] Closing stream #%x', tor_stream.id)\n\n    def run(self):\n        csock = self.client_sock\n        try:\n            ver = csock.recv(1)\n            if ver != b'\\x05':\n                return self.error(b'\\xff')\n            nmeth, = array.array('B', csock.recv(1))\n            _ = recv_exact(csock, nmeth)  # read methods\n            csock.send(b'\\x05\\0')\n            hbuf = recv_exact(csock, 4)\n            if not hbuf:\n                return self.error()\n\n            ver, cmd, rsv, atyp = list(hbuf)\n            if ver != 5 and cmd != 1:\n                return self.error()\n\n            if atyp == 1:\n                dst = '.'.join(str(i) for i in recv_exact(csock, 4))\n            elif atyp == 3:\n                n, = array.array('B', csock.recv(1))\n                dst = recv_exact(csock, n).decode()\n            elif atyp == 4:\n                dst = ':'.join(recv_exact(csock, 2).hex() for _ in range(8))\n                # TODO: ipv6\n                return self.error()\n            else:\n                return self.error()\n\n            port = int(recv_exact(csock, 2).hex(), 16)\n\n            with self.create_socket(dst, port) as ssock:\n                SocksProxy(ssock, csock).run()\n        except Exception:\n            logger.exception('[socks] csock close by exception')\n            csock.close()\n            self.client_sock = None",
+      "hash_value": "a76393022678dd24d4f2e55c6e9050e5",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "class Socks5(threading.Thread):\n    def __init__(self, circuit, client_sock, client_addr):\n        if client_addr[0] == '127.0.0.1':\n            thread_name = 'Socks-%s' % client_addr[1]\n        else:\n            thread_name = 'Socks-%s:%s' % (client_addr[0], client_addr[1])\n        super().__init__(name=thread_name)\n        self.circuit = circuit\n        self.client_sock = client_sock\n        self.client_addr = client_addr\n\n    def error(self, err=b'\\x01\\0'):\n        try:\n            self.client_sock.send(b'\\x05' + err)\n            self.client_sock.close()\n            self.client_sock = None\n        except BaseException:\n            pass\n\n    @contextmanager\n    def create_socket(self, dst, port):\n        logger.info('[socks] Connecting to %s:%s', dst, port)\n        with self.circuit.create_stream((dst, port)) as tor_stream:\n            yield tor_stream.create_socket()\n            logger.debug('[socks] Closing stream #%x', tor_stream.id)\n\n    def run(self):\n        csock = self.client_sock\n        try:\n            ver = csock.recv(1)\n            if ver != b'\\x05':\n                return self.error(b'\\xff')\n            nmeth, = array.array('B', csock.recv(1))\n            _ = recv_exact(csock, nmeth)  # read methods\n            csock.send(b'\\x05\\0')\n            hbuf = recv_exact(csock, 4)\n            if not hbuf:\n                return self.error()\n\n            ver, cmd, rsv, atyp = list(hbuf)\n            if ver != 5 and cmd != 1:\n                return self.error()\n\n            if atyp == 1:\n                dst = '.'.join(str(i) for i in recv_exact(csock, 4))\n            elif atyp == 3:\n                n, = array.array('B', csock.recv(1))\n                dst = recv_exact(csock, n).decode()\n            elif atyp == 4:\n                dst = ':'.join(recv_exact(csock, 2).hex() for _ in range(8))\n                # TODO: ipv6\n                return self.error()\n            else:\n                return self.error()\n\n            port = int(recv_exact(csock, 2).hex(), 16)\n\n            with self.create_socket(dst, port) as ssock:\n                SocksProxy(ssock, csock).run()\n        except Exception:\n            logger.exception('[socks] csock close by exception')\n            csock.close()\n            self.client_sock = None",
+          "triple_sequences": [
+            {
+              "action_api": "self.client_sock.send()",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "b'\\x05' + err",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Send data to server",
+              "intention_id": "send_data_server"
+            },
+            {
+              "action_api": "self.client_sock.close()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "self.client_sock",
+              "object_description": "Socket address",
+              "object_id": "socket_address",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            },
+            {
+              "action_api": "csock.recv(1)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "array.array('B', csock.recv(1))",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "recv_exact(csock, nmeth)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "nmeth",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "csock.send(b'\\x05\\0')",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "b'\\x05\\0'",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Send data to server",
+              "intention_id": "send_data_server"
+            },
+            {
+              "action_api": "recv_exact(csock, 4)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "4",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "array.array('B', csock.recv(1))",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "1",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "recv_exact(csock, n)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "n",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "str.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "recv_exact(csock, 2)",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "2",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "recv_exact(csock, 2).hex()",
+              "action_description": "Converts bytes to hexadecimal string",
+              "action_id": "convert_bytes_to_hex",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "self.circuit.create_stream((dst, port))",
+              "action_description": "Establishes TCP connection to specified address",
+              "action_id": "establish_tcp_connection",
+              "object": "(dst, port)",
+              "object_description": "Socket address",
+              "object_id": "socket_address",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "tor_stream.create_socket()",
+              "action_description": "Creates new socket object",
+              "action_id": "create_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "SocksProxy(ssock, csock).run()",
+              "action_description": "Runs asynchronous function until completion",
+              "action_id": "run_async_function",
+              "object": "ssock, csock",
+              "object_description": "Socket address",
+              "object_id": "socket_address",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            },
+            {
+              "action_api": "csock.close()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "csock",
+              "object_description": "Socket address",
+              "object_id": "socket_address",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

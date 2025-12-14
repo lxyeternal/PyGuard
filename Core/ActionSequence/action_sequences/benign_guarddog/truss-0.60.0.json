@@ -1,0 +1,204 @@
+[
+  {
+    "pyfile": "utils.py",
+    "code_snippet": "import builtins\nimport sys\nimport logging\nimport pydantic\nfrom typing import Type\nfrom truss_chains import definitions\n\ndef _resolve_exception_class(error: definitions.RemoteErrorDetail) -> Type[Exception]:\n    \"\"\"Tries to find the exception class in builtins or imported libs,\n    falls back to `definitions.GenericRemoteError` if not found.\"\"\"\n    exception_cls = None\n    if error.exception_module_name is None:\n        exception_cls = getattr(builtins, error.exception_cls_name, None)\n    else:\n        if mod := sys.modules.get(error.exception_module_name):\n            exception_cls = getattr(mod, error.exception_cls_name, None)\n\n    if exception_cls is None:\n        logging.warning(\n            f\"Could not resolve exception with name `{error.exception_cls_name}` \"\n            f\"and module `{error.exception_module_name}` - fall back to \"\n            f\"`{definitions.GenericRemoteException.__name__}`.\"\n        )\n        exception_cls = definitions.GenericRemoteException\n\n    if issubclass(exception_cls, pydantic.ValidationError):\n        # Cannot re-raise naively.\n        # https://github.com/pydantic/pydantic/issues/6734.\n        exception_cls = definitions.GenericRemoteException\n\n    return exception_cls\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.getattr",
+        "sys.modules.get",
+        "getattr",
+        "logging.warning",
+        "issubclass"
+      ],
+      "api_sequence_with_args": [
+        "builtins.getattr(builtins, error.exception_cls_name, None)",
+        "sys.modules.get(error.exception_module_name)",
+        "getattr(mod, error.exception_cls_name, None)",
+        "logging.warning(f\"Could not resolve exception with name `{error.exception_cls_name}` \" f\"and module `{error.exception_module_name}` - fall back to \" f\"`{definitions.GenericRemoteException.__name__}`.\")",
+        "issubclass(exception_cls, pydantic.ValidationError)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.modules.get",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "logging.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "issubclass",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "import builtins\nimport sys\nimport logging\nimport pydantic\nfrom typing import Type\nfrom truss_chains import definitions\n\ndef _resolve_exception_class(error: definitions.RemoteErrorDetail) -> Type[Exception]:\n    exception_cls = None\n    if error.exception_module_name is None:\n        exception_cls = getattr(builtins, error.exception_cls_name, None)\n    else:\n        if mod := sys.modules.get(error.exception_module_name):\n            exception_cls = getattr(mod, error.exception_cls_name, None)\n\n    if exception_cls is None:\n        logging.warning(\n            f\"Could not resolve exception with name `{error.exception_cls_name}` \"\n            f\"and module `{error.exception_module_name}` - fall back to \"\n            f\"`{definitions.GenericRemoteException.__name__}`.\"\n        )\n        exception_cls = definitions.GenericRemoteException\n\n    if issubclass(exception_cls, pydantic.ValidationError):\n        exception_cls = definitions.GenericRemoteException\n\n    return exception_cls"
+    }
+  },
+  {
+    "pyfile": "inference_server_starter.py",
+    "code_snippet": "import os\nfrom logging import Logger\n\nimport requests\nfrom anyio import to_thread\nfrom helpers.inference_server_controller import InferenceServerController\nfrom tenacity import Retrying, stop_after_attempt, wait_exponential\n\n\ndef inference_server_startup_flow(\n    inference_server_controller: InferenceServerController, logger: Logger\n) -> None:\n    \"\"\"\n    Perform the inference server startup flow\n\n    Inference server startup flow supports checking for patches. If a patch ping\n    url is provided then we hit that url to start the sync mechanism. The ping\n    calls with current truss hash. The patch ping endpoint should return a\n    response indicating, either that the supplied hash is current or that the\n    request has been accepted. Acceptance of request means that a patch will be\n    supplied soon to the truss (by calling of /control/patch endpoint).\n\n    If we find that our hash is current, we start the inference server\n    immediately. Otherwise, we delay the start to when the patch is supplied.\n\n    The goal is to start the inference server as soon as we have the latest\n    code, but not before.\n    Example responses:\n    {\"is_current\": true}\n    {\"accepted\": true}\n    \"\"\"\n    patch_ping_url = os.environ.get(\"PATCH_PING_URL_TRUSS\")\n    if patch_ping_url is None:\n        inference_server_controller.start()\n        return\n\n    truss_hash = inference_server_controller.truss_hash()\n    payload = {\"truss_hash\": truss_hash}\n\n    for attempt in Retrying(\n        stop=stop_after_attempt(15), wait=wait_exponential(multiplier=2, min=1, max=4)\n    ):\n        with attempt:\n            try:\n                logger.info(\n                    f\"Pinging {patch_ping_url} for patch with hash {truss_hash}\"\n                )\n                resp = requests.post(patch_ping_url, json=payload)\n                resp.raise_for_status()\n                resp_body = resp.json()\n\n                # If hash is current start inference server, otherwise delay that\n                # for when patch is applied.\n                if \"is_current\" in resp_body and resp_body[\"is_current\"] is True:\n                    logger.info(\"Hash is current, starting inference server\")\n                    inference_server_controller.start()\n            except Exception as exc:  # noqa\n                logger.warning(f\"Patch ping attempt failed with error {exc}\")\n                raise exc\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "InferenceServerController.truss_hash",
+        "Retrying",
+        "stop_after_attempt",
+        "wait_exponential",
+        "Logger.info",
+        "requests.post",
+        "requests.Response.raise_for_status",
+        "requests.Response.json",
+        "Logger.info",
+        "InferenceServerController.start",
+        "Logger.warning"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"PATCH_PING_URL_TRUSS\")",
+        "InferenceServerController.truss_hash()",
+        "Retrying(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=2, min=1, max=4))",
+        "stop_after_attempt(15)",
+        "wait_exponential(multiplier=2, min=1, max=4)",
+        "Logger.info(f\"Pinging {patch_ping_url} for patch with hash {truss_hash}\")",
+        "requests.post(patch_ping_url, json=payload)",
+        "requests.Response.raise_for_status()",
+        "requests.Response.json()",
+        "Logger.info(\"Hash is current, starting inference server\")",
+        "InferenceServerController.start()",
+        "Logger.warning(f\"Patch ping attempt failed with error {exc}\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "InferenceServerController.truss_hash",
+          "id": "get_sha256_digest",
+          "description": "Returns hexadecimal digest of SHA-256 hash",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_value_retrieval"
+        },
+        {
+          "api_name": "Retrying",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "stop_after_attempt",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "wait_exponential",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "Logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "Logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "InferenceServerController.start",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "Logger.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import os\nfrom logging import Logger\nimport requests\nfrom helpers.inference_server_controller import InferenceServerController\nfrom tenacity import Retrying, stop_after_attempt, wait_exponential\n\ndef inference_server_startup_flow(\n    inference_server_controller: InferenceServerController, logger: Logger\n) -> None:\n    patch_ping_url = os.environ.get(\"PATCH_PING_URL_TRUSS\")\n    if patch_ping_url is None:\n        inference_server_controller.start()\n        return\n\n    truss_hash = inference_server_controller.truss_hash()\n    payload = {\"truss_hash\": truss_hash}\n\n    for attempt in Retrying(\n        stop=stop_after_attempt(15), wait=wait_exponential(multiplier=2, min=1, max=4)\n    ):\n        with attempt:\n            try:\n                logger.info(\n                    f\"Pinging {patch_ping_url} for patch with hash {truss_hash}\"\n                )\n                resp = requests.post(patch_ping_url, json=payload)\n                resp.raise_for_status()\n                resp_body = resp.json()\n\n                if \"is_current\" in resp_body and resp_body[\"is_current\"] is True:\n                    logger.info(\"Hash is current, starting inference server\")\n                    inference_server_controller.start()\n            except Exception as exc:\n                logger.warning(f\"Patch ping attempt failed with error {exc}\")\n                raise exc"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "truss-0.60.0",
+      "total_matches": 2
+    }
+  }
+]

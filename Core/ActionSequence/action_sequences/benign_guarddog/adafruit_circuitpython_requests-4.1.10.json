@@ -1,0 +1,161 @@
+[
+  {
+    "pyfile": "requests_wifi_api_discord.py",
+    "code_snippet": "# SPDX-FileCopyrightText: 2024 DJDevon3\n# SPDX-License-Identifier: MIT\n# Coded for Circuit Python 8.2.x\n\"\"\"Discord Web Scrape Example\"\"\"\n\nimport os\nimport time\n\nimport adafruit_connection_manager\nimport wifi\n\nimport adafruit_requests\n\n# Active Logged in User Account Required\n# WEB SCRAPE authorization key required. Visit URL below.\n# Learn how: https://github.com/lorenz234/Discord-Data-Scraping\n\n# Ensure this is in settings.toml\n# DISCORD_AUTHORIZATION = \"Approximately 70 Character Hash Here\"\n\n# Get WiFi details, ensure these are setup in settings.toml\nssid = os.getenv(\"CIRCUITPY_WIFI_SSID\")\npassword = os.getenv(\"CIRCUITPY_WIFI_PASSWORD\")\ndiscord_auth = os.getenv(\"DISCORD_AUTHORIZATION\")\n\n# API Polling Rate\n# 900 = 15 mins, 1800 = 30 mins, 3600 = 1 hour\nSLEEP_TIME = 900\n\n# Initalize Wifi, Socket Pool, Request Session\npool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)\nssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)\nrequests = adafruit_requests.Session(pool, ssl_context)\n\n\ndef time_calc(input_time):\n    \"\"\"Converts seconds to minutes/hours/days\"\"\"\n    if input_time < 60:\n        return f\"{input_time:.0f} seconds\"\n    if input_time < 3600:\n        return f\"{input_time / 60:.0f} minutes\"\n    if input_time < 86400:\n        return f\"{input_time / 60 / 60:.0f} hours\"\n    return f\"{input_time / 60 / 60 / 24:.1f} days\"\n\n\nDISCORD_HEADER = {\"Authorization\": \"\" + discord_auth}\nDISCORD_SOURCE = (\n    \"https://discord.com/api/v10/guilds/\"\n    + \"327254708534116352\"  # Adafruit Discord ID\n    + \"/preview\"\n)\n\nwhile True:\n    # Connect to Wi-Fi\n    print(\"\\nConnecting to WiFi...\")\n    while not wifi.radio.ipv4_address:\n        try:\n            wifi.radio.connect(ssid, password)\n        except ConnectionError as e:\n            print(\"❌ Connection Error:\", e)\n            print(\"Retrying in 10 seconds\")\n    print(\"✅ Wifi!\")\n    try:\n        print(\" | Attempting to GET Discord JSON!\")\n        # Set debug to True for full JSON response.\n        # WARNING: may include visible credentials\n        # MICROCONTROLLER WARNING: might crash by returning too much data\n        DEBUG_RESPONSE = False\n\n        try:\n            with requests.get(url=DISCORD_SOURCE, headers=DISCORD_HEADER) as discord_response:\n                discord_json = discord_response.json()\n        except ConnectionError as e:\n            print(f\"Connection Error: {e}\")\n            print(\"Retrying in 10 seconds\")\n        print(\" | ✅ Discord JSON!\")\n\n        if DEBUG_RESPONSE:\n            print(f\" |  | Full API GET URL: {DISCORD_SOURCE}\")\n            print(f\" |  | JSON Dump: {discord_json}\")\n\n        discord_name = discord_json[\"name\"]\n        print(f\" |  | Name: {discord_name}\")\n\n        discord_description = discord_json[\"description\"]\n        print(f\" |  | Description: {discord_description}\")\n\n        discord_all_members = discord_json[\"approximate_member_count\"]\n        print(f\" |  | Members: {discord_all_members}\")\n\n        discord_all_members_online = discord_json[\"approximate_presence_count\"]\n        print(f\" |  | Online: {discord_all_members_online}\")\n\n        print(\"\\nFinished!\")\n        print(f\"Board Uptime: {time.monotonic()}\")\n        print(f\"Next Update: {time_calc(SLEEP_TIME)}\")\n        print(\"===============================\")\n\n    except (ValueError, RuntimeError) as e:\n        print(f\"Failed to get data, retrying\\n {e}\")\n        time.sleep(60)\n        break\n    time.sleep(SLEEP_TIME)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.getenv",
+        "os.getenv",
+        "adafruit_connection_manager.get_radio_socketpool",
+        "adafruit_connection_manager.get_radio_ssl_context",
+        "adafruit_requests.Session",
+        "wifi.radio.ipv4_address",
+        "wifi.radio.connect",
+        "adafruit_requests.Session.get",
+        "adafruit_requests.Session.get.__enter__",
+        "adafruit_requests.Session.get.__exit__",
+        "adafruit_requests.Session.get.json",
+        "time.monotonic",
+        "time.sleep"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv(\"CIRCUITPY_WIFI_SSID\")",
+        "os.getenv(\"CIRCUITPY_WIFI_PASSWORD\")",
+        "os.getenv(\"DISCORD_AUTHORIZATION\")",
+        "adafruit_connection_manager.get_radio_socketpool(wifi.radio)",
+        "adafruit_connection_manager.get_radio_ssl_context(wifi.radio)",
+        "adafruit_requests.Session(pool, ssl_context)",
+        "wifi.radio.ipv4_address",
+        "wifi.radio.connect(ssid, password)",
+        "adafruit_requests.Session.get(url=DISCORD_SOURCE, headers=DISCORD_HEADER)",
+        "adafruit_requests.Session.get.__enter__()",
+        "adafruit_requests.Session.get.__exit__()",
+        "adafruit_requests.Session.get.json()",
+        "time.monotonic()",
+        "time.sleep(SLEEP_TIME)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "adafruit_connection_manager.get_radio_socketpool",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "adafruit_connection_manager.get_radio_ssl_context",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "adafruit_requests.Session",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "wifi.radio.ipv4_address",
+          "id": "get_public_ip",
+          "description": "Retrieves public IP address using HTTP request",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "wifi.radio.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "adafruit_requests.Session.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "adafruit_requests.Session.get.__enter__",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "adafruit_requests.Session.get.__exit__",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "adafruit_requests.Session.get.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "time.monotonic",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "import os\nimport time\nimport adafruit_connection_manager\nimport wifi\nimport adafruit_requests\n\n# Get WiFi details, ensure these are setup in settings.toml\nssid = os.getenv(\"CIRCUITPY_WIFI_SSID\")\npassword = os.getenv(\"CIRCUITPY_WIFI_PASSWORD\")\ndiscord_auth = os.getenv(\"DISCORD_AUTHORIZATION\")\n\n# Initalize Wifi, Socket Pool, Request Session\npool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)\nssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)\nrequests = adafruit_requests.Session(pool, ssl_context)\n\nDISCORD_HEADER = {\"Authorization\": \"\" + discord_auth}\nDISCORD_SOURCE = (\n    \"https://discord.com/api/v10/guilds/\"\n    + \"327254708534116352\"\n    + \"/preview\"\n)\n\nwhile True:\n    # Connect to Wi-Fi\n    while not wifi.radio.ipv4_address:\n        try:\n            wifi.radio.connect(ssid, password)\n        except ConnectionError as e:\n            pass\n    try:\n        try:\n            with requests.get(url=DISCORD_SOURCE, headers=DISCORD_HEADER) as discord_response:\n                discord_json = discord_response.json()\n        except ConnectionError as e:\n            pass\n        # ... process discord_json ...\n        print(f\"Board Uptime: {time.monotonic()}\")\n        # ...\n    except (ValueError, RuntimeError) as e:\n        time.sleep(60)\n        break\n    time.sleep(SLEEP_TIME)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "adafruit_circuitpython_requests-4.1.10",
+      "total_matches": 1
+    }
+  }
+]

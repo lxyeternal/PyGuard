@@ -1,0 +1,226 @@
+{
+  "metadata": {
+    "package_name": "cellpose-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/cellpose-3.1.1.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "io.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/cellpose-3.1.1.1/cellpose-3.1.1.1/cellpose/io.py",
+      "line_number": "199",
+      "type_description": "B814:read",
+      "context_snippet": "def imread(filename):\n    \"\"\"\n    Read in an image file with tif or image file type supported by cv2.\n\n    Args:\n        filename (str): The path to the image file.\n\n    Returns:\n        numpy.ndarray: The image data as a NumPy array.\n\n    Raises:\n        None\n\n    Raises an error if the image file format is not supported.\n\n    Examples:\n        >>> img = imread(\"image.tif\")\n    \"\"\"\n    # ensure that extension check is not case sensitive\n    ext = os.path.splitext(filename)[-1].lower()\n    if ext == \".tif\" or ext == \".tiff\" or ext == \".flex\":\n        with tifffile.TiffFile(filename) as tif:\n            ltif = len(tif.pages)\n            try:\n                full_shape = tif.shaped_metadata[0][\"shape\"]\n            except:\n                try:\n                    page = tif.series[0][0]\n                    full_shape = tif.series[0].shape\n                except:\n                    ltif = 0\n            if ltif < 10:\n                img = tif.asarray()\n            else:\n                page = tif.series[0][0]\n                shape, dtype = page.shape, page.dtype\n                ltif = int(np.prod(full_shape) / np.prod(shape))\n                io_logger.info(f\"reading tiff with {ltif} planes\")\n                img = np.zeros((ltif, *shape), dtype=dtype)\n                for i, page in enumerate(tqdm(tif.series[0])):\n                    img[i] = page.asarray()\n                img = img.reshape(full_shape)\n        return img\n    elif ext == \".dax\":\n        img = load_dax(filename)\n        return img\n    elif ext == \".nd2\":\n        if not ND2:\n            io_logger.critical(\"ERROR: need to 'pip install nd2' to load in .nd2 file\")\n            return None\n    elif ext == \".nrrd\":\n        if not NRRD:\n            io_logger.critical(\n                \"ERROR: need to 'pip install pynrrd' to load in .nrrd file\")\n            return None\n        else:\n            img, metadata = nrrd.read(filename)\n            if img.ndim == 3:\n                img = img.transpose(2, 0, 1)\n            return img\n    elif ext != \".npy\":\n        try:\n            img = cv2.imread(filename, -1)  #cv2.LOAD_IMAGE_ANYDEPTH)\n            if img.ndim > 2:\n                img = img[..., [2, 1, 0]]\n            return img\n        except Exception as e:\n            io_logger.critical(\"ERROR: could not read file, %s\" % e)\n            return None\n    else:\n        try:\n            dat = np.load(filename, allow_pickle=True).item()\n            masks = dat[\"masks\"]\n            return masks\n        except Exception as e:\n            io_logger.critical(\"ERROR: could not read masks from file, %s\" % e)\n            return None",
+      "hash_value": "24dee4c20b53867939d0c39946eae861",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def imread(filename):\n    \"\"\"\n    Read in an image file with tif or image file type supported by cv2.\n\n    Args:\n        filename (str): The path to the image file.\n\n    Returns:\n        numpy.ndarray: The image data as a NumPy array.\n\n    Raises:\n        None\n\n    Raises an error if the image file format is not supported.\n\n    Examples:\n        >>> img = imread(\"image.tif\")\n    \"\"\"\n    # ensure that extension check is not case sensitive\n    ext = os.path.splitext(filename)[-1].lower()\n    if ext == \".tif\" or ext == \".tiff\" or ext == \".flex\":\n        with tifffile.TiffFile(filename) as tif:\n            ltif = len(tif.pages)\n            try:\n                full_shape = tif.shaped_metadata[0][\"shape\"]\n            except:\n                try:\n                    page = tif.series[0][0]\n                    full_shape = tif.series[0].shape\n                except:\n                    ltif = 0\n            if ltif < 10:\n                img = tif.asarray()\n            else:\n                page = tif.series[0][0]\n                shape, dtype = page.shape, page.dtype\n                ltif = int(np.prod(full_shape) / np.prod(shape))\n                io_logger.info(f\"reading tiff with {ltif} planes\")\n                img = np.zeros((ltif, *shape), dtype=dtype)\n                for i, page in enumerate(tqdm(tif.series[0])):\n                    img[i] = page.asarray()\n                img = img.reshape(full_shape)\n        return img\n    elif ext == \".dax\":\n        img = load_dax(filename)\n        return img\n    elif ext == \".nd2\":\n        if not ND2:\n            io_logger.critical(\"ERROR: need to 'pip install nd2' to load in .nd2 file\")\n            return None\n    elif ext == \".nrrd\":\n        if not NRRD:\n            io_logger.critical(\n                \"ERROR: need to 'pip install pynrrd' to load in .nrrd file\")\n            return None\n        else:\n            img, metadata = nrrd.read(filename)\n            if img.ndim == 3:\n                img = img.transpose(2, 0, 1)\n            return img\n    elif ext != \".npy\":\n        try:\n            img = cv2.imread(filename, -1)  #cv2.LOAD_IMAGE_ANYDEPTH)\n            if img.ndim > 2:\n                img = img[..., [2, 1, 0]]\n            return img\n        except Exception as e:\n            io_logger.critical(\"ERROR: could not read file, %s\" % e)\n            return None\n    else:\n        try:\n            dat = np.load(filename, allow_pickle=True).item()\n            masks = dat[\"masks\"]\n            return masks\n        except Exception as e:\n            io_logger.critical(\"ERROR: could not read masks from file, %s\" % e)\n            return None",
+          "triple_sequences": [
+            {
+              "action_api": "os.path.splitext()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "filename",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "tifffile.TiffFile()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "filename",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "tif.pages",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "tif.pages",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "tif.shaped_metadata",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "tif.shaped_metadata",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "tif.series",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "tif.series",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "tif.asarray()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "tif",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "np.zeros()",
+              "action_description": "Create temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "(ltif, *shape), dtype=dtype",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "tqdm(tif.series[0])",
+              "action_description": "Iterates over all running processes",
+              "action_id": "iterate_processes",
+              "object": "tif.series[0]",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "List files in directory",
+              "intention_id": "list_directory_files"
+            },
+            {
+              "action_api": "page.asarray()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "page",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "img.reshape()",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "full_shape",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "load_dax()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "filename",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "io_logger.critical()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "ERROR: need to 'pip install nd2' to load in .nd2 file",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "nrrd.read()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "filename",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "img.transpose()",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "2, 0, 1",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "cv2.imread()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "filename, -1",
+              "object_description": "Image file",
+              "object_id": "image_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "img[..., [2, 1, 0]]",
+              "action_description": "Path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "[2, 1, 0]",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "io_logger.critical()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "ERROR: could not read file, %s",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "np.load()",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "filename, allow_pickle=True",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "dat[\"masks\"]",
+              "action_description": "Basic read operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "dat[\"masks\"]",
+              "object_description": "Structured file data",
+              "object_id": "structured_file_data",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "io_logger.critical()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "ERROR: could not read masks from file, %s",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

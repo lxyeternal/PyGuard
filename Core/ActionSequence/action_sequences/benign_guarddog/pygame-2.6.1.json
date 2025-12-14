@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import distutils\nimport platform\nimport os\n\nif os.environ.get('PYGAME_DETECT_AVX2', '') != '':\n    import distutils.ccompiler\n\n    avx2_filenames = ['simd_blitters_avx2']\n\n    compiler_options = {\n        'unix': ('-mavx2',),\n        'msvc': ('/arch:AVX2',)\n    }\n\n    def spawn(self, cmd, **kwargs):\n        should_use_avx2 = False\n        # try to be thorough in detecting that we are on a platform that potentially supports AVX2\n        machine_name = platform.machine()\n        if ((machine_name.startswith((\"x86\", \"i686\")) or\n            machine_name.lower() == \"amd64\") and\n                os.environ.get(\"MAC_ARCH\") != \"arm64\"):\n            should_use_avx2 = True\n\n        if should_use_avx2:\n            extra_options = compiler_options.get(self.compiler_type)\n            if extra_options is not None:\n                # filenames are closer to the end of command line\n                for argument in reversed(cmd):\n                    # Check if argument contains a filename. We must check for all\n                    # possible extensions; checking for target extension is faster.\n                    if not argument.endswith(self.obj_extension):\n                        continue\n\n                    # check for a filename only to avoid building a new string\n                    # with variable extension\n                    for filename in avx2_filenames:\n                        off_end = -len(self.obj_extension)\n                        off_start = -len(filename) + off_end\n                        if argument.endswith(filename, off_start, off_end):\n                            if self.compiler_type == 'bcpp':\n                                # Borland accepts a source file name at the end,\n                                # insert the options before it\n                                cmd[-1:-1] = extra_options\n                            else:\n                                cmd += extra_options\n\n                    # filename is found, no need to search any further\n                    break\n\n        distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)\n\n    distutils.ccompiler.CCompiler.__spawn = distutils.ccompiler.CCompiler.spawn\n    distutils.ccompiler.CCompiler.spawn = spawn\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "platform.machine",
+        "os.environ.get",
+        "distutils.ccompiler.spawn"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('PYGAME_DETECT_AVX2', '')",
+        "platform.machine()",
+        "os.environ.get('MAC_ARCH')",
+        "distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "platform.machine",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "distutils.ccompiler.spawn",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import distutils\nimport platform\nimport os\n\nif os.environ.get('PYGAME_DETECT_AVX2', '') != '':\n    import distutils.ccompiler\n\n    avx2_filenames = ['simd_blitters_avx2']\n    compiler_options = {\n        'unix': ('-mavx2',),\n        'msvc': ('/arch:AVX2',)\n    }\n\n    def spawn(self, cmd, **kwargs):\n        should_use_avx2 = False\n        machine_name = platform.machine()\n        if ((machine_name.startswith((\"x86\", \"i686\")) or\n            machine_name.lower() == \"amd64\") and\n                os.environ.get(\"MAC_ARCH\") != \"arm64\"):\n            should_use_avx2 = True\n\n        if should_use_avx2:\n            extra_options = compiler_options.get(self.compiler_type)\n            if extra_options is not None:\n                for argument in reversed(cmd):\n                    if not argument.endswith(self.obj_extension):\n                        continue\n                    for filename in avx2_filenames:\n                        off_end = -len(self.obj_extension)\n                        off_start = -len(filename) + off_end\n                        if argument.endswith(filename, off_start, off_end):\n                            if self.compiler_type == 'bcpp':\n                                cmd[-1:-1] = extra_options\n                            else:\n                                cmd += extra_options\n                    break\n\n        distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)\n\n    distutils.ccompiler.CCompiler.__spawn = distutils.ccompiler.CCompiler.spawn\n    distutils.ccompiler.CCompiler.spawn = spawn"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pygame-2.6.1",
+      "total_matches": 2
+    }
+  }
+]

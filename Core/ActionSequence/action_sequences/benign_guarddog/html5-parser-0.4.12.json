@@ -1,0 +1,121 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nfrom itertools import chain\n\nfrom setuptools import Extension, setup, Command\n\nself_path = os.path.abspath(__file__)\nbase = os.path.dirname(self_path)\nsys.path.insert(0, base)\nif True:\n    from unix_build import (\n        SRC_DIRS, TEST_COMMAND, add_python_path, find_c_files, include_dirs, iswindows, libraries,\n        library_dirs, version\n    )\ndel sys.path[0]\n\nsrc_files = tuple(chain(*map(lambda x: find_c_files(x)[0], SRC_DIRS)))\ncargs = ('/O2' if iswindows else '-O3').split()\nif not iswindows:\n    cargs.extend('-std=c99 -fvisibility=hidden'.split())\n\nclass Test(Command):\n\n    description = \"run unit tests after in-place build\"\n    user_options = []\n    user_options = [\n        ('test-name=', None, 'Specify the test to run.'),\n    ]\n    sub_commands = [\n        ('build', None),\n    ]\n\n    def initialize_options(self):\n        self.test_name = ''\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        for cmd_name in self.get_sub_commands():\n            self.run_command(cmd_name)\n        import subprocess\n        build = self.get_finalized_command('build')\n        env = add_python_path(os.environ.copy(), build.build_lib)\n        print('\\nrunning tests...')\n        sys.stdout.flush()\n        cmd = [sys.executable] + TEST_COMMAND\n        if self.test_name:\n            cmd.append(self.test_name)\n        ret = subprocess.Popen(cmd, env=env).wait()\n        if ret != 0:\n            raise SystemExit(ret)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.dirname",
+        "sys.path.insert",
+        "find_c_files",
+        "os.environ.copy",
+        "add_python_path",
+        "sys.stdout.flush",
+        "subprocess.Popen",
+        "sys.executable",
+        "SystemExit"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(__file__)",
+        "os.path.dirname(self_path)",
+        "sys.path.insert(0, base)",
+        "find_c_files(x)[0] (for x in SRC_DIRS)",
+        "os.environ.copy()",
+        "add_python_path(os.environ.copy(), build.build_lib)",
+        "sys.stdout.flush()",
+        "subprocess.Popen(cmd, env=env)",
+        "sys.executable",
+        "SystemExit(ret)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.path.insert",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "find_c_files",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "add_python_path",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.stdout.flush",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "SystemExit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\nfrom itertools import chain\nfrom setuptools import Extension, setup, Command\n\nself_path = os.path.abspath(__file__)\nbase = os.path.dirname(self_path)\nsys.path.insert(0, base)\nfrom unix_build import (\n    SRC_DIRS, TEST_COMMAND, add_python_path, find_c_files, include_dirs, iswindows, libraries,\n    library_dirs, version\n)\ndel sys.path[0]\n\nsrc_files = tuple(chain(*map(lambda x: find_c_files(x)[0], SRC_DIRS)))\ncargs = ('/O2' if iswindows else '-O3').split()\nif not iswindows:\n    cargs.extend('-std=c99 -fvisibility=hidden'.split())\n\nclass Test(Command):\n    def run(self):\n        for cmd_name in self.get_sub_commands():\n            self.run_command(cmd_name)\n        import subprocess\n        build = self.get_finalized_command('build')\n        env = add_python_path(os.environ.copy(), build.build_lib)\n        print('\\nrunning tests...')\n        sys.stdout.flush()\n        cmd = [sys.executable] + TEST_COMMAND\n        if self.test_name:\n            cmd.append(self.test_name)\n        ret = subprocess.Popen(cmd, env=env).wait()\n        if ret != 0:\n            raise SystemExit(ret)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "html5-parser-0.4.12",
+      "total_matches": 1
+    }
+  }
+]

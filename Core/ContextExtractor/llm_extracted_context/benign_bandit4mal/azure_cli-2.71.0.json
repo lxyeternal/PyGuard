@@ -1,0 +1,64 @@
+[
+  {
+    "metadata": {
+      "package_name": "azure_cli-2.71.0",
+      "total_matches": 5,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "custom.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_cli-2.71.0/azure_cli-2.71.0/azure/cli/command_modules/aro/custom.py",
+    "line_number": "390",
+    "type_description": "B801:b64decode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "389\t    file_mode = \"x\"\n390\t    yaml_data = b64decode(query_result.kubeconfig).decode('UTF-8')\n391\t    try:",
+    "context_snippet": "def aro_get_admin_kubeconfig(client, resource_group_name, resource_name, file=\"kubeconfig\"):\n    query_result = client.open_shift_clusters.list_admin_credentials(resource_group_name, resource_name)\n    file_mode = \"x\"\n    yaml_data = b64decode(query_result.kubeconfig).decode('UTF-8')\n    try:\n        with open(file, file_mode, encoding=\"utf-8\") as f:\n            f.write(yaml_data)\n    except FileExistsError as e:\n        raise FileOperationError(f\"File {file} already exists.\") from e\n    logger.info(\"Kubeconfig written to file: %s\", file)",
+    "hash_value": "632dbf763034ca33f272601a2deb5a9b"
+  },
+  {
+    "pyfile": "util.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_cli-2.71.0/azure_cli-2.71.0/azure/cli/command_modules/storage/azcopy/util.py",
+    "line_number": "239",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "238\t                with open(install_location, 'wb') as f:\n239\t                    f.write(zip_file.read(fileName))\n240\t    elif url.endswith('gz'):",
+    "context_snippet": "def _urlretrieve(url, install_location):\n    import io\n    logger.warning('Downloading AzCopy from %s', url)\n    req = urlopen(url)\n    compressedFile = io.BytesIO(req.read())\n    if url.endswith('zip'):\n        zip_file = zipfile.ZipFile(compressedFile)\n        for fileName in zip_file.namelist():\n            if fileName.endswith('azcopy') or fileName.endswith('azcopy.exe'):\n                with open(install_location, 'wb') as f:\n                    f.write(zip_file.read(fileName))\n    elif url.endswith('gz'):\n        import tarfile\n        with tarfile.open(fileobj=compressedFile, mode=\"r:gz\") as tar:\n            for tarinfo in tar:\n                if tarinfo.isfile() and tarinfo.name.endswith('azcopy'):\n                    with open(install_location, 'wb') as f:\n                        f.write(tar.extractfile(tarinfo).read())\n    else:\n        raise CLIError('Invalid downloading url {}'.format(url))",
+    "hash_value": "9153a4651fd312c49362dbef8ff5781f"
+  },
+  {
+    "pyfile": "_network.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_cli-2.71.0/azure_cli-2.71.0/azure/cli/command_modules/mysql/_network.py",
+    "line_number": "229",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "228\t        for subnet in vnet.get(\"subnets\", []):\n229\t            vnet_subnet_prefixes += (subnet.get(\"addressPrefixes\") if not subnet.get(\"addressPrefix\") else [subnet.get(\"addressPrefix\")])\n230\t        if subnet_address_pref in vnet_subnet_prefixes:",
+    "context_snippet": "def _create_subnet_delegation(cmd, nw_subscription, resource_client, delegation_service_name, resource_group, vnet_name, subnet_name, location, server_name, subnet_address_pref, yes):\n    delegation = {\"name\": delegation_service_name, \"service_name\": delegation_service_name}\n\n    # subnet not exist\n    if not check_existence(resource_client, subnet_name, resource_group, 'Microsoft.Network', 'subnets', parent_name=vnet_name, parent_type='virtualNetworks'):\n        vnet = VNetShow(cli_ctx=cmd.cli_ctx)(command_args={\n            \"name\": vnet_name,\n            \"subscription\": nw_subscription,\n            \"resource_group\": resource_group\n        })\n\n        vnet_subnet_prefixes = []\n        for subnet in vnet.get(\"subnets\", []):\n            vnet_subnet_prefixes += (subnet.get(\"addressPrefixes\") if not subnet.get(\"addressPrefix\") else [subnet.get(\"addressPrefix\")])\n        if subnet_address_pref in vnet_subnet_prefixes:\n            raise ValidationError(f\"The Subnet (default) prefix {subnet_address_pref} is already taken by another Subnet in the Vnet. Please provide a different prefix for --subnet-prefix parameter\")\n\n        user_confirmation(\"Do you want to create a new Subnet {0} in resource group {1}\".format(subnet_name, resource_group), yes=yes)\n        logger.warning('Creating new Subnet \"%s\" in resource group \"%s\"', subnet_name, resource_group)\n        poller = SubnetCreate(cli_ctx=cmd.cli_ctx)(command_args={\n            \"name\": subnet_name,\n            \"vnet_name\": vnet_name,\n            \"subscription\": nw_subscription,\n            \"resource_group\": resource_group,\n            \"address_prefix\": subnet_address_pref,\n            \"delegated_services\": [delegation]\n        })\n        subnet = LongRunningOperation(cmd.cli_ctx)(poller)\n    # subnet exist\n    else:\n        subnet = SubnetShow(cli_ctx=cmd.cli_ctx)(command_args={\n            \"name\": subnet_name,\n            \"vnet_name\": vnet_name,\n            \"subscription\": nw_subscription,\n            \"resource_group\": resource_group\n        })\n        subnet_address_prefixes = [DEFAULT_SUBNET_ADDRESS_PREFIX] + subnet.get(\"addressPrefixes\") if not subnet.get(\"addressPrefix\") else [subnet.get(\"addressPrefix\")]\n        logger.warning('Using existing Subnet \"%s\" in resource group \"%s\"', subnet_name, resource_group)\n        if subnet_address_pref not in subnet_address_prefixes:\n            logger.warning(\"The prefix of the subnet you provided does not match the --subnet-prefix value %s. Using current prefix %s\", subnet_address_pref, subnet_address_prefixes)\n\n        # Add Delegation if not delegated already\n        if not subnet.get(\"delegations\", None):\n            logger.warning('Adding \"%s\" delegation to the existing subnet %s.', delegation_service_name, subnet_name)\n            poller = SubnetUpdate(cli_ctx=cmd.cli_ctx)(command_args={\n                \"name\": subnet_name,\n                \"vnet_name\": vnet_name,\n                \"subscription\": nw_subscription,\n                \"resource_group\": resource_group,\n                \"delegated_services\": [delegation]\n            })\n            subnet = LongRunningOperation(cmd.cli_ctx)(poller)\n        else:\n            for delgtn in subnet[\"delegations\"]:\n                if delgtn[\"serviceName\"] != delegation_service_name:\n                    raise CLIError(\"Can not use subnet with existing delegations other than {}\".format(\n                        delegation_service_name))\n\n    return subnet",
+    "hash_value": "16dd967757d0ec81758099f0a0eba5b4"
+  },
+  {
+    "pyfile": "custom.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_cli-2.71.0/azure_cli-2.71.0/azure/cli/command_modules/resource/custom.py",
+    "line_number": "348",
+    "type_description": "B818:urlopen",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "347\t    try:\n348\t        req = urlopen(url, context=_ssl_context())\n349\t        return req.read()",
+    "context_snippet": "def _urlretrieve(url):\n    try:\n        req = urlopen(url, context=_ssl_context())\n        return req.read()\n    except Exception:  # pylint: disable=broad-except\n        raise CLIError('Unable to retrieve url {}'.format(url))\n\ndef _ssl_context():\n    return ssl.create_default_context()",
+    "hash_value": "d2d0fde86aa93b582e06736a721055bc"
+  },
+  {
+    "pyfile": "_actions.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_cli-2.71.0/azure_cli-2.71.0/azure/cli/command_modules/vm/_actions.py",
+    "line_number": "266",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "265\t    if publisher_num > 1:\n266\t        with ThreadPoolExecutor(max_workers=_get_thread_count()) as executor:\n267\t            tasks = [executor.submit(_load_extension_images_from_publisher,",
+    "context_snippet": "def load_extension_images_thru_services(cli_ctx, publisher, name, version, location,\n                                    show_latest=False, partial_match=True):\n    from concurrent.futures import ThreadPoolExecutor, as_completed\n    from packaging.version import parse  # pylint: disable=no-name-in-module,import-error\n    all_images = []\n    client = _compute_client_factory(cli_ctx)\n    if location is None:\n        location = get_one_of_subscription_locations(cli_ctx)\n\n    def _load_extension_images_from_publisher(publisher):\n        from azure.core.exceptions import ResourceNotFoundError\n        try:\n            types = client.virtual_machine_extension_images.list_types(location, publisher)\n        except ResourceNotFoundError as e:\n            # PIR image publishers might not have any extension images, exception could raise\n            logger.warning(str(e))\n            types = []\n        if name:\n            types = [t for t in types if _matched(name, t.name, partial_match)]\n        for t in types:\n            try:\n                versions = client.virtual_machine_extension_images.list_versions(\n                    location, publisher, t.name)\n            except ResourceNotFoundError as e:\n                logger.warning(str(e))\n                continue\n            if version:\n                versions = [v for v in versions if _matched(version, v.name, partial_match)]\n\n            if show_latest:\n                # pylint: disable=no-member\n                versions.sort(key=lambda v: parse(v.name), reverse=True)\n                try:\n                    all_images.append({\n                        'publisher': publisher,\n                        'name': t.name,\n                        'version': versions[0].name})\n                except IndexError:\n                    pass  # if no versions for this type continue to next type.\n            else:\n                for v in versions:\n                    all_images.append({\n                        'publisher': publisher,\n                        'name': t.name,\n                        'version': v.name})\n\n    publishers = client.virtual_machine_images.list_publishers(location=location)\n    if publisher:\n        publishers = [p for p in publishers if _matched(publisher, p.name, partial_match)]\n\n    publisher_num = len(publishers)\n    if publisher_num > 1:\n        with ThreadPoolExecutor(max_workers=_get_thread_count()) as executor:\n            tasks = [executor.submit(_load_extension_images_from_publisher,\n                                     p.name) for p in publishers]\n            for t in as_completed(tasks):\n                t.result()  # don't use the result but expose exceptions from the threads\n    elif publisher_num == 1:\n        _load_extension_images_from_publisher(publishers[0].name)\n\n    return all_images",
+    "hash_value": "d4990b9b8574e7586473d31fea8c4908"
+  }
+]

@@ -1,0 +1,191 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import glob\nimport os\nimport subprocess\nimport sys\nfrom distutils.command.build import build\nimport setuptools\nfrom pkg_resources import parse_version\nfrom setuptools import setup, find_packages\nfrom setuptools.command.install import install\n\nbase_dir = os.path.dirname(__file__)\nsrc_dir = os.path.join(base_dir, \"src\")\nimport sys\nsys.path.insert(0, src_dir)\n\nuse_system_lib = True\nif os.environ.get(\"BUILD_LIB\") == \"1\":\n    use_system_lib = False\n\nclass CFFIBuild(build):\n    def finalize_options(self):\n        self.distribution.ext_modules = get_ext_modules()\n        build.finalize_options(self)\n\nclass CFFIInstall(install):\n    def finalize_options(self):\n        self.distribution.ext_modules = get_ext_modules()\n        install.finalize_options(self)\n\ndef build_ssdeep():\n    returncode = subprocess.call(\n        \"(cd src/ssdeep-lib && sh configure && make)\",\n        shell=True\n    )\n    if returncode == 0:\n        return\n\n    print(\"Failed while building ssdeep lib with configure and make.\")\n    print(\"Retry with autoreconf ...\")\n\n    # libtoolize: Install required files for automake\n    returncode = subprocess.call(\n        \"(cd src/ssdeep-lib && libtoolize && autoreconf --force)\",\n        shell=True\n    )\n    if returncode != 0:\n        # try harder\n        returncode = subprocess.call(\n            \"(cd src/ssdeep-lib && automake --add-missing && autoreconf --force)\",\n            shell=True\n        )\n        if returncode != 0:\n            sys.exit(\"Failed to reconfigure the project build.\")\n\n    returncode = subprocess.call(\n        \"(cd src/ssdeep-lib && sh configure && make)\",\n        shell=True\n    )\n\n    if returncode != 0:\n        sys.exit(\"Failed while building ssdeep lib.\")\n\ndef get_ext_modules():\n    from ssdeep.binding import Binding\n    if use_system_lib:\n        binding = Binding()\n    else:\n        build_ssdeep()\n        binding = Binding(\n            extra_objects=get_objects(),\n            include_dirs=[\"./src/ssdeep-lib/\"],\n            libraries=[]\n        )\n    binding.verify()\n    ext_modules = [\n        binding.ffi.verifier.get_extension()\n    ]\n    return ext_modules\n\ndef get_objects():\n    objects = glob.glob(\"src/ssdeep-lib/.libs/*.o\")\n    if len(objects) > 0:\n        return objects\n    return glob.glob(\"src/ssdeep-lib/.libs/*.obj\")\n\nabout = {}\nwith open(os.path.join(src_dir, \"ssdeep\", \"__about__.py\")) as f:\n    exec(f.read(), about)\n\nwith open(os.path.join(base_dir, \"README.rst\")) as f:\n    long_description = f.read()\n\n# On some systems(e.g. Debian 8, CentOS 7) the setuptools package is very old.\n# We try to install an old version of pytest-runner without setuptools_scm dependency.\n# See: https://github.com/pytest-dev/pytest-runner/blob/master/CHANGES.rst\nif parse_version(setuptools.__version__) < parse_version(\"12\"):\n    setup_requires = [\"pytest-runner<2.4\"]\nelse:\n    setup_requires = [\"pytest-runner\"]\n\nsetup(\n    name=about[\"__title__\"],\n    version=about[\"__version__\"],\n    description=about[\"__summary__\"],\n    long_description=long_description,\n    license=about[\"__license__\"],\n    url=about[\"__uri__\"],\n    zip_safe=False,\n    author=about[\"__author__\"],\n    classifiers=[\n        \"Development Status :: 5 - Production/Stable\",\n        \"Intended Audience :: Developers\",\n        \"License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)\",\n        \"Operating System :: OS Independent\",\n        \"Programming Language :: Python\",\n        \"Programming Language :: Python :: 2\",\n        \"Programming Language :: Python :: 2.7\",\n        \"Programming Language :: Python :: 3\",\n        \"Programming Language :: Python :: 3.2\",\n        \"Programming Language :: Python :: 3.3\",\n        \"Programming Language :: Python :: 3.4\",\n        \"Programming Language :: Python :: 3.5\",\n        \"Programming Language :: Python :: 3.6\",\n        \"Programming Language :: Python :: 3.7\",\n        \"Programming Language :: Python :: Implementation :: CPython\",\n        \"Programming Language :: Python :: Implementation :: PyPy\",\n        \"Topic :: Software Development :: Libraries :: Python Modules\",\n    ],\n    keywords=\"ssdeep\",\n    install_requires=[\n        \"cffi>=0.8.6\",\n        \"six>=1.4.1\",\n    ],\n    setup_requires=[\n        \"cffi>=0.8.6\",\n        \"six>=1.4.1\",\n    ] + setup_requires,\n    tests_require=[\n        \"pytest\",\n    ],\n    extras_require={\n        \"docstest\": [\n            \"doc8\",\n            \"readme_renderer >= 16.0\",\n            \"sphinx\",\n            \"sphinx_rtd_theme\",\n        ],\n    },\n    package_dir={'': 'src'},\n    packages=find_packages(where=\"src\", exclude=[\"_cffi_src\", \"_cffi_src.*\"]),\n    include_package_data=True,\n    cmdclass={\n        \"build\": CFFIBuild,\n        \"install\": CFFIInstall,\n    },\n    ext_package=\"ssdeep\",\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.join",
+        "sys.path.insert",
+        "os.environ.get",
+        "subprocess.call",
+        "subprocess.call",
+        "subprocess.call",
+        "sys.exit",
+        "subprocess.call",
+        "sys.exit",
+        "glob.glob",
+        "glob.glob",
+        "open",
+        "os.path.join",
+        "open",
+        "os.path.join",
+        "setuptools.find_packages"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(__file__)",
+        "os.path.join(base_dir, \"src\")",
+        "sys.path.insert(0, src_dir)",
+        "os.environ.get(\"BUILD_LIB\")",
+        "subprocess.call(\"(cd src/ssdeep-lib && sh configure && make)\", shell=True)",
+        "subprocess.call(\"(cd src/ssdeep-lib && libtoolize && autoreconf --force)\", shell=True)",
+        "subprocess.call(\"(cd src/ssdeep-lib && automake --add-missing && autoreconf --force)\", shell=True)",
+        "sys.exit(\"Failed to reconfigure the project build.\")",
+        "subprocess.call(\"(cd src/ssdeep-lib && sh configure && make)\", shell=True)",
+        "sys.exit(\"Failed while building ssdeep lib.\")",
+        "glob.glob(\"src/ssdeep-lib/.libs/*.o\")",
+        "glob.glob(\"src/ssdeep-lib/.libs/*.obj\")",
+        "open(os.path.join(src_dir, \"ssdeep\", \"__about__.py\"))",
+        "os.path.join(src_dir, \"ssdeep\", \"__about__.py\")",
+        "open(os.path.join(base_dir, \"README.rst\"))",
+        "os.path.join(base_dir, \"README.rst\")",
+        "setuptools.find_packages(where=\"src\", exclude=[\"_cffi_src\", \"_cffi_src.*\"])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sys.path.insert",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "setuptools.find_packages",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "import glob\nimport os\nimport subprocess\nimport sys\n\nbase_dir = os.path.dirname(__file__)\nsrc_dir = os.path.join(base_dir, \"src\")\nsys.path.insert(0, src_dir)\n\nuse_system_lib = True\nif os.environ.get(\"BUILD_LIB\") == \"1\":\n    use_system_lib = False\n\ndef build_ssdeep():\n    returncode = subprocess.call(\n        \"(cd src/ssdeep-lib && sh configure && make)\",\n        shell=True\n    )\n    if returncode == 0:\n        return\n\n    returncode = subprocess.call(\n        \"(cd src/ssdeep-lib && libtoolize && autoreconf --force)\",\n        shell=True\n    )\n    if returncode != 0:\n        returncode = subprocess.call(\n            \"(cd src/ssdeep-lib && automake --add-missing && autoreconf --force)\",\n            shell=True\n        )\n        if returncode != 0:\n            sys.exit(\"Failed to reconfigure the project build.\")\n\n    returncode = subprocess.call(\n        \"(cd src/ssdeep-lib && sh configure && make)\",\n        shell=True\n    )\n\n    if returncode != 0:\n        sys.exit(\"Failed while building ssdeep lib.\")\n\ndef get_objects():\n    objects = glob.glob(\"src/ssdeep-lib/.libs/*.o\")\n    if len(objects) > 0:\n        return objects\n    return glob.glob(\"src/ssdeep-lib/.libs/*.obj\")\n\nabout = {}\nwith open(os.path.join(src_dir, \"ssdeep\", \"__about__.py\")) as f:\n    exec(f.read(), about)\n\nwith open(os.path.join(base_dir, \"README.rst\")) as f:\n    long_description = f.read()\n\nsetuptools.find_packages(where=\"src\", exclude=[\"_cffi_src\", \"_cffi_src.*\"])"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ssdeep-3.4",
+      "total_matches": 5
+    }
+  }
+]

@@ -1,0 +1,296 @@
+{
+  "metadata": {
+    "package_name": "python_swiftclient-4",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/python_swiftclient-4.7.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "client.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/python_swiftclient-4.7.0/python_swiftclient-4.7.0/swiftclient/client.py",
+      "line_number": "687",
+      "type_description": "B820:get",
+      "context_snippet": "def get_auth(auth_url, user, key, **kwargs):\n    \"\"\"\n    Get authentication/authorization credentials.\n\n    :kwarg auth_version: the api version of the supplied auth params\n    :kwarg os_options: a dict, the openstack identity service options\n\n    :returns: a tuple, (storage_url, token)\n\n    N.B. if the optional os_options parameter includes a non-empty\n    'object_storage_url' key it will override the default storage url returned\n    by the auth service.\n\n    The snet parameter is used for Rackspace's ServiceNet internal network\n    implementation. In this function, it simply adds *snet-* to the beginning\n    of the host name for the returned storage URL. With Rackspace Cloud Files,\n    use of this network path causes no bandwidth charges but requires the\n    client to be running on Rackspace's ServiceNet network.\n    \"\"\"\n    session = kwargs.get('session', None)\n    auth_version = kwargs.get('auth_version', '1')\n    os_options = kwargs.get('os_options', {})\n\n    cacert = kwargs.get('cacert', None)\n    insecure = kwargs.get('insecure', False)\n    cert = kwargs.get('cert')\n    cert_key = kwargs.get('cert_key')\n    timeout = kwargs.get('timeout', None)\n\n    if session:\n        service_type = os_options.get('service_type', 'object-store')\n        interface = os_options.get('endpoint_type', 'public')\n        region_name = os_options.get('region_name')\n        storage_url = session.get_endpoint(service_type=service_type,\n                                           interface=interface,\n                                           region_name=region_name)\n        token = session.get_token()\n    elif auth_version in AUTH_VERSIONS_V1:\n        storage_url, token = get_auth_1_0(auth_url,\n                                          user,\n                                          key,\n                                          kwargs.get('snet'),\n                                          cacert=cacert,\n                                          insecure=insecure,\n                                          cert=cert,\n                                          cert_key=cert_key,\n                                          timeout=timeout)\n    elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:\n        # We are handling a special use case here where the user argument\n        # specifies both the user name and tenant name in the form tenant:user\n        if user and not kwargs.get('tenant_name') and ':' in user:\n            os_options['tenant_name'], user = user.split(':')\n\n        # We are allowing to have a tenant_name argument in get_auth\n        # directly without having os_options\n        if kwargs.get('tenant_name'):\n            os_options['tenant_name'] = kwargs['tenant_name']\n\n        if os_options.get('auth_type') == 'v3applicationcredential':\n            pass\n        elif not (os_options.get('tenant_name') or\n                  os_options.get('tenant_id') or\n                  os_options.get('project_name') or\n                  os_options.get('project_id')):\n            if auth_version in AUTH_VERSIONS_V2:\n                raise ClientException('No tenant specified')\n            raise ClientException('No project name or project id specified.')\n\n        storage_url, token = get_auth_keystone(auth_url, user,\n                                               key, os_options,\n                                               cacert=cacert,\n                                               insecure=insecure,\n                                               cert=cert,\n                                               cert_key=cert_key,\n                                               timeout=timeout,\n                                               auth_version=auth_version)\n    else:\n        raise ClientException('Unknown auth_version %s specified and no '\n                              'session found.' % auth_version)\n\n    # Override storage url, if necessary\n    if os_options.get('object_storage_url'):\n        return os_options['object_storage_url'], token\n    else:\n        return storage_url, token\n",
+      "hash_value": "af0c16c89e0ac3fff92741dbb189b33a",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def get_auth(auth_url, user, key, **kwargs):\n    \"\"\"\n    Get authentication/authorization credentials.\n\n    :kwarg auth_version: the api version of the supplied auth params\n    :kwarg os_options: a dict, the openstack identity service options\n\n    :returns: a tuple, (storage_url, token)\n\n    N.B. if the optional os_options parameter includes a non-empty\n    'object_storage_url' key it will override the default storage url returned\n    by the auth service.\n\n    The snet parameter is used for Rackspace's ServiceNet internal network\n    implementation. In this function, it simply adds *snet-* to the beginning\n    of the host name for the returned storage URL. With Rackspace Cloud Files,\n    use of this network path causes no bandwidth charges but requires the\n    client to be running on Rackspace's ServiceNet network.\n    \"\"\"\n    session = kwargs.get('session', None)\n    auth_version = kwargs.get('auth_version', '1')\n    os_options = kwargs.get('os_options', {})\n\n    cacert = kwargs.get('cacert', None)\n    insecure = kwargs.get('insecure', False)\n    cert = kwargs.get('cert')\n    cert_key = kwargs.get('cert_key')\n    timeout = kwargs.get('timeout', None)\n\n    if session:\n        service_type = os_options.get('service_type', 'object-store')\n        interface = os_options.get('endpoint_type', 'public')\n        region_name = os_options.get('region_name')\n        storage_url = session.get_endpoint(service_type=service_type,\n                                           interface=interface,\n                                           region_name=region_name)\n        token = session.get_token()\n    elif auth_version in AUTH_VERSIONS_V1:\n        storage_url, token = get_auth_1_0(auth_url,\n                                          user,\n                                          key,\n                                          kwargs.get('snet'),\n                                          cacert=cacert,\n                                          insecure=insecure,\n                                          cert=cert,\n                                          cert_key=cert_key,\n                                          timeout=timeout)\n    elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:\n        # We are handling a special use case here where the user argument\n        # specifies both the user name and tenant name in the form tenant:user\n        if user and not kwargs.get('tenant_name') and ':' in user:\n            os_options['tenant_name'], user = user.split(':')\n\n        # We are allowing to have a tenant_name argument in get_auth\n        # directly without having os_options\n        if kwargs.get('tenant_name'):\n            os_options['tenant_name'] = kwargs['tenant_name']\n\n        if os_options.get('auth_type') == 'v3applicationcredential':\n            pass\n        elif not (os_options.get('tenant_name') or\n                  os_options.get('tenant_id') or\n                  os_options.get('project_name') or\n                  os_options.get('project_id')):\n            if auth_version in AUTH_VERSIONS_V2:\n                raise ClientException('No tenant specified')\n            raise ClientException('No project name or project id specified.')\n\n        storage_url, token = get_auth_keystone(auth_url, user,\n                                               key, os_options,\n                                               cacert=cacert,\n                                               insecure=insecure,\n                                               cert=cert,\n                                               cert_key=cert_key,\n                                               timeout=timeout,\n                                               auth_version=auth_version)\n    else:\n        raise ClientException('Unknown auth_version %s specified and no '\n                              'session found.' % auth_version)\n\n    # Override storage url, if necessary\n    if os_options.get('object_storage_url'):\n        return os_options['object_storage_url'], token\n    else:\n        return storage_url, token\n",
+          "triple_sequences": [
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'session', None",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'auth_version', '1'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'os_options', {}",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'cacert', None",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'insecure', False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'cert'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'cert_key'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'timeout', None",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'service_type', 'object-store'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'endpoint_type', 'public'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'region_name'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "session.get_endpoint()",
+              "action_description": "Retrieves operating system identifier",
+              "action_id": "get_os_id",
+              "object": "service_type=service_type, interface=interface, region_name=region_name",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "session.get_token()",
+              "action_description": "Retrieves operating system identifier",
+              "action_id": "get_os_id",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'snet'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "get_auth_1_0()",
+              "action_description": "Instantiates Grabber class",
+              "action_id": "init_grabber_class",
+              "object": "auth_url, user, key, kwargs.get('snet'), cacert=cacert, insecure=insecure, cert=cert, cert_key=cert_key, timeout=timeout",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "user.split(':')",
+              "action_description": "Converts bytes to string using UTF-8 encoding",
+              "action_id": "decode_bytes_to_string",
+              "object": "user",
+              "object_description": "Username string",
+              "object_id": "username_string",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "kwargs.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'tenant_name'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'auth_type'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'tenant_name'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'tenant_id'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'project_name'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'project_id'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "raise ClientException()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "'No tenant specified'",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "raise ClientException()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "'No project name or project id specified.'",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "get_auth_keystone()",
+              "action_description": "Instantiates Grabber class",
+              "action_id": "init_grabber_class",
+              "object": "auth_url, user, key, os_options, cacert=cacert, insecure=insecure, cert=cert, cert_key=cert_key, timeout=timeout, auth_version=auth_version",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "raise ClientException()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "'Unknown auth_version %s specified and no session found.' % auth_version",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "os_options.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'object_storage_url'",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

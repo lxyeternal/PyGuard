@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import re\nfrom itertools import chain\nfrom os.path import basename\nfrom os.path import dirname\nfrom os.path import join\nfrom os.path import splitext\nfrom distutils.core import setup\nfrom distutils.command.build import build\nfrom setuptools.command.develop import develop\nfrom setuptools.command.easy_install import easy_install\nfrom setuptools.command.install_lib import install_lib\n\n\nclass BuildWithPTH(build):\n    def run(self):\n        build.run(self)\n        path = join(dirname(__file__), 'better_exceptions_hook.pth')\n        dest = join(self.build_lib, basename(path))\n        self.copy_file(path, dest)\n\n\nclass EasyInstallWithPTH(easy_install):\n    def run(self):\n        easy_install.run(self)\n        path = join(dirname(__file__), 'better_exceptions_hook.pth')\n        dest = join(self.install_dir, basename(path))\n        self.copy_file(path, dest)\n\n\nclass InstallLibWithPTH(install_lib):\n    def run(self):\n        install_lib.run(self)\n        path = join(dirname(__file__), 'better_exceptions_hook.pth')\n        dest = join(self.install_dir, basename(path))\n        self.copy_file(path, dest)\n        self.outputs = [dest]\n\n    def get_outputs(self):\n        return chain(install_lib.get_outputs(self), self.outputs)\n\n\nclass DevelopWithPTH(develop):\n    def run(self):\n        develop.run(self)\n        path = join(dirname(__file__), 'better_exceptions_hook.pth')\n        dest = join(self.install_dir, basename(path))\n        self.copy_file(path, dest)\n\n\nwith open('better_exceptions/__init__.py', 'r') as file:\n    version = re.search(r'^__version__\\s*=\\s*[\\'\"]([^\\'\"]*)[\\'\"]',\n                        file.read(), re.MULTILINE).group(1)\n\nsetup(\n    name = 'better_exceptions',\n    packages = ['better_exceptions', 'better_exceptions.integrations'],\n    version = version,\n    description = 'Pretty and helpful exceptions, automatically',\n    author = 'Josh Junon',\n    author_email = 'josh@junon.me',\n    url = 'https://github.com/qix-/better-exceptions',\n    download_url = 'https://github.com/qix-/better-exceptions/archive/{}.tar.gz'.format(version),\n    keywords = ['pretty', 'better', 'exceptions', 'exception', 'error', 'local', 'debug', 'debugging', 'locals'],\n    classifiers = [],\n    extras_require = {\n        ':sys_platform==\"win32\"': ['colorama']\n    },\n    # This all comes from pytest-cov repository:\n    # https://github.com/pytest-dev/pytest-cov/blob/cde7c378b6a1971957759f42ac91e2860b41cf89/setup.py\n    cmdclass = {\n        'build': BuildWithPTH,\n        'easy_install': EasyInstallWithPTH,\n        'install_lib': InstallLibWithPTH,\n        'develop': DevelopWithPTH,\n    }\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "re.search",
+        "file.read",
+        "re.Match.group",
+        "distutils.core.setup"
+      ],
+      "api_sequence_with_args": [
+        "open('better_exceptions/__init__.py', 'r')",
+        "re.search(r'^__version__\\s*=\\s*[\\'\"]([^\\'\"]*)[\\'\"]', file.read(), re.MULTILINE)",
+        "file.read()",
+        "re.Match.group(1)",
+        "distutils.core.setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "re.Match.group",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "distutils.core.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "with open('better_exceptions/__init__.py', 'r') as file:\n    version = re.search(r'^__version__\\s*=\\s*[\\'\"]([^\\'\"]*)[\\'\"]',\n                        file.read(), re.MULTILINE).group(1)\n\nsetup(\n    name = 'better_exceptions',\n    packages = ['better_exceptions', 'better_exceptions.integrations'],\n    version = version,\n    description = 'Pretty and helpful exceptions, automatically',\n    author = 'Josh Junon',\n    author_email = 'josh@junon.me',\n    url = 'https://github.com/qix-/better-exceptions',\n    download_url = 'https://github.com/qix-/better-exceptions/archive/{}.tar.gz'.format(version),\n    keywords = ['pretty', 'better', 'exceptions', 'exception', 'error', 'local', 'debug', 'debugging', 'locals'],\n    classifiers = [],\n    extras_require = {\n        ':sys_platform==\"win32\"': ['colorama']\n    },\n    cmdclass = {\n        'build': BuildWithPTH,\n        'easy_install': EasyInstallWithPTH,\n        'install_lib': InstallLibWithPTH,\n        'develop': DevelopWithPTH,\n    }\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "better_exceptions-0.3.3",
+      "total_matches": 1
+    }
+  }
+]

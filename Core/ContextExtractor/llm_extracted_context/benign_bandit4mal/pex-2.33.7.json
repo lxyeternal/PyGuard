@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "pex-2.33.7",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "easy_install.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pex-2.33.7/pex-2.33.7/pex/vendor/_vendored/setuptools/setuptools/command/easy_install.py",
+    "line_number": "1389",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1388\t            with io.open(sitepy) as strm:\n1389\t                current = strm.read()\n1390",
+    "context_snippet": "def install_site_py(self):\n    \"\"\"Make sure there's a site.py in the target dir, if needed\"\"\"\n\n    if self.sitepy_installed:\n        return  # already did it, or don't need to\n\n    sitepy = os.path.join(self.install_dir, \"site.py\")\n    source = resource_string(\"setuptools\", \"site-patch.py\")\n    source = source.decode('utf-8')\n    current = \"\"\n\n    if os.path.exists(sitepy):\n        log.debug(\"Checking existing site.py in %s\", self.install_dir)\n        with io.open(sitepy) as strm:\n            current = strm.read()\n\n        if not current.startswith('def __boot():'):\n            raise DistutilsError(\n                \"%s is not a setuptools-generated site.py; please\"\n                \" remove it.\" % sitepy\n            )\n\n    if current != source:\n        log.info(\"Creating %s\", sitepy)\n        if not self.dry_run:\n            ensure_directory(sitepy)\n            with io.open(sitepy, 'w', encoding='utf-8') as strm:\n                strm.write(source)\n        self.byte_compile([sitepy])\n\n    self.sitepy_installed = True",
+    "hash_value": "04876baf7e42ac0d712cac48f65c8ce5"
+  },
+  {
+    "pyfile": "test_pex_builder.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pex-2.33.7/pex-2.33.7/tests/test_pex_builder.py",
+    "line_number": "65",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "64\t        with open(success_txt) as fp:\n65\t            assert fp.read() == \"success\"\n66",
+    "context_snippet": "def test_pex_builder():\n    # type: () -> None\n    with temporary_dir() as td, make_bdist(\"p1\") as p1:\n        pb = write_pex(td, exe_main, dists=[p1])\n\n        success_txt = os.path.join(td, \"success.txt\")\n        PEX(td, interpreter=pb.interpreter).run(args=[success_txt])\n        assert os.path.exists(success_txt)\n        with open(success_txt) as fp:\n            assert fp.read() == \"success\"",
+    "hash_value": "bca38a16380b9ad3e12d82562e89bca6"
+  },
+  {
+    "pyfile": "command.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pex-2.33.7/pex-2.33.7/pex/commands/command.py",
+    "line_number": "390",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "389\t            with ENV.patch(PEX_ROOT=pex_root, TMPDIR=tmpdir) as env, environment_as(**env):\n390\t                cache_access.read_write()\n391\t                yield env",
+    "context_snippet": "@contextmanager\ndef global_environment(options):\n    # type: (Namespace) -> Iterator[Dict[str, str]]\n    \"\"\"Configures the Pex global environment.\n\n    This includes configuration of basic Pex infrastructure like logging, warnings and the\n    `PEX_ROOT` to use.\n\n    :param options: The global options registered by `register_global_arguments`.\n    :yields: The configured global environment.\n    :raises: :class:`GlobalConfigurationError` if invalid global option values were specified.\n    \"\"\"\n    if not hasattr(options, \"rc_file\"):\n        # We don't register the global args on the root command (but do on every subcommand).\n        # So if the user runs just `pex` with no subcommand we must not attempt to use those\n        # global args, including rc_file, which we check for here as a representative of the\n        # global args.\n        # Note that we can't use command_type here because the legacy command line parser in\n        # pex/bin/pex.py uses this function as well, and it doesn't set command_type.\n        with ENV.patch() as env:\n            yield env\n    with _configured_env(options):\n        verbosity = Variables.PEX_VERBOSE.strip_default(ENV)\n        if verbosity is None:\n            verbosity = getattr(options, \"verbosity\", 0)\n\n        emit_warnings = True\n        if not options.emit_warnings:\n            emit_warnings = False\n        if emit_warnings and ENV.PEX_EMIT_WARNINGS is not None:\n            emit_warnings = ENV.PEX_EMIT_WARNINGS\n\n        with ENV.patch(PEX_VERBOSE=str(verbosity), PEX_EMIT_WARNINGS=str(emit_warnings)):\n            pex_warnings.configure_warnings(env=ENV)\n\n            # Ensure the TMPDIR is an absolute path (So subprocesses that change CWD can find it)\n            # and that it exists.\n            tmpdir = os.path.realpath(options.tmpdir)\n            if not os.path.exists(tmpdir):\n                raise GlobalConfigurationError(\n                    \"The specified --tmpdir does not exist: {}\".format(tmpdir)\n                )\n            if not os.path.isdir(tmpdir):\n                raise GlobalConfigurationError(\n                    \"The specified --tmpdir is not a directory: {}\".format(tmpdir)\n                )\n            tempfile.tempdir = os.environ[\"TMPDIR\"] = tmpdir\n\n            if options.cache_dir:\n                pex_warnings.warn(\"The --cache-dir option is deprecated, use --pex-root instead.\")\n                if options.pex_root and options.cache_dir != options.pex_root:\n                    raise GlobalConfigurationError(\n                        \"Both --cache-dir and --pex-root were passed with conflicting values. \"\n                        \"Just set --pex-root.\"\n                    )\n\n            if options.disable_cache:\n\n                def warn_ignore_pex_root(set_via):\n                    pex_warnings.warn(\n                        \"The pex root has been set via {via} but --disable-cache is also set. \"\n                        \"Ignoring {via} and disabling caches.\".format(via=set_via)\n                    )\n\n                if options.cache_dir:\n                    warn_ignore_pex_root(\"--cache-dir\")\n                elif options.pex_root:\n                    warn_ignore_pex_root(\"--pex-root\")\n                elif os.environ.get(\"PEX_ROOT\"):\n                    warn_ignore_pex_root(\"PEX_ROOT\")\n\n                pex_root = safe_mkdtemp()\n            else:\n                pex_root = options.cache_dir or options.pex_root or ENV.PEX_ROOT\n\n            with ENV.patch(PEX_ROOT=pex_root, TMPDIR=tmpdir) as env, environment_as(**env):\n                cache_access.read_write()\n                yield env",
+    "hash_value": "c7c37c39c9e9f07bc576821a84405498"
+  }
+]

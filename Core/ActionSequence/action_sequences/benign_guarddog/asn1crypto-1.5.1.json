@@ -1,0 +1,235 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import codecs\nimport os\nimport shutil\nimport sys\nimport warnings\n\nimport setuptools\nfrom setuptools import setup, Command\nfrom setuptools.command.egg_info import egg_info\n\nPACKAGE_NAME = 'asn1crypto'\nPACKAGE_VERSION = '1.5.1'\nPACKAGE_ROOT = os.path.dirname(os.path.abspath(__file__))\n\n# setuptools 38.6.0 and newer know about long_description_content_type, but\n# distutils still complains about it, so silence the warning\nsv = setuptools.__version__\nsvi = tuple(int(o) if o.isdigit() else o for o in sv.split('.'))\nif svi >= (38, 6):\n    warnings.filterwarnings(\n        'ignore',\n        \"Unknown distribution option: 'long_description_content_type'\",\n        module='distutils.dist'\n    )\n\n# Try to load the tests first from the source repository layout. If that\n# doesn't work, we assume this file is in the release package, and the tests\n# are part of the package {PACKAGE_NAME}_tests.\nif os.path.exists(os.path.join(PACKAGE_ROOT, 'tests')):\n    tests_require = []\n    test_suite = 'tests.make_suite'\nelse:\n    tests_require = ['%s_tests' % PACKAGE_NAME]\n    test_suite = '%s_tests.make_suite' % PACKAGE_NAME\n\n# This allows us to send the LICENSE and docs when creating a sdist. Wheels\n# automatically include the LICENSE, and don't need the docs. For these\n# to be included, the command must be \"python setup.py sdist\".\npackage_data = {}\nif sys.argv[1:] == ['sdist'] or sorted(sys.argv[1:]) == ['-q', 'sdist']:\n    package_data[PACKAGE_NAME] = [\n        '../LICENSE',\n        '../*.md',\n        '../docs/*.md',\n    ]\n\n# Ensures a copy of the LICENSE is included with the egg-info for\n# install and bdist_egg commands\nclass EggInfoCommand(egg_info):\n    def run(self):\n        egg_info_path = os.path.join(\n            PACKAGE_ROOT,\n            '%s.egg-info' % PACKAGE_NAME\n        )\n        if not os.path.exists(egg_info_path):\n            os.mkdir(egg_info_path)\n        shutil.copy2(\n            os.path.join(PACKAGE_ROOT, 'LICENSE'),\n            os.path.join(egg_info_path, 'LICENSE')\n        )\n        egg_info.run(self)\n\nclass CleanCommand(Command):\n    user_options = [\n        ('all', 'a', '(Compatibility with original clean command)'),\n    ]\n\n    def initialize_options(self):\n        self.all = False\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        sub_folders = ['build', 'temp', '%s.egg-info' % PACKAGE_NAME]\n        if self.all:\n            sub_folders.append('dist')\n        for sub_folder in sub_folders:\n            full_path = os.path.join(PACKAGE_ROOT, sub_folder)\n            if os.path.exists(full_path):\n                shutil.rmtree(full_path)\n        for root, dirs, files in os.walk(os.path.join(PACKAGE_ROOT, PACKAGE_NAME)):\n            for filename in files:\n                if filename[-4:] == '.pyc':\n                    os.unlink(os.path.join(root, filename))\n            for dirname in list(dirs):\n                if dirname == '__pycache__':\n                    shutil.rmtree(os.path.join(root, dirname))\n\nreadme = ''\nwith codecs.open(os.path.join(PACKAGE_ROOT, 'readme.md'), 'r', 'utf-8') as f:\n    readme = f.read()\n\nsetup(\n    name=PACKAGE_NAME,\n    version=PACKAGE_VERSION,\n\n    description=(\n        'Fast ASN.1 parser and serializer with definitions for private keys, '\n        'public keys, certificates, CRL, OCSP, CMS, PKCS#3, PKCS#7, PKCS#8, '\n        'PKCS#12, PKCS#5, X.509 and TSP'\n    ),\n    long_description=readme,\n    long_description_content_type='text/markdown',\n\n    url='https://github.com/wbond/asn1crypto',\n\n    author='wbond',\n    author_email='will@wbond.net',\n\n    license='MIT',\n\n    classifiers=[\n        'Development Status :: 5 - Production/Stable',\n\n        'Intended Audience :: Developers',\n\n        'License :: OSI Approved :: MIT License',\n\n        'Programming Language :: Python',\n        'Programming Language :: Python :: 2',\n        'Programming Language :: Python :: 2.6',\n        'Programming Language :: Python :: 2.7',\n        'Programming Language :: Python :: 3',\n        'Programming Language :: Python :: 3.2',\n        'Programming Language :: Python :: 3.3',\n        'Programming Language :: Python :: 3.4',\n        'Programming Language :: Python :: 3.5',\n        'Programming Language :: Python :: 3.6',\n        'Programming Language :: Python :: 3.7',\n        'Programming Language :: Python :: 3.8',\n        'Programming Language :: Python :: 3.9',\n        'Programming Language :: Python :: 3.10',\n        'Programming Language :: Python :: Implementation :: CPython',\n        'Programming Language :: Python :: Implementation :: PyPy',\n\n        'Topic :: Security :: Cryptography',\n    ],\n\n    keywords='asn1 crypto pki x509 certificate rsa dsa ec dh',\n\n    packages=[PACKAGE_NAME],\n    package_data=package_data,\n\n    tests_require=tests_require,\n    test_suite=test_suite,\n\n    cmdclass={\n        'clean': CleanCommand,\n        'egg_info': EggInfoCommand,\n    }\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.abspath",
+        "warnings.filterwarnings",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "os.mkdir",
+        "shutil.copy2",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "shutil.copy2",
+        "egg_info.run",
+        "os.path.join",
+        "os.path.exists",
+        "shutil.rmtree",
+        "os.walk",
+        "os.path.join",
+        "os.unlink",
+        "os.path.join",
+        "shutil.rmtree",
+        "codecs.open",
+        "os.path.join",
+        "codecs.open.read"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(os.path.abspath(__file__))",
+        "os.path.abspath(__file__)",
+        "warnings.filterwarnings('ignore', \"Unknown distribution option: 'long_description_content_type'\", module='distutils.dist')",
+        "os.path.exists(os.path.join(PACKAGE_ROOT, 'tests'))",
+        "os.path.join(PACKAGE_ROOT, 'tests')",
+        "os.path.exists(egg_info_path)",
+        "os.path.join(PACKAGE_ROOT, '%s.egg-info' % PACKAGE_NAME)",
+        "os.mkdir(egg_info_path)",
+        "shutil.copy2(os.path.join(PACKAGE_ROOT, 'LICENSE'), os.path.join(egg_info_path, 'LICENSE'))",
+        "os.path.join(PACKAGE_ROOT, 'LICENSE')",
+        "os.path.join(egg_info_path, 'LICENSE')",
+        "os.path.join(PACKAGE_ROOT, sub_folder)",
+        "shutil.rmtree(full_path)",
+        "os.walk(os.path.join(PACKAGE_ROOT, PACKAGE_NAME))",
+        "os.path.join(root, filename)",
+        "os.unlink(os.path.join(root, filename))",
+        "os.path.join(root, dirname)",
+        "shutil.rmtree(os.path.join(root, dirname))",
+        "codecs.open(os.path.join(PACKAGE_ROOT, 'readme.md'), 'r', 'utf-8')",
+        "os.path.join(PACKAGE_ROOT, 'readme.md')",
+        "f.read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "warnings.filterwarnings",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copy2",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.walk",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "codecs.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "f.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "PACKAGE_ROOT = os.path.dirname(os.path.abspath(__file__))\n\nsv = setuptools.__version__\nsvi = tuple(int(o) if o.isdigit() else o for o in sv.split('.'))\nif svi >= (38, 6):\n    warnings.filterwarnings(\n        'ignore',\n        \"Unknown distribution option: 'long_description_content_type'\",\n        module='distutils.dist'\n    )\n\nif os.path.exists(os.path.join(PACKAGE_ROOT, 'tests')):\n    tests_require = []\n    test_suite = 'tests.make_suite'\nelse:\n    tests_require = ['%s_tests' % PACKAGE_NAME]\n    test_suite = '%s_tests.make_suite' % PACKAGE_NAME\n\nclass EggInfoCommand(egg_info):\n    def run(self):\n        egg_info_path = os.path.join(\n            PACKAGE_ROOT,\n            '%s.egg-info' % PACKAGE_NAME\n        )\n        if not os.path.exists(egg_info_path):\n            os.mkdir(egg_info_path)\n        shutil.copy2(\n            os.path.join(PACKAGE_ROOT, 'LICENSE'),\n            os.path.join(egg_info_path, 'LICENSE')\n        )\n        egg_info.run(self)\n\nclass CleanCommand(Command):\n    def run(self):\n        sub_folders = ['build', 'temp', '%s.egg-info' % PACKAGE_NAME]\n        if self.all:\n            sub_folders.append('dist')\n        for sub_folder in sub_folders:\n            full_path = os.path.join(PACKAGE_ROOT, sub_folder)\n            if os.path.exists(full_path):\n                shutil.rmtree(full_path)\n        for root, dirs, files in os.walk(os.path.join(PACKAGE_ROOT, PACKAGE_NAME)):\n            for filename in files:\n                if filename[-4:] == '.pyc':\n                    os.unlink(os.path.join(root, filename))\n            for dirname in list(dirs):\n                if dirname == '__pycache__':\n                    shutil.rmtree(os.path.join(root, dirname))\n\nwith codecs.open(os.path.join(PACKAGE_ROOT, 'readme.md'), 'r', 'utf-8') as f:\n    readme = f.read()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "asn1crypto-1.5.1",
+      "total_matches": 1
+    }
+  }
+]

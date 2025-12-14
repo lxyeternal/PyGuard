@@ -1,0 +1,171 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# --- Match 1 (Line 65): execfile(os.path.join(repo_root, \"odps\", \"_version.py\"), version_ns) ---\n\nimport os\nimport platform\nimport shutil\nimport sys\n\nrepo_root = os.path.dirname(os.path.abspath(__file__))\n\ntry:\n    execfile\nexcept NameError:\n\n    def execfile(fname, globs, locs=None):\n        locs = locs or globs\n        exec(compile(open(fname).read(), fname, \"exec\"), globs, locs)\n\nversion_ns = {}\nexecfile(os.path.join(repo_root, \"odps\", \"_version.py\"), version_ns)\n\n# Data dependencies:\n# - repo_root: assigned above as os.path.dirname(os.path.abspath(__file__))\n# - version_ns: declared as empty dict above\n# - execfile: either built-in or defined above\n\n# --- Match 2 (Line 354): ret = os.system(cmd) ---\n\nclass BuildJS(Command):\n    description = \"build JavaScript files\"\n    user_options = [(\"registry=\", None, \"npm registry\")]\n\n    def initialize_options(self):\n        self.registry = None\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        if not which(\"npm\"):\n            raise Exception(\"You need to install npm before building the scripts.\")\n\n        cwd = os.getcwd()\n\n        os.chdir(os.path.join(os.path.abspath(os.getcwd()), \"odps\", \"static\", \"ui\"))\n        cmd = \"npm install\"\n        if getattr(self, \"registry\", None):\n            cmd += \" --registry=\" + self.registry\n        print(\"executing \" + cmd)\n        ret = os.system(cmd)\n        ret >>= 8\n        if ret != 0:\n            print(cmd + \" exited with error: %d\" % ret)\n\n        print(\"executing grunt\")\n        ret = os.system(\"npm run grunt\")\n        ret >>= 8\n        if ret != 0:\n            print(\"grunt exited with error: %d\" % ret)\n\n        os.chdir(cwd)\n\n# Data dependencies:\n# - cmd: assigned as \"npm install\" and possibly appended with registry\n# - ret: assigned from os.system(cmd)\n# - which: function defined earlier in the file\n# - os: imported at top\n# - self.registry: set in initialize_options\n\n# --- Match 3 (Line 360): ret = os.system(\"npm run grunt\") ---\n\n# (Already included above in BuildJS.run)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "open",
+        "open.read",
+        "compile",
+        "exec",
+        "os.getcwd",
+        "os.path.abspath",
+        "os.getcwd",
+        "os.path.join",
+        "os.chdir",
+        "os.system",
+        "os.system",
+        "os.chdir"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(__file__)",
+        "os.path.dirname(os.path.abspath(__file__))",
+        "os.path.join(repo_root, \"odps\", \"_version.py\")",
+        "open(fname)",
+        "open(fname).read()",
+        "compile(open(fname).read(), fname, \"exec\")",
+        "exec(compile(open(fname).read(), fname, \"exec\"), globs, locs)",
+        "os.getcwd()",
+        "os.path.abspath(os.getcwd())",
+        "os.getcwd()",
+        "os.path.join(os.path.abspath(os.getcwd()), \"odps\", \"static\", \"ui\")",
+        "os.chdir(os.path.join(os.path.abspath(os.getcwd()), \"odps\", \"static\", \"ui\"))",
+        "os.system(cmd)",
+        "os.system(\"npm run grunt\")",
+        "os.chdir(cwd)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\nimport platform\nimport shutil\nimport sys\n\nrepo_root = os.path.dirname(os.path.abspath(__file__))\n\ndef execfile(fname, globs, locs=None):\n    locs = locs or globs\n    exec(compile(open(fname).read(), fname, \"exec\"), globs, locs)\n\nversion_ns = {}\nexecfile(os.path.join(repo_root, \"odps\", \"_version.py\"), version_ns)\n\nclass BuildJS(Command):\n    description = \"build JavaScript files\"\n    user_options = [(\"registry=\", None, \"npm registry\")]\n\n    def initialize_options(self):\n        self.registry = None\n\n    def finalize_options(self):\n        pass\n\n    def run(self):\n        if not which(\"npm\"):\n            raise Exception(\"You need to install npm before building the scripts.\")\n\n        cwd = os.getcwd()\n\n        os.chdir(os.path.join(os.path.abspath(os.getcwd()), \"odps\", \"static\", \"ui\"))\n        cmd = \"npm install\"\n        if getattr(self, \"registry\", None):\n            cmd += \" --registry=\" + self.registry\n        print(\"executing \" + cmd)\n        ret = os.system(cmd)\n        ret >>= 8\n        if ret != 0:\n            print(cmd + \" exited with error: %d\" % ret)\n\n        print(\"executing grunt\")\n        ret = os.system(\"npm run grunt\")\n        ret >>= 8\n        if ret != 0:\n            print(\"grunt exited with error: %d\" % ret)\n\n        os.chdir(cwd)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyodps-0.12.3b2",
+      "total_matches": 3
+    }
+  }
+]

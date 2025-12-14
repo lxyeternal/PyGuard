@@ -1,0 +1,610 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "from __future__ import absolute_import, print_function\n\nimport os\nimport sys\n\nfrom distutils.core import setup\nfrom distutils.extension import Extension\nfrom Cython.Build import cythonize\n\n\n# For demo purposes, we build our own tiny library.\ntry:\n    print(\"building libmymath.a\")\n    assert os.system(\"gcc -shared -fPIC -c mymath.c -o mymath.o\") == 0\n    assert os.system(\"ar rcs libmymath.a mymath.o\") == 0\nexcept:\n    if not os.path.exists(\"libmymath.a\"):\n        print(\"Error building external library, please create libmymath.a manually.\")\n        sys.exit(1)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.system",
+        "os.system",
+        "os.path.exists",
+        "sys.exit"
+      ],
+      "api_sequence_with_args": [
+        "os.system(\"gcc -shared -fPIC -c mymath.c -o mymath.o\")",
+        "os.system(\"ar rcs libmymath.a mymath.o\")",
+        "os.path.exists(\"libmymath.a\")",
+        "sys.exit(1)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\n\n# For demo purposes, we build our own tiny library.\ntry:\n    print(\"building libmymath.a\")\n    assert os.system(\"gcc -shared -fPIC -c mymath.c -o mymath.o\") == 0\n    assert os.system(\"ar rcs libmymath.a mymath.o\") == 0\nexcept:\n    if not os.path.exists(\"libmymath.a\"):\n        print(\"Error building external library, please create libmymath.a manually.\")\n        sys.exit(1)"
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport stat\nimport subprocess\nimport sysconfig\nimport sys\nimport platform\nfrom shutil import which\nfrom sysconfig import get_path\nfrom distutils.core import setup, Extension\n\nis_cpython = platform.python_implementation() == 'CPython'\n\n# ... (other code omitted for brevity)\n\ndef compile_cython_modules(profile=False, coverage=False, compile_minimal=False, compile_more=False, cython_with_refnanny=False,\n                           cython_limited_api=False):\n    source_root = os.path.abspath(os.path.dirname(__file__))\n    compiled_modules = [\n        \"Cython.Plex.Actions\",\n        \"Cython.Plex.Scanners\",\n        \"Cython.Compiler.FlowControl\",\n        \"Cython.Compiler.LineTable\",\n        \"Cython.Compiler.Scanning\",\n        \"Cython.Compiler.Visitor\",\n        \"Cython.Runtime.refnanny\",\n    ]\n    if not compile_minimal:\n        compiled_modules.extend([\n            \"Cython.Plex.Machines\",\n            \"Cython.Plex.Transitions\",\n            \"Cython.Plex.DFA\",\n            \"Cython.Compiler.Code\",\n            \"Cython.Compiler.FusedNode\",\n            \"Cython.Compiler.Parsing\",\n            \"Cython.Tempita._tempita\",\n            \"Cython.StringIOTree\",\n            \"Cython.Utils\",\n        ])\n    if compile_more and not compile_minimal:\n        compiled_modules.extend([\n            \"Cython.Compiler.Lexicon\",\n            \"Cython.Compiler.Pythran\",\n            \"Cython.Build.Dependencies\",\n            \"Cython.Compiler.ParseTreeTransforms\",\n            \"Cython.Compiler.Nodes\",\n            \"Cython.Compiler.ExprNodes\",\n            \"Cython.Compiler.ModuleNode\",\n            \"Cython.Compiler.Optimize\",\n            ])\n\n    from shutil import which\n    from sysconfig import get_path\n    pgen = which(\n        'pgen', path=os.pathsep.join([os.environ['PATH'], os.path.join(get_path('include'), '..', 'Parser')]))\n    if not pgen:\n        sys.stderr.write(\"Unable to find pgen, not compiling formal grammar.\\n\")\n    else:\n        parser_dir = os.path.join(os.path.dirname(__file__), 'Cython', 'Parser')\n        grammar = os.path.join(parser_dir, 'Grammar')\n        subprocess.check_call([\n            pgen,\n            os.path.join(grammar),\n            os.path.join(parser_dir, 'graminit.h'),\n            os.path.join(parser_dir, 'graminit.c'),\n            ])\n        cst_pyx = os.path.join(parser_dir, 'ConcreteSyntaxTree.pyx')\n        if os.stat(grammar)[stat.ST_MTIME] > os.stat(cst_pyx)[stat.ST_MTIME]:\n            mtime = os.stat(grammar)[stat.ST_MTIME]\n            os.utime(cst_pyx, (mtime, mtime))\n        compiled_modules.extend([\n                \"Cython.Parser.ConcreteSyntaxTree\",\n            ])\n\n    defines = []\n    extra_extension_args = {}\n    if cython_limited_api:\n        defines += [\n            ('Py_LIMITED_API', '0x03080000'),\n        ]\n        extra_extension_args['py_limited_api'] = True\n\n    if sysconfig.get_config_var('Py_GIL_DISABLED') and platform.system() == \"Windows\":\n        defines.append(('Py_GIL_DISABLED', 1))\n\n    extra_defines = []\n    if cython_with_refnanny:\n        extra_defines.append(('CYTHON_REFNANNY', '1'))\n    if coverage:\n        extra_defines.append(('CYTHON_TRACE', '1'))\n\n    extensions = []\n    for module in compiled_modules:\n        source_file = os.path.join(source_root, *module.split('.'))\n        pyx_source_file = source_file + \".py\"\n        if not os.path.exists(pyx_source_file):\n            pyx_source_file += \"x\"  # .py -> .pyx\n\n        dep_files = []\n        if os.path.exists(source_file + '.pxd'):\n            dep_files.append(source_file + '.pxd')\n\n        extensions.append(Extension(\n            module, sources=[pyx_source_file],\n            define_macros=(defines + (extra_defines if '.refnanny' not in module else [])),\n            depends=dep_files,\n            **extra_extension_args))\n        # XXX hack around setuptools quirk for '*.pyx' sources\n        extensions[-1].sources[0] = pyx_source_file\n\n    # optimise build parallelism by starting with the largest modules\n    extensions.sort(key=lambda ext: os.path.getsize(ext.sources[0]), reverse=True)\n\n    from Cython.Distutils.build_ext import build_ext as cy_build_ext\n    build_ext = None\n    try:\n        # Use the setuptools build_ext in preference, because it\n        # gets limited api filenames right, and should inherit itself from\n        # Cython's own build_ext. But failing that, use the Cython build_ext\n        # directly.\n        from setuptools.command.build_ext import build_ext\n        if cy_build_ext not in build_ext.__mro__:\n            build_ext = cy_build_ext\n    except ImportError:\n        build_ext = cy_build_ext\n\n    from Cython.Compiler.Options import get_directive_defaults\n    get_directive_defaults().update(\n        language_level=3,\n        auto_pickle=False,\n        binding=False,\n        always_allow_keywords=False,\n        autotestdict=False,\n    )\n    if profile:\n        get_directive_defaults()['profile'] = True\n        sys.stderr.write(\"Enabled profiling for the Cython binary modules\\n\")\n    if coverage:\n        get_directive_defaults()['linetrace'] = True\n        sys.stderr.write(\"Enabled line tracing and profiling for the Cython binary modules\\n\")\n\n    # not using cythonize() directly to let distutils decide whether building extensions was requested\n    add_command_class(\"build_ext\", build_ext)\n    setup_args['ext_modules'] = extensions\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.python_implementation",
+        "os.path.abspath",
+        "os.path.dirname",
+        "os.path.join",
+        "os.environ.__getitem__",
+        "get_path",
+        "os.path.join",
+        "which",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "which",
+        "subprocess.check_call",
+        "os.path.join",
+        "os.stat",
+        "stat.ST_MTIME",
+        "os.stat",
+        "stat.ST_MTIME",
+        "os.stat",
+        "stat.ST_MTIME",
+        "os.utime",
+        "os.path.exists",
+        "os.path.exists",
+        "os.path.getsize",
+        "sysconfig.get_config_var",
+        "platform.system"
+      ],
+      "api_sequence_with_args": [
+        "platform.python_implementation()",
+        "os.path.abspath(os.path.dirname(__file__))",
+        "os.path.dirname(__file__)",
+        "os.path.join(get_path('include'), '..', 'Parser')",
+        "os.environ['PATH']",
+        "get_path('include')",
+        "os.path.join(get_path('include'), '..', 'Parser')",
+        "which('pgen', path=os.pathsep.join([os.environ['PATH'], os.path.join(get_path('include'), '..', 'Parser')]))",
+        "os.path.dirname(__file__)",
+        "os.path.join(os.path.dirname(__file__), 'Cython', 'Parser')",
+        "os.path.join(parser_dir, 'Grammar')",
+        "os.path.join(parser_dir, 'graminit.h')",
+        "os.path.join(parser_dir, 'graminit.c')",
+        "which('pgen', path=...)",
+        "subprocess.check_call([pgen, os.path.join(grammar), os.path.join(parser_dir, 'graminit.h'), os.path.join(parser_dir, 'graminit.c')])",
+        "os.path.join(parser_dir, 'ConcreteSyntaxTree.pyx')",
+        "os.stat(grammar)",
+        "stat.ST_MTIME",
+        "os.stat(cst_pyx)",
+        "stat.ST_MTIME",
+        "os.stat(grammar)",
+        "stat.ST_MTIME",
+        "os.utime(cst_pyx, (mtime, mtime))",
+        "os.path.exists(pyx_source_file)",
+        "os.path.exists(source_file + '.pxd')",
+        "os.path.getsize(ext.sources[0])",
+        "sysconfig.get_config_var('Py_GIL_DISABLED')",
+        "platform.system()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.python_implementation",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sysconfig.get_path",
+          "id": "get_site_packages",
+          "description": "Returns list of all global site-packages directories",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "stat.ST_MTIME",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "stat.ST_MTIME",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "stat.ST_MTIME",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.utime",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.getsize",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "sysconfig.get_config_var",
+          "id": "get_site_packages",
+          "description": "Returns list of all global site-packages directories",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        }
+      ],
+      "contextual_code": "import os\nimport stat\nimport subprocess\nimport sysconfig\nimport platform\nfrom shutil import which\nfrom sysconfig import get_path\n\ndef compile_cython_modules(profile=False, coverage=False, compile_minimal=False, compile_more=False, cython_with_refnanny=False,\n                           cython_limited_api=False):\n    source_root = os.path.abspath(os.path.dirname(__file__))\n    ...\n    from shutil import which\n    from sysconfig import get_path\n    pgen = which(\n        'pgen', path=os.pathsep.join([os.environ['PATH'], os.path.join(get_path('include'), '..', 'Parser')]))\n    if not pgen:\n        sys.stderr.write(\"Unable to find pgen, not compiling formal grammar.\\n\")\n    else:\n        parser_dir = os.path.join(os.path.dirname(__file__), 'Cython', 'Parser')\n        grammar = os.path.join(parser_dir, 'Grammar')\n        subprocess.check_call([\n            pgen,\n            os.path.join(grammar),\n            os.path.join(parser_dir, 'graminit.h'),\n            os.path.join(parser_dir, 'graminit.c'),\n            ])\n        cst_pyx = os.path.join(parser_dir, 'ConcreteSyntaxTree.pyx')\n        if os.stat(grammar)[stat.ST_MTIME] > os.stat(cst_pyx)[stat.ST_MTIME]:\n            mtime = os.stat(grammar)[stat.ST_MTIME]\n            os.utime(cst_pyx, (mtime, mtime))\n        compiled_modules.extend([\n                \"Cython.Parser.ConcreteSyntaxTree\",\n            ])\n    ...\n    for module in compiled_modules:\n        source_file = os.path.join(source_root, *module.split('.'))\n        pyx_source_file = source_file + \".py\"\n        if not os.path.exists(pyx_source_file):\n            pyx_source_file += \"x\"  # .py -> .pyx\n        dep_files = []\n        if os.path.exists(source_file + '.pxd'):\n            dep_files.append(source_file + '.pxd')\n        ...\n    extensions.sort(key=lambda ext: os.path.getsize(ext.sources[0]), reverse=True)\n    ...\n    if sysconfig.get_config_var('Py_GIL_DISABLED') and platform.system() == \"Windows\":\n        defines.append(('Py_GIL_DISABLED', 1))\n"
+    }
+  },
+  {
+    "pyfile": "Scanning.py",
+    "code_snippet": "def initial_compile_time_env():\n    benv = CompileTimeScope()\n    names = ('UNAME_SYSNAME', 'UNAME_NODENAME', 'UNAME_RELEASE', 'UNAME_VERSION', 'UNAME_MACHINE')\n    for name, value in zip(names, platform.uname()):\n        benv.declare(name, value)\n    import builtins\n\n    names = (\n        'False', 'True',\n        'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',\n        'chr', 'cmp', 'complex', 'dict', 'divmod', 'enumerate', 'filter',\n        'float', 'format', 'frozenset', 'hash', 'hex', 'int', 'len',\n        'list', 'map', 'max', 'min', 'oct', 'ord', 'pow', 'range',\n        'repr', 'reversed', 'round', 'set', 'slice', 'sorted', 'str',\n        'sum', 'tuple', 'zip',\n        ### defined below in a platform independent way\n        # 'long', 'unicode', 'reduce', 'xrange'\n    )\n\n    for name in names:\n        try:\n            benv.declare(name, getattr(builtins, name))\n        except AttributeError:\n            # ignore, likely Py3\n            pass\n\n    # Py2/3 adaptations\n    from functools import reduce\n    benv.declare('reduce', reduce)\n    benv.declare('unicode', str)\n    benv.declare('long', getattr(builtins, 'long', getattr(builtins, 'int')))\n    benv.declare('xrange', getattr(builtins, 'xrange', getattr(builtins, 'range')))\n\n    denv = CompileTimeScope(benv)\n    return denv\n\nclass CompileTimeScope:\n\n    def __init__(self, outer=None):\n        self.entries = {}\n        self.outer = outer\n\n    def declare(self, name, value):\n        self.entries[name] = value\n\n    def update(self, other):\n        self.entries.update(other)\n\n    def lookup_here(self, name):\n        return self.entries[name]\n\n    def __contains__(self, name):\n        return name in self.entries\n\n    def lookup(self, name):\n        try:\n            return self.lookup_here(name)\n        except KeyError:\n            outer = self.outer\n            if outer:\n                return outer.lookup(name)\n            else:\n                raise\n\nimport platform\nimport builtins\nfrom functools import reduce\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.uname",
+        "builtins.getattr"
+      ],
+      "api_sequence_with_args": [
+        "platform.uname()",
+        "builtins.getattr(builtins, name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.uname",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "def initial_compile_time_env():\n    benv = CompileTimeScope()\n    names = ('UNAME_SYSNAME', 'UNAME_NODENAME', 'UNAME_RELEASE', 'UNAME_VERSION', 'UNAME_MACHINE')\n    for name, value in zip(names, platform.uname()):\n        benv.declare(name, value)\n    import builtins\n\n    names = (\n        'False', 'True',\n        'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',\n        'chr', 'cmp', 'complex', 'dict', 'divmod', 'enumerate', 'filter',\n        'float', 'format', 'frozenset', 'hash', 'hex', 'int', 'len',\n        'list', 'map', 'max', 'min', 'oct', 'ord', 'pow', 'range',\n        'repr', 'reversed', 'round', 'set', 'slice', 'sorted', 'str',\n        'sum', 'tuple', 'zip',\n        # ...\n    )\n\n    for name in names:\n        try:\n            benv.declare(name, getattr(builtins, name))\n        except AttributeError:\n            pass\n\n    # Py2/3 adaptations\n    from functools import reduce\n    benv.declare('reduce', reduce)\n    benv.declare('unicode', str)\n    benv.declare('long', getattr(builtins, 'long', getattr(builtins, 'int')))\n    benv.declare('xrange', getattr(builtins, 'xrange', getattr(builtins, 'range')))\n\n    denv = CompileTimeScope(benv)\n    return denv"
+    }
+  },
+  {
+    "pyfile": "TestBuiltin.py",
+    "code_snippet": "import builtins\nimport sys\nimport unittest\n\nfrom ..Builtin import (\n    inferred_method_return_types, find_return_type_of_builtin_method,\n    unsafe_compile_time_methods, is_safe_compile_time_method,\n    builtin_scope,\n)\n\nfrom ..Code import (\n    KNOWN_PYTHON_BUILTINS_VERSION, KNOWN_PYTHON_BUILTINS,\n)\n\nclass TestBuiltinReturnTypes(unittest.TestCase):\n    def test_find_return_type_of_builtin_method(self):\n        # It's enough to test the method existence in a recent Python that likely has them.\n        look_up_methods = sys.version_info >= (3,10)\n\n        for type_name, methods in inferred_method_return_types.items():\n            py_type = getattr(builtins, type_name if type_name != 'unicode' else 'str')\n\n            for method_name, return_type_name in methods.items():\n                builtin_type = builtin_scope.lookup(type_name).type\n                return_type = find_return_type_of_builtin_method(builtin_type, method_name)\n\n                if return_type.is_builtin_type:\n                    if '[' in return_type_name:\n                        return_type_name = return_type_name.partition('[')[0]\n                    if return_type_name == 'T':\n                        return_type_name = type_name\n                    self.assertEqual(return_type.name, return_type_name)\n                    if look_up_methods:\n                        self.assertTrue(hasattr(py_type, method_name), f\"{type_name}.{method_name}\")\n                else:\n                    self.assertEqual(return_type.empty_declaration_code(pyrex=True), return_type_name)\n\n\nclass TestBuiltinCompatibility(unittest.TestCase):\n    def test_python_builtin_compatibility(self):\n        expected_builtins = set(KNOWN_PYTHON_BUILTINS)\n        if sys.platform != 'win32':\n            expected_builtins.discard(\"WindowsError\")\n        runtime_builtins = frozenset(\n            name for name in dir(builtins)\n            if name not in ('__doc__', '__loader__', '__name__', '__package__', '__spec__'))\n        if sys.version_info < KNOWN_PYTHON_BUILTINS_VERSION:\n            missing_builtins = expected_builtins - runtime_builtins\n            if missing_builtins:\n                self.skipTest(f'skipping test, older Python release found. Missing builtins: {\", \".join(sorted(missing_builtins))}')\n            self.skipTest('skipping test, older Python release found.')\n        self.assertSetEqual(runtime_builtins, expected_builtins)\n\n    def test_unsafe_compile_time_methods(self):\n        \"\"\"Validate the table of builtin methods that are not safe for compile time evaluation\n        against the table of known builtin methods (and their types).\n        \"\"\"\n        for builtin_type_name, unsafe_methods in unsafe_compile_time_methods.items():\n            self.assertIsInstance(unsafe_methods, set)\n\n            builtin_type = getattr(builtins, builtin_type_name)  # All named types must exist as builtin types.\n\n            known_methods = sorted(\n                inferred_method_return_types[builtin_type_name])  # All types are also in \"inferred_method_return_types\".\n\n            self.assertFalse(unsafe_methods.difference(known_methods))  # Only known methods are listed.\n\n            for method_name in known_methods:\n                builtin_method = getattr(builtin_type, method_name, None)\n                if builtin_method is None:\n                    self.assertIn(method_name, unsafe_methods)  # Non-portable methods are always unsafe.\n                    continue\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.version_info",
+        "getattr",
+        "builtin_scope.lookup",
+        "find_return_type_of_builtin_method",
+        "return_type.is_builtin_type",
+        "hasattr",
+        "return_type.empty_declaration_code",
+        "sys.platform",
+        "expected_builtins.discard",
+        "dir",
+        "frozenset",
+        "sys.version_info",
+        "self.skipTest",
+        "self.assertSetEqual",
+        "getattr",
+        "self.assertIsInstance",
+        "sorted",
+        "getattr",
+        "self.assertFalse",
+        "getattr",
+        "self.assertIn"
+      ],
+      "api_sequence_with_args": [
+        "sys.version_info",
+        "getattr(builtins, type_name if type_name != 'unicode' else 'str')",
+        "builtin_scope.lookup(type_name)",
+        "find_return_type_of_builtin_method(builtin_type, method_name)",
+        "return_type.is_builtin_type",
+        "hasattr(py_type, method_name)",
+        "return_type.empty_declaration_code(pyrex=True)",
+        "sys.platform",
+        "expected_builtins.discard(\"WindowsError\")",
+        "dir(builtins)",
+        "frozenset(name for name in dir(builtins) if name not in ('__doc__', '__loader__', '__name__', '__package__', '__spec__'))",
+        "sys.version_info < KNOWN_PYTHON_BUILTINS_VERSION",
+        "self.skipTest(f'skipping test, older Python release found. Missing builtins: {\", \".join(sorted(missing_builtins))}')",
+        "self.assertSetEqual(runtime_builtins, expected_builtins)",
+        "getattr(builtins, builtin_type_name)",
+        "self.assertIsInstance(unsafe_methods, set)",
+        "sorted(inferred_method_return_types[builtin_type_name])",
+        "getattr(builtin_type, method_name, None)",
+        "self.assertFalse(unsafe_methods.difference(known_methods))",
+        "getattr(builtin_type, method_name, None)",
+        "self.assertIn(method_name, unsafe_methods)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "builtin_scope.lookup",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "find_return_type_of_builtin_method",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "return_type.is_builtin_type",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "return_type.empty_declaration_code",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "expected_builtins.discard",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "dir",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "frozenset",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "self.skipTest",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.assertSetEqual",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.assertIsInstance",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "sorted",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.assertFalse",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.assertIn",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "class TestBuiltinReturnTypes(unittest.TestCase):\n    def test_find_return_type_of_builtin_method(self):\n        look_up_methods = sys.version_info >= (3,10)\n        for type_name, methods in inferred_method_return_types.items():\n            py_type = getattr(builtins, type_name if type_name != 'unicode' else 'str')\n            for method_name, return_type_name in methods.items():\n                builtin_type = builtin_scope.lookup(type_name).type\n                return_type = find_return_type_of_builtin_method(builtin_type, method_name)\n                if return_type.is_builtin_type:\n                    if '[' in return_type_name:\n                        return_type_name = return_type_name.partition('[')[0]\n                    if return_type_name == 'T':\n                        return_type_name = type_name\n                    self.assertEqual(return_type.name, return_type_name)\n                    if look_up_methods:\n                        self.assertTrue(hasattr(py_type, method_name), f\"{type_name}.{method_name}\")\n                else:\n                    self.assertEqual(return_type.empty_declaration_code(pyrex=True), return_type_name)\n\nclass TestBuiltinCompatibility(unittest.TestCase):\n    def test_python_builtin_compatibility(self):\n        expected_builtins = set(KNOWN_PYTHON_BUILTINS)\n        if sys.platform != 'win32':\n            expected_builtins.discard(\"WindowsError\")\n        runtime_builtins = frozenset(\n            name for name in dir(builtins)\n            if name not in ('__doc__', '__loader__', '__name__', '__package__', '__spec__'))\n        if sys.version_info < KNOWN_PYTHON_BUILTINS_VERSION:\n            missing_builtins = expected_builtins - runtime_builtins\n            if missing_builtins:\n                self.skipTest(f'skipping test, older Python release found. Missing builtins: {\", \".join(sorted(missing_builtins))}')\n            self.skipTest('skipping test, older Python release found.')\n        self.assertSetEqual(runtime_builtins, expected_builtins)\n\n    def test_unsafe_compile_time_methods(self):\n        for builtin_type_name, unsafe_methods in unsafe_compile_time_methods.items():\n            self.assertIsInstance(unsafe_methods, set)\n            builtin_type = getattr(builtins, builtin_type_name)\n            known_methods = sorted(\n                inferred_method_return_types[builtin_type_name])\n            self.assertFalse(unsafe_methods.difference(known_methods))\n            for method_name in known_methods:\n                builtin_method = getattr(builtin_type, method_name, None)\n                if builtin_method is None:\n                    self.assertIn(method_name, unsafe_methods)\n                    continue"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "cython-3.1.0b1",
+      "total_matches": 8
+    }
+  }
+]

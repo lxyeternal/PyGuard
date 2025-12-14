@@ -1,0 +1,276 @@
+{
+  "metadata": {
+    "package_name": "ilcdirac-35",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ilcdirac-35.0.4.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "dirac_fcc_make_productions.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ilcdirac-35.0.4/ilcdirac-35.0.4/src/ILCDIRAC/ILCTransformationSystem/scripts/dirac_fcc_make_productions.py",
+      "line_number": "556",
+      "type_description": "B814:read",
+      "context_snippet": "def loadParameters(self, parameter):\n    \"\"\"Load parameters from config file.\"\"\"\n    if parameter.prodConfigFilename is not None:\n      defaultValueDict = vars(self)\n      defaultValueDict = {key: str(value) for key, value in defaultValueDict.items()}\n      self._flags.updateDictWithFlags(defaultValueDict)\n      # we are passing all instance attributes as the default dict so generally we do not have to check\n      # if an option exists, also options are case insensitive and stored in lowercase\n      config = six.moves.configparser.SafeConfigParser(defaults=defaultValueDict, dict_type=dict)\n      config.read(parameter.prodConfigFilename)\n      self._flags.loadFlags(config)\n\n      for attribute in LIST_ATTRIBUTES:\n        setattr(self, attribute, listify(config.get(PP, attribute)))\n\n      for attribute in STRING_ATTRIBUTES:\n        setattr(self, lowerFirst(attribute), config.get(PP, attribute))\n\n      # this parameter is deprecated and not part of the instance attributes so we need to check for existence\n      if config.has_option(PP, 'clicConfig'):\n        gLogger.warn('\"clicConfig\" parameter is deprected, please dump a new steering file!')\n        self.configVersion = config.get(PP, 'clicConfig')\n\n      # attribute and option names differ, special treatment\n      self.cliRecoOption = config.get(PP, 'cliReco')\n\n      if self.moveStatus not in ('Active', 'Stopped'):\n        raise AttributeError(\"MoveStatus can only be 'Active' or 'Stopped' not %r\" % self.moveStatus)\n\n      # self.overlayEvents = self.checkOverlayParameter(self.overlayEvents)\n      # self.overlayEventType = self.overlayEventType + self.overlayEvents.lower()\n\n      self.processes = [process.strip() for process in self.processes if process.strip()]\n      self.energies = [float(eng.strip()) for eng in self.energies if eng.strip()]\n      self.eventsPerJobs = [int(epj.strip()) for epj in self.eventsPerJobs if epj.strip()]\n      # these do not have to exist so we fill them to the same length if they are not set\n      self.prodIDs = [int(pID.strip()) for pID in self.prodIDs if pID.strip()]\n      self.prodIDs = self.prodIDs if self.prodIDs else [1 for _ in self.energies]\n\n      # if one of the lists only has size 1 and there is a longer list we extend\n      # the list to the maximum size assuming the values are re-used\n      maxLength = 0\n      parameterLists = [self.processes, self.energies, self.eventsPerJobs, self.generatorSteeringFile, self.secondaryGeneratorSteeringFile]\n      \n      for parList in parameterLists:\n        maxLength = len(parList) if len(parList) > maxLength else maxLength\n      for parList in parameterLists:\n        if len(parList) == 1 and maxLength > 1:\n          parList.extend([parList[0]] * (maxLength - 1))\n\n      if not (self.processes and self.energies and self.eventsPerJobs) and self.prodIDs:\n        eventsPerJobSave = list(self.eventsPerJobs) if self.eventsPerJobs else None\n        self._getProdInfoFromIDs()\n        self.eventsPerJobs = eventsPerJobSave if eventsPerJobSave else self.eventsPerJobs\n\n      self.numberOfTasks = [int(nbtask.strip()) for nbtask in self.numberOfTasks if nbtask.strip()]\n      self.numberOfTasks = self.numberOfTasks if self.numberOfTasks else [1] * len(self.energies)\n      self.taskNames = self.taskNames if self.taskNames else [''] * len(self.energies)\n\n      if len(self.processes) != len(self.energies) or \\\n         len(self.energies) != len(self.eventsPerJobs) or \\\n         len(self.prodIDs) != len(self.eventsPerJobs) or \\\n         len(self.eventsPerJobs) != len(self.taskNames) or \\\n         False:\n        raise AttributeError('Lengths of Processes, Energies, EventsPerJobs, AdditionalNames do not match')\n\n      if self._flags.gen:\n        if len(self.numberOfTasks) != len(self.energies) or \\\n           (self.generatorSteeringFile and (len(self.generatorSteeringFile) != len(self.energies))) or \\\n           (self.secondaryGeneratorSteeringFile and (len(self.secondaryGeneratorSteeringFile) != len(self.generatorSteeringFile))):\n          raise AttributeError(\"Lengths of numberOfTasks, generatorSteeringFile, secondaryGeneratorSteeringFile, and Energies do not match\")\n\n      self.eventsInSplitFiles = listify(self.eventsInSplitFiles, int)\n      self.eventsInSplitFiles = self.eventsInSplitFiles if self.eventsInSplitFiles else [-1] * len(self.energies)\n\n      if self._flags.spl and len(self.eventsInSplitFiles) != len(self.energies):\n        raise AttributeError(\"Length of eventsInSplitFiles does not match: %d vs %d\" % (\n            len(self.eventsInSplitFiles),\n            len(self.energies)))\n\n      # read options from application sections\n      config2 = six.moves.configparser.SafeConfigParser(dict_type=dict)\n      config2.optionxform = str  # do not transform options to lowercase\n      config2.read(parameter.prodConfigFilename)\n      for appName in APPLICATION_LIST:\n        try:\n          self.applicationOptions[appName] = dict(config2.items(appName))\n        except six.moves.configparser.NoSectionError:\n          pass\n\n    if parameter.dumpConfigFile:\n      print(self)\n      raise RuntimeError('')",
+      "hash_value": "c9ebaac6a9e24ecf865aee55f79dcef4",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def loadParameters(self, parameter):\n    \"\"\"Load parameters from config file.\"\"\"\n    if parameter.prodConfigFilename is not None:\n      defaultValueDict = vars(self)\n      defaultValueDict = {key: str(value) for key, value in defaultValueDict.items()}\n      self._flags.updateDictWithFlags(defaultValueDict)\n      # we are passing all instance attributes as the default dict so generally we do not have to check\n      # if an option exists, also options are case insensitive and stored in lowercase\n      config = six.moves.configparser.SafeConfigParser(defaults=defaultValueDict, dict_type=dict)\n      config.read(parameter.prodConfigFilename)\n      self._flags.loadFlags(config)\n\n      for attribute in LIST_ATTRIBUTES:\n        setattr(self, attribute, listify(config.get(PP, attribute)))\n\n      for attribute in STRING_ATTRIBUTES:\n        setattr(self, lowerFirst(attribute), config.get(PP, attribute))\n\n      # this parameter is deprecated and not part of the instance attributes so we need to check for existence\n      if config.has_option(PP, 'clicConfig'):\n        gLogger.warn('\"clicConfig\" parameter is deprected, please dump a new steering file!')\n        self.configVersion = config.get(PP, 'clicConfig')\n\n      # attribute and option names differ, special treatment\n      self.cliRecoOption = config.get(PP, 'cliReco')\n\n      if self.moveStatus not in ('Active', 'Stopped'):\n        raise AttributeError(\"MoveStatus can only be 'Active' or 'Stopped' not %r\" % self.moveStatus)\n\n      # self.overlayEvents = self.checkOverlayParameter(self.overlayEvents)\n      # self.overlayEventType = self.overlayEventType + self.overlayEvents.lower()\n\n      self.processes = [process.strip() for process in self.processes if process.strip()]\n      self.energies = [float(eng.strip()) for eng in self.energies if eng.strip()]\n      self.eventsPerJobs = [int(epj.strip()) for epj in self.eventsPerJobs if epj.strip()]\n      # these do not have to exist so we fill them to the same length if they are not set\n      self.prodIDs = [int(pID.strip()) for pID in self.prodIDs if pID.strip()]\n      self.prodIDs = self.prodIDs if self.prodIDs else [1 for _ in self.energies]\n\n      # if one of the lists only has size 1 and there is a longer list we extend\n      # the list to the maximum size assuming the values are re-used\n      maxLength = 0\n      parameterLists = [self.processes, self.energies, self.eventsPerJobs, self.generatorSteeringFile, self.secondaryGeneratorSteeringFile]\n      \n      for parList in parameterLists:\n        maxLength = len(parList) if len(parList) > maxLength else maxLength\n      for parList in parameterLists:\n        if len(parList) == 1 and maxLength > 1:\n          parList.extend([parList[0]] * (maxLength - 1))\n\n      if not (self.processes and self.energies and self.eventsPerJobs) and self.prodIDs:\n        eventsPerJobSave = list(self.eventsPerJobs) if self.eventsPerJobs else None\n        self._getProdInfoFromIDs()\n        self.eventsPerJobs = eventsPerJobSave if eventsPerJobSave else self.eventsPerJobs\n\n      self.numberOfTasks = [int(nbtask.strip()) for nbtask in self.numberOfTasks if nbtask.strip()]\n      self.numberOfTasks = self.numberOfTasks if self.numberOfTasks else [1] * len(self.energies)\n      self.taskNames = self.taskNames if self.taskNames else [''] * len(self.energies)\n\n      if len(self.processes) != len(self.energies) or \\\n         len(self.energies) != len(self.eventsPerJobs) or \\\n         len(self.prodIDs) != len(self.eventsPerJobs) or \\\n         len(self.eventsPerJobs) != len(self.taskNames) or \\\n         False:\n        raise AttributeError('Lengths of Processes, Energies, EventsPerJobs, AdditionalNames do not match')\n\n      if self._flags.gen:\n        if len(self.numberOfTasks) != len(self.energies) or \\\n           (self.generatorSteeringFile and (len(self.generatorSteeringFile) != len(self.energies))) or \\\n           (self.secondaryGeneratorSteeringFile and (len(self.secondaryGeneratorSteeringFile) != len(self.generatorSteeringFile))):\n          raise AttributeError(\"Lengths of numberOfTasks, generatorSteeringFile, secondaryGeneratorSteeringFile, and Energies do not match\")\n\n      self.eventsInSplitFiles = listify(self.eventsInSplitFiles, int)\n      self.eventsInSplitFiles = self.eventsInSplitFiles if self.eventsInSplitFiles else [-1] * len(self.energies)\n\n      if self._flags.spl and len(self.eventsInSplitFiles) != len(self.energies):\n        raise AttributeError(\"Length of eventsInSplitFiles does not match: %d vs %d\" % (\n            len(self.eventsInSplitFiles),\n            len(self.energies)))\n\n      # read options from application sections\n      config2 = six.moves.configparser.SafeConfigParser(dict_type=dict)\n      config2.optionxform = str  # do not transform options to lowercase\n      config2.read(parameter.prodConfigFilename)\n      for appName in APPLICATION_LIST:\n        try:\n          self.applicationOptions[appName] = dict(config2.items(appName))\n        except six.moves.configparser.NoSectionError:\n          pass\n\n    if parameter.dumpConfigFile:\n      print(self)\n      raise RuntimeError('')",
+          "triple_sequences": [
+            {
+              "action_api": "six.moves.configparser.SafeConfigParser()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "defaults=defaultValueDict, dict_type=dict",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "config.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "parameter.prodConfigFilename",
+              "object_description": "Configuration file",
+              "object_id": "",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "self._flags.updateDictWithFlags()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "defaultValueDict",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "self._flags.loadFlags()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "config",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "config.get()",
+              "action_description": "Retrieves value and data type for registry value",
+              "action_id": "get_registry_value",
+              "object": "PP, attribute",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "setattr()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "self, attribute, listify(config.get(PP, attribute))",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "setattr()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "self, lowerFirst(attribute), config.get(PP, attribute)",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "config.has_option()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "PP, 'clicConfig'",
+              "object_description": "Registry value name",
+              "object_id": "registry_value_name",
+              "intention_description": "Determine_valid_authentication_presence",
+              "intention_id": "determine_valid_authentication_presence"
+            },
+            {
+              "action_api": "gLogger.warn()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "\"clicConfig\" parameter is deprected, please dump a new steering file!",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "config.get()",
+              "action_description": "Retrieves value and data type for registry value",
+              "action_id": "get_registry_value",
+              "object": "PP, 'clicConfig'",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "config.get()",
+              "action_description": "Retrieves value and data type for registry value",
+              "action_id": "get_registry_value",
+              "object": "PP, 'cliReco'",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "raise AttributeError()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "\"MoveStatus can only be 'Active' or 'Stopped' not %r\" % self.moveStatus",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "str.strip()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "process",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "float()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "eng.strip()",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "int()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "epj.strip()",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "int()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "pID.strip()",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "list()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "self.eventsPerJobs",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self._getProdInfoFromIDs()",
+              "action_description": "Retrieves process information",
+              "action_id": "get_process_info",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "int()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "nbtask.strip()",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "listify()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "self.eventsInSplitFiles, int",
+              "object_description": "Process name",
+              "object_id": "process_name",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "six.moves.configparser.SafeConfigParser()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "dict_type=dict",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "config2.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "parameter.prodConfigFilename",
+              "object_description": "Configuration file",
+              "object_id": "",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "config2.items()",
+              "action_description": "Retrieves value and data type for registry value",
+              "action_id": "get_registry_value",
+              "object": "appName",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "print()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "self",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "raise RuntimeError()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "''",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

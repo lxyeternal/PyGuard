@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "snowflake_connector_python-3.14.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "ntlmpool.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/snowflake_connector_python-3.14.0/snowflake_connector_python-3.14.0/src/snowflake/connector/vendored/urllib3/contrib/ntlmpool.py",
+    "line_number": "71",
+    "type_description": "B826:getresponse",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "70\t        conn.request(\"GET\", self.authurl, None, headers)\n71\t        res = conn.getresponse()\n72\t        reshdr = dict(res.headers)",
+    "code_snippet": "    def _new_conn(self):\n        # Performs the NTLM handshake that secures the connection. The socket\n        # must be kept open while requests are performed.\n        self.num_connections += 1\n        log.debug(\n            \"Starting NTLM HTTPS connection no. %d: https://%s%s\",\n            self.num_connections,\n            self.host,\n            self.authurl,\n        )\n\n        headers = {\"Connection\": \"Keep-Alive\"}\n        req_header = \"Authorization\"\n        resp_header = \"www-authenticate\"\n\n        conn = HTTPSConnection(host=self.host, port=self.port)\n\n        # Send negotiation message\n        headers[req_header] = \"NTLM %s\" % ntlm.create_NTLM_NEGOTIATE_MESSAGE(\n            self.rawuser\n        )\n        log.debug(\"Request headers: %s\", headers)\n        conn.request(\"GET\", self.authurl, None, headers)\n        res = conn.getresponse()\n        reshdr = dict(res.headers)\n        log.debug(\"Response status: %s %s\", res.status, res.reason)\n        log.debug(\"Response headers: %s\", reshdr)\n        log.debug(\"Response data: %s [...]\", res.read(100))\n\n        # Remove the reference to the socket, so that it can not be closed by\n        # the response object (we want to keep the socket open)\n        res.fp = None\n\n        # Server should respond with a challenge message\n        auth_header_values = reshdr[resp_header].split(\", \")\n        auth_header_value = None\n        for s in auth_header_values:\n            if s[:5] == \"NTLM \":\n                auth_header_value = s[5:]\n        if auth_header_value is None:\n            raise Exception(\n                \"Unexpected %s response header: %s\" % (resp_header, reshdr[resp_header])\n            )\n\n        # Send authentication message\n        ServerChallenge, NegotiateFlags = ntlm.parse_NTLM_CHALLENGE_MESSAGE(\n            auth_header_value\n        )\n        auth_msg = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(\n            ServerChallenge, self.user, self.domain, self.pw, NegotiateFlags\n        )\n        headers[req_header] = \"NTLM %s\" % auth_msg\n        log.debug(\"Request headers: %s\", headers)\n        conn.request(\"GET\", self.authurl, None, headers)\n        res = conn.getresponse()\n        log.debug(\"Response status: %s %s\", res.status, res.reason)\n        log.debug(\"Response headers: %s\", dict(res.headers))\n        log.debug(\"Response data: %s [...]\", res.read()[:100])\n        if res.status != 200:\n            if res.status == 401:\n                raise Exception(\"Server rejected request: wrong username or password\")\n            raise Exception(\"Wrong server response: %s %s\" % (res.status, res.reason))\n\n        res.fp = None\n        log.debug(\"Connection established\")\n        return conn",
+    "pattern_analysis": {
+      "api_sequence": [
+        "HTTPSConnection",
+        "ntlm.create_NTLM_NEGOTIATE_MESSAGE",
+        "HTTPSConnection.request",
+        "HTTPSConnection.getresponse",
+        "http.client.HTTPResponse.read",
+        "ntlm.parse_NTLM_CHALLENGE_MESSAGE",
+        "ntlm.create_NTLM_AUTHENTICATE_MESSAGE",
+        "HTTPSConnection.request",
+        "HTTPSConnection.getresponse",
+        "http.client.HTTPResponse.read"
+      ],
+      "api_sequence_with_args": [
+        "HTTPSConnection(host=self.host, port=self.port)",
+        "ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.rawuser)",
+        "HTTPSConnection.request('GET', self.authurl, None, headers)",
+        "HTTPSConnection.getresponse()",
+        "http.client.HTTPResponse.read(100)",
+        "ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value)",
+        "ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, self.user, self.domain, self.pw, NegotiateFlags)",
+        "HTTPSConnection.request('GET', self.authurl, None, headers)",
+        "HTTPSConnection.getresponse()",
+        "http.client.HTTPResponse.read()[:100]"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "HTTPSConnection",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "ntlm.create_NTLM_NEGOTIATE_MESSAGE",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "HTTPSConnection.request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "HTTPSConnection.getresponse",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "http.client.HTTPResponse.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "ntlm.parse_NTLM_CHALLENGE_MESSAGE",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "ntlm.create_NTLM_AUTHENTICATE_MESSAGE",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "HTTPSConnection.request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "HTTPSConnection.getresponse",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "http.client.HTTPResponse.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def _new_conn(self):\n    self.num_connections += 1\n    headers = {\"Connection\": \"Keep-Alive\"}\n    req_header = \"Authorization\"\n    resp_header = \"www-authenticate\"\n    conn = HTTPSConnection(host=self.host, port=self.port)\n    headers[req_header] = \"NTLM %s\" % ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.rawuser)\n    conn.request(\"GET\", self.authurl, None, headers)\n    res = conn.getresponse()\n    reshdr = dict(res.headers)\n    res.read(100)\n    auth_header_values = reshdr[resp_header].split(\", \")\n    auth_header_value = None\n    for s in auth_header_values:\n        if s[:5] == \"NTLM \":\n            auth_header_value = s[5:]\n    ServerChallenge, NegotiateFlags = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value)\n    auth_msg = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, self.user, self.domain, self.pw, NegotiateFlags)\n    headers[req_header] = \"NTLM %s\" % auth_msg\n    conn.request(\"GET\", self.authurl, None, headers)\n    res = conn.getresponse()\n    res.read()[:100]"
+    }
+  }
+]

@@ -1,0 +1,336 @@
+{
+  "metadata": {
+    "package_name": "chromadb-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/chromadb-1.0.4.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "test_cross_version_persist.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/chromadb-1.0.4/chromadb-1.0.4/chromadb/test/property/test_cross_version_persist.py",
+      "line_number": "301",
+      "type_description": "B812:system",
+      "context_snippet": "def test_cycle_versions(\n    version_settings: Tuple[str, Settings],\n    collection_strategy: strategies.Collection,\n    embeddings_strategy: strategies.RecordSet,\n) -> None:\n    # Test backwards compatibility\n    # For the current version, ensure that we can load a collection from\n    # the previous versions\n    version, settings = version_settings\n    # The strategies can generate metadatas of malformed inputs. Other tests\n    # will error check and cover these cases to make sure they error. Here we\n    # just convert them to valid values since the error cases are already tested\n    if embeddings_strategy[\"metadatas\"] == {}:\n        embeddings_strategy[\"metadatas\"] = None\n    if embeddings_strategy[\"metadatas\"] is not None and isinstance(\n        embeddings_strategy[\"metadatas\"], list\n    ):\n        embeddings_strategy[\"metadatas\"] = [\n            m if m is None or len(m) > 0 else None\n            for m in embeddings_strategy[\"metadatas\"]\n        ]\n\n    patch_for_version(version, collection_strategy, embeddings_strategy, settings)\n\n    # Can't pickle a function, and we won't need them\n    collection_strategy.embedding_function = None\n    collection_strategy.known_metadata_keys = {}\n\n    # Run the task in a separate process to avoid polluting the current process\n    # with the old version. Using spawn instead of fork to avoid sharing the\n    # current process memory which would cause the old version to be loaded\n    ctx = multiprocessing.get_context(\"spawn\")\n    conn1, conn2 = multiprocessing.Pipe()\n    p = ctx.Process(\n        target=persist_generated_data_with_old_version,\n        args=(version, settings, collection_strategy, embeddings_strategy, conn2),\n    )\n    p.start()\n    p.join()\n\n    if conn1.poll():\n        e = conn1.recv()\n        raise e\n\n    p.close()\n\n    # Switch to the current version (local working directory) and check the invariants\n    # are preserved for the collection\n    system = config.System(settings)\n    system.start()\n    client = ClientCreator.from_system(system)\n    coll = client.get_collection(\n        name=collection_strategy.name,\n        embedding_function=not_implemented_ef(),  # type: ignore\n    )\n\n    embeddings_queue = system.instance(SqliteDB)\n\n    # Automatic pruning should be disabled since embeddings_queue is non-empty\n    if packaging_version.Version(version) < packaging_version.Version(\n        \"0.5.7\"\n    ):  # (automatic pruning is enabled by default in 0.5.7 and later)\n        assert (\n            embeddings_queue.config.get_parameter(\"automatically_purge\").value is False\n        )\n\n    # Update to True so log_size_below_max() invariant will pass\n    embeddings_queue.set_config(\n        EmbeddingsQueueConfigurationInternal(\n            [ConfigurationParameter(\"automatically_purge\", True)]\n        )\n    )\n\n    # Should be able to clean log immediately after updating\n\n    # 07/29/24: the max_seq_id for vector segments was moved from the pickled metadata file to SQLite.\n    # Cleaning the log is dependent on vector segments migrating their max_seq_id from the pickled metadata file to SQLite.\n    # Vector segments migrate this field automatically on init, but at this point the segment has not been loaded yet.\n    if \"CHROMA_RUST_BINDINGS_TEST_ONLY\" in os.environ:\n        # Trigger log purge in Rust impl\n        invariants.count(coll, embeddings_strategy)\n    else:\n        trigger_vector_segments_max_seq_id_migration(\n            embeddings_queue, system.instance(SegmentManager)\n        )\n        embeddings_queue.purge_log(coll.id)\n    invariants.log_size_below_max(system, [coll], True)\n\n    # Should be able to add embeddings\n    coll.add(**embeddings_strategy)  # type: ignore\n\n    invariants.count(coll, embeddings_strategy)\n    invariants.metadatas_match(coll, embeddings_strategy)\n    invariants.documents_match(coll, embeddings_strategy)\n    invariants.ids_match(coll, embeddings_strategy)\n    invariants.ann_accuracy(coll, embeddings_strategy)\n    invariants.log_size_below_max(system, [coll], True)\n\n    # Shutdown system\n    system.stop()",
+      "hash_value": "19177d73d9af017da588b6c87e41e470",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def test_cycle_versions(\n    version_settings: Tuple[str, Settings],\n    collection_strategy: strategies.Collection,\n    embeddings_strategy: strategies.RecordSet,\n) -> None:\n    # Test backwards compatibility\n    # For the current version, ensure that we can load a collection from\n    # the previous versions\n    version, settings = version_settings\n    # The strategies can generate metadatas of malformed inputs. Other tests\n    # will error check and cover these cases to make sure they error. Here we\n    # just convert them to valid values since the error cases are already tested\n    if embeddings_strategy[\"metadatas\"] == {}:\n        embeddings_strategy[\"metadatas\"] = None\n    if embeddings_strategy[\"metadatas\"] is not None and isinstance(\n        embeddings_strategy[\"metadatas\"], list\n    ):\n        embeddings_strategy[\"metadatas\"] = [\n            m if m is None or len(m) > 0 else None\n            for m in embeddings_strategy[\"metadatas\"]\n        ]\n\n    patch_for_version(version, collection_strategy, embeddings_strategy, settings)\n\n    # Can't pickle a function, and we won't need them\n    collection_strategy.embedding_function = None\n    collection_strategy.known_metadata_keys = {}\n\n    # Run the task in a separate process to avoid polluting the current process\n    # with the old version. Using spawn instead of fork to avoid sharing the\n    # current process memory which would cause the old version to be loaded\n    ctx = multiprocessing.get_context(\"spawn\")\n    conn1, conn2 = multiprocessing.Pipe()\n    p = ctx.Process(\n        target=persist_generated_data_with_old_version,\n        args=(version, settings, collection_strategy, embeddings_strategy, conn2),\n    )\n    p.start()\n    p.join()\n\n    if conn1.poll():\n        e = conn1.recv()\n        raise e\n\n    p.close()\n\n    # Switch to the current version (local working directory) and check the invariants\n    # are preserved for the collection\n    system = config.System(settings)\n    system.start()\n    client = ClientCreator.from_system(system)\n    coll = client.get_collection(\n        name=collection_strategy.name,\n        embedding_function=not_implemented_ef(),  # type: ignore\n    )\n\n    embeddings_queue = system.instance(SqliteDB)\n\n    # Automatic pruning should be disabled since embeddings_queue is non-empty\n    if packaging_version.Version(version) < packaging_version.Version(\n        \"0.5.7\"\n    ):  # (automatic pruning is enabled by default in 0.5.7 and later)\n        assert (\n            embeddings_queue.config.get_parameter(\"automatically_purge\").value is False\n        )\n\n    # Update to True so log_size_below_max() invariant will pass\n    embeddings_queue.set_config(\n        EmbeddingsQueueConfigurationInternal(\n            [ConfigurationParameter(\"automatically_purge\", True)]\n        )\n    )\n\n    # Should be able to clean log immediately after updating\n\n    # 07/29/24: the max_seq_id for vector segments was moved from the pickled metadata file to SQLite.\n    # Cleaning the log is dependent on vector segments migrating their max_seq_id from the pickled metadata file to SQLite.\n    # Vector segments migrate this field automatically on init, but at this point the segment has not been loaded yet.\n    if \"CHROMA_RUST_BINDINGS_TEST_ONLY\" in os.environ:\n        # Trigger log purge in Rust impl\n        invariants.count(coll, embeddings_strategy)\n    else:\n        trigger_vector_segments_max_seq_id_migration(\n            embeddings_queue, system.instance(SegmentManager)\n        )\n        embeddings_queue.purge_log(coll.id)\n    invariants.log_size_below_max(system, [coll], True)\n\n    # Should be able to add embeddings\n    coll.add(**embeddings_strategy)  # type: ignore\n\n    invariants.count(coll, embeddings_strategy)\n    invariants.metadatas_match(coll, embeddings_strategy)\n    invariants.documents_match(coll, embeddings_strategy)\n    invariants.ids_match(coll, embeddings_strategy)\n    invariants.ann_accuracy(coll, embeddings_strategy)\n    invariants.log_size_below_max(system, [coll], True)\n\n    # Shutdown system\n    system.stop()",
+          "triple_sequences": [
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "embeddings_strategy[\"metadatas\"], list",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "patch_for_version()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "version, collection_strategy, embeddings_strategy, settings",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "multiprocessing.get_context()",
+              "action_description": "Creates child process",
+              "action_id": "create_child_process",
+              "object": "\"spawn\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Create child process",
+              "intention_id": "create_child_process"
+            },
+            {
+              "action_api": "multiprocessing.Pipe()",
+              "action_description": "Creates new socket object",
+              "action_id": "create_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "ctx.Process()",
+              "action_description": "Creates child process",
+              "action_id": "create_child_process",
+              "object": "target=persist_generated_data_with_old_version, args=(version, settings, collection_strategy, embeddings_strategy, conn2)",
+              "object_description": "Thread target and arguments",
+              "object_id": "thread_target_arguments",
+              "intention_description": "Run function in child process",
+              "intention_id": "run_function_child_process"
+            },
+            {
+              "action_api": "p.start()",
+              "action_description": "Starts thread execution",
+              "action_id": "start_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Run function in child process",
+              "intention_id": "run_function_child_process"
+            },
+            {
+              "action_api": "p.join()",
+              "action_description": "Waits for thread to finish execution",
+              "action_id": "wait_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "conn1.poll()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Receive command from server",
+              "intention_id": "receive_command_from_server"
+            },
+            {
+              "action_api": "conn1.recv()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Receive command from server",
+              "intention_id": "receive_command_from_server"
+            },
+            {
+              "action_api": "p.close()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            },
+            {
+              "action_api": "config.System()",
+              "action_description": "Instantiates custom class",
+              "action_id": "init_setup_class",
+              "object": "settings",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "system.start()",
+              "action_description": "Starts thread execution",
+              "action_id": "start_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger main behavioral logic",
+              "intention_id": "trigger_main_behavioral_logic"
+            },
+            {
+              "action_api": "ClientCreator.from_system()",
+              "action_description": "Instantiates custom class",
+              "action_id": "init_setup_class",
+              "object": "system",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "client.get_collection()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "name=collection_strategy.name, embedding_function=not_implemented_ef()",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "system.instance()",
+              "action_description": "Instantiates custom class",
+              "action_id": "init_setup_class",
+              "object": "SqliteDB",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "packaging_version.Version()",
+              "action_description": "Instantiates custom class",
+              "action_id": "init_setup_class",
+              "object": "version",
+              "object_description": "Version string",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "embeddings_queue.config.get_parameter()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"automatically_purge\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "embeddings_queue.set_config()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "EmbeddingsQueueConfigurationInternal([ConfigurationParameter(\"automatically_purge\", True)])",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "os.environ",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "invariants.count()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "coll, embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "trigger_vector_segments_max_seq_id_migration()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "embeddings_queue, system.instance(SegmentManager)",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "embeddings_queue.purge_log()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "coll.id",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "invariants.log_size_below_max()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "system, [coll], True",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "coll.add()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "**embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "invariants.count()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "coll, embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "invariants.metadatas_match()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "coll, embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "invariants.documents_match()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "coll, embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "invariants.ids_match()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "coll, embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "invariants.ann_accuracy()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "coll, embeddings_strategy",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "invariants.log_size_below_max()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "system, [coll], True",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "system.stop()",
+              "action_description": "Terminates the process",
+              "action_id": "terminate_process",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Terminate process",
+              "intention_id": "terminate_process"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

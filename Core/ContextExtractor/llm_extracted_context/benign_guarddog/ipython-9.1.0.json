@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "ipython-9.1.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/ipython-9.1.0.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "guarded_eval.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ipython-9.1.0/ipython-9.1.0/IPython/core/guarded_eval.py",
+    "line_number": "721",
+    "type_description": "obfuscation",
+    "original_snippet": "return getattr(builtins, node_id)",
+    "context_snippet": "def _eval_node_name(node_id: str, context: EvaluationContext):\n    policy = EVALUATION_POLICIES[context.evaluation]\n    if policy.allow_locals_access and node_id in context.locals:\n        return context.locals[node_id]\n    if policy.allow_globals_access and node_id in context.globals:\n        return context.globals[node_id]\n    if policy.allow_builtins_access and hasattr(builtins, node_id):\n        # note: do not use __builtins__, it is implementation detail of cPython\n        return getattr(builtins, node_id)\n    if not policy.allow_globals_access and not policy.allow_locals_access:\n        raise GuardRejection(\n            f\"Namespace access not allowed in {context.evaluation} mode\"\n        )\n    else:\n        raise NameError(f\"{node_id} not found in locals, globals, nor builtins\")",
+    "hash_value": "fd356d510f80374559895c1f558534fc",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "pytest_ipdoctest.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ipython-9.1.0/ipython-9.1.0/IPython/testing/plugin/pytest_ipdoctest.py",
+    "line_number": "357",
+    "type_description": "obfuscation",
+    "original_snippet": "underscore_original_value = getattr(builtins, \"_\", None)",
+    "context_snippet": "def runtest(self) -> None:\n    assert self.dtest is not None\n    assert self.runner is not None\n    _check_all_skipped(self.dtest)\n    self._disable_output_capturing_for_darwin()\n    failures: List[doctest.DocTestFailure] = []\n\n    # exec(compile(..., \"single\", ...), ...) puts result in builtins._\n    had_underscore_value = hasattr(builtins, \"_\")\n    underscore_original_value = getattr(builtins, \"_\", None)\n\n    # Save our current directory and switch out to the one where the\n    # test was originally created, in case another doctest did a\n    # directory change.  We'll restore this in the finally clause.\n    curdir = os.getcwd()\n    os.chdir(self.fspath.dirname)\n    try:\n        # Type ignored because we change the type of `out` from what\n        # ipdoctest expects.\n        self.runner.run(self.dtest, out=failures, clear_globs=False)  # type: ignore[arg-type]\n    finally:\n        os.chdir(curdir)\n        if had_underscore_value:\n            setattr(builtins, \"_\", underscore_original_value)\n        elif hasattr(builtins, \"_\"):\n            delattr(builtins, \"_\")\n\n    if failures:\n        raise MultipleDoctestFailures(failures)",
+    "hash_value": "c63ea856e2a44259c957aec6b6c41e98",
+    "detection_index": 1
+  }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "netmiko-4.5.0",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "zte_zxros.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/netmiko-4.5.0/netmiko-4.5.0/netmiko/zte/zte_zxros.py",
+    "line_number": "62",
+    "type_description": "B806:sendall",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "61\t                # reply DO ECHO / DO SGA\n62\t                telnet_sock.sendall(IAC + DO + opt)\n63\t            else:",
+    "context_snippet": "    @staticmethod\n    def _process_option(telnet_sock: socket, cmd: bytes, opt: bytes) -> None:\n        \"\"\"\n        ZTE need manually reply DO ECHO to enable echo command.\n        enable ECHO, SGA, set window size to [500, 50]\n        \"\"\"\n        if cmd == WILL:\n            if opt in [ECHO, SGA]:\n                # reply DO ECHO / DO SGA\n                telnet_sock.sendall(IAC + DO + opt)\n            else:\n                telnet_sock.sendall(IAC + DONT + opt)\n        elif cmd == DO:\n            if opt == NAWS:\n                # negotiate about window size\n                telnet_sock.sendall(IAC + WILL + opt)\n                # Width:500, Height:50\n                telnet_sock.sendall(IAC + SB + NAWS + b\"\\x01\\xf4\\x00\\x32\" + IAC + SE)\n            else:\n                telnet_sock.sendall(IAC + WONT + opt)",
+    "hash_value": "69882791317ec26822856976624a0a4b"
+  },
+  {
+    "pyfile": "base_connection.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/netmiko-4.5.0/netmiko-4.5.0/netmiko/base_connection.py",
+    "line_number": "1205",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1204\n1205\t            self.remote_conn.settimeout(self.blocking_timeout)\n1206\t            if self.keepalive:",
+    "context_snippet": "def establish_connection(self, width: int = 511, height: int = 1000) -> None:\n    \"\"\"Establish SSH connection to the network device\n\n    Timeout will generate a NetmikoTimeoutException\n    Authentication failure will generate a NetmikoAuthenticationException\n\n    :param width: Specified width of the VT100 terminal window (default: 511)\n    :type width: int\n\n    :param height: Specified height of the VT100 terminal window (default: 1000)\n    :type height: int\n    \"\"\"\n    self.channel: Channel\n    if self.protocol == \"telnet\":\n        if self.sock_telnet:\n            self.remote_conn = telnet_proxy.Telnet(\n                self.host,\n                port=self.port,\n                timeout=self.timeout,\n                proxy_dict=self.sock_telnet,\n            )\n        else:\n            self.remote_conn = telnetlib.Telnet(  # type: ignore\n                self.host, port=self.port, timeout=self.timeout\n            )\n        # Migrating communication to channel class\n        self.channel = TelnetChannel(conn=self.remote_conn, encoding=self.encoding)\n        self.telnet_login()\n    elif self.protocol == \"serial\":\n        self.remote_conn = serial.Serial(**self.serial_settings)\n        self.channel = SerialChannel(conn=self.remote_conn, encoding=self.encoding)\n        self.serial_login()\n    elif self.protocol == \"ssh\":\n        ssh_connect_params = self._connect_params_dict()\n        self.remote_conn_pre: Optional[paramiko.SSHClient]\n        self.remote_conn_pre = self._build_ssh_client()\n\n        # initiate SSH connection\n        try:\n            self.remote_conn_pre.connect(**ssh_connect_params)\n        except socket.error as conn_error:\n            self.paramiko_cleanup()\n            msg = f\"\"\"TCP connection to device failed.\n\nCommon causes of this problem are:\n1. Incorrect hostname or IP address.\n2. Wrong TCP port.\n3. Intermediate firewall blocking access.\n\nDevice settings: {self.device_type} {self.host}:{self.port}\n\n\"\"\"\n\n            # Handle DNS failures separately\n            if \"Name or service not known\" in str(conn_error):\n                msg = (\n                    f\"DNS failure--the hostname you provided was not resolvable \"\n                    f\"in DNS: {self.host}:{self.port}\"\n                )\n\n            msg = msg.lstrip()\n            raise NetmikoTimeoutException(msg)\n        except paramiko.ssh_exception.AuthenticationException as auth_err:\n            self.paramiko_cleanup()\n            msg = f\"\"\"Authentication to device failed.\n\nCommon causes of this problem are:\n1. Invalid username and password\n2. Incorrect SSH-key file\n3. Connecting to the wrong device\n\nDevice settings: {self.device_type} {self.host}:{self.port}\n\n\"\"\"\n\n            msg += self.RETURN + str(auth_err)\n            raise NetmikoAuthenticationException(msg)\n        except paramiko.ssh_exception.SSHException as e:\n            self.paramiko_cleanup()\n            if \"No existing session\" in str(e):\n                msg = (\n                    \"Paramiko: 'No existing session' error: \"\n                    \"try increasing 'conn_timeout' to 15 seconds or larger.\"\n                )\n                raise NetmikoTimeoutException(msg)\n            else:\n                msg = f\"\"\"\nA paramiko SSHException occurred during connection creation:\n\n{str(e)}\n\n\"\"\"\n                raise NetmikoTimeoutException(msg)\n\n        if self.verbose:\n            print(f\"SSH connection established to {self.host}:{self.port}\")\n\n        # Use invoke_shell to establish an 'interactive session'\n        self.remote_conn = self.remote_conn_pre.invoke_shell(\n            term=\"vt100\", width=width, height=height\n        )\n\n        self.remote_conn.settimeout(self.blocking_timeout)\n        if self.keepalive:\n            assert isinstance(self.remote_conn.transport, paramiko.Transport)\n            self.remote_conn.transport.set_keepalive(self.keepalive)\n\n        # Migrating communication to channel class\n        self.channel = SSHChannel(conn=self.remote_conn, encoding=self.encoding)\n\n        self.special_login_handler()\n        if self.verbose:\n            print(\"Interactive SSH session established\")\n\n    return None",
+    "hash_value": "4720e0e2484724c507c3547d0a87d6cc"
+  }
+]

@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "package_name": "oic-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/oic-1.7.0.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "keyio.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/oic-1.7.0/oic-1.7.0/src/oic/utils/keyio.py",
+      "line_number": "1161",
+      "type_description": "obfuscation",
+      "context_snippet": "def build_keyjar(key_conf, kid_template=\"\", keyjar=None, kidd=None):\n    \"\"\"\n    Create a KeyJar from keys.\n\n    Configuration of the type:\n    keys = [\n        {\"type\": \"RSA\", \"key\": \"cp_keys/key.pem\", \"use\": [\"enc\", \"sig\"]},\n        {\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"sig\"]},\n        {\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"enc\"]}\n    ]\n\n    :param key_conf: The key configuration\n    :param kid_template: A template by which to build the kids\n    :return: a tuple consisting of a JWKS dictionary, a KeyJar instance\n        and a representation of which kids that can be used for what.\n        Note the JWKS contains private key information !!\n    \"\"\"\n    if keyjar is None:\n        keyjar = KeyJar()\n\n    if kidd is None:\n        kidd = {\"sig\": {}, \"enc\": {}}\n\n    kid = 0\n    jwks: Dict[str, List[Dict[str, str]]] = {\"keys\": []}\n\n    for spec in key_conf:\n        typ = spec[\"type\"].upper()\n\n        if typ == \"RSA\":\n            if \"key\" in spec:\n                error_to_catch = getattr(\n                    builtins, \"FileNotFoundError\", getattr(builtins, \"IOError\")\n                )\n                try:\n                    kb = KeyBundle(\n                        source=\"file://%s\" % spec[\"key\"],\n                        fileformat=\"der\",\n                        keytype=typ,\n                        keyusage=spec[\"use\"],\n                    )\n                except error_to_catch:\n                    kb = _new_rsa_key(spec)\n                except Exception:\n                    raise\n            else:\n                kb = rsa_init(spec)\n        elif typ == \"EC\":\n            kb = ec_init(spec)\n\n        for k in kb.keys():\n            if kid_template:\n                k.kid = kid_template % kid\n                kid += 1\n            else:\n                k.add_kid()\n            kidd[k.use][k.kty] = k.kid\n\n        jwks[\"keys\"].extend([k.serialize() for k in kb.keys() if k.kty != \"oct\"])\n\n        keyjar.add_kb(\"\", kb)\n\n    return jwks, keyjar, kidd",
+      "hash_value": "dfa7d707e5a6ce378749298cf8cad6ed",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def build_keyjar(key_conf, kid_template=\"\", keyjar=None, kidd=None):\n    \"\"\"\n    Create a KeyJar from keys.\n\n    Configuration of the type:\n    keys = [\n        {\"type\": \"RSA\", \"key\": \"cp_keys/key.pem\", \"use\": [\"enc\", \"sig\"]},\n        {\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"sig\"]},\n        {\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"enc\"]}\n    ]\n\n    :param key_conf: The key configuration\n    :param kid_template: A template by which to build the kids\n    :return: a tuple consisting of a JWKS dictionary, a KeyJar instance\n        and a representation of which kids that can be used for what.\n        Note the JWKS contains private key information !!\n    \"\"\"\n    if keyjar is None:\n        keyjar = KeyJar()\n\n    if kidd is None:\n        kidd = {\"sig\": {}, \"enc\": {}}\n\n    kid = 0\n    jwks: Dict[str, List[Dict[str, str]]] = {\"keys\": []}\n\n    for spec in key_conf:\n        typ = spec[\"type\"].upper()\n\n        if typ == \"RSA\":\n            if \"key\" in spec:\n                error_to_catch = getattr(\n                    builtins, \"FileNotFoundError\", getattr(builtins, \"IOError\")\n                )\n                try:\n                    kb = KeyBundle(\n                        source=\"file://%s\" % spec[\"key\"],\n                        fileformat=\"der\",\n                        keytype=typ,\n                        keyusage=spec[\"use\"],\n                    )\n                except error_to_catch:\n                    kb = _new_rsa_key(spec)\n                except Exception:\n                    raise\n            else:\n                kb = rsa_init(spec)\n        elif typ == \"EC\":\n            kb = ec_init(spec)\n\n        for k in kb.keys():\n            if kid_template:\n                k.kid = kid_template % kid\n                kid += 1\n            else:\n                k.add_kid()\n            kidd[k.use][k.kty] = k.kid\n\n        jwks[\"keys\"].extend([k.serialize() for k in kb.keys() if k.kty != \"oct\"])\n\n        keyjar.add_kb(\"\", kb)\n\n    return jwks, keyjar, kidd",
+          "triple_sequences": [
+            {
+              "action_api": "getattr()",
+              "action_description": "Retrieves attribute value from object",
+              "action_id": "access_attribute_value",
+              "object": "builtins, \"FileNotFoundError\", getattr(builtins, \"IOError\")",
+              "object_description": "Attribute value",
+              "object_id": "access_attribute_value",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "KeyBundle()",
+              "action_description": "Instantiates class object",
+              "action_id": "init_encrypter_class",
+              "object": "source=\"file://%s\" % spec[\"key\"], fileformat=\"der\", keytype=typ, keyusage=spec[\"use\"]",
+              "object_description": "Key configuration",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "_new_rsa_key()",
+              "action_description": "Instantiates class object",
+              "action_id": "init_encrypter_class",
+              "object": "spec",
+              "object_description": "Key configuration",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "rsa_init()",
+              "action_description": "Instantiates class object",
+              "action_id": "init_encrypter_class",
+              "object": "spec",
+              "object_description": "Key configuration",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "ec_init()",
+              "action_description": "Instantiates class object",
+              "action_id": "init_encrypter_class",
+              "object": "spec",
+              "object_description": "Key configuration",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "k.add_kid()",
+              "action_description": "Adds field to object",
+              "action_id": "add_discord_embed_field",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "k.serialize()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "keyjar.add_kb()",
+              "action_description": "Adds field to object",
+              "action_id": "add_discord_embed_field",
+              "object": "\"\", kb",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

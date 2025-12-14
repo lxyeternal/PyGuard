@@ -1,0 +1,141 @@
+[
+  {
+    "pyfile": "api.py",
+    "code_snippet": "import os\nimport requests\nimport logging\nimport re\nimport json\nimport codecs\nimport coverage\n\nfrom .exception import CoverallsException\nfrom .git import git_info\nfrom .reporter import CoverallReporter\n\nlog = logging.getLogger('coveralls.api')\nNUMBER_REGEX = re.compile(r'(\\d+)$', re.IGNORECASE)\n\nclass Coveralls:\n    # ... (other methods omitted for brevity)\n\n    def submit_report(self, json_string):\n        endpoint = f'{self._coveralls_host.rstrip(\"/\")}/api/v1/jobs'\n        verify = not bool(os.environ.get('COVERALLS_SKIP_SSL_VERIFY'))\n        response = requests.post(\n            endpoint, files={'json_file': json_string}, verify=verify,\n        )\n\n        if response.status_code == 422:\n            if self.config['service_name'].startswith('github'):\n                print(\n                    'Received 422 submitting job via Github Actions. By '\n                    'default, coveralls-python uses the \"github\" service '\n                    'name, which requires you to set the $GITHUB_TOKEN '\n                    'environment variable. If you want to use a '\n                    'COVERALLS_REPO_TOKEN instead, please manually override '\n                    '$COVERALLS_SERVICE_NAME to \"github-actions\". For more '\n                    'info, see https://coveralls-python.readthedocs.io/en'\n                    '/latest/usage/configuration.html#github-actions-support',\n                )\n\n        try:\n            response.raise_for_status()\n            data = response.json()\n        except Exception as e:\n            raise CoverallsException(\n                f'Could not submit coverage: {e}',\n            ) from e\n\n        return data\n\n    # https://docs.coveralls.io/parallel-build-webhook\n    def parallel_finish(self):\n        payload = {'payload': {'status': 'done'}}\n\n        # required args\n        if self.config.get('repo_token'):\n            payload['repo_token'] = self.config['repo_token']\n        if self.config.get('service_number'):\n            payload['payload']['build_num'] = self.config['service_number']\n\n        # service-specific parameters\n        if os.environ.get('GITHUB_REPOSITORY'):\n            # Github Actions only\n            payload['repo_name'] = os.environ.get('GITHUB_REPOSITORY')\n\n        endpoint = f'{self._coveralls_host.rstrip(\"/\")}/webhook'\n        verify = not bool(os.environ.get('COVERALLS_SKIP_SSL_VERIFY'))\n        response = requests.post(endpoint, json=payload, verify=verify)\n        try:\n            response.raise_for_status()\n            response = response.json()\n        except Exception as e:\n            raise CoverallsException(\n                f'Parallel finish failed: {e}',\n            ) from e\n\n        if 'error' in response:\n            e = response['error']\n            raise CoverallsException(f'Parallel finish failed: {e}')\n\n        if 'done' not in response or not response['done']:\n            raise CoverallsException('Parallel finish failed')\n\n        return response\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "requests.post",
+        "response.status_code",
+        "self.config.__getitem__",
+        "self.config.__getitem__",
+        "os.environ.get",
+        "os.environ.get",
+        "requests.post",
+        "response.raise_for_status",
+        "response.json",
+        "response.raise_for_status",
+        "response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('COVERALLS_SKIP_SSL_VERIFY')",
+        "requests.post(endpoint, files={'json_file': json_string}, verify=verify)",
+        "response.status_code",
+        "self.config['service_name']",
+        "self.config['repo_token']",
+        "os.environ.get('GITHUB_REPOSITORY')",
+        "os.environ.get('COVERALLS_SKIP_SSL_VERIFY')",
+        "requests.post(endpoint, json=payload, verify=verify)",
+        "response.raise_for_status()",
+        "response.json()",
+        "response.raise_for_status()",
+        "response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "self.config.__getitem__",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.config.__getitem__",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\nclass Coveralls:\n    def submit_report(self, json_string):\n        endpoint = f'{self._coveralls_host.rstrip(\"/\")}/api/v1/jobs'\n        verify = not bool(os.environ.get('COVERALLS_SKIP_SSL_VERIFY'))\n        response = requests.post(\n            endpoint, files={'json_file': json_string}, verify=verify,\n        )\n\n        if response.status_code == 422:\n            if self.config['service_name'].startswith('github'):\n                print(\n                    'Received 422 submitting job via Github Actions. By '\n                    'default, coveralls-python uses the \"github\" service '\n                    'name, which requires you to set the $GITHUB_TOKEN '\n                    'environment variable. If you want to use a '\n                    'COVERALLS_REPO_TOKEN instead, please manually override '\n                    '$COVERALLS_SERVICE_NAME to \"github-actions\". For more '\n                    'info, see https://coveralls-python.readthedocs.io/en'\n                    '/latest/usage/configuration.html#github-actions-support',\n                )\n\n        try:\n            response.raise_for_status()\n            data = response.json()\n        except Exception as e:\n            raise CoverallsException(\n                f'Could not submit coverage: {e}',\n            ) from e\n\n        return data\n\n    def parallel_finish(self):\n        payload = {'payload': {'status': 'done'}}\n\n        if self.config.get('repo_token'):\n            payload['repo_token'] = self.config['repo_token']\n        if self.config.get('service_number'):\n            payload['payload']['build_num'] = self.config['service_number']\n\n        if os.environ.get('GITHUB_REPOSITORY'):\n            payload['repo_name'] = os.environ.get('GITHUB_REPOSITORY')\n\n        endpoint = f'{self._coveralls_host.rstrip(\"/\")}/webhook'\n        verify = not bool(os.environ.get('COVERALLS_SKIP_SSL_VERIFY'))\n        response = requests.post(endpoint, json=payload, verify=verify)\n        try:\n            response.raise_for_status()\n            response = response.json()\n        except Exception as e:\n            raise CoverallsException(\n                f'Parallel finish failed: {e}',\n            ) from e\n\n        if 'error' in response:\n            e = response['error']\n            raise CoverallsException(f'Parallel finish failed: {e}')\n\n        if 'done' not in response or not response['done']:\n            raise CoverallsException('Parallel finish failed')\n\n        return response"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "coveralls-4.0.1",
+      "total_matches": 2
+    }
+  }
+]

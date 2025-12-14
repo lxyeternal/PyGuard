@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "gen.py",
+    "code_snippet": "import builtins\n\nclass WaitIterator(object):\n    \"\"\"Provides an iterator to yield the results of awaitables as they finish.\n\n    Yielding a set of awaitables like this:\n\n    ``results = yield [awaitable1, awaitable2]``\n\n    pauses the coroutine until both ``awaitable1`` and ``awaitable2``\n    return, and then restarts the coroutine with the results of both\n    awaitables. If either awaitable raises an exception, the\n    expression will raise that exception and all the results will be\n    lost.\n\n    If you need to get the result of each awaitable as soon as possible,\n    or if you need the result of some awaitables even if others produce\n    errors, you can use ``WaitIterator``::\n\n      wait_iterator = gen.WaitIterator(awaitable1, awaitable2)\n      while not wait_iterator.done():\n          try:\n              result = yield wait_iterator.next()\n          except Exception as e:\n              print(\"Error {} from {}\".format(e, wait_iterator.current_future))\n          else:\n              print(\"Result {} received from {} at {}\".format(\n                  result, wait_iterator.current_future,\n                  wait_iterator.current_index))\n\n    Because results are returned as soon as they are available the\n    output from the iterator *will not be in the same order as the\n    input arguments*. If you need to know which future produced the\n    current result, you can use the attributes\n    ``WaitIterator.current_future``, or ``WaitIterator.current_index``\n    to get the index of the awaitable from the input list. (if keyword\n    arguments were used in the construction of the `WaitIterator`,\n    ``current_index`` will use the corresponding keyword).\n\n    On Python 3.5, `WaitIterator` implements the async iterator\n    protocol, so it can be used with the ``async for`` statement (note\n    that in this version the entire iteration is aborted if any value\n    raises an exception, while the previous example can continue past\n    individual errors)::\n\n      async for result in gen.WaitIterator(future1, future2):\n          print(\"Result {} received from {} at {}\".format(\n              result, wait_iterator.current_future,\n              wait_iterator.current_index))\n\n    .. versionadded:: 4.1\n\n    .. versionchanged:: 4.3\n       Added ``async for`` support in Python 3.5.\n\n    \"\"\"\n\n    _unfinished = {}  # type: Dict[Future, Union[int, str]]\n\n    def __init__(self, *args: Future, **kwargs: Future) -> None:\n        if args and kwargs:\n            raise ValueError(\"You must provide args or kwargs, not both\")\n\n        if kwargs:\n            self._unfinished = dict((f, k) for (k, f) in kwargs.items())\n            futures = list(kwargs.values())  # type: Sequence[Future]\n        else:\n            self._unfinished = dict((f, i) for (i, f) in enumerate(args))\n            futures = args\n\n        self._finished = collections.deque()  # type: Deque[Future]\n        self.current_index = None  # type: Optional[Union[str, int]]\n        self.current_future = None  # type: Optional[Future]\n        self._running_future = None  # type: Optional[Future]\n\n        for future in futures:\n            future_add_done_callback(future, self._done_callback)\n\n    def done(self) -> bool:\n        \"\"\"Returns True if this iterator has no more results.\"\"\"\n        if self._finished or self._unfinished:\n            return False\n        # Clear the 'current' values when iteration is done.\n        self.current_index = self.current_future = None\n        return True\n\n    def next(self) -> Future:\n        \"\"\"Returns a `.Future` that will yield the next available result.\n\n        Note that this `.Future` will not be the same object as any of\n        the inputs.\n        \"\"\"\n        self._running_future = Future()\n\n        if self._finished:\n            return self._return_result(self._finished.popleft())\n\n        return self._running_future\n\n    def _done_callback(self, done: Future) -> None:\n        if self._running_future and not self._running_future.done():\n            self._return_result(done)\n        else:\n            self._finished.append(done)\n\n    def _return_result(self, done: Future) -> Future:\n        \"\"\"Called set the returned future's state that of the future\n        we yielded, and set the current future for the iterator.\n        \"\"\"\n        if self._running_future is None:\n            raise Exception(\"no future is running\")\n        chain_future(done, self._running_future)\n\n        res = self._running_future\n        self._running_future = None\n        self.current_future = done\n        self.current_index = self._unfinished.pop(done)\n\n        return res\n\n    def __aiter__(self) -> typing.AsyncIterator:\n        return self\n\n    def __anext__(self) -> Future:\n        if self.done():\n            # Lookup by name to silence pyflakes on older versions.\n            raise getattr(builtins, \"StopAsyncIteration\")()\n        return self.next()\n\n# Helper functions and dependencies used by WaitIterator\nimport collections\nfrom tornado.concurrent import chain_future, Future, future_add_done_callback\nimport typing\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "collections.deque",
+        "tornado.concurrent.future_add_done_callback",
+        "tornado.concurrent.chain_future",
+        "builtins.getattr"
+      ],
+      "api_sequence_with_args": [
+        "collections.deque()",
+        "tornado.concurrent.future_add_done_callback(future, self._done_callback)",
+        "tornado.concurrent.chain_future(done, self._running_future)",
+        "builtins.getattr(builtins, \"StopAsyncIteration\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "collections.deque",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "tornado.concurrent.future_add_done_callback",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "tornado.concurrent.chain_future",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "import builtins\nimport collections\nfrom tornado.concurrent import chain_future, Future, future_add_done_callback\nimport typing\n\nclass WaitIterator(object):\n    def __init__(self, *args: Future, **kwargs: Future) -> None:\n        if args and kwargs:\n            raise ValueError(\"You must provide args or kwargs, not both\")\n        if kwargs:\n            self._unfinished = dict((f, k) for (k, f) in kwargs.items())\n            futures = list(kwargs.values())\n        else:\n            self._unfinished = dict((f, i) for (i, f) in enumerate(args))\n            futures = args\n        self._finished = collections.deque()\n        self.current_index = None\n        self.current_future = None\n        self._running_future = None\n        for future in futures:\n            future_add_done_callback(future, self._done_callback)\n\n    def _return_result(self, done: Future) -> Future:\n        if self._running_future is None:\n            raise Exception(\"no future is running\")\n        chain_future(done, self._running_future)\n        res = self._running_future\n        self._running_future = None\n        self.current_future = done\n        self.current_index = self._unfinished.pop(done)\n        return res\n\n    def __anext__(self) -> Future:\n        if self.done():\n            raise getattr(builtins, \"StopAsyncIteration\")()\n        return self.next()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "tornado-6.4.2",
+      "total_matches": 1
+    }
+  }
+]

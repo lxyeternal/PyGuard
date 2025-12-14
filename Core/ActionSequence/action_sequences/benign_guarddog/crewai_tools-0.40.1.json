@@ -1,0 +1,307 @@
+[
+  {
+    "pyfile": "brave_search_tool.py",
+    "code_snippet": "import datetime\nimport os\nimport time\nfrom typing import Any, ClassVar, Optional, Type\n\nimport requests\nfrom crewai.tools import BaseTool\nfrom pydantic import BaseModel, Field\n\n\ndef _save_results_to_file(content: str) -> None:\n    \"\"\"Saves the search results to a file.\"\"\"\n    filename = f\"search_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt\"\n    with open(filename, \"w\") as file:\n        file.write(content)\n    print(f\"Results saved to {filename}\")\n\n\nclass BraveSearchToolSchema(BaseModel):\n    \"\"\"Input for BraveSearchTool.\"\"\"\n\n    search_query: str = Field(\n        ..., description=\"Mandatory search query you want to use to search the internet\"\n    )\n\n\nclass BraveSearchTool(BaseTool):\n    \"\"\"\n    BraveSearchTool - A tool for performing web searches using the Brave Search API.\n\n    This module provides functionality to search the internet using Brave's Search API,\n    supporting customizable result counts and country-specific searches.\n\n    Dependencies:\n        - requests\n        - pydantic\n        - python-dotenv (for API key management)\n    \"\"\"\n\n    name: str = \"Brave Web Search the internet\"\n    description: str = (\n        \"A tool that can be used to search the internet with a search_query.\"\n    )\n    args_schema: Type[BaseModel] = BraveSearchToolSchema\n    search_url: str = \"https://api.search.brave.com/res/v1/web/search\"\n    country: Optional[str] = \"\"\n    n_results: int = 10\n    save_file: bool = False\n    _last_request_time: ClassVar[float] = 0\n    _min_request_interval: ClassVar[float] = 1.0  # seconds\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        if \"BRAVE_API_KEY\" not in os.environ:\n            raise ValueError(\n                \"BRAVE_API_KEY environment variable is required for BraveSearchTool\"\n            )\n\n    def _run(\n        self,\n        **kwargs: Any,\n    ) -> Any:\n        current_time = time.time()\n        if (current_time - self._last_request_time) < self._min_request_interval:\n            time.sleep(\n                self._min_request_interval - (current_time - self._last_request_time)\n            )\n        BraveSearchTool._last_request_time = time.time()\n        try:\n            search_query = kwargs.get(\"search_query\") or kwargs.get(\"query\")\n            if not search_query:\n                raise ValueError(\"Search query is required\")\n\n            save_file = kwargs.get(\"save_file\", self.save_file)\n            n_results = kwargs.get(\"n_results\", self.n_results)\n\n            payload = {\"q\": search_query, \"count\": n_results}\n\n            if self.country != \"\":\n                payload[\"country\"] = self.country\n\n            headers = {\n                \"X-Subscription-Token\": os.environ[\"BRAVE_API_KEY\"],\n                \"Accept\": \"application/json\",\n            }\n\n            response = requests.get(self.search_url, headers=headers, params=payload)\n            response.raise_for_status()  # Handle non-200 responses\n            results = response.json()\n\n            if \"web\" in results:\n                results = results[\"web\"][\"results\"]\n                string = []\n                for result in results:\n                    try:\n                        string.append(\n                            \"\\n\".join(\n                                [\n                                    f\"Title: {result['title']}\",\n                                    f\"Link: {result['url']}\",\n                                    f\"Snippet: {result['description']}\",\n                                    \"---\",\n                                ]\n                            )\n                        )\n                    except KeyError:\n                        continue\n\n            content = \"\\n\".join(string)\n        except requests.RequestException as e:\n            return f\"Error performing search: {str(e)}\"\n        except KeyError as e:\n            return f\"Error parsing search results: {str(e)}\"\n        if save_file:\n            _save_results_to_file(content)\n            return f\"\\nSearch results: {content}\\n\"\n        else:\n            return content\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "time.time",
+        "time.sleep",
+        "os.environ",
+        "requests.get",
+        "requests.Response.raise_for_status",
+        "requests.Response.json",
+        "open",
+        "file.write"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "time.time()",
+        "time.sleep(self._min_request_interval - (current_time - self._last_request_time))",
+        "os.environ[\"BRAVE_API_KEY\"]",
+        "requests.get(self.search_url, headers=headers, params=payload)",
+        "response.raise_for_status()",
+        "response.json()",
+        "open(filename, \"w\")",
+        "file.write(content)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import datetime\nimport os\nimport time\nimport requests\n\ndef _save_results_to_file(content: str) -> None:\n    filename = f\"search_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt\"\n    with open(filename, \"w\") as file:\n        file.write(content)\n    print(f\"Results saved to {filename}\")\n\nclass BraveSearchTool(BaseTool):\n    search_url: str = \"https://api.search.brave.com/res/v1/web/search\"\n    country: Optional[str] = \"\"\n    n_results: int = 10\n    save_file: bool = False\n    _last_request_time: ClassVar[float] = 0\n    _min_request_interval: ClassVar[float] = 1.0  # seconds\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        if \"BRAVE_API_KEY\" not in os.environ:\n            raise ValueError(\n                \"BRAVE_API_KEY environment variable is required for BraveSearchTool\"\n            )\n\n    def _run(self, **kwargs: Any) -> Any:\n        current_time = time.time()\n        if (current_time - self._last_request_time) < self._min_request_interval:\n            time.sleep(self._min_request_interval - (current_time - self._last_request_time))\n        BraveSearchTool._last_request_time = time.time()\n        try:\n            search_query = kwargs.get(\"search_query\") or kwargs.get(\"query\")\n            if not search_query:\n                raise ValueError(\"Search query is required\")\n            save_file = kwargs.get(\"save_file\", self.save_file)\n            n_results = kwargs.get(\"n_results\", self.n_results)\n            payload = {\"q\": search_query, \"count\": n_results}\n            if self.country != \"\":\n                payload[\"country\"] = self.country\n            headers = {\n                \"X-Subscription-Token\": os.environ[\"BRAVE_API_KEY\"],\n                \"Accept\": \"application/json\",\n            }\n            response = requests.get(self.search_url, headers=headers, params=payload)\n            response.raise_for_status()\n            results = response.json()\n            if \"web\" in results:\n                results = results[\"web\"][\"results\"]\n                string = []\n                for result in results:\n                    try:\n                        string.append(\n                            \"\\n\".join([\n                                f\"Title: {result['title']}\",\n                                f\"Link: {result['url']}\",\n                                f\"Snippet: {result['description']}\",\n                                \"---\",\n                            ])\n                        )\n                    except KeyError:\n                        continue\n            content = \"\\n\".join(string)\n        except requests.RequestException as e:\n            return f\"Error performing search: {str(e)}\"\n        except KeyError as e:\n            return f\"Error parsing search results: {str(e)}\"\n        if save_file:\n            _save_results_to_file(content)\n            return f\"\\nSearch results: {content}\\n\"\n        else:\n            return content"
+    }
+  },
+  {
+    "pyfile": "patronus_eval_tool.py",
+    "code_snippet": "import json\nimport os\nimport warnings\nfrom typing import Any, Dict, List, Optional\n\nimport requests\nfrom crewai.tools import BaseTool\n\n\nclass PatronusEvalTool(BaseTool):\n    name: str = \"Patronus Evaluation Tool\"\n    evaluate_url: str = \"https://api.patronus.ai/v1/evaluate\"\n    evaluators: List[Dict[str, str]] = []\n    criteria: List[Dict[str, str]] = []\n    description: str = \"\"\n\n    def __init__(self, **kwargs: Any):\n        super().__init__(**kwargs)\n        temp_evaluators, temp_criteria = self._init_run()\n        self.evaluators = temp_evaluators\n        self.criteria = temp_criteria\n        self.description = self._generate_description()\n        warnings.warn(\n            \"You are allowing the agent to select the best evaluator and criteria when you use the `PatronusEvalTool`. If this is not intended then please use `PatronusPredefinedCriteriaEvalTool` instead.\"\n        )\n\n    def _init_run(self):\n        evaluators_set = json.loads(\n            requests.get(\n                \"https://api.patronus.ai/v1/evaluators\",\n                headers={\n                    \"accept\": \"application/json\",\n                    \"X-API-KEY\": os.environ[\"PATRONUS_API_KEY\"],\n                },\n            ).text\n        )[\"evaluators\"]\n        ids, evaluators = set(), []\n        for ev in evaluators_set:\n            if not ev[\"deprecated\"] and ev[\"id\"] not in ids:\n                evaluators.append(\n                    {\n                        \"id\": ev[\"id\"],\n                        \"name\": ev[\"name\"],\n                        \"description\": ev[\"description\"],\n                        \"aliases\": ev[\"aliases\"],\n                    }\n                )\n                ids.add(ev[\"id\"])\n\n        criteria_set = json.loads(\n            requests.get(\n                \"https://api.patronus.ai/v1/evaluator-criteria\",\n                headers={\n                    \"accept\": \"application/json\",\n                    \"X-API-KEY\": os.environ[\"PATRONUS_API_KEY\"],\n                },\n            ).text\n        )[\"evaluator_criteria\"]\n        criteria = []\n        for cr in criteria_set:\n            if cr[\"config\"].get(\"pass_criteria\", None):\n                if cr[\"config\"].get(\"rubric\", None):\n                    criteria.append(\n                        {\n                            \"evaluator\": cr[\"evaluator_family\"],\n                            \"name\": cr[\"name\"],\n                            \"pass_criteria\": cr[\"config\"][\"pass_criteria\"],\n                            \"rubric\": cr[\"config\"][\"rubric\"],\n                        }\n                    )\n                else:\n                    criteria.append(\n                        {\n                            \"evaluator\": cr[\"evaluator_family\"],\n                            \"name\": cr[\"name\"],\n                            \"pass_criteria\": cr[\"config\"][\"pass_criteria\"],\n                        }\n                    )\n            elif cr[\"description\"]:\n                criteria.append(\n                    {\n                        \"evaluator\": cr[\"evaluator_family\"],\n                        \"name\": cr[\"name\"],\n                        \"description\": cr[\"description\"],\n                    }\n                )\n\n        return evaluators, criteria\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "requests.get",
+        "json.loads",
+        "os.environ",
+        "requests.get",
+        "json.loads",
+        "warnings.warn"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"PATRONUS_API_KEY\"]",
+        "requests.get(\"https://api.patronus.ai/v1/evaluators\", headers={\"accept\": \"application/json\", \"X-API-KEY\": os.environ[\"PATRONUS_API_KEY\"]})",
+        "json.loads(requests.get(...).text)",
+        "os.environ[\"PATRONUS_API_KEY\"]",
+        "requests.get(\"https://api.patronus.ai/v1/evaluator-criteria\", headers={\"accept\": \"application/json\", \"X-API-KEY\": os.environ[\"PATRONUS_API_KEY\"]})",
+        "json.loads(requests.get(...).text)",
+        "warnings.warn(\"You are allowing the agent to select the best evaluator and criteria when you use the `PatronusEvalTool`. If this is not intended then please use `PatronusPredefinedCriteriaEvalTool` instead.\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "warnings.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import json\nimport os\nimport warnings\nimport requests\n\nclass PatronusEvalTool(BaseTool):\n    evaluate_url: str = \"https://api.patronus.ai/v1/evaluate\"\n\n    def __init__(self, **kwargs: Any):\n        super().__init__(**kwargs)\n        temp_evaluators, temp_criteria = self._init_run()\n        self.evaluators = temp_evaluators\n        self.criteria = temp_criteria\n        self.description = self._generate_description()\n        warnings.warn(\n            \"You are allowing the agent to select the best evaluator and criteria when you use the `PatronusEvalTool`. If this is not intended then please use `PatronusPredefinedCriteriaEvalTool` instead.\"\n        )\n\n    def _init_run(self):\n        evaluators_set = json.loads(\n            requests.get(\n                \"https://api.patronus.ai/v1/evaluators\",\n                headers={\n                    \"accept\": \"application/json\",\n                    \"X-API-KEY\": os.environ[\"PATRONUS_API_KEY\"],\n                },\n            ).text\n        )[\"evaluators\"]\n        # ...\n        criteria_set = json.loads(\n            requests.get(\n                \"https://api.patronus.ai/v1/evaluator-criteria\",\n                headers={\n                    \"accept\": \"application/json\",\n                    \"X-API-KEY\": os.environ[\"PATRONUS_API_KEY\"],\n                },\n            ).text\n        )[\"evaluator_criteria\"]\n        # ...\n"
+    }
+  },
+  {
+    "pyfile": "serper_dev_tool.py",
+    "code_snippet": "import os\nimport json\nimport requests\nimport logging\n\nlogger = logging.getLogger(__name__)\n\nclass SerperDevTool(BaseTool):\n    # ... (other class attributes and methods)\n\n    def _get_search_url(self, search_type: str) -> str:\n        \"\"\"Get the appropriate endpoint URL based on search type.\"\"\"\n        search_type = search_type.lower()\n        allowed_search_types = [\"search\", \"news\"]\n        if search_type not in allowed_search_types:\n            raise ValueError(\n                f\"Invalid search type: {search_type}. Must be one of: {', '.join(allowed_search_types)}\"\n            )\n        return f\"{self.base_url}/{search_type}\"\n\n    def _make_api_request(self, search_query: str, search_type: str) -> dict:\n        \"\"\"Make API request to Serper.\"\"\"\n        search_url = self._get_search_url(search_type)\n        payload = {\"q\": search_query, \"num\": self.n_results}\n\n        if self.country != \"\":\n            payload[\"gl\"] = self.country\n        if self.location != \"\":\n            payload[\"location\"] = self.location\n        if self.locale != \"\":\n            payload[\"hl\"] = self.locale\n\n        headers = {\n            \"X-API-KEY\": os.environ[\"SERPER_API_KEY\"],\n            \"content-type\": \"application/json\",\n        }\n        payload = json.dumps(payload)\n\n        response = None\n        try:\n            response = requests.post(\n                search_url, headers=headers, json=json.loads(payload), timeout=10\n            )\n            response.raise_for_status()\n            results = response.json()\n            if not results:\n                logger.error(\"Empty response from Serper API\")\n                raise ValueError(\"Empty response from Serper API\")\n            return results\n        except requests.exceptions.RequestException as e:\n            error_msg = f\"Error making request to Serper API: {e}\"\n            if response is not None and hasattr(response, \"content\"):\n                error_msg += f\"\\nResponse content: {response.content}\"\n            logger.error(error_msg)\n            raise\n        except json.JSONDecodeError as e:\n            if response is not None and hasattr(response, \"content\"):\n                logger.error(f\"Error decoding JSON response: {e}\")\n                logger.error(f\"Response content: {response.content}\")\n            else:\n                logger.error(\n                    f\"Error decoding JSON response: {e} (No response content available)\"\n                )\n            raise\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "json.dumps",
+        "json.loads",
+        "requests.post",
+        "requests.models.Response.raise_for_status",
+        "requests.models.Response.json",
+        "logging.Logger.error",
+        "logging.Logger.error",
+        "logging.Logger.error",
+        "logging.Logger.error"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"SERPER_API_KEY\"]",
+        "json.dumps(payload)",
+        "json.loads(payload)",
+        "requests.post(search_url, headers=headers, json=json.loads(payload), timeout=10)",
+        "response.raise_for_status()",
+        "response.json()",
+        "logger.error(\"Empty response from Serper API\")",
+        "logger.error(error_msg)",
+        "logger.error(f\"Error decoding JSON response: {e}\")",
+        "logger.error(f\"Response content: {response.content}\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "logging.Logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logging.Logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logging.Logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logging.Logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import os\nimport json\nimport requests\nimport logging\n\nlogger = logging.getLogger(__name__)\n\nclass SerperDevTool(BaseTool):\n    def _make_api_request(self, search_query: str, search_type: str) -> dict:\n        search_url = self._get_search_url(search_type)\n        payload = {\"q\": search_query, \"num\": self.n_results}\n        if self.country != \"\":\n            payload[\"gl\"] = self.country\n        if self.location != \"\":\n            payload[\"location\"] = self.location\n        if self.locale != \"\":\n            payload[\"hl\"] = self.locale\n        headers = {\n            \"X-API-KEY\": os.environ[\"SERPER_API_KEY\"],\n            \"content-type\": \"application/json\",\n        }\n        payload = json.dumps(payload)\n        response = None\n        try:\n            response = requests.post(\n                search_url, headers=headers, json=json.loads(payload), timeout=10\n            )\n            response.raise_for_status()\n            results = response.json()\n            if not results:\n                logger.error(\"Empty response from Serper API\")\n                raise ValueError(\"Empty response from Serper API\")\n            return results\n        except requests.exceptions.RequestException as e:\n            error_msg = f\"Error making request to Serper API: {e}\"\n            if response is not None and hasattr(response, \"content\"):\n                error_msg += f\"\\nResponse content: {response.content}\"\n            logger.error(error_msg)\n            raise\n        except json.JSONDecodeError as e:\n            if response is not None and hasattr(response, \"content\"):\n                logger.error(f\"Error decoding JSON response: {e}\")\n                logger.error(f\"Response content: {response.content}\")\n            else:\n                logger.error(\n                    f\"Error decoding JSON response: {e} (No response content available)\"\n                )\n            raise"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "crewai_tools-0.40.1",
+      "total_matches": 4
+    }
+  }
+]

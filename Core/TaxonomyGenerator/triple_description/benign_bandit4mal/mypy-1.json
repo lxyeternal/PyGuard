@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "package_name": "mypy-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/mypy-1.15.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "testpythoneval.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/mypy-1.15.0/mypy-1.15.0/mypy/test/testpythoneval.py",
+      "line_number": "81",
+      "type_description": "B815:write",
+      "context_snippet": "def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None:\n    \"\"\"Runs Mypy in a subprocess.\n\n    If this passes without errors, executes the script again with a given Python\n    version.\n    \"\"\"\n    assert testcase.old_cwd is not None, \"test was not properly set up\"\n    # We must enable site packages to get access to installed stubs.\n    mypy_cmdline = [\n        \"--show-traceback\",\n        \"--no-silence-site-packages\",\n        \"--no-error-summary\",\n        \"--hide-error-codes\",\n        \"--allow-empty-bodies\",\n        \"--force-uppercase-builtins\",\n        \"--test-env\",  # Speeds up some checks\n    ]\n    interpreter = python3_path\n    mypy_cmdline.append(f\"--python-version={'.'.join(map(str, PYTHON3_VERSION))}\")\n\n    m = re.search(\"# flags: (.*)$\", \"\\n\".join(testcase.input), re.MULTILINE)\n    if m:\n        additional_flags = m.group(1).split()\n        for flag in additional_flags:\n            if flag.startswith(\"--python-version=\"):\n                targeted_python_version = flag.split(\"=\")[1]\n                targeted_major, targeted_minor = targeted_python_version.split(\".\")\n                if (int(targeted_major), int(targeted_minor)) > (\n                    sys.version_info.major,\n                    sys.version_info.minor,\n                ):\n                    return\n        mypy_cmdline.extend(additional_flags)\n\n    # Write the program to a file.\n    program = \"_\" + testcase.name + \".py\"\n    program_path = os.path.join(test_temp_dir, program)\n    mypy_cmdline.append(program_path)\n    with open(program_path, \"w\", encoding=\"utf8\") as file:\n        for s in testcase.input:\n            file.write(f\"{s}\\n\")\n    mypy_cmdline.append(f\"--cache-dir={cache_dir}\")\n    output = []\n    # Type check the program.\n    out, err, returncode = api.run(mypy_cmdline)\n    # split lines, remove newlines, and remove directory of test case\n    for line in (out + err).splitlines():\n        if line.startswith(test_temp_dir + os.sep):\n            output.append(line[len(test_temp_dir + os.sep) :].rstrip(\"\\r\\n\"))\n        else:\n            # Normalize paths so that the output is the same on Windows and Linux/macOS.\n            line = line.replace(test_temp_dir + os.sep, test_temp_dir + \"/\")\n            output.append(line.rstrip(\"\\r\\n\"))\n    if returncode > 1 and not testcase.output:\n        # Either api.run() doesn't work well in case of a crash, or pytest interferes with it.\n        # Tweak output to prevent tests with empty expected output to pass in case of a crash.\n        output.append(\"!!! Mypy crashed !!!\")\n    if returncode == 0 and not output:\n        # Execute the program.\n        proc = subprocess.run(\n            [interpreter, \"-Wignore\", program], cwd=test_temp_dir, capture_output=True\n        )\n        output.extend(split_lines(proc.stdout, proc.stderr))\n    # Remove temp file.\n    os.remove(program_path)\n    for i, line in enumerate(output):\n        if os.path.sep + \"typeshed\" + os.path.sep in line:\n            output[i] = line.split(os.path.sep)[-1]\n    assert_string_arrays_equal(\n        adapt_output(testcase), output, f\"Invalid output ({testcase.file}, line {testcase.line})\"\n    )",
+      "hash_value": "7fc189d6e45494996fe3ea690f7b7dd5",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None:\n    \"\"\"Runs Mypy in a subprocess.\n\n    If this passes without errors, executes the script again with a given Python\n    version.\n    \"\"\"\n    assert testcase.old_cwd is not None, \"test was not properly set up\"\n    # We must enable site packages to get access to installed stubs.\n    mypy_cmdline = [\n        \"--show-traceback\",\n        \"--no-silence-site-packages\",\n        \"--no-error-summary\",\n        \"--hide-error-codes\",\n        \"--allow-empty-bodies\",\n        \"--force-uppercase-builtins\",\n        \"--test-env\",  # Speeds up some checks\n    ]\n    interpreter = python3_path\n    mypy_cmdline.append(f\"--python-version={'.'.join(map(str, PYTHON3_VERSION))}\")\n\n    m = re.search(\"# flags: (.*)$\", \"\\n\".join(testcase.input), re.MULTILINE)\n    if m:\n        additional_flags = m.group(1).split()\n        for flag in additional_flags:\n            if flag.startswith(\"--python-version=\"):\n                targeted_python_version = flag.split(\"=\")[1]\n                targeted_major, targeted_minor = targeted_python_version.split(\".\")\n                if (int(targeted_major), int(targeted_minor)) > (\n                    sys.version_info.major,\n                    sys.version_info.minor,\n                ):\n                    return\n        mypy_cmdline.extend(additional_flags)\n\n    # Write the program to a file.\n    program = \"_\" + testcase.name + \".py\"\n    program_path = os.path.join(test_temp_dir, program)\n    mypy_cmdline.append(program_path)\n    with open(program_path, \"w\", encoding=\"utf8\") as file:\n        for s in testcase.input:\n            file.write(f\"{s}\\n\")\n    mypy_cmdline.append(f\"--cache-dir={cache_dir}\")\n    output = []\n    # Type check the program.\n    out, err, returncode = api.run(mypy_cmdline)\n    # split lines, remove newlines, and remove directory of test case\n    for line in (out + err).splitlines():\n        if line.startswith(test_temp_dir + os.sep):\n            output.append(line[len(test_temp_dir + os.sep) :].rstrip(\"\\r\\n\"))\n        else:\n            # Normalize paths so that the output is the same on Windows and Linux/macOS.\n            line = line.replace(test_temp_dir + os.sep, test_temp_dir + \"/\")\n            output.append(line.rstrip(\"\\r\\n\"))\n    if returncode > 1 and not testcase.output:\n        # Either api.run() doesn't work well in case of a crash, or pytest interferes with it.\n        # Tweak output to prevent tests with empty expected output to pass in case of a crash.\n        output.append(\"!!! Mypy crashed !!!\")\n    if returncode == 0 and not output:\n        # Execute the program.\n        proc = subprocess.run(\n            [interpreter, \"-Wignore\", program], cwd=test_temp_dir, capture_output=True\n        )\n        output.extend(split_lines(proc.stdout, proc.stderr))\n    # Remove temp file.\n    os.remove(program_path)\n    for i, line in enumerate(output):\n        if os.path.sep + \"typeshed\" + os.path.sep in line:\n            output[i] = line.split(os.path.sep)[-1]\n    assert_string_arrays_equal(\n        adapt_output(testcase), output, f\"Invalid output ({testcase.file}, line {testcase.line})\"\n    )",
+          "triple_sequences": [
+            {
+              "action_api": "re.search()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "\"# flags: (.*)$\", \"\\n\".join(testcase.input), re.MULTILINE",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Decode obfuscated code content",
+              "intention_id": "decode_obfuscated_code"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "test_temp_dir, program",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "program_path, \"w\", encoding=\"utf8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "file.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"{s}\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "api.run()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "mypy_cmdline",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "str.splitlines()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "out + err",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "str.replace()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "line.replace(test_temp_dir + os.sep, test_temp_dir + \"/\")",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "subprocess.run()",
+              "action_description": "Spawns new process to execute command without shell access",
+              "action_id": "spawn_process_no_shell",
+              "object": "[interpreter, \"-Wignore\", program], cwd=test_temp_dir, capture_output=True",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "os.remove()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "program_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "str.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "m.group(1)",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

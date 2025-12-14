@@ -1,0 +1,288 @@
+[
+  {
+    "metadata": {
+      "package_name": "paste-3.10.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_fileapp.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/paste-3.10.1/paste-3.10.1/tests/test_fileapp.py",
+    "line_number": "120",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "119\t        file.write(\"X\" * fileapp.CACHE_SIZE) # exceed the cashe size\n120\t        file.write(\"YZ\")\n121\t        file.close()",
+    "code_snippet": "def test_file():\n    tempfile = \"test_fileapp.%s.txt\" % (random.random())\n    content = LETTERS * 20\n    content = content.encode('utf8')\n    with open(tempfile, \"wb\") as fp:\n        fp.write(content)\n    try:\n        app = fileapp.FileApp(tempfile)\n        res = TestApp(app).get(\"/\")\n        assert len(content) == int(res.header('content-length'))\n        assert 'text/plain' == res.header('content-type')\n        assert content == res.body\n        assert content == app.content  # this is cashed\n        lastmod = res.header('last-modified')\n        print(\"updating\", tempfile)\n        file = open(tempfile,\"a+\")\n        file.write(\"0123456789\")\n        file.close()\n        res = TestApp(app).get(\"/\",headers={'Cache-Control': 'max-age=0'})\n        assert len(content)+10 == int(res.header('content-length'))\n        assert 'text/plain' == res.header('content-type')\n        assert content + b\"0123456789\" == res.body\n        assert app.content # we are still cached\n        file = open(tempfile,\"a+\")\n        file.write(\"X\" * fileapp.CACHE_SIZE) # exceed the cashe size\n        file.write(\"YZ\")\n        file.close()\n        res = TestApp(app).get(\"/\",headers={'Cache-Control': 'max-age=0'})\n        newsize = fileapp.CACHE_SIZE + len(content)+12\n        assert newsize == int(res.header('content-length'))\n        assert newsize == len(res.body)\n        assert res.body.startswith(content) and res.body.endswith(b'XYZ')\n        assert not app.content # we are no longer cached\n    finally:\n        os.unlink(tempfile)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "fp.write",
+        "fileapp.FileApp",
+        "TestApp.get",
+        "res.header",
+        "res.header",
+        "res.header",
+        "res.header",
+        "open",
+        "file.write",
+        "file.close",
+        "TestApp.get",
+        "res.header",
+        "res.header",
+        "res.body.startswith",
+        "res.body.endswith",
+        "open",
+        "file.write",
+        "file.write",
+        "file.close",
+        "TestApp.get",
+        "res.header",
+        "res.header",
+        "res.body.startswith",
+        "res.body.endswith",
+        "os.unlink"
+      ],
+      "api_sequence_with_args": [
+        "open(tempfile, \"wb\")",
+        "fp.write(content)",
+        "fileapp.FileApp(tempfile)",
+        "TestApp(app).get(\"/\")",
+        "res.header('content-length')",
+        "res.header('content-type')",
+        "res.header('last-modified')",
+        "res.header('content-type')",
+        "open(tempfile, \"a+\")",
+        "file.write(\"0123456789\")",
+        "file.close()",
+        "TestApp(app).get(\"/\", headers={'Cache-Control': 'max-age=0'})",
+        "res.header('content-length')",
+        "res.header('content-type')",
+        "res.body.startswith(content)",
+        "res.body.endswith(b'XYZ')",
+        "open(tempfile, \"a+\")",
+        "file.write(\"X\" * fileapp.CACHE_SIZE)",
+        "file.write(\"YZ\")",
+        "file.close()",
+        "TestApp(app).get(\"/\", headers={'Cache-Control': 'max-age=0'})",
+        "res.header('content-length')",
+        "res.header('content-type')",
+        "res.body.startswith(content)",
+        "res.body.endswith(b'XYZ')",
+        "os.unlink(tempfile)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "fp.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "fileapp.FileApp",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "TestApp.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "file.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "TestApp.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.body.startswith",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.body.endswith",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "file.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "TestApp.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.header",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.body.startswith",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.body.endswith",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "def test_file():\n    tempfile = \"test_fileapp.%s.txt\" % (random.random())\n    content = LETTERS * 20\n    content = content.encode('utf8')\n    with open(tempfile, \"wb\") as fp:\n        fp.write(content)\n    try:\n        app = fileapp.FileApp(tempfile)\n        res = TestApp(app).get(\"/\")\n        assert len(content) == int(res.header('content-length'))\n        assert 'text/plain' == res.header('content-type')\n        assert content == res.body\n        assert content == app.content  # this is cashed\n        lastmod = res.header('last-modified')\n        print(\"updating\", tempfile)\n        file = open(tempfile,\"a+\")\n        file.write(\"0123456789\")\n        file.close()\n        res = TestApp(app).get(\"/\",headers={'Cache-Control': 'max-age=0'})\n        assert len(content)+10 == int(res.header('content-length'))\n        assert 'text/plain' == res.header('content-type')\n        assert content + b\"0123456789\" == res.body\n        assert app.content # we are still cached\n        file = open(tempfile,\"a+\")\n        file.write(\"X\" * fileapp.CACHE_SIZE) # exceed the cashe size\n        file.write(\"YZ\")\n        file.close()\n        res = TestApp(app).get(\"/\",headers={'Cache-Control': 'max-age=0'})\n        newsize = fileapp.CACHE_SIZE + len(content)+12\n        assert newsize == int(res.header('content-length'))\n        assert newsize == len(res.body)\n        assert res.body.startswith(content) and res.body.endswith(b'XYZ')\n        assert not app.content # we are no longer cached\n    finally:\n        os.unlink(tempfile)"
+    }
+  }
+]

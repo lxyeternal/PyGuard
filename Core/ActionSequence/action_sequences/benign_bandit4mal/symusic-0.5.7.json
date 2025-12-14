@@ -1,0 +1,330 @@
+[
+  {
+    "metadata": {
+      "package_name": "symusic-0.5.7",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "manage.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/symusic-0.5.7/symusic-0.5.7/3rdparty/fmt/support/manage.py",
+    "line_number": "282",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "281\t            line = prefix + version + ')\\n'\n282\t        sys.stdout.write(line)\n283",
+    "code_snippet": "def release(args):\n    env = create_build_env()\n    fmt_repo = env.fmt_repo\n\n    branch = args.get('<branch>')\n    if branch is None:\n        branch = 'master'\n    if not fmt_repo.update('-b', branch, fmt_repo_url):\n        clean_checkout(fmt_repo, branch)\n\n    # Update the date in the changelog and extract the version and the first\n    # section content.\n    changelog = 'ChangeLog.md'\n    changelog_path = os.path.join(fmt_repo.dir, changelog)\n    is_first_section = True\n    first_section = []\n    for i, line in enumerate(fileinput.input(changelog_path, inplace=True)):\n        if i == 0:\n            version = re.match(r'# (.*) - TBD', line).group(1)\n            line = '# {} - {}\\n'.format(\n                version, datetime.date.today().isoformat())\n        elif not is_first_section:\n            pass\n        elif line.startswith('#'):\n            is_first_section = False\n        else:\n            first_section.append(line)\n        sys.stdout.write(line)\n    if first_section[0] == '\\n':\n        first_section.pop(0)\n\n    changes = ''\n    code_block = False\n    stripped = False\n    for line in first_section:\n        if re.match(r'^\\s*```', line):\n            code_block = not code_block\n            changes += line\n            stripped = False\n            continue\n        if code_block:\n            changes += line\n            continue\n        if line == '\\n':\n            changes += line\n            if stripped:\n                changes += line\n                stripped = False\n            continue\n        if stripped:\n            line = ' ' + line.lstrip()\n        changes += line.rstrip()\n        stripped = True\n\n    cmakelists = 'CMakeLists.txt'\n    for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),\n                                inplace=True):\n        prefix = 'set(FMT_VERSION '\n        if line.startswith(prefix):\n            line = prefix + version + ')\\n'\n        sys.stdout.write(line)\n\n    # Add the version to the build script.\n    script = os.path.join('doc', 'build.py')\n    script_path = os.path.join(fmt_repo.dir, script)\n    for line in fileinput.input(script_path, inplace=True):\n      m = re.match(r'( *versions \\+= )\\[(.+)\\]', line)\n      if m:\n        line = '{}[{}, \\'{}\\']\\n'.format(m.group(1), m.group(2), version)\n      sys.stdout.write(line)\n\n    fmt_repo.checkout('-B', 'release')\n    fmt_repo.add(changelog, cmakelists, script)\n    fmt_repo.commit('-m', 'Update version')\n\n    # Build the docs and package.\n    run = Runner(fmt_repo.dir)\n    run('cmake', '.')\n    run('make', 'doc', 'package_source')\n\n    # Create a release on GitHub.\n    fmt_repo.push('origin', 'release')\n    auth_headers = {'Authorization': 'token ' + os.getenv('FMT_TOKEN')}\n    r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',\n                      headers=auth_headers,\n                      data=json.dumps({'tag_name': version,\n                                       'target_commitish': 'release',\n                                       'body': changes, 'draft': True}))\n    if r.status_code != 201:\n        raise Exception('Failed to create a release ' + str(r))\n    id = r.json()['id']\n    uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'\n    package = 'fmt-{}.zip'.format(version)\n    r = requests.post(\n        '{}/{}/assets?name={}'.format(uploads_url, id, package),\n        headers={'Content-Type': 'application/zip'} | auth_headers,\n        data=open('build/fmt/' + package, 'rb'))\n    if r.status_code != 201:\n        raise Exception('Failed to upload an asset ' + str(r))\n\n    update_site(env)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "fileinput.input",
+        "re.match",
+        "datetime.date.today",
+        "datetime.date.today.isoformat",
+        "sys.stdout.write",
+        "sys.stdout.write",
+        "os.path.join",
+        "fileinput.input",
+        "sys.stdout.write",
+        "os.path.join",
+        "os.path.join",
+        "fileinput.input",
+        "re.match",
+        "sys.stdout.write",
+        "fmt_repo.checkout",
+        "fmt_repo.add",
+        "fmt_repo.commit",
+        "Runner",
+        "Runner.__call__",
+        "Runner.__call__",
+        "fmt_repo.push",
+        "os.getenv",
+        "json.dumps",
+        "requests.post",
+        "r.status_code",
+        "r.json",
+        "requests.post",
+        "open",
+        "r.status_code",
+        "update_site"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(fmt_repo.dir, changelog)",
+        "fileinput.input(changelog_path, inplace=True)",
+        "re.match(r'# (.*) - TBD', line)",
+        "datetime.date.today()",
+        "datetime.date.today().isoformat()",
+        "sys.stdout.write(line)",
+        "sys.stdout.write(line)",
+        "os.path.join(fmt_repo.dir, cmakelists)",
+        "fileinput.input(os.path.join(fmt_repo.dir, cmakelists), inplace=True)",
+        "sys.stdout.write(line)",
+        "os.path.join('doc', 'build.py')",
+        "os.path.join(fmt_repo.dir, script)",
+        "fileinput.input(script_path, inplace=True)",
+        "re.match(r'( *versions \\+= )\\[(.+)\\]', line)",
+        "sys.stdout.write(line)",
+        "fmt_repo.checkout('-B', 'release')",
+        "fmt_repo.add(changelog, cmakelists, script)",
+        "fmt_repo.commit('-m', 'Update version')",
+        "Runner(fmt_repo.dir)",
+        "run('cmake', '.')",
+        "run('make', 'doc', 'package_source')",
+        "fmt_repo.push('origin', 'release')",
+        "os.getenv('FMT_TOKEN')",
+        "json.dumps({'tag_name': version, 'target_commitish': 'release', 'body': changes, 'draft': True})",
+        "requests.post('https://api.github.com/repos/fmtlib/fmt/releases', headers=auth_headers, data=json.dumps(...))",
+        "r.status_code",
+        "r.json()['id']",
+        "requests.post('{}/{}/assets?name={}'.format(uploads_url, id, package), headers={'Content-Type': 'application/zip'} | auth_headers, data=open('build/fmt/' + package, 'rb'))",
+        "open('build/fmt/' + package, 'rb')",
+        "r.status_code",
+        "update_site(env)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "fileinput.input",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.match",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "datetime.date.today",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "datetime.date.today.isoformat",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "sys.stdout.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "fileinput.input",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "sys.stdout.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "fileinput.input",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "re.match",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "sys.stdout.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "fmt_repo.checkout",
+          "id": "clone_git_repo",
+          "description": "Clones Git repository to specified local path",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "fmt_repo.add",
+          "id": "add_file_zip",
+          "description": "Adds file to ZIP archive with specified archive name",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "fmt_repo.commit",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "Runner",
+          "id": "init_git_wrapper",
+          "description": "Initializes Git command wrapper for specified directory",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "Runner.__call__",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "Runner.__call__",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "fmt_repo.push",
+          "id": "clone_git_repo",
+          "description": "Clones Git repository to specified local path",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "r.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "r.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "r.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "update_site",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "def release(args):\n    env = create_build_env()\n    fmt_repo = env.fmt_repo\n\n    branch = args.get('<branch>')\n    if branch is None:\n        branch = 'master'\n    if not fmt_repo.update('-b', branch, fmt_repo_url):\n        clean_checkout(fmt_repo, branch)\n\n    changelog = 'ChangeLog.md'\n    changelog_path = os.path.join(fmt_repo.dir, changelog)\n    is_first_section = True\n    first_section = []\n    for i, line in enumerate(fileinput.input(changelog_path, inplace=True)):\n        if i == 0:\n            version = re.match(r'# (.*) - TBD', line).group(1)\n            line = '# {} - {}\\n'.format(\n                version, datetime.date.today().isoformat())\n        elif not is_first_section:\n            pass\n        elif line.startswith('#'):\n            is_first_section = False\n        else:\n            first_section.append(line)\n        sys.stdout.write(line)\n    if first_section[0] == '\\n':\n        first_section.pop(0)\n\n    cmakelists = 'CMakeLists.txt'\n    for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),\n                                inplace=True):\n        prefix = 'set(FMT_VERSION '\n        if line.startswith(prefix):\n            line = prefix + version + ')\\n'\n        sys.stdout.write(line)\n\n    script = os.path.join('doc', 'build.py')\n    script_path = os.path.join(fmt_repo.dir, script)\n    for line in fileinput.input(script_path, inplace=True):\n      m = re.match(r'( *versions \\+= )\\[(.+)\\]', line)\n      if m:\n        line = '{}[{}, \\'{}\\']\\n'.format(m.group(1), m.group(2), version)\n      sys.stdout.write(line)\n\n    fmt_repo.checkout('-B', 'release')\n    fmt_repo.add(changelog, cmakelists, script)\n    fmt_repo.commit('-m', 'Update version')\n\n    run = Runner(fmt_repo.dir)\n    run('cmake', '.')\n    run('make', 'doc', 'package_source')\n\n    fmt_repo.push('origin', 'release')\n    auth_headers = {'Authorization': 'token ' + os.getenv('FMT_TOKEN')}\n    r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',\n                      headers=auth_headers,\n                      data=json.dumps({'tag_name': version,\n                                       'target_commitish': 'release',\n                                       'body': changes, 'draft': True}))\n    if r.status_code != 201:\n        raise Exception('Failed to create a release ' + str(r))\n    id = r.json()['id']\n    uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'\n    package = 'fmt-{}.zip'.format(version)\n    r = requests.post(\n        '{}/{}/assets?name={}'.format(uploads_url, id, package),\n        headers={'Content-Type': 'application/zip'} | auth_headers,\n        data=open('build/fmt/' + package, 'rb'))\n    if r.status_code != 201:\n        raise Exception('Failed to upload an asset ' + str(r))\n\n    update_site(env)"
+    }
+  }
+]

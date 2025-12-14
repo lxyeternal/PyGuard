@@ -1,0 +1,424 @@
+[
+  {
+    "pyfile": "analytics.py",
+    "code_snippet": "import json\nimport os\n\nfrom dvc.log import logger\n\nfrom .env import DVC_ANALYTICS_ENDPOINT, DVC_NO_ANALYTICS\n\nlogger = logger.getChild(__name__)\n\n\ndef send(path):\n    \"\"\"\n    Side effect: Removes the report after sending it.\n\n    The report is generated and stored in a temporary file, see:\n    `collect_and_send_report`. Sending happens on another process,\n    thus, the need of removing such file afterwards.\n    \"\"\"\n    import requests\n\n    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, \"https://analytics.dvc.org\")\n    headers = {\"content-type\": \"application/json\"}\n\n    with open(path, encoding=\"utf-8\") as fobj:\n        report = json.load(fobj)\n\n    report.update(_runtime_info())\n\n    logger.debug(\"uploading report to %s\", url)\n    logger.trace(\"Sending %s to %s\", report, url)\n\n    try:\n        requests.post(url, json=report, headers=headers, timeout=5)\n    except requests.exceptions.RequestException as e:\n        logger.trace(\"\", exc_info=True)\n        logger.debug(\"failed to send analytics report %s\", str(e))\n\n    logger.trace(\"removing report %s\", path)\n    os.remove(path)\n\n\ndef _runtime_info():\n    \"\"\"\n    Gather information from the environment where DVC runs to fill a report.\n    \"\"\"\n    from iterative_telemetry import _generate_ci_id, find_or_create_user_id\n\n    from dvc import __version__\n    from dvc.utils import is_binary\n\n    ci_id = _generate_ci_id()\n    if ci_id:\n        group_id, user_id = ci_id\n    else:\n        group_id, user_id = None, find_or_create_user_id()\n\n    return {\n        \"dvc_version\": __version__,\n        \"is_binary\": is_binary(),\n        \"scm_class\": _scm_in_use(),\n        \"system_info\": _system_info(),\n        \"user_id\": user_id,\n        \"group_id\": group_id,\n    }\n\n\ndef _scm_in_use():\n    from dvc.exceptions import NotDvcRepoError\n    from dvc.repo import Repo\n    from dvc.scm import NoSCM\n\n    from .scm import SCM, SCMError\n\n    try:\n        scm = SCM(root_dir=Repo.find_root())\n        return type(scm).__name__\n    except SCMError:\n        return NoSCM.__name__\n    except NotDvcRepoError:\n        pass\n\n\ndef _system_info():\n    import platform\n    import sys\n\n    import distro\n\n    system = platform.system()\n\n    if system == \"Windows\":\n        version = sys.getwindowsversion()  # type: ignore[attr-defined]\n\n        return {\n            \"os\": \"windows\",\n            \"windows_version_build\": version.build,\n            \"windows_version_major\": version.major,\n            \"windows_version_minor\": version.minor,\n            \"windows_version_service_pack\": version.service_pack,\n        }\n\n    if system == \"Darwin\":\n        return {\"os\": \"mac\", \"mac_version\": platform.mac_ver()[0]}\n\n    if system == \"Linux\":\n        return {\n            \"os\": \"linux\",\n            \"linux_distro\": distro.id(),\n            \"linux_distro_like\": distro.like(),\n            \"linux_distro_version\": distro.version(),\n        }\n\n    # We don't collect data for any other system.\n    raise NotImplementedError\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "open",
+        "json.load",
+        "dict.update",
+        "_runtime_info",
+        "logger.debug",
+        "logger.trace",
+        "requests.post",
+        "logger.trace",
+        "logger.debug",
+        "logger.trace",
+        "os.remove",
+        "_generate_ci_id",
+        "find_or_create_user_id",
+        "_scm_in_use",
+        "_system_info",
+        "is_binary",
+        "Repo.find_root",
+        "SCM",
+        "type",
+        "NoSCM.__name__",
+        "platform.system",
+        "sys.getwindowsversion",
+        "platform.mac_ver",
+        "distro.id",
+        "distro.like",
+        "distro.version"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(DVC_ANALYTICS_ENDPOINT, \"https://analytics.dvc.org\")",
+        "open(path, encoding=\"utf-8\")",
+        "json.load(fobj)",
+        "report.update(_runtime_info())",
+        "_runtime_info()",
+        "logger.debug(\"uploading report to %s\", url)",
+        "logger.trace(\"Sending %s to %s\", report, url)",
+        "requests.post(url, json=report, headers=headers, timeout=5)",
+        "logger.trace(\"\", exc_info=True)",
+        "logger.debug(\"failed to send analytics report %s\", str(e))",
+        "logger.trace(\"removing report %s\", path)",
+        "os.remove(path)",
+        "_generate_ci_id()",
+        "find_or_create_user_id()",
+        "_scm_in_use()",
+        "_system_info()",
+        "is_binary()",
+        "Repo.find_root()",
+        "SCM(root_dir=Repo.find_root())",
+        "type(scm).__name__",
+        "NoSCM.__name__",
+        "platform.system()",
+        "sys.getwindowsversion()",
+        "platform.mac_ver()[0]",
+        "distro.id()",
+        "distro.like()",
+        "distro.version()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "dict.update",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "_runtime_info",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.trace",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logger.trace",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.trace",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "_generate_ci_id",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "find_or_create_user_id",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "_scm_in_use",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "_system_info",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "is_binary",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "Repo.find_root",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "SCM",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "type",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "NoSCM.__name__",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.getwindowsversion",
+          "id": "get_os_version",
+          "description": "Retrieves operating system version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "platform.mac_ver",
+          "id": "get_os_version",
+          "description": "Retrieves operating system version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "distro.id",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "distro.like",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "distro.version",
+          "id": "get_os_version",
+          "description": "Retrieves operating system version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        }
+      ],
+      "contextual_code": "import json\nimport os\nfrom dvc.log import logger\nfrom .env import DVC_ANALYTICS_ENDPOINT, DVC_NO_ANALYTICS\nlogger = logger.getChild(__name__)\n\ndef send(path):\n    import requests\n    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, \"https://analytics.dvc.org\")\n    headers = {\"content-type\": \"application/json\"}\n    with open(path, encoding=\"utf-8\") as fobj:\n        report = json.load(fobj)\n    report.update(_runtime_info())\n    logger.debug(\"uploading report to %s\", url)\n    logger.trace(\"Sending %s to %s\", report, url)\n    try:\n        requests.post(url, json=report, headers=headers, timeout=5)\n    except requests.exceptions.RequestException as e:\n        logger.trace(\"\", exc_info=True)\n        logger.debug(\"failed to send analytics report %s\", str(e))\n    logger.trace(\"removing report %s\", path)\n    os.remove(path)\n\ndef _runtime_info():\n    from iterative_telemetry import _generate_ci_id, find_or_create_user_id\n    from dvc import __version__\n    from dvc.utils import is_binary\n    ci_id = _generate_ci_id()\n    if ci_id:\n        group_id, user_id = ci_id\n    else:\n        group_id, user_id = None, find_or_create_user_id()\n    return {\n        \"dvc_version\": __version__,\n        \"is_binary\": is_binary(),\n        \"scm_class\": _scm_in_use(),\n        \"system_info\": _system_info(),\n        \"user_id\": user_id,\n        \"group_id\": group_id,\n    }\n\ndef _scm_in_use():\n    from dvc.exceptions import NotDvcRepoError\n    from dvc.repo import Repo\n    from dvc.scm import NoSCM\n    from .scm import SCM, SCMError\n    try:\n        scm = SCM(root_dir=Repo.find_root())\n        return type(scm).__name__\n    except SCMError:\n        return NoSCM.__name__\n    except NotDvcRepoError:\n        pass\n\ndef _system_info():\n    import platform\n    import sys\n    import distro\n    system = platform.system()\n    if system == \"Windows\":\n        version = sys.getwindowsversion()  # type: ignore[attr-defined]\n        return {\n            \"os\": \"windows\",\n            \"windows_version_build\": version.build,\n            \"windows_version_major\": version.major,\n            \"windows_version_minor\": version.minor,\n            \"windows_version_service_pack\": version.service_pack,\n        }\n    if system == \"Darwin\":\n        return {\"os\": \"mac\", \"mac_version\": platform.mac_ver()[0]}\n    if system == \"Linux\":\n        return {\n            \"os\": \"linux\",\n            \"linux_distro\": distro.id(),\n            \"linux_distro_like\": distro.like(),\n            \"linux_distro_version\": distro.version(),\n        }\n    raise NotImplementedError"
+    }
+  },
+  {
+    "pyfile": "updater.py",
+    "code_snippet": "import os\nimport time\nfrom typing import TYPE_CHECKING, Optional\n\nfrom packaging import version\n\nfrom dvc import PKG, __version__\nfrom dvc.env import DVC_UPDATER_ENDPOINT\nfrom dvc.log import logger\n\nif TYPE_CHECKING:\n    from dvc.ui import RichText\n\nlogger = logger.getChild(__name__)\n\nclass Updater:\n    URL = \"https://updater.dvc.org\"\n    UPDATER_FILE = \"updater\"\n    TIMEOUT = 24 * 60 * 60  # every day\n    TIMEOUT_GET = 10\n\n    def __init__(self, tmp_dir, friendly=False, hardlink_lock=False):\n        from dvc.lock import make_lock\n\n        self.updater_file = os.path.join(tmp_dir, self.UPDATER_FILE)\n        self.lock = make_lock(\n            self.updater_file + \".lock\",\n            tmp_dir=tmp_dir,\n            friendly=friendly,\n            hardlink_lock=hardlink_lock,\n        )\n        self.current = version.parse(__version__).base_version\n\n    def _is_outdated_file(self):\n        ctime = os.path.getmtime(self.updater_file)\n        outdated = time.time() - ctime >= self.TIMEOUT\n        if outdated:\n            logger.debug(\"'%s' is outdated\", self.updater_file)\n        return outdated\n\n    def _with_lock(self, func, action):\n        from dvc.lock import LockError\n\n        try:\n            with self.lock:\n                func()\n        except LockError:\n            logger.trace(\"\", exc_info=True)\n            logger.debug(\n                \"Failed to acquire '%s' before %s updates\",\n                self.lock.lockfile,\n                action,\n            )\n\n    def check(self):\n        from dvc.utils import env2bool\n\n        if (\n            os.getenv(\"CI\")\n            or env2bool(\"DVC_TEST\")\n            or PKG == \"snap\"\n            or not self.is_enabled()\n        ):\n            return\n\n        self._with_lock(self._check, \"checking\")\n\n    def _check(self):\n        if not os.path.exists(self.updater_file) or self._is_outdated_file():\n            self.fetch()\n            return\n\n        with open(self.updater_file, encoding=\"utf-8\") as fobj:\n            import json\n\n            try:\n                info = json.load(fobj)\n                latest = info[\"version\"]\n            except Exception as e:  # noqa: BLE001\n                logger.trace(\"\", exc_info=True)\n                logger.debug(\"'%s' is not a valid json: %s\", self.updater_file, e)\n                self.fetch()\n                return\n\n        if version.parse(self.current) < version.parse(latest):\n            self._notify(latest)\n\n    def fetch(self, detach=True):\n        from dvc.daemon import daemon\n\n        if detach:\n            daemon([\"updater\"])\n            return\n\n        self._with_lock(self._get_latest_version, \"fetching\")\n\n    def _get_latest_version(self):\n        import json\n\n        import requests\n\n        url = os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)\n        logger.debug(\"Checking updates in %s\", url)\n        try:\n            resp = requests.get(url, timeout=self.TIMEOUT_GET)\n            info = resp.json()\n        except requests.exceptions.RequestException as exc:\n            logger.trace(\"\", exc_info=True)\n            logger.debug(\"Failed to retrieve latest version: %s\", exc)\n            return\n\n        logger.trace(\"received payload: %s (status=%s)\", info, resp.status_code)\n        with open(self.updater_file, \"w+\", encoding=\"utf-8\") as fobj:\n            logger.trace(\"Saving latest version info to %s\", self.updater_file)\n            json.dump(info, fobj)\n\n    def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:\n        from dvc.ui import ui\n\n        if not ui.isatty():\n            return\n\n        message = self._get_message(latest, pkg=pkg)\n        return ui.error_write(message, styled=True)\n\n    def _get_message(\n        self,\n        latest: str,\n        current: Optional[str] = None,\n        color: str = \"yellow\",\n        pkg: Optional[str] = None,\n    ) -> \"RichText\":\n        from dvc.ui import ui\n\n        current = current or self.current\n        update_message = ui.rich_text.from_markup(\n            f\"You are using dvc version [bold]{current}[/]; \"\n            f\"however, version [bold]{latest}[/] is available.\"\n        )\n        instruction = ui.rich_text.from_markup(self._get_update_instructions(pkg=pkg))\n        return ui.rich_text.assemble(\n            \"\\n\", update_message, \"\\n\", instruction, style=color\n        )\n\n    @staticmethod\n    def _get_update_instructions(pkg: Optional[str] = None) -> str:\n        if pkg in (\"osxpkg\", \"exe\", \"binary\"):\n            return (\n                \"To upgrade, uninstall dvc and reinstall from [blue]https://dvc.org[/].\"\n            )\n\n        instructions = {\n            \"pip\": \"pip install --upgrade dvc\",\n            \"rpm\": \"yum update dvc\",\n            \"brew\": \"brew upgrade dvc\",\n            \"deb\": \"apt-get install --only-upgrade dvc\",\n            \"conda\": \"conda update dvc\",\n            \"choco\": \"choco upgrade dvc\",\n        }\n\n        if pkg not in instructions:\n            return (\n                \"Find the latest release at \"\n                \"[blue]https://github.com/iterative/dvc/releases/latest[/].\"\n            )\n\n        instruction = instructions[pkg]\n        return f\"To upgrade, run '{instruction}'.\"\n\n    def is_enabled(self):\n        from dvc.config import Config, to_bool\n\n        enabled = to_bool(\n            Config.from_cwd(validate=False).get(\"core\", {}).get(\"check_update\", \"true\")\n        )\n        logger.debug(\"Check for update is %sabled.\", \"en\" if enabled else \"dis\")\n        return enabled",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.path.getmtime",
+        "time.time",
+        "os.getenv",
+        "os.path.exists",
+        "open",
+        "json.load",
+        "open",
+        "json.dump",
+        "requests.get",
+        "requests.models.Response.json",
+        "os.environ.get"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(tmp_dir, self.UPDATER_FILE)",
+        "os.path.getmtime(self.updater_file)",
+        "time.time()",
+        "os.getenv(\"CI\")",
+        "os.path.exists(self.updater_file)",
+        "open(self.updater_file, encoding=\"utf-8\")",
+        "json.load(fobj)",
+        "open(self.updater_file, \"w+\", encoding=\"utf-8\")",
+        "json.dump(info, fobj)",
+        "requests.get(url, timeout=self.TIMEOUT_GET)",
+        "requests.models.Response.json()",
+        "os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.getmtime",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.dump",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\nimport time\nimport json\nimport requests\n\nclass Updater:\n    def __init__(self, tmp_dir, friendly=False, hardlink_lock=False):\n        self.updater_file = os.path.join(tmp_dir, self.UPDATER_FILE)\n        # ...\n\n    def _is_outdated_file(self):\n        ctime = os.path.getmtime(self.updater_file)\n        outdated = time.time() - ctime >= self.TIMEOUT\n        return outdated\n\n    def check(self):\n        if (\n            os.getenv(\"CI\")\n            or ...\n        ):\n            return\n        self._with_lock(self._check, \"checking\")\n\n    def _check(self):\n        if not os.path.exists(self.updater_file) or self._is_outdated_file():\n            self.fetch()\n            return\n        with open(self.updater_file, encoding=\"utf-8\") as fobj:\n            try:\n                info = json.load(fobj)\n                latest = info[\"version\"]\n            except Exception as e:\n                self.fetch()\n                return\n        # ...\n\n    def _get_latest_version(self):\n        url = os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)\n        try:\n            resp = requests.get(url, timeout=self.TIMEOUT_GET)\n            info = resp.json()\n        except requests.exceptions.RequestException as exc:\n            return\n        with open(self.updater_file, \"w+\", encoding=\"utf-8\") as fobj:\n            json.dump(info, fobj)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "dvc-3.59.1",
+      "total_matches": 2
+    }
+  }
+]

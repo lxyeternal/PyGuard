@@ -1,0 +1,131 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport os.path as pt\nimport re\nimport platform\nimport sys\nimport urllib.request\nimport tarfile\nimport sysconfig\nimport subprocess\nimport hashlib\n\nfrom setuptools import setup\nfrom setuptools import find_packages\nfrom setuptools import Extension\nfrom setuptools.command.build_ext import build_ext\n\n# fall back to system cmake if cmake package is not installed\ntry:\n    from cmake import CMAKE_BIN_DIR\n    CMAKE_PATH = pt.join(CMAKE_BIN_DIR, 'cmake')\nexcept ImportError:\n    CMAKE_PATH = 'cmake'\n\n# ... (other code omitted for brevity)\n\ndef make_type():\n    if OS in ('linux', 'darwin'):\n        return 'Unix Makefiles'\n    elif OS == 'windows':\n        return 'NMake Makefiles'\n    else:\n        raise RuntimeError('Platform not supported: %s, %s' % (OS, ARCH))\n\nclass cmake_build_ext(build_ext):\n    def run(self):\n        skip_path = pt.join(_libdir(), SKIP_BUILD_NAME)\n        if not pt.exists(skip_path) or os.getenv('FORCE_BUILD'):\n            self.build_cmake_dependencies()\n            touch(skip_path)\n        else:\n            print('Dependencies already built, skipping')\n        # build extensions\n        super().run()\n\n    def build_cmake_dependencies(self):\n        flags = []\n        if OS == 'darwin':\n            if ARCHFLAGS:\n                flags.append(\"-DCMAKE_OSX_ARCHITECTURES=\" + \";\".join(ARCHFLAGS))\n        if not SKIP_YASM_BUILD:\n            self.build_cmake_dependency(YASM_DIR, [\n                '-DBUILD_SHARED_LIBS=OFF'\n            ])\n\n        cflags = os.getenv('CFLAGS', '')\n        ldflags = os.getenv('LDFLAGS', '')\n        if OS == 'linux':\n            # enable LTO\n            cflags = '-flto ' + cflags\n            # same as extension\n            ldflags = (\n                '-flto '\n                '-Wl,'  # following are linker options\n                '--strip-all,'  # Remove all symbols\n                '--exclude-libs,ALL,'  # Do not export symbols\n                '--gc-sections '  # Remove unused sections'\n            ) + ldflags\n        env = {\n            # add YASM to the path\n            'PATH': pt.join(YASM_DIR, BUILD_DIR) + os.pathsep + os.getenv('PATH', ''),\n            # custom CFLAGS - depends on platform\n            'CFLAGS': cflags,\n            # custom LDFLAGS - depends on platform\n            'LDFLAGS': ldflags,\n        }\n        self.build_cmake_dependency(JPEG_DIR, [\n            *flags,\n            '-DWITH_CRT_DLL=1',  # fixes https://bugs.python.org/issue24872\n            '-DENABLE_SHARED=0',\n            '-DREQUIRE_SIMD=1',\n            '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',\n        ], env=env)\n\n    def build_cmake_dependency(self, path, options, env=None):\n        cur_dir = pt.abspath(os.curdir)\n        build_dir = pt.join(path, BUILD_DIR)\n        if not pt.exists(build_dir):\n            os.makedirs(build_dir)\n        os.chdir(build_dir)\n        config = 'Debug' if self.debug else 'Release'\n        env = dict(os.environ, **(env or {}))\n        subprocess.check_call([\n            CMAKE_PATH,\n            '-G' + make_type(), '-Wno-dev',\n            '-DCMAKE_BUILD_TYPE=' + config,\n            *options,\n            pt.join(path)\n        ], stdout=sys.stdout, stderr=sys.stderr, env=env)\n        if not self.dry_run:\n            subprocess.check_call([\n                CMAKE_PATH, '--build', '.', '--config', config\n            ], stdout=sys.stdout, stderr=sys.stderr, env=env)\n        os.chdir(cur_dir)\n\n# Data dependencies for the flagged lines:\n# - CMAKE_PATH: set at module level, either from cmake.CMAKE_BIN_DIR or 'cmake'\n# - make_type(): defined above, returns the generator string for cmake\n# - config: set in build_cmake_dependency as 'Debug' or 'Release'\n# - options: passed as argument to build_cmake_dependency\n# - path: passed as argument to build_cmake_dependency\n# - env: constructed in build_cmake_dependencies and passed down\n# - sys.stdout, sys.stderr: imported from sys\n# - self.dry_run: attribute of build_ext\n# - os, pt: imported modules\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.path.exists",
+        "os.getenv",
+        "os.path.join",
+        "os.makedirs",
+        "os.chdir",
+        "os.environ",
+        "subprocess.check_call",
+        "os.chdir",
+        "subprocess.check_call",
+        "os.chdir"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(_libdir(), SKIP_BUILD_NAME)",
+        "os.path.exists(skip_path)",
+        "os.getenv('FORCE_BUILD')",
+        "os.path.join(YASM_DIR, BUILD_DIR)",
+        "os.makedirs(build_dir)",
+        "os.chdir(build_dir)",
+        "os.environ",
+        "subprocess.check_call([CMAKE_PATH, '-G' + make_type(), '-Wno-dev', '-DCMAKE_BUILD_TYPE=' + config, *options, os.path.join(path)], stdout=sys.stdout, stderr=sys.stderr, env=env)",
+        "os.chdir(cur_dir)",
+        "subprocess.check_call([CMAKE_PATH, '--build', '.', '--config', config], stdout=sys.stdout, stderr=sys.stderr, env=env)",
+        "os.chdir(cur_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\nimport os.path as pt\nimport subprocess\nimport sys\n\nclass cmake_build_ext(build_ext):\n    def run(self):\n        skip_path = pt.join(_libdir(), SKIP_BUILD_NAME)\n        if not pt.exists(skip_path) or os.getenv('FORCE_BUILD'):\n            self.build_cmake_dependencies()\n            touch(skip_path)\n        else:\n            print('Dependencies already built, skipping')\n        super().run()\n\n    def build_cmake_dependencies(self):\n        flags = []\n        if OS == 'darwin':\n            if ARCHFLAGS:\n                flags.append(\"-DCMAKE_OSX_ARCHITECTURES=\" + \";\".join(ARCHFLAGS))\n        if not SKIP_YASM_BUILD:\n            self.build_cmake_dependency(YASM_DIR, [\n                '-DBUILD_SHARED_LIBS=OFF'\n            ])\n        cflags = os.getenv('CFLAGS', '')\n        ldflags = os.getenv('LDFLAGS', '')\n        if OS == 'linux':\n            cflags = '-flto ' + cflags\n            ldflags = (\n                '-flto '\n                '-Wl,'\n                '--strip-all,'\n                '--exclude-libs,ALL,'\n                '--gc-sections '\n            ) + ldflags\n        env = {\n            'PATH': pt.join(YASM_DIR, BUILD_DIR) + os.pathsep + os.getenv('PATH', ''),\n            'CFLAGS': cflags,\n            'LDFLAGS': ldflags,\n        }\n        self.build_cmake_dependency(JPEG_DIR, [\n            *flags,\n            '-DWITH_CRT_DLL=1',\n            '-DENABLE_SHARED=0',\n            '-DREQUIRE_SIMD=1',\n            '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',\n        ], env=env)\n\n    def build_cmake_dependency(self, path, options, env=None):\n        cur_dir = pt.abspath(os.curdir)\n        build_dir = pt.join(path, BUILD_DIR)\n        if not pt.exists(build_dir):\n            os.makedirs(build_dir)\n        os.chdir(build_dir)\n        config = 'Debug' if self.debug else 'Release'\n        env = dict(os.environ, **(env or {}))\n        subprocess.check_call([\n            CMAKE_PATH,\n            '-G' + make_type(), '-Wno-dev',\n            '-DCMAKE_BUILD_TYPE=' + config,\n            *options,\n            pt.join(path)\n        ], stdout=sys.stdout, stderr=sys.stderr, env=env)\n        if not self.dry_run:\n            subprocess.check_call([\n                CMAKE_PATH, '--build', '.', '--config', config\n            ], stdout=sys.stdout, stderr=sys.stderr, env=env)\n        os.chdir(cur_dir)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "simplejpeg-1.8.2",
+      "total_matches": 2
+    }
+  }
+]

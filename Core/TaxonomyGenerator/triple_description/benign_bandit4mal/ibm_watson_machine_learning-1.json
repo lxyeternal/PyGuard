@@ -1,0 +1,276 @@
+{
+  "metadata": {
+    "package_name": "ibm_watson_machine_learning-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ibm_watson_machine_learning-1.0.367.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "models.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ibm_watson_machine_learning-1.0.367/ibm_watson_machine_learning-1.0.367/ibm_watson_machine_learning/models.py",
+      "line_number": "2955",
+      "type_description": "B820:get",
+      "context_snippet": "def _store_autoAI_model(self,model_path, meta_props, feature_names=None, label_column_names=None):\n    \"\"\"Store trained model from object storage into Watson Machine Learning repository on IBM Cloud.\"\"\"\n    model_meta = self.ConfigurationMetaNames._generate_resource_metadata(\n        meta_props,\n        client=self._client\n    )\n    if not self._client.CLOUD_PLATFORM_SPACES and not self._client.CPD_version:\n        self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.NAME, str, True)\n\n        # note: remove pipeline-model.json part from the string to allow correct regexp\n        if model_path.endswith('pipeline-model.json'):\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", '/'.join(model_path.split('/')[:-1]))\n            # --- end note\n        else:\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", model_path)\n        model_uid = x[-1] if x else ''\n        details = self._client.training.get_details(model_uid, _internal=True)\n\n        if self.ConfigurationMetaNames.RUNTIME_UID in meta_props:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.RUNTIME_UID, str, False)\n            model_meta.update({self.ConfigurationMetaNames.RUNTIME_UID: {\n                \"href\": API_VERSION + RUNTIMES + \"/\" + meta_props[self._client.repository.ModelMetaNames.RUNTIME_UID]}})\n        if self.ConfigurationMetaNames.SOFTWARE_SPEC_UID in meta_props:\n            if self._client.WSD_20:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.SOFTWARE_SPEC_UID, str, False)\n                model_meta.update({self.ConfigurationMetaNames.SOFTWARE_SPEC_UID: {\n                    \"base_id\": meta_props[self.ConfigurationMetaNames.SOFTWARE_SPEC_UID]}})\n            else:\n                model_meta.pop(self.ConfigurationMetaNames.SOFTWARE_SPEC_UID)\n\n        if self.ConfigurationMetaNames.SPACE_UID in meta_props and \\\n                meta_props[self._client.repository.ModelMetaNames.SPACE_UID] is not None:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.SPACE_UID, str, False)\n            model_meta.update({self.ConfigurationMetaNames.SPACE_UID: {\n                \"href\": API_VERSION + SPACES + \"/\" + meta_props[self._client.repository.ModelMetaNames.SPACE_UID]}})\n        if self.ConfigurationMetaNames.PIPELINE_UID in meta_props:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.PIPELINE_UID, str, False)\n            if self._client.WSD:\n                model_meta.update({self.ConfigurationMetaNames.PIPELINE_UID: {\n                    \"href\": self._client.service_instance._href_definitions.get_base_asset_href(meta_props[\n                        self._client.repository.ModelMetaNames.PIPELINE_UID])}})\n            else:\n                model_meta.update({self.ConfigurationMetaNames.PIPELINE_UID: {\n                    \"href\": API_VERSION + PIPELINES + \"/\" + meta_props[\n                        self._client.repository.ModelMetaNames.PIPELINE_UID]}})\n        if self._client.WSD_20:\n            if self.ConfigurationMetaNames.MODEL_DEFINITION_UID in meta_props:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.MODEL_DEFINITION_UID, str, False)\n                meta_props[self._client.repository.ModelMetaNames.MODEL_DEFINITION_UID] = {\n                    \"id\": meta_props[self._client.repository.ModelMetaNames.MODEL_DEFINITION_UID]}\n        else:\n            if self.ConfigurationMetaNames.TRAINING_LIB_UID in meta_props:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.TRAINING_LIB_UID, str, False)\n                model_meta.update({self.ConfigurationMetaNames.TRAINING_LIB_UID: {\n                    \"href\": API_VERSION + LIBRARIES + \"/\" + meta_props[\n                        self._client.repository.ModelMetaNames.TRAINING_LIB_UID]}})\n        if self._client.default_project_id is not None:\n            model_meta.update({'project': {\n                \"href\": \"/v2/projects\" + self._client.default_project_id}})\n\n        model_meta.update({\"import\": details[\"entity\"][\"results_reference\"]})\n        model_meta[\"import\"][\"location\"][\"path\"] = model_path\n        runtime_uid = 'hybrid_0.1'\n        model_type = 'wml-hybrid_0.1'\n\n        if self.ConfigurationMetaNames.TYPE not in meta_props:\n            model_meta.update({\"type\": model_type})\n\n        if self.ConfigurationMetaNames.RUNTIME_UID not in meta_props and \\\n                self.ConfigurationMetaNames.SOFTWARE_SPEC_UID not in meta_props:\n            model_meta.update({\"runtime\": {\"href\": \"/v4/runtimes/\"+runtime_uid}})\n        input_schema = []\n        output_schema = []\n        if self.ConfigurationMetaNames.INPUT_DATA_SCHEMA in meta_props and \\\n                meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA] is not None:\n            if self._client.WSD_20:\n                if isinstance(meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA], dict):\n                    input_schema = [meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]]\n                else:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.INPUT_DATA_SCHEMA, list, False)\n                    input_schema = meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]\n            else:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.INPUT_DATA_SCHEMA, dict, False)\n                input_schema = [meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]]\n            model_meta.pop(self.ConfigurationMetaNames.INPUT_DATA_SCHEMA)\n\n        if self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA in meta_props and \\\n                meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA] is not None:\n            if str(meta_props[self.ConfigurationMetaNames.TYPE]).startswith('do-') and self._client.WSD_20:\n                try:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, dict,\n                                             False)\n                    output_schema = [meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]]\n                except WMLClientError:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, list,\n                                             False)\n                    output_schema = meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]\n            else:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, dict, False)\n                output_schema = [meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]]\n            model_meta.pop(self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA)\n\n        if len(input_schema) != 0 or len(output_schema) != 0:\n            model_meta.update({\"schemas\": {\n                \"input\": input_schema,\n                \"output\": output_schema}\n            })\n\n        if label_column_names:\n            model_meta['label_column'] = label_column_names[0]\n\n        creation_response = requests.post(\n           self._wml_credentials['url'] + '/v4/models',\n           headers=self._client._get_headers(),\n           json=model_meta\n        )\n\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['id']\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['guid']\n    else:\n        # For V4 cloud prepare the metadata\n        if \"autoai_sdk\" in model_path:\n            input_payload = meta_props\n\n        else:\n            input_payload = self._create_cloud_model_payload(model_meta, feature_names=feature_names, label_column_names=label_column_names).deepcopy()\n\n        if self._client.CLOUD_PLATFORM_SPACES or self._client.CPD_version:\n            params = {}\n            params.update({'version': self._client.version_param})\n            url = self._wml_credentials['url'] + '/ml/v4/models'\n        else:\n            params = self._client._params()\n            url = self._client.service_instance._href_definitions.get_published_models_href()\n\n        if label_column_names:\n            input_payload['label_column'] = label_column_names[0]\n\n        creation_response = requests.post(\n            url,\n            params= params,\n            headers=self._client._get_headers(),\n            json=input_payload\n        )\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n        model_uid = model_details['metadata']['id']\n\n        if 'entity' in model_details:\n            start_time = time.time()\n            elapsed_time = 0\n            while model_details['entity'].get('content_import_state') == 'running' and elapsed_time < 60:\n                time.sleep(2)\n                elapsed_time = time.time()-start_time\n                model_details = self.get_details(model_uid)\n\n    return self.get_details(model_uid)\n",
+      "hash_value": "ddc8db58ca3bd08db9e8d6b48d5cba98",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def _store_autoAI_model(self,model_path, meta_props, feature_names=None, label_column_names=None):\n    \"\"\"Store trained model from object storage into Watson Machine Learning repository on IBM Cloud.\"\"\"\n    model_meta = self.ConfigurationMetaNames._generate_resource_metadata(\n        meta_props,\n        client=self._client\n    )\n    if not self._client.CLOUD_PLATFORM_SPACES and not self._client.CPD_version:\n        self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.NAME, str, True)\n\n        # note: remove pipeline-model.json part from the string to allow correct regexp\n        if model_path.endswith('pipeline-model.json'):\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", '/'.join(model_path.split('/')[:-1]))\n            # --- end note\n        else:\n            x = re.findall(r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", model_path)\n        model_uid = x[-1] if x else ''\n        details = self._client.training.get_details(model_uid, _internal=True)\n\n        if self.ConfigurationMetaNames.RUNTIME_UID in meta_props:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.RUNTIME_UID, str, False)\n            model_meta.update({self.ConfigurationMetaNames.RUNTIME_UID: {\n                \"href\": API_VERSION + RUNTIMES + \"/\" + meta_props[self._client.repository.ModelMetaNames.RUNTIME_UID]}})\n        if self.ConfigurationMetaNames.SOFTWARE_SPEC_UID in meta_props:\n            if self._client.WSD_20:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.SOFTWARE_SPEC_UID, str, False)\n                model_meta.update({self.ConfigurationMetaNames.SOFTWARE_SPEC_UID: {\n                    \"base_id\": meta_props[self.ConfigurationMetaNames.SOFTWARE_SPEC_UID]}})\n            else:\n                model_meta.pop(self.ConfigurationMetaNames.SOFTWARE_SPEC_UID)\n\n        if self.ConfigurationMetaNames.SPACE_UID in meta_props and \\\n                meta_props[self._client.repository.ModelMetaNames.SPACE_UID] is not None:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.SPACE_UID, str, False)\n            model_meta.update({self.ConfigurationMetaNames.SPACE_UID: {\n                \"href\": API_VERSION + SPACES + \"/\" + meta_props[self._client.repository.ModelMetaNames.SPACE_UID]}})\n        if self.ConfigurationMetaNames.PIPELINE_UID in meta_props:\n            self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.PIPELINE_UID, str, False)\n            if self._client.WSD:\n                model_meta.update({self.ConfigurationMetaNames.PIPELINE_UID: {\n                    \"href\": self._client.service_instance._href_definitions.get_base_asset_href(meta_props[\n                        self._client.repository.ModelMetaNames.PIPELINE_UID])}})\n            else:\n                model_meta.update({self.ConfigurationMetaNames.PIPELINE_UID: {\n                    \"href\": API_VERSION + PIPELINES + \"/\" + meta_props[\n                        self._client.repository.ModelMetaNames.PIPELINE_UID]}})\n        if self._client.WSD_20:\n            if self.ConfigurationMetaNames.MODEL_DEFINITION_UID in meta_props:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.MODEL_DEFINITION_UID, str, False)\n                meta_props[self._client.repository.ModelMetaNames.MODEL_DEFINITION_UID] = {\n                    \"id\": meta_props[self._client.repository.ModelMetaNames.MODEL_DEFINITION_UID]}\n        else:\n            if self.ConfigurationMetaNames.TRAINING_LIB_UID in meta_props:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.TRAINING_LIB_UID, str, False)\n                model_meta.update({self.ConfigurationMetaNames.TRAINING_LIB_UID: {\n                    \"href\": API_VERSION + LIBRARIES + \"/\" + meta_props[\n                        self._client.repository.ModelMetaNames.TRAINING_LIB_UID]}})\n        if self._client.default_project_id is not None:\n            model_meta.update({'project': {\n                \"href\": \"/v2/projects\" + self._client.default_project_id}})\n\n        model_meta.update({\"import\": details[\"entity\"][\"results_reference\"]})\n        model_meta[\"import\"][\"location\"][\"path\"] = model_path\n        runtime_uid = 'hybrid_0.1'\n        model_type = 'wml-hybrid_0.1'\n\n        if self.ConfigurationMetaNames.TYPE not in meta_props:\n            model_meta.update({\"type\": model_type})\n\n        if self.ConfigurationMetaNames.RUNTIME_UID not in meta_props and \\\n                self.ConfigurationMetaNames.SOFTWARE_SPEC_UID not in meta_props:\n            model_meta.update({\"runtime\": {\"href\": \"/v4/runtimes/\"+runtime_uid}})\n        input_schema = []\n        output_schema = []\n        if self.ConfigurationMetaNames.INPUT_DATA_SCHEMA in meta_props and \\\n                meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA] is not None:\n            if self._client.WSD_20:\n                if isinstance(meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA], dict):\n                    input_schema = [meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]]\n                else:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.INPUT_DATA_SCHEMA, list, False)\n                    input_schema = meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]\n            else:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.INPUT_DATA_SCHEMA, dict, False)\n                input_schema = [meta_props[self.ConfigurationMetaNames.INPUT_DATA_SCHEMA]]\n            model_meta.pop(self.ConfigurationMetaNames.INPUT_DATA_SCHEMA)\n\n        if self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA in meta_props and \\\n                meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA] is not None:\n            if str(meta_props[self.ConfigurationMetaNames.TYPE]).startswith('do-') and self._client.WSD_20:\n                try:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, dict,\n                                             False)\n                    output_schema = [meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]]\n                except WMLClientError:\n                    self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, list,\n                                             False)\n                    output_schema = meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]\n            else:\n                self._validate_meta_prop(meta_props, self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA, dict, False)\n                output_schema = [meta_props[self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA]]\n            model_meta.pop(self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA)\n\n        if len(input_schema) != 0 or len(output_schema) != 0:\n            model_meta.update({\"schemas\": {\n                \"input\": input_schema,\n                \"output\": output_schema}\n            })\n\n        if label_column_names:\n            model_meta['label_column'] = label_column_names[0]\n\n        creation_response = requests.post(\n           self._wml_credentials['url'] + '/v4/models',\n           headers=self._client._get_headers(),\n           json=model_meta\n        )\n\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['id']\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n            model_uid = model_details['metadata']['guid']\n    else:\n        # For V4 cloud prepare the metadata\n        if \"autoai_sdk\" in model_path:\n            input_payload = meta_props\n\n        else:\n            input_payload = self._create_cloud_model_payload(model_meta, feature_names=feature_names, label_column_names=label_column_names).deepcopy()\n\n        if self._client.CLOUD_PLATFORM_SPACES or self._client.CPD_version:\n            params = {}\n            params.update({'version': self._client.version_param})\n            url = self._wml_credentials['url'] + '/ml/v4/models'\n        else:\n            params = self._client._params()\n            url = self._client.service_instance._href_definitions.get_published_models_href()\n\n        if label_column_names:\n            input_payload['label_column'] = label_column_names[0]\n\n        creation_response = requests.post(\n            url,\n            params= params,\n            headers=self._client._get_headers(),\n            json=input_payload\n        )\n        if creation_response.status_code == 201:\n            model_details = self._handle_response(201, u'creating new model', creation_response)\n        else:\n            model_details = self._handle_response(202, u'creating new model', creation_response)\n        model_uid = model_details['metadata']['id']\n\n        if 'entity' in model_details:\n            start_time = time.time()\n            elapsed_time = 0\n            while model_details['entity'].get('content_import_state') == 'running' and elapsed_time < 60:\n                time.sleep(2)\n                elapsed_time = time.time()-start_time\n                model_details = self.get_details(model_uid)\n\n    return self.get_details(model_uid)\n",
+          "triple_sequences": [
+            {
+              "action_api": "re.findall()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", '/'.join(model_path.split('/')[:-1])",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "re.findall()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "r\"[0-9A-Za-z-]+-[0-9A-Za-z-]+\", model_path",
+              "object_description": "Regular expression and file content",
+              "object_id": "regex_file_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "self._client.training.get_details()",
+              "action_description": "Retrieves process information",
+              "action_id": "get_process_info",
+              "object": "model_uid, _internal=True",
+              "object_description": "Model UID",
+              "object_id": "",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{self.ConfigurationMetaNames.RUNTIME_UID: {\"href\": API_VERSION + RUNTIMES + \"/\" + meta_props[self._client.repository.ModelMetaNames.RUNTIME_UID]}}",
+              "object_description": "Runtime UID",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{self.ConfigurationMetaNames.SOFTWARE_SPEC_UID: {\"base_id\": meta_props[self.ConfigurationMetaNames.SOFTWARE_SPEC_UID]}}",
+              "object_description": "Software spec UID",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.pop()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self.ConfigurationMetaNames.SOFTWARE_SPEC_UID",
+              "object_description": "Registry value name",
+              "object_id": "registry_value_name",
+              "intention_description": "Delete file content",
+              "intention_id": "delete_file_content"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{self.ConfigurationMetaNames.SPACE_UID: {\"href\": API_VERSION + SPACES + \"/\" + meta_props[self._client.repository.ModelMetaNames.SPACE_UID]}}",
+              "object_description": "Space UID",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{self.ConfigurationMetaNames.PIPELINE_UID: {\"href\": self._client.service_instance._href_definitions.get_base_asset_href(meta_props[self._client.repository.ModelMetaNames.PIPELINE_UID])}}",
+              "object_description": "Pipeline UID",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{self.ConfigurationMetaNames.PIPELINE_UID: {\"href\": API_VERSION + PIPELINES + \"/\" + meta_props[self._client.repository.ModelMetaNames.PIPELINE_UID]}}",
+              "object_description": "Pipeline UID",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.pop()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self.ConfigurationMetaNames.INPUT_DATA_SCHEMA",
+              "object_description": "Registry value name",
+              "object_id": "registry_value_name",
+              "intention_description": "Delete file content",
+              "intention_id": "delete_file_content"
+            },
+            {
+              "action_api": "model_meta.pop()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self.ConfigurationMetaNames.OUTPUT_DATA_SCHEMA",
+              "object_description": "Registry value name",
+              "object_id": "registry_value_name",
+              "intention_description": "Delete file content",
+              "intention_id": "delete_file_content"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{\"schemas\": {\"input\": input_schema, \"output\": output_schema}}",
+              "object_description": "Input and output schema",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{\"type\": model_type}",
+              "object_description": "Model type",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{\"runtime\": {\"href\": \"/v4/runtimes/\"+runtime_uid}}",
+              "object_description": "Runtime UID",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "model_meta.update()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "{\"import\": details[\"entity\"][\"results_reference\"]}",
+              "object_description": "Import details",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "self._wml_credentials['url'] + '/v4/models', headers=self._client._get_headers(), json=model_meta",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit environment data to remote server",
+              "intention_id": "transmit_environment_data_server"
+            },
+            {
+              "action_api": "self._handle_response()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "201, u'creating new model', creation_response",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "self._handle_response()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "202, u'creating new model', creation_response",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "self._create_cloud_model_payload().deepcopy()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "model_meta, feature_names=feature_names, label_column_names=label_column_names",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "url, params=params, headers=self._client._get_headers(), json=input_payload",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit environment data to remote server",
+              "intention_id": "transmit_environment_data_server"
+            },
+            {
+              "action_api": "self._handle_response()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "201, u'creating new model', creation_response",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "self._handle_response()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "202, u'creating new model', creation_response",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "time.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "2",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "self.get_details()",
+              "action_description": "Retrieves process information",
+              "action_id": "get_process_info",
+              "object": "model_uid",
+              "object_description": "Model UID",
+              "object_id": "",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

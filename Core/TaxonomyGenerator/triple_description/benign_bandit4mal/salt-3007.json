@@ -1,0 +1,596 @@
+{
+  "metadata": {
+    "package_name": "salt-3007",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/salt-3007.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "ssh_py_shim.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/salt-3007.1/salt-3007.1/salt/client/ssh/ssh_py_shim.py",
+      "line_number": "331",
+      "type_description": "B815:write",
+      "context_snippet": "def main(argv):  # pylint: disable=W0613\n    \"\"\"\n    Main program body\n    \"\"\"\n    thin_path = os.path.join(OPTIONS.saltdir, THIN_ARCHIVE)\n    if os.path.isfile(thin_path):\n        if OPTIONS.checksum != get_hash(thin_path, OPTIONS.hashfunc):\n            need_deployment()\n        unpack_thin(thin_path)\n        # Salt thin now is available to use\n    else:\n        if not sys.platform.startswith(\"win\"):\n            scpstat = subprocess.Popen([\"/bin/sh\", \"-c\", \"command -v scp\"]).wait()\n            if scpstat != 0:\n                sys.exit(EX_SCP_NOT_FOUND)\n\n        if os.path.exists(OPTIONS.saltdir) and not os.path.isdir(OPTIONS.saltdir):\n            sys.stderr.write(\n                'ERROR: salt path \"{0}\" exists but is not a directory\\n'.format(\n                    OPTIONS.saltdir\n                )\n            )\n            sys.exit(EX_CANTCREAT)\n\n        if not os.path.exists(OPTIONS.saltdir):\n            need_deployment()\n\n        code_checksum_path = os.path.normpath(\n            os.path.join(OPTIONS.saltdir, \"code-checksum\")\n        )\n        if not os.path.exists(code_checksum_path) or not os.path.isfile(\n            code_checksum_path\n        ):\n            sys.stderr.write(\n                \"WARNING: Unable to locate current code checksum: {0}.\\n\".format(\n                    code_checksum_path\n                )\n            )\n            need_deployment()\n        with open(code_checksum_path, \"r\", encoding=\"utf-8\") as vpo:\n            cur_code_cs = vpo.readline().strip()\n        if cur_code_cs != OPTIONS.code_checksum:\n            sys.stderr.write(\n                \"WARNING: current code checksum {0} is different to {1}.\\n\".format(\n                    cur_code_cs, OPTIONS.code_checksum\n                )\n            )\n            need_deployment()\n        # Salt thin exists and is up-to-date - fall through and use it\n\n    salt_call_path = os.path.join(OPTIONS.saltdir, \"salt-call\")\n    if not os.path.isfile(salt_call_path):\n        sys.stderr.write('ERROR: thin is missing \"{0}\"\\n'.format(salt_call_path))\n        need_deployment()\n\n    with open(os.path.join(OPTIONS.saltdir, \"minion\"), \"w\", encoding=\"utf-8\") as config:\n        config.write(OPTIONS.config + \"\\n\")\n    if OPTIONS.ext_mods:\n        ext_path = os.path.join(OPTIONS.saltdir, EXT_ARCHIVE)\n        if os.path.exists(ext_path):\n            unpack_ext(ext_path)\n        else:\n            version_path = os.path.join(OPTIONS.saltdir, \"ext_version\")\n            if not os.path.exists(version_path) or not os.path.isfile(version_path):\n                need_ext()\n            with open(version_path, \"r\", encoding=\"utf-8\") as vpo:\n                cur_version = vpo.readline().strip()\n            if cur_version != OPTIONS.ext_mods:\n                need_ext()\n    # Fix parameter passing issue\n    if len(ARGS) == 1:\n        argv_prepared = ARGS[0].split()\n    else:\n        argv_prepared = ARGS\n\n    salt_argv = [\n        get_executable(),\n        salt_call_path,\n        \"--retcode-passthrough\",\n        \"--local\",\n        \"--metadata\",\n        \"--out\",\n        \"json\",\n        \"-l\",\n        \"quiet\",\n        \"-c\",\n        OPTIONS.saltdir,\n    ]\n\n    try:\n        if argv_prepared[-1].startswith(\"--no-parse=\"):\n            salt_argv.append(argv_prepared.pop(-1))\n    except (IndexError, TypeError):\n        pass\n\n    salt_argv.append(\"--\")\n    salt_argv.extend(argv_prepared)\n\n    sys.stderr.write(\"SALT_ARGV: {0}\\n\".format(salt_argv))\n\n    # Only emit the delimiter on *both* stdout and stderr when completely successful.\n    # Yes, the flush() is necessary.\n    sys.stdout.write(OPTIONS.delimiter + \"\\n\")\n    sys.stdout.flush()\n    if not OPTIONS.tty:\n        sys.stderr.write(OPTIONS.delimiter + \"\\n\")\n        sys.stderr.flush()\n    if OPTIONS.cmd_umask is not None:\n        old_umask = os.umask(OPTIONS.cmd_umask)  # pylint: disable=blacklisted-function\n    if OPTIONS.tty:\n        proc = subprocess.Popen(\n            salt_argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE\n        )\n        # Returns bytes instead of string on python 3\n        stdout, _ = proc.communicate()\n        sys.stdout.write(\n            stdout.decode(encoding=get_system_encoding(), errors=\"replace\")\n        )\n        sys.stdout.flush()\n        retcode = proc.returncode\n        if OPTIONS.wipe:\n            shutil.rmtree(OPTIONS.saltdir)\n    elif OPTIONS.wipe:\n        retcode = subprocess.call(salt_argv)\n        shutil.rmtree(OPTIONS.saltdir)\n    else:\n        retcode = subprocess.call(salt_argv)\n    if OPTIONS.cmd_umask is not None:\n        os.umask(old_umask)  # pylint: disable=blacklisted-function\n    return retcode",
+      "hash_value": "15f2999ea212ccc4b08d188bfd6d296f",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def main(argv):  # pylint: disable=W0613\n    \"\"\"\n    Main program body\n    \"\"\"\n    thin_path = os.path.join(OPTIONS.saltdir, THIN_ARCHIVE)\n    if os.path.isfile(thin_path):\n        if OPTIONS.checksum != get_hash(thin_path, OPTIONS.hashfunc):\n            need_deployment()\n        unpack_thin(thin_path)\n        # Salt thin now is available to use\n    else:\n        if not sys.platform.startswith(\"win\"):\n            scpstat = subprocess.Popen([\"/bin/sh\", \"-c\", \"command -v scp\"]).wait()\n            if scpstat != 0:\n                sys.exit(EX_SCP_NOT_FOUND)\n\n        if os.path.exists(OPTIONS.saltdir) and not os.path.isdir(OPTIONS.saltdir):\n            sys.stderr.write(\n                'ERROR: salt path \"{0}\" exists but is not a directory\\n'.format(\n                    OPTIONS.saltdir\n                )\n            )\n            sys.exit(EX_CANTCREAT)\n\n        if not os.path.exists(OPTIONS.saltdir):\n            need_deployment()\n\n        code_checksum_path = os.path.normpath(\n            os.path.join(OPTIONS.saltdir, \"code-checksum\")\n        )\n        if not os.path.exists(code_checksum_path) or not os.path.isfile(\n            code_checksum_path\n        ):\n            sys.stderr.write(\n                \"WARNING: Unable to locate current code checksum: {0}.\\n\".format(\n                    code_checksum_path\n                )\n            )\n            need_deployment()\n        with open(code_checksum_path, \"r\", encoding=\"utf-8\") as vpo:\n            cur_code_cs = vpo.readline().strip()\n        if cur_code_cs != OPTIONS.code_checksum:\n            sys.stderr.write(\n                \"WARNING: current code checksum {0} is different to {1}.\\n\".format(\n                    cur_code_cs, OPTIONS.code_checksum\n                )\n            )\n            need_deployment()\n        # Salt thin exists and is up-to-date - fall through and use it\n\n    salt_call_path = os.path.join(OPTIONS.saltdir, \"salt-call\")\n    if not os.path.isfile(salt_call_path):\n        sys.stderr.write('ERROR: thin is missing \"{0}\"\\n'.format(salt_call_path))\n        need_deployment()\n\n    with open(os.path.join(OPTIONS.saltdir, \"minion\"), \"w\", encoding=\"utf-8\") as config:\n        config.write(OPTIONS.config + \"\\n\")\n    if OPTIONS.ext_mods:\n        ext_path = os.path.join(OPTIONS.saltdir, EXT_ARCHIVE)\n        if os.path.exists(ext_path):\n            unpack_ext(ext_path)\n        else:\n            version_path = os.path.join(OPTIONS.saltdir, \"ext_version\")\n            if not os.path.exists(version_path) or not os.path.isfile(version_path):\n                need_ext()\n            with open(version_path, \"r\", encoding=\"utf-8\") as vpo:\n                cur_version = vpo.readline().strip()\n            if cur_version != OPTIONS.ext_mods:\n                need_ext()\n    # Fix parameter passing issue\n    if len(ARGS) == 1:\n        argv_prepared = ARGS[0].split()\n    else:\n        argv_prepared = ARGS\n\n    salt_argv = [\n        get_executable(),\n        salt_call_path,\n        \"--retcode-passthrough\",\n        \"--local\",\n        \"--metadata\",\n        \"--out\",\n        \"json\",\n        \"-l\",\n        \"quiet\",\n        \"-c\",\n        OPTIONS.saltdir,\n    ]\n\n    try:\n        if argv_prepared[-1].startswith(\"--no-parse=\"):\n            salt_argv.append(argv_prepared.pop(-1))\n    except (IndexError, TypeError):\n        pass\n\n    salt_argv.append(\"--\")\n    salt_argv.extend(argv_prepared)\n\n    sys.stderr.write(\"SALT_ARGV: {0}\\n\".format(salt_argv))\n\n    # Only emit the delimiter on *both* stdout and stderr when completely successful.\n    # Yes, the flush() is necessary.\n    sys.stdout.write(OPTIONS.delimiter + \"\\n\")\n    sys.stdout.flush()\n    if not OPTIONS.tty:\n        sys.stderr.write(OPTIONS.delimiter + \"\\n\")\n        sys.stderr.flush()\n    if OPTIONS.cmd_umask is not None:\n        old_umask = os.umask(OPTIONS.cmd_umask)  # pylint: disable=blacklisted-function\n    if OPTIONS.tty:\n        proc = subprocess.Popen(\n            salt_argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE\n        )\n        # Returns bytes instead of string on python 3\n        stdout, _ = proc.communicate()\n        sys.stdout.write(\n            stdout.decode(encoding=get_system_encoding(), errors=\"replace\")\n        )\n        sys.stdout.flush()\n        retcode = proc.returncode\n        if OPTIONS.wipe:\n            shutil.rmtree(OPTIONS.saltdir)\n    elif OPTIONS.wipe:\n        retcode = subprocess.call(salt_argv)\n        shutil.rmtree(OPTIONS.saltdir)\n    else:\n        retcode = subprocess.call(salt_argv)\n    if OPTIONS.cmd_umask is not None:\n        os.umask(old_umask)  # pylint: disable=blacklisted-function\n    return retcode",
+          "triple_sequences": [
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "OPTIONS.saltdir, THIN_ARCHIVE",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "thin_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "get_hash()",
+              "action_description": "Creates MD5 hash object",
+              "action_id": "create_md5_hash",
+              "object": "thin_path, OPTIONS.hashfunc",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Get file size",
+              "intention_id": "get_file_size"
+            },
+            {
+              "action_api": "need_deployment()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "unpack_thin()",
+              "action_description": "Extracts all files from ZIP archive to specified directory",
+              "action_id": "extract_zip_files",
+              "object": "thin_path",
+              "object_description": "ZIP archive file",
+              "object_id": "zip_archive",
+              "intention_description": "Decompress downloaded archive",
+              "intention_id": "decompress_downloaded_archive"
+            },
+            {
+              "action_api": "sys.platform.startswith()",
+              "action_description": "Retrieves operating system identifier",
+              "action_id": "get_os_id",
+              "object": "win",
+              "object_description": "Operating system identifier",
+              "object_id": "",
+              "intention_description": "Determine operating system",
+              "intention_id": "determine_operating_system"
+            },
+            {
+              "action_api": "subprocess.Popen()",
+              "action_description": "Spawns new process to execute command with shell access",
+              "action_id": "spawn_process_shell",
+              "object": "[\"/bin/sh\", \"-c\", \"command -v scp\"]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "OPTIONS.saltdir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Determine presence of directory",
+              "intention_id": "determine_directory_presence"
+            },
+            {
+              "action_api": "os.path.isdir()",
+              "action_description": "Checks if specified path exists and is a directory",
+              "action_id": "check_directory_exists",
+              "object": "OPTIONS.saltdir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Determine presence of directory",
+              "intention_id": "determine_directory_presence"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "'ERROR: salt path \"{0}\" exists but is not a directory\\n'.format(OPTIONS.saltdir)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "sys.exit()",
+              "action_description": "Exits program",
+              "action_id": "exit_program",
+              "object": "EX_CANTCREAT",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Terminate program execution",
+              "intention_id": "terminate_program_execution"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "OPTIONS.saltdir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Determine presence of directory",
+              "intention_id": "determine_directory_presence"
+            },
+            {
+              "action_api": "need_deployment()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "os.path.normpath()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "os.path.join(OPTIONS.saltdir, \"code-checksum\")",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "code_checksum_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "code_checksum_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\"WARNING: Unable to locate current code checksum: {0}.\\n\".format(code_checksum_path)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "need_deployment()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "code_checksum_path, \"r\", encoding=\"utf-8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "vpo.readline()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "str.strip()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\"WARNING: current code checksum {0} is different to {1}.\\n\".format(cur_code_cs, OPTIONS.code_checksum)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "need_deployment()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "OPTIONS.saltdir, \"salt-call\"",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "salt_call_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "'ERROR: thin is missing \"{0}\"\\n'.format(salt_call_path)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "need_deployment()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "os.path.join(OPTIONS.saltdir, \"minion\"), \"w\", encoding=\"utf-8\"",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "config.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "OPTIONS.config + \"\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "OPTIONS.saltdir, EXT_ARCHIVE",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "ext_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "unpack_ext()",
+              "action_description": "Extracts all files from ZIP archive to specified directory",
+              "action_id": "extract_zip_files",
+              "object": "ext_path",
+              "object_description": "ZIP archive file",
+              "object_id": "zip_archive",
+              "intention_description": "Decompress downloaded archive",
+              "intention_id": "decompress_downloaded_archive"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "OPTIONS.saltdir, \"ext_version\"",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "version_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "version_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine presence of file",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "need_ext()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "version_path, \"r\", encoding=\"utf-8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "vpo.readline()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "str.strip()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "need_ext()",
+              "action_description": "Trigger post-installation logic",
+              "action_id": "trigger_post_install_logic",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Trigger post-installation logic",
+              "intention_id": "trigger_post_installation_logic"
+            },
+            {
+              "action_api": "get_executable()",
+              "action_description": "Retrieves Python interpreter version",
+              "action_id": "get_python_version",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get Python executable path",
+              "intention_id": "get_python_executable_path"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\"SALT_ARGV: {0}\\n\".format(salt_argv)",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            },
+            {
+              "action_api": "sys.stdout.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "OPTIONS.delimiter + \"\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "sys.stdout.flush()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "sys.stderr.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "OPTIONS.delimiter + \"\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "sys.stderr.flush()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "os.umask()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "OPTIONS.cmd_umask",
+              "object_description": "File permission settings",
+              "object_id": "file_permission",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "subprocess.Popen()",
+              "action_description": "Spawns new process to execute command with shell access",
+              "action_id": "spawn_process_shell",
+              "object": "salt_argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "proc.communicate()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "stdout.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "encoding=get_system_encoding(), errors=\"replace\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "sys.stdout.write()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "stdout.decode(...)",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "sys.stdout.flush()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "shutil.rmtree()",
+              "action_description": "Recursively deletes directory and its contents",
+              "action_id": "delete_directory",
+              "object": "OPTIONS.saltdir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Delete directory content",
+              "intention_id": "delete_directory_content"
+            },
+            {
+              "action_api": "subprocess.call()",
+              "action_description": "Spawns new process to execute command with shell access",
+              "action_id": "spawn_process_shell",
+              "object": "salt_argv",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "shutil.rmtree()",
+              "action_description": "Recursively deletes directory and its contents",
+              "action_id": "delete_directory",
+              "object": "OPTIONS.saltdir",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Delete directory content",
+              "intention_id": "delete_directory_content"
+            },
+            {
+              "action_api": "subprocess.call()",
+              "action_description": "Spawns new process to execute command with shell access",
+              "action_id": "spawn_process_shell",
+              "object": "salt_argv",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "os.umask()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "old_umask",
+              "object_description": "File permission settings",
+              "object_id": "file_permission",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

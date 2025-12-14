@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# Imports relevant to the flagged line\nimport contextlib\nimport os\nimport re\nimport shutil\nimport string\nimport subprocess\nimport sys\nfrom collections.abc import Generator\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\n\n# Global variables and constants used by the flagged line\nDIR = Path(__file__).parent.absolute()\n\n# Context block containing the flagged line (Line 138)\nwith remove_output(\"pybind11/include\", \"pybind11/share\"):\n    # Generate the files if they are not present.\n    with TemporaryDirectory() as tmpdir:\n        cmd = [\"cmake\", \"-S\", \".\", \"-B\", tmpdir] + [\n            \"-DCMAKE_INSTALL_PREFIX=pybind11\",\n            \"-DBUILD_TESTING=OFF\",\n            \"-DPYBIND11_NOPYTHON=ON\",\n            \"-Dprefix_for_pc_file=${pcfiledir}/../../\",\n        ]\n        if \"CMAKE_ARGS\" in os.environ:\n            fcommand = [\n                c\n                for c in os.environ[\"CMAKE_ARGS\"].split()\n                if \"DCMAKE_INSTALL_PREFIX\" not in c\n            ]\n            cmd += fcommand\n        subprocess.run(cmd, check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)\n        subprocess.run(\n            [\"cmake\", \"--install\", tmpdir],\n            check=True,\n            cwd=DIR,\n            stdout=sys.stdout,\n            stderr=sys.stderr,\n        )\n\n    txt = get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)\n    code = compile(txt, setup_py, \"exec\")\n    exec(code, {\"SDist\": SDist})\n\n# Data dependencies for the flagged line:\n# - cmd: constructed in the block above\n# - DIR: defined globally as Path(__file__).parent.absolute()\n# - sys.stdout, sys.stderr: from import sys\n# - subprocess: from import subprocess\n# - os.environ: from import os\n# - remove_output: defined as a context manager below\n\n# Helper/context manager used in the block\n@contextlib.contextmanager\ndef remove_output(*sources: str) -> Generator[None, None, None]:\n    try:\n        yield\n    finally:\n        for src in sources:\n            shutil.rmtree(src)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "shutil.rmtree",
+        "os.environ",
+        "subprocess.run",
+        "subprocess.run",
+        "compile",
+        "exec"
+      ],
+      "api_sequence_with_args": [
+        "shutil.rmtree(src)",
+        "os.environ[\"CMAKE_ARGS\"]",
+        "subprocess.run(cmd, check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)",
+        "subprocess.run([\"cmake\", \"--install\", tmpdir], check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)",
+        "compile(txt, setup_py, \"exec\")",
+        "exec(code, {\"SDist\": SDist})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import contextlib\nimport os\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\n\nDIR = Path(__file__).parent.absolute()\n\n@contextlib.contextmanager\ndef remove_output(*sources):\n    try:\n        yield\n    finally:\n        for src in sources:\n            shutil.rmtree(src)\n\nwith remove_output(\"pybind11/include\", \"pybind11/share\"):\n    with TemporaryDirectory() as tmpdir:\n        cmd = [\"cmake\", \"-S\", \".\", \"-B\", tmpdir] + [\n            \"-DCMAKE_INSTALL_PREFIX=pybind11\",\n            \"-DBUILD_TESTING=OFF\",\n            \"-DPYBIND11_NOPYTHON=ON\",\n            \"-Dprefix_for_pc_file=${pcfiledir}/../../\",\n        ]\n        if \"CMAKE_ARGS\" in os.environ:\n            fcommand = [\n                c\n                for c in os.environ[\"CMAKE_ARGS\"].split()\n                if \"DCMAKE_INSTALL_PREFIX\" not in c\n            ]\n            cmd += fcommand\n        subprocess.run(cmd, check=True, cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)\n        subprocess.run(\n            [\"cmake\", \"--install\", tmpdir],\n            check=True,\n            cwd=DIR,\n            stdout=sys.stdout,\n            stderr=sys.stderr,\n        )\n\n    txt = get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)\n    code = compile(txt, setup_py, \"exec\")\n    exec(code, {\"SDist\": SDist})"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "osmium-4.0.2",
+      "total_matches": 1
+    }
+  }
+]

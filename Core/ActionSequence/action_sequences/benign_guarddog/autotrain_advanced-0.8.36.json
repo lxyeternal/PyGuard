@@ -1,0 +1,403 @@
+[
+  {
+    "pyfile": "ngc.py",
+    "code_snippet": "import base64\nimport json\nimport os\n\nimport requests\nfrom requests.exceptions import HTTPError\n\nfrom autotrain import logger\nfrom autotrain.backends.base import BaseBackend\n\n\nNGC_API = os.environ.get(\"NGC_API\", \"https://api.ngc.nvidia.com/v2/org\")\nNGC_AUTH = os.environ.get(\"NGC_AUTH\", \"https://authn.nvidia.com\")\nNGC_ACE = os.environ.get(\"NGC_ACE\")\nNGC_ORG = os.environ.get(\"NGC_ORG\")\nNGC_API_KEY = os.environ.get(\"NGC_CLI_API_KEY\")\nNGC_TEAM = os.environ.get(\"NGC_TEAM\")\n\n\nclass NGCRunner(BaseBackend):\n    \"\"\"\n    NGCRunner class for managing NGC backend trainings.\n\n    Methods:\n        _user_authentication_ngc():\n            Authenticates the user with NGC and retrieves an authentication token.\n            Returns:\n                str: The authentication token.\n            Raises:\n                Exception: If an HTTP error or connection error occurs during the request.\n\n        _create_ngc_job(token, url, payload):\n            Creates a job on NGC using the provided token, URL, and payload.\n            Args:\n                token (str): The authentication token.\n                url (str): The URL for the NGC API endpoint.\n                payload (dict): The payload containing job details.\n            Returns:\n                str: The ID of the created job.\n            Raises:\n                Exception: If an HTTP error or connection error occurs during the request.\n\n        create():\n            Creates a job on NGC with the specified parameters.\n            Returns:\n                str: The ID of the created job.\n    \"\"\"\n\n    def _user_authentication_ngc(self):\n        logger.info(\"Authenticating NGC user...\")\n        scope = \"group/ngc\"\n\n        querystring = {\"service\": \"ngc\", \"scope\": scope}\n        auth = f\"$oauthtoken:{NGC_API_KEY}\"\n        headers = {\n            \"Authorization\": f\"Basic {base64.b64encode(auth.encode('utf-8')).decode('utf-8')}\",\n            \"Content-Type\": \"application/json\",\n            \"Cache-Control\": \"no-cache\",\n        }\n        try:\n            response = requests.get(NGC_AUTH + \"/token\", headers=headers, params=querystring, timeout=30)\n        except HTTPError as http_err:\n            logger.error(f\"HTTP error occurred: {http_err}\")\n            raise Exception(\"HTTP Error %d: from '%s'\" % (response.status_code, NGC_AUTH))\n        except (requests.Timeout, ConnectionError) as err:\n            logger.error(f\"Failed to request NGC token - {repr(err)}\")\n            raise Exception(\"%s is unreachable, please try again later.\" % NGC_AUTH)\n        return json.loads(response.text.encode(\"utf8\"))[\"token\"]\n\n    def _create_ngc_job(self, token, url, payload):\n        logger.info(\"Creating NGC Job\")\n        headers = {\"Content-Type\": \"application/json\", \"Authorization\": f\"Bearer {token}\"}\n        try:\n            response = requests.post(NGC_API + url + \"/jobs\", headers=headers, json=payload, timeout=30)\n            result = response.json()\n            logger.info(\n                f\"NGC Job ID: {result.get('job', {}).get('id')}, Job Status History: {result.get('jobStatusHistory')}\"\n            )\n            return result.get(\"job\", {}).get(\"id\")\n        except HTTPError as http_err:\n            logger.error(f\"HTTP error occurred: {http_err}\")\n            raise Exception(f\"HTTP Error {response.status_code}: {http_err}\")\n        except (requests.Timeout, ConnectionError) as err:\n            logger.error(f\"Failed to create NGC job - {repr(err)}\")\n            raise Exception(f\"Unreachable, please try again later: {err}\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "base64.b64encode",
+        "str.encode",
+        "base64.b64encode.decode",
+        "requests.get",
+        "json.loads",
+        "str.encode",
+        "requests.post",
+        "requests.models.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"NGC_API\", \"https://api.ngc.nvidia.com/v2/org\")",
+        "os.environ.get(\"NGC_AUTH\", \"https://authn.nvidia.com\")",
+        "os.environ.get(\"NGC_ACE\")",
+        "os.environ.get(\"NGC_ORG\")",
+        "os.environ.get(\"NGC_CLI_API_KEY\")",
+        "os.environ.get(\"NGC_TEAM\")",
+        "base64.b64encode(auth.encode('utf-8'))",
+        "auth.encode('utf-8')",
+        "base64.b64encode(auth.encode('utf-8')).decode('utf-8')",
+        "requests.get(NGC_AUTH + \"/token\", headers=headers, params=querystring, timeout=30)",
+        "json.loads(response.text.encode(\"utf8\"))",
+        "response.text.encode(\"utf8\")",
+        "requests.post(NGC_API + url + \"/jobs\", headers=headers, json=payload, timeout=30)",
+        "response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "str.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "base64.b64encode.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "str.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import base64\nimport json\nimport os\nimport requests\nfrom requests.exceptions import HTTPError\nfrom autotrain import logger\nfrom autotrain.backends.base import BaseBackend\n\nNGC_API = os.environ.get(\"NGC_API\", \"https://api.ngc.nvidia.com/v2/org\")\nNGC_AUTH = os.environ.get(\"NGC_AUTH\", \"https://authn.nvidia.com\")\nNGC_ACE = os.environ.get(\"NGC_ACE\")\nNGC_ORG = os.environ.get(\"NGC_ORG\")\nNGC_API_KEY = os.environ.get(\"NGC_CLI_API_KEY\")\nNGC_TEAM = os.environ.get(\"NGC_TEAM\")\n\nclass NGCRunner(BaseBackend):\n    def _user_authentication_ngc(self):\n        logger.info(\"Authenticating NGC user...\")\n        scope = \"group/ngc\"\n        querystring = {\"service\": \"ngc\", \"scope\": scope}\n        auth = f\"$oauthtoken:{NGC_API_KEY}\"\n        headers = {\n            \"Authorization\": f\"Basic {base64.b64encode(auth.encode('utf-8')).decode('utf-8')}\",\n            \"Content-Type\": \"application/json\",\n            \"Cache-Control\": \"no-cache\",\n        }\n        try:\n            response = requests.get(NGC_AUTH + \"/token\", headers=headers, params=querystring, timeout=30)\n        except HTTPError as http_err:\n            logger.error(f\"HTTP error occurred: {http_err}\")\n            raise Exception(\"HTTP Error %d: from '%s'\" % (response.status_code, NGC_AUTH))\n        except (requests.Timeout, ConnectionError) as err:\n            logger.error(f\"Failed to request NGC token - {repr(err)}\")\n            raise Exception(\"%s is unreachable, please try again later.\" % NGC_AUTH)\n        return json.loads(response.text.encode(\"utf8\"))[\"token\"]\n\n    def _create_ngc_job(self, token, url, payload):\n        logger.info(\"Creating NGC Job\")\n        headers = {\"Content-Type\": \"application/json\", \"Authorization\": f\"Bearer {token}\"}\n        try:\n            response = requests.post(NGC_API + url + \"/jobs\", headers=headers, json=payload, timeout=30)\n            result = response.json()\n            logger.info(\n                f\"NGC Job ID: {result.get('job', {}).get('id')}, Job Status History: {result.get('jobStatusHistory')}\"\n            )\n            return result.get(\"job\", {}).get(\"id\")\n        except HTTPError as http_err:\n            logger.error(f\"HTTP error occurred: {http_err}\")\n            raise Exception(f\"HTTP Error {response.status_code}: {http_err}\")\n        except (requests.Timeout, ConnectionError) as err:\n            logger.error(f\"Failed to create NGC job - {repr(err)}\")\n            raise Exception(f\"Unreachable, please try again later: {err}\")"
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "code_snippet": "import os\nimport requests\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a Hugging Face endpoint using the provided parameters.\n\n    Args:\n        params (object): An object containing the necessary parameters, including:\n            - token (str): The authorization token to access the Hugging Face API.\n\n    Returns:\n        dict: The JSON response from the API call.\n\n    Raises:\n        KeyError: If the \"ENDPOINT_ID\" environment variable is not set.\n        requests.exceptions.RequestException: If there is an issue with the API request.\n    \"\"\"\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers, timeout=30)\n    return r.json()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.environ.__getitem__",
+        "str.split",
+        "str.split",
+        "requests.post",
+        "requests.models.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "os.environ[\"ENDPOINT_ID\"]",
+        "endpoint_id.split(\"/\")",
+        "endpoint_id.split(\"/\")",
+        "requests.post(api_url, headers=headers, timeout=30)",
+        "r.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "str.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "str.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\ndef pause_endpoint(params):\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers, timeout=30)\n    return r.json()"
+    }
+  },
+  {
+    "pyfile": "common.py",
+    "code_snippet": "import os\nimport requests\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a Hugging Face endpoint using the provided parameters.\n\n    Args:\n        params (dict or object): Parameters containing the token required for authorization.\n            If a dictionary is provided, it should have a key \"token\" with the authorization token.\n            If an object is provided, it should have an attribute `token` with the authorization token.\n\n    Returns:\n        dict: The JSON response from the API call to pause the endpoint.\n\n    Raises:\n        KeyError: If the \"token\" key is missing in the params dictionary.\n        requests.exceptions.RequestException: If there is an issue with the API request.\n\n    Environment Variables:\n        ENDPOINT_ID: Should be set to the endpoint identifier in the format \"username/project_name\".\n    \"\"\"\n    if isinstance(params, dict):\n        token = params[\"token\"]\n    else:\n        token = params.token\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {token}\"}\n    r = requests.post(api_url, headers=headers, timeout=120)\n    return r.json()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "os.environ",
+        "requests.post",
+        "requests.models.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(params, dict)",
+        "os.environ[\"ENDPOINT_ID\"]",
+        "requests.post(api_url, headers=headers, timeout=120)",
+        "requests.models.Response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\ndef pause_endpoint(params):\n    if isinstance(params, dict):\n        token = params[\"token\"]\n    else:\n        token = params.token\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {token}\"}\n    r = requests.post(api_url, headers=headers, timeout=120)\n    return r.json()"
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "code_snippet": "import os\nimport requests\n\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a specific endpoint using the Hugging Face API.\n\n    This function retrieves the endpoint ID from the environment variables,\n    extracts the username and project name from the endpoint ID, constructs\n    the API URL, and sends a POST request to pause the endpoint.\n\n    Args:\n        params (object): An object containing the token attribute for authorization.\n\n    Returns:\n        dict: The JSON response from the API call.\n    \"\"\"\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers, timeout=120)\n    return r.json()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "requests.post",
+        "requests.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"ENDPOINT_ID\"]",
+        "requests.post(api_url, headers=headers, timeout=120)",
+        "requests.Response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\ndef pause_endpoint(params):\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers, timeout=120)\n    return r.json()"
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "code_snippet": "import os\nimport requests\n\ndef pause_endpoint(params):\n    \"\"\"\n    Pauses a Hugging Face endpoint using the provided parameters.\n\n    This function constructs an API URL using the endpoint ID from the environment\n    variables, and sends a POST request to pause the specified endpoint.\n\n    Args:\n        params (object): An object containing the following attribute:\n            - token (str): The authorization token required to authenticate the API request.\n\n    Returns:\n        dict: The JSON response from the API call.\n    \"\"\"\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers)\n    return r.json()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.environ.__getitem__",
+        "str.split",
+        "str.split",
+        "requests.post",
+        "requests.models.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "os.environ.__getitem__(\"ENDPOINT_ID\")",
+        "endpoint_id.split(\"/\")",
+        "endpoint_id.split(\"/\")",
+        "requests.post(api_url, headers=headers)",
+        "requests.models.Response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "str.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "str.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\ndef pause_endpoint(params):\n    endpoint_id = os.environ[\"ENDPOINT_ID\"]\n    username = endpoint_id.split(\"/\")[0]\n    project_name = endpoint_id.split(\"/\")[1]\n    api_url = f\"https://api.endpoints.huggingface.cloud/v2/endpoint/{username}/{project_name}/pause\"\n    headers = {\"Authorization\": f\"Bearer {params.token}\"}\n    r = requests.post(api_url, headers=headers)\n    return r.json()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "autotrain_advanced-0.8.36",
+      "total_matches": 6
+    }
+  }
+]

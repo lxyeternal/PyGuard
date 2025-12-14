@@ -1,0 +1,141 @@
+[
+  {
+    "metadata": {
+      "package_name": "modal-0.73.164",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/modal-0.73.164/modal-0.73.164/modal/experimental/__init__.py",
+    "line_number": "105",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "104\t        with open(os.path.expanduser(path)) as f:\n105\t            commands = f.read().split(\"\\n\")\n106\t        return DockerfileSpec(commands=commands, context_files={})",
+    "code_snippet": "@synchronizer.create_blocking\nasync def raw_dockerfile_image(\n    path: Union[str, Path],\n    force_build: bool = False,\n) -> _Image:\n    \"\"\"\n    Build a Modal Image from a local Dockerfile recipe without any changes.\n\n    Unlike for `modal.Image.from_dockerfile`, the provided recipe will not be embellished with\n    steps to install dependencies for the Modal client package. As a consequence, the resulting\n    Image cannot be used with a modal Function unless those dependencies are added in a subsequent\n    layer. It _can_ be directly used with a modal Sandbox, which does not need the Modal client.\n\n    We expect to support this experimental function until the `2025.04` Modal Image Builder is\n    stable, at which point Modal Image recipes will no longer install the client dependencies\n    by default. At that point, users can upgrade their Image Builder Version and migrate to\n    `modal.Image.from_dockerfile` for usecases supported by this function.\n\n    \"\"\"\n\n    def build_dockerfile(version: ImageBuilderVersion) -> DockerfileSpec:\n        with open(os.path.expanduser(path)) as f:\n            commands = f.read().split(\"\\n\")\n        return DockerfileSpec(commands=commands, context_files={})\n\n    return _Image._from_args(\n        dockerfile_function=build_dockerfile,\n        force_build=force_build,\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.expanduser",
+        "open",
+        "builtins.open.read",
+        "DockerfileSpec",
+        "_Image._from_args"
+      ],
+      "api_sequence_with_args": [
+        "os.path.expanduser(path)",
+        "open(os.path.expanduser(path))",
+        "builtins.open.read()",
+        "DockerfileSpec(commands=commands, context_files={})",
+        "_Image._from_args(dockerfile_function=build_dockerfile, force_build=force_build)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.expanduser",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "builtins.open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "def build_dockerfile(version: ImageBuilderVersion) -> DockerfileSpec:\n    with open(os.path.expanduser(path)) as f:\n        commands = f.read().split(\"\\n\")\n    return DockerfileSpec(commands=commands, context_files={})"
+    }
+  },
+  {
+    "pyfile": "_clustered_functions.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/modal-0.73.164/modal-0.73.164/modal/_clustered_functions.py",
+    "line_number": "39",
+    "type_description": "B803:gethostname",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "38\n39\t    hostname = socket.gethostname()\n40\t    container_ip = get_i6pn()",
+    "code_snippet": "async def _initialize_clustered_function(client: _Client, task_id: str, world_size: int):\n    global cluster_info\n\n    def get_i6pn():\n        \"\"\"Returns the ipv6 address assigned to this container.\"\"\"\n        return socket.getaddrinfo(\"i6pn.modal.local\", None, socket.AF_INET6)[0][4][0]\n\n    hostname = socket.gethostname()\n    container_ip = get_i6pn()\n\n    # nccl's default host ID is $(hostname)$(cat /proc/sys/kernel/random/boot_id).\n    # on runc, if two i6pn-linked containers get scheduled on the same worker,\n    # their boot ID and hostname will both be identical, causing nccl to break.\n    # As a workaround, we can explicitly specify a unique host ID here.\n    # See MOD-4067.\n    os.environ[\"NCCL_HOSTID\"] = f\"{hostname}{container_ip}\"\n\n    # We found these settings to work well in most cases. You may be able to achieve\n    # better performance by tuning these settings.\n    if os.environ[\"MODAL_CLOUD_PROVIDER\"] in (\"CLOUD_PROVIDER_GCP\", \"CLOUD_PROVIDER_OCI\"):\n        os.environ[\"NCCL_SOCKET_NTHREADS\"] = \"4\"\n        os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = \"1\"\n    elif os.environ[\"MODAL_CLOUD_PROVIDER\"] == \"CLOUD_PROVIDER_AWS\":\n        os.environ[\"NCCL_SOCKET_NTHREADS\"] = \"2\"\n        os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = \"8\"\n    else:\n        os.environ[\"NCCL_SOCKET_NTHREADS\"] = \"1\"\n        os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = \"1\"\n\n    if world_size > 1:\n        resp: api_pb2.TaskClusterHelloResponse = await retry_transient_errors(\n            client.stub.TaskClusterHello,\n            api_pb2.TaskClusterHelloRequest(\n                task_id=task_id,\n                container_ip=container_ip,\n            ),\n        )\n        cluster_info = ClusterInfo(\n            rank=resp.cluster_rank,\n            container_ips=resp.container_ips,\n        )\n    else:\n        cluster_info = ClusterInfo(\n            rank=0,\n            container_ips=[container_ip],\n        )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "socket.gethostname",
+        "socket.getaddrinfo",
+        "os.environ",
+        "os.environ",
+        "os.environ",
+        "os.environ"
+      ],
+      "api_sequence_with_args": [
+        "socket.gethostname()",
+        "socket.getaddrinfo(\"i6pn.modal.local\", None, socket.AF_INET6)",
+        "os.environ[\"NCCL_HOSTID\"] = f\"{hostname}{container_ip}\"",
+        "os.environ[\"MODAL_CLOUD_PROVIDER\"]",
+        "os.environ[\"NCCL_SOCKET_NTHREADS\"] = ...",
+        "os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = ..."
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "socket.gethostname",
+          "id": "get_hostname",
+          "description": "Retrieves current host name",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "socket.getaddrinfo",
+          "id": "resolve_hostname",
+          "description": "Resolves host name to IPv4 address",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "domain_resolution"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "def get_i6pn():\n    \"\"\"Returns the ipv6 address assigned to this container.\"\"\"\n    return socket.getaddrinfo(\"i6pn.modal.local\", None, socket.AF_INET6)[0][4][0]\n\nhostname = socket.gethostname()\ncontainer_ip = get_i6pn()\n\nos.environ[\"NCCL_HOSTID\"] = f\"{hostname}{container_ip}\"\n\nif os.environ[\"MODAL_CLOUD_PROVIDER\"] in (\"CLOUD_PROVIDER_GCP\", \"CLOUD_PROVIDER_OCI\"):\n    os.environ[\"NCCL_SOCKET_NTHREADS\"] = \"4\"\n    os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = \"1\"\nelif os.environ[\"MODAL_CLOUD_PROVIDER\"] == \"CLOUD_PROVIDER_AWS\":\n    os.environ[\"NCCL_SOCKET_NTHREADS\"] = \"2\"\n    os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = \"8\"\nelse:\n    os.environ[\"NCCL_SOCKET_NTHREADS\"] = \"1\"\n    os.environ[\"NCCL_NSOCKS_PERTHREAD\"] = \"1\""
+    }
+  }
+]

@@ -1,0 +1,206 @@
+[
+  {
+    "metadata": {
+      "package_name": "langchain_community-0.3.21",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "golden_query.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/langchain_community-0.3.21/langchain_community-0.3.21/langchain_community/utilities/golden_query.py",
+    "line_number": "47",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "46\n47\t        response = requests.post(\n48\t            f\"{GOLDEN_BASE_URL}/api/v2/public/queries/\",\n49\t            json={\"prompt\": query},\n50\t            headers=headers,\n51\t            timeout=GOLDEN_TIMEOUT,\n52\t        )",
+    "code_snippet": "import json\nfrom typing import Any, Dict, Optional\n\nimport requests\nfrom langchain_core.utils import get_from_dict_or_env\nfrom pydantic import BaseModel, ConfigDict, model_validator\n\nGOLDEN_BASE_URL = \"https://golden.com\"\nGOLDEN_TIMEOUT = 5000\n\n\nclass GoldenQueryAPIWrapper(BaseModel):\n    \"\"\"Wrapper for Golden.\n\n    Docs for using:\n\n    1. Go to https://golden.com and sign up for an account\n    2. Get your API Key from https://golden.com/settings/api\n    3. Save your API Key into GOLDEN_API_KEY env variable\n\n    \"\"\"\n\n    golden_api_key: Optional[str] = None\n\n    model_config = ConfigDict(\n        extra=\"forbid\",\n    )\n\n    @model_validator(mode=\"before\")\n    @classmethod\n    def validate_environment(cls, values: Dict) -> Any:\n        \"\"\"Validate that api key and python package exists in environment.\"\"\"\n        golden_api_key = get_from_dict_or_env(\n            values, \"golden_api_key\", \"GOLDEN_API_KEY\"\n        )\n        values[\"golden_api_key\"] = golden_api_key\n\n        return values\n\n    def run(self, query: str) -> str:\n        \"\"\"Run query through Golden Query API and return the JSON raw result.\"\"\"\n\n        headers = {\"apikey\": self.golden_api_key or \"\"}\n\n        response = requests.post(\n            f\"{GOLDEN_BASE_URL}/api/v2/public/queries/\",\n            json={\"prompt\": query},\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        if response.status_code != 201:\n            return response.text\n\n        content = json.loads(response.content)\n        query_id = content[\"id\"]\n\n        response = requests.get(\n            (\n                f\"{GOLDEN_BASE_URL}/api/v2/public/queries/{query_id}/results/\"\n                \"?pageSize=10\"\n            ),\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        return response.text\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "langchain_core.utils.get_from_dict_or_env",
+        "requests.post",
+        "requests.get",
+        "json.loads"
+      ],
+      "api_sequence_with_args": [
+        "langchain_core.utils.get_from_dict_or_env(values, \"golden_api_key\", \"GOLDEN_API_KEY\")",
+        "requests.post(f\"{GOLDEN_BASE_URL}/api/v2/public/queries/\", json={\"prompt\": query}, headers=headers, timeout=GOLDEN_TIMEOUT)",
+        "requests.get(f\"{GOLDEN_BASE_URL}/api/v2/public/queries/{query_id}/results/?pageSize=10\", headers=headers, timeout=GOLDEN_TIMEOUT)",
+        "json.loads(response.content)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "langchain_core.utils.get_from_dict_or_env",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "from langchain_core.utils import get_from_dict_or_env\nimport requests\nimport json\n\nclass GoldenQueryAPIWrapper(BaseModel):\n    golden_api_key: Optional[str] = None\n\n    @model_validator(mode=\"before\")\n    @classmethod\n    def validate_environment(cls, values: Dict) -> Any:\n        golden_api_key = get_from_dict_or_env(\n            values, \"golden_api_key\", \"GOLDEN_API_KEY\"\n        )\n        values[\"golden_api_key\"] = golden_api_key\n        return values\n\n    def run(self, query: str) -> str:\n        headers = {\"apikey\": self.golden_api_key or \"\"}\n        response = requests.post(\n            f\"{GOLDEN_BASE_URL}/api/v2/public/queries/\",\n            json={\"prompt\": query},\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        if response.status_code != 201:\n            return response.text\n        content = json.loads(response.content)\n        query_id = content[\"id\"]\n        response = requests.get(\n            f\"{GOLDEN_BASE_URL}/api/v2/public/queries/{query_id}/results/?pageSize=10\",\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        return response.text"
+    }
+  },
+  {
+    "pyfile": "zapier.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/langchain_community-0.3.21/langchain_community-0.3.21/langchain_community/utilities/zapier.py",
+    "line_number": "231",
+    "type_description": "B835:load",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "230\t            self._create_action_url(action_id),\n231\t            json=self._create_action_payload(instructions, params),\n232\t        )",
+    "code_snippet": "async def arun(\n    self, action_id: str, instructions: str, params: Optional[Dict] = None\n) -> Dict:\n    \"\"\"Executes an action that is identified by action_id, must be exposed\n    (enabled) by the current user (associated with the set api_key). Change\n    your exposed actions here: https://nla.zapier.com/demo/start/\n\n    The return JSON is guaranteed to be less than ~500 words (350\n    tokens) making it safe to inject into the prompt of another LLM\n    call.\n    \"\"\"\n    response = await self._arequest(\n        \"POST\",\n        self._create_action_url(action_id),\n        json=self._create_action_payload(instructions, params),\n    )\n    return response[\"result\"]",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._create_action_url",
+        "self._create_action_payload",
+        "self._arequest"
+      ],
+      "api_sequence_with_args": [
+        "self._create_action_url(action_id)",
+        "self._create_action_payload(instructions, params)",
+        "self._arequest('POST', self._create_action_url(action_id), json=self._create_action_payload(instructions, params))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._create_action_url",
+          "id": "encode_url_query",
+          "description": "Encodes mapping object to URL query string",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "self._create_action_payload",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self._arequest",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "async def arun(self, action_id: str, instructions: str, params: Optional[Dict] = None) -> Dict:\n    response = await self._arequest(\n        \"POST\",\n        self._create_action_url(action_id),\n        json=self._create_action_payload(instructions, params),\n    )\n    return response[\"result\"]"
+    }
+  },
+  {
+    "pyfile": "remote_retriever.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/langchain_community-0.3.21/langchain_community-0.3.21/langchain_community/retrievers/remote_retriever.py",
+    "line_number": "47",
+    "type_description": "B822:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "46\t        async with aiohttp.ClientSession() as session:\n47\t            async with session.request(\n48\t                \"POST\", self.url, headers=self.headers, json={self.input_key: query}\n49\t            ) as response:",
+    "code_snippet": "import aiohttp\nfrom langchain_core.documents import Document\nfrom typing import List\n\nclass RemoteLangChainRetriever(BaseRetriever):\n    url: str\n    headers: Optional[dict] = None\n    input_key: str = \"message\"\n    response_key: str = \"response\"\n    page_content_key: str = \"page_content\"\n    metadata_key: str = \"metadata\"\n\n    async def _aget_relevant_documents(\n        self, query: str, *, run_manager: AsyncCallbackManagerForRetrieverRun\n    ) -> List[Document]:\n        async with aiohttp.ClientSession() as session:\n            async with session.request(\n                \"POST\", self.url, headers=self.headers, json={self.input_key: query}\n            ) as response:\n                result = await response.json()\n        return [\n            Document(\n                page_content=r[self.page_content_key], metadata=r[self.metadata_key]\n            )\n            for r in result[self.response_key]\n        ]\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "aiohttp.ClientSession",
+        "aiohttp.ClientSession.request",
+        "aiohttp.ClientSession.request.__aenter__",
+        "aiohttp.ClientSession.request.__aexit__",
+        "aiohttp.ClientSession.__aenter__",
+        "aiohttp.ClientSession.__aexit__",
+        "aiohttp.ClientResponse.json"
+      ],
+      "api_sequence_with_args": [
+        "aiohttp.ClientSession()",
+        "aiohttp.ClientSession.request('POST', self.url, headers=self.headers, json={self.input_key: query})",
+        "aiohttp.ClientSession.request.__aenter__()",
+        "aiohttp.ClientSession.request.__aexit__()",
+        "aiohttp.ClientSession.__aenter__()",
+        "aiohttp.ClientSession.__aexit__()",
+        "aiohttp.ClientResponse.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "aiohttp.ClientSession",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "aiohttp.ClientSession.request",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "aiohttp.ClientSession.request.__aenter__",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "aiohttp.ClientSession.request.__aexit__",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "aiohttp.ClientSession.__aenter__",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "aiohttp.ClientSession.__aexit__",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "aiohttp.ClientResponse.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import aiohttp\nfrom langchain_core.documents import Document\nfrom typing import List\n\nclass RemoteLangChainRetriever(BaseRetriever):\n    url: str\n    headers: Optional[dict] = None\n    input_key: str = \"message\"\n    response_key: str = \"response\"\n    page_content_key: str = \"page_content\"\n    metadata_key: str = \"metadata\"\n\n    async def _aget_relevant_documents(\n        self, query: str, *, run_manager: AsyncCallbackManagerForRetrieverRun\n    ) -> List[Document]:\n        async with aiohttp.ClientSession() as session:\n            async with session.request(\n                \"POST\", self.url, headers=self.headers, json={self.input_key: query}\n            ) as response:\n                result = await response.json()\n        return [\n            Document(\n                page_content=r[self.page_content_key], metadata=r[self.metadata_key]\n            )\n            for r in result[self.response_key]\n        ]"
+    }
+  }
+]

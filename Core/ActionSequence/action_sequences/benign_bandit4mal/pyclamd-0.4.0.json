@@ -1,0 +1,228 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyclamd-0.4.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "pyclamd.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyclamd-0.4.0/pyClamd-0.4.0/pyclamd/pyclamd.py",
+    "line_number": "568",
+    "type_description": "B805:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "567\t                    self.clamd_socket.send(size)\n568\t                    self.clamd_socket.send(chunk)\n569\t                except socket.error:",
+    "code_snippet": "def scan_stream(self, stream, chunk_size=4096):\n    \"\"\"\n    Scan a buffer\n\n    on Python2.X :\n      - input (string): buffer to scan\n    on Python3.X :\n      - input (bytes or bytearray): buffer to scan\n\n    return either:\n      - (dict): {filename1: \"virusname\"}\n      - None: if no virus found\n\n    May raise :\n      - BufferTooLongError: if the buffer size exceeds clamd limits\n      - ConnectionError: in case of communication problem\n    \"\"\"\n    if sys.version_info[0] <= 2:\n        # Python2\n        assert hasattr(stream, \"read\") or isinstance(stream, str), 'Wrong type for [stream], should be str/file-like [was {0}]'.format(type(stream))\n    else:\n        # Python3\n        assert hasattr(stream, \"read\") or isinstance(stream, (bytes, bytearray)), 'Wrong type for [stream], should be bytes/bytearray/file-like [was {0}]'.format(type(stream))\n\n    is_file_like = hasattr(stream, 'read')\n\n    try:\n        self._init_socket()\n        self._send_command('INSTREAM')\n\n    except socket.error:\n        raise ConnectionError('Unable to scan stream')\n\n    if is_file_like:\n        while True:\n            chunk = stream.read(chunk_size)\n            if not chunk:\n                break\n            size = struct.pack('!L', len(chunk))\n            try:\n                self.clamd_socket.send(size)\n                self.clamd_socket.send(chunk)\n            except socket.error:\n                raise\n\n        # Terminating stream\n        self.clamd_socket.send(struct.pack('!L', 0))\n    else:\n        # bytearray\n        for n in range(1 + int(len(stream)/chunk_size)):\n            chunk = stream[n*chunk_size:(n+1)*chunk_size]\n            size = struct.pack('!L', len(chunk))\n            try:\n                self.clamd_socket.send(size)\n                self.clamd_socket.send(chunk)\n            except socket.error:\n                raise\n        else:\n            # Terminating stream\n            self.clamd_socket.send(struct.pack('!L', 0))\n\n    result='...'\n    dr = {}\n    while result:\n        try:\n            result = self._recv_response()\n        except socket.error:\n            raise ConnectionError('Unable to scan stream')\n\n        if len(result) > 0:\n\n            if result == 'INSTREAM size limit exceeded. ERROR':\n                raise BufferTooLongError(result)\n\n            filename, reason, status = self._parse_response(result)\n\n            if status == 'ERROR':\n                dr[filename] = ('ERROR', '{0}'.format(reason))\n\n            elif status == 'FOUND':\n                dr[filename] = ('FOUND', '{0}'.format(reason))\n\n    self._close_socket()\n    if not dr:\n        return None\n    return dr",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.version_info",
+        "hasattr",
+        "isinstance",
+        "hasattr",
+        "self._init_socket",
+        "self._send_command",
+        "struct.pack",
+        "self.clamd_socket.send",
+        "self.clamd_socket.send",
+        "struct.pack",
+        "self.clamd_socket.send",
+        "struct.pack",
+        "self.clamd_socket.send",
+        "self.clamd_socket.send",
+        "struct.pack",
+        "self.clamd_socket.send",
+        "self._recv_response",
+        "len",
+        "self._parse_response",
+        "self._close_socket"
+      ],
+      "api_sequence_with_args": [
+        "sys.version_info[0]",
+        "hasattr(stream, \"read\")",
+        "isinstance(stream, str)",
+        "hasattr(stream, 'read')",
+        "self._init_socket()",
+        "self._send_command('INSTREAM')",
+        "struct.pack('!L', len(chunk))",
+        "self.clamd_socket.send(size)",
+        "self.clamd_socket.send(chunk)",
+        "struct.pack('!L', 0)",
+        "self.clamd_socket.send(struct.pack('!L', 0))",
+        "struct.pack('!L', len(chunk))",
+        "self.clamd_socket.send(size)",
+        "self.clamd_socket.send(chunk)",
+        "struct.pack('!L', 0)",
+        "self.clamd_socket.send(struct.pack('!L', 0))",
+        "self._recv_response()",
+        "len(result)",
+        "self._parse_response(result)",
+        "self._close_socket()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self._init_socket",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "self._send_command",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "struct.pack",
+          "id": "pack_values",
+          "description": "Packs values into bytes using specified format",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.clamd_socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self.clamd_socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "struct.pack",
+          "id": "pack_values",
+          "description": "Packs values into bytes using specified format",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.clamd_socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "struct.pack",
+          "id": "pack_values",
+          "description": "Packs values into bytes using specified format",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.clamd_socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self.clamd_socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "struct.pack",
+          "id": "pack_values",
+          "description": "Packs values into bytes using specified format",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.clamd_socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._recv_response",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "len",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self._parse_response",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self._close_socket",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def scan_stream(self, stream, chunk_size=4096):\n    if sys.version_info[0] <= 2:\n        assert hasattr(stream, \"read\") or isinstance(stream, str), ...\n    else:\n        assert hasattr(stream, \"read\") or isinstance(stream, (bytes, bytearray)), ...\n\n    is_file_like = hasattr(stream, 'read')\n\n    try:\n        self._init_socket()\n        self._send_command('INSTREAM')\n    except socket.error:\n        raise ConnectionError('Unable to scan stream')\n\n    if is_file_like:\n        while True:\n            chunk = stream.read(chunk_size)\n            if not chunk:\n                break\n            size = struct.pack('!L', len(chunk))\n            try:\n                self.clamd_socket.send(size)\n                self.clamd_socket.send(chunk)\n            except socket.error:\n                raise\n        self.clamd_socket.send(struct.pack('!L', 0))\n    else:\n        for n in range(1 + int(len(stream)/chunk_size)):\n            chunk = stream[n*chunk_size:(n+1)*chunk_size]\n            size = struct.pack('!L', len(chunk))\n            try:\n                self.clamd_socket.send(size)\n                self.clamd_socket.send(chunk)\n            except socket.error:\n                raise\n        else:\n            self.clamd_socket.send(struct.pack('!L', 0))\n\n    result = '...'\n    dr = {}\n    while result:\n        try:\n            result = self._recv_response()\n        except socket.error:\n            raise ConnectionError('Unable to scan stream')\n        if len(result) > 0:\n            if result == 'INSTREAM size limit exceeded. ERROR':\n                raise BufferTooLongError(result)\n            filename, reason, status = self._parse_response(result)\n            if status == 'ERROR':\n                dr[filename] = ('ERROR', '{0}'.format(reason))\n            elif status == 'FOUND':\n                dr[filename] = ('FOUND', '{0}'.format(reason))\n    self._close_socket()\n    if not dr:\n        return None\n    return dr"
+    }
+  }
+]

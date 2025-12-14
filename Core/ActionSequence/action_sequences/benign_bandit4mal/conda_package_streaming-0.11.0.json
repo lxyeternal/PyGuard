@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "conda_package_streaming-0.11.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "package_streaming.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/conda_package_streaming-0.11.0/conda_package_streaming-0.11.0/conda_package_streaming/package_streaming.py",
+    "line_number": "145",
+    "type_description": "B834:open",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "144\t        reader = zstandard.ZstdDecompressor().stream_reader(\n145\t            zf.open(component_filename[0])\n146\t        )",
+    "code_snippet": "def stream_conda_component(\n    filename,\n    fileobj=None,\n    component: CondaComponent | str = CondaComponent.pkg,\n    *,\n    encoding=\"utf-8\",\n) -> Generator[tuple[tarfile.TarFile, tarfile.TarInfo]]:\n    \"\"\"\n    Yield members from .conda's embedded {component}- tarball. \"info\" or \"pkg\".\n\n    For .tar.bz2 packages, yield all members.\n\n    Yields (tar, member) tuples. You must only use the current member to\n    prevent tar seeks and scans.\n\n    To extract to disk, it's possible to call ``tar.extractall(path)`` on the\n    first result and then ignore the rest of this generator. ``extractall`` takes\n    care of some directory permissions/mtime issues, compared to ``extract`` or\n    writing out the file objects yourself.\n    \"\"\"\n    if str(filename).endswith(\".conda\"):\n        if zstandard is None:\n            raise RuntimeError(\"Cannot unpack `.conda` without zstandard\")\n\n        zf = zipfile.ZipFile(fileobj or filename)\n        stem, _, _ = os.path.basename(filename).rpartition(\".\")\n        component_name = f\"{component}-{stem}\"\n        component_filename = [\n            info for info in zf.infolist() if info.filename.startswith(component_name)\n        ]\n        if not component_filename:\n            raise LookupError(f\"didn't find {component_name} component in {filename}\")\n        assert len(component_filename) == 1\n        reader = zstandard.ZstdDecompressor().stream_reader(\n            zf.open(component_filename[0])\n        )\n    elif str(filename).endswith(\".tar.bz2\"):\n        reader = bz2.open(fileobj or filename, mode=\"rb\")\n    else:\n        raise ValueError(\"unsupported file extension\")\n    return tar_generator(reader, closefd=fileobj is None, encoding=encoding)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.basename",
+        "zipfile.ZipFile",
+        "zipfile.ZipFile.infolist",
+        "zstandard.ZstdDecompressor",
+        "zstandard.ZstdDecompressor.stream_reader",
+        "zipfile.ZipFile.open",
+        "bz2.open",
+        "tar_generator"
+      ],
+      "api_sequence_with_args": [
+        "os.path.basename(filename)",
+        "zipfile.ZipFile(fileobj or filename)",
+        "zipfile.ZipFile.infolist()",
+        "zstandard.ZstdDecompressor()",
+        "zstandard.ZstdDecompressor().stream_reader(zf.open(component_filename[0]))",
+        "zipfile.ZipFile.open(component_filename[0])",
+        "bz2.open(fileobj or filename, mode=\"rb\")",
+        "tar_generator(reader, closefd=fileobj is None, encoding=encoding)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.infolist",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "zstandard.ZstdDecompressor",
+          "id": "decompress_data_zlib",
+          "description": "Decompresses zlib-compressed data",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "compression_decompression"
+        },
+        {
+          "api_name": "zstandard.ZstdDecompressor.stream_reader",
+          "id": "decompress_data_zlib",
+          "description": "Decompresses zlib-compressed data",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "compression_decompression"
+        },
+        {
+          "api_name": "zipfile.ZipFile.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "bz2.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tar_generator",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        }
+      ],
+      "contextual_code": "if str(filename).endswith(\".conda\"):\n    if zstandard is None:\n        raise RuntimeError(\"Cannot unpack `.conda` without zstandard\")\n\n    zf = zipfile.ZipFile(fileobj or filename)\n    stem, _, _ = os.path.basename(filename).rpartition(\".\")\n    component_name = f\"{component}-{stem}\"\n    component_filename = [\n        info for info in zf.infolist() if info.filename.startswith(component_name)\n    ]\n    if not component_filename:\n        raise LookupError(f\"didn't find {component_name} component in {filename}\")\n    assert len(component_filename) == 1\n    reader = zstandard.ZstdDecompressor().stream_reader(\n        zf.open(component_filename[0])\n    )\nelif str(filename).endswith(\".tar.bz2\"):\n    reader = bz2.open(fileobj or filename, mode=\"rb\")\nelse:\n    raise ValueError(\"unsupported file extension\")\nreturn tar_generator(reader, closefd=fileobj is None, encoding=encoding)"
+    }
+  }
+]

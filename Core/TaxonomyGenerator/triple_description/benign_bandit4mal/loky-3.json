@@ -1,0 +1,106 @@
+{
+  "metadata": {
+    "package_name": "loky-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/loky-3.5.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "process_executor.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/loky-3.5.1/loky-3.5.1/loky/process_executor.py",
+      "line_number": "698",
+      "type_description": "B839:pool",
+      "context_snippet": "def wait_result_broken_or_wakeup(self):\n    # Wait for a result to be ready in the result_queue while checking\n    # that all worker processes are still running, or for a wake up\n    # signal send. The wake up signals come either from new tasks being\n    # submitted, from the executor being shutdown/gc-ed, or from the\n    # shutdown of the python interpreter.\n    result_reader = self.result_queue._reader\n    wakeup_reader = self.thread_wakeup._reader\n    readers = [result_reader, wakeup_reader]\n    worker_sentinels = [p.sentinel for p in list(self.processes.values())]\n    ready = wait(readers + worker_sentinels)\n\n    bpe = None\n    is_broken = True\n    result_item = None\n    if result_reader in ready:\n        try:\n            result_item = result_reader.recv()\n            if isinstance(result_item, _RemoteTraceback):\n                bpe = BrokenProcessPool(\n                    \"A task has failed to un-serialize. Please ensure that\"\n                    \" the arguments of the function are all picklable.\"\n                )\n                bpe.__cause__ = result_item\n            else:\n                is_broken = False\n        except BaseException as e:\n            bpe = BrokenProcessPool(\n                \"A result has failed to un-serialize. Please ensure that \"\n                \"the objects returned by the function are always \"\n                \"picklable.\"\n            )\n            tb = traceback.format_exception(\n                type(e), e, getattr(e, \"__traceback__\", None)\n            )\n            bpe.__cause__ = _RemoteTraceback(\"\".join(tb))\n\n    elif wakeup_reader in ready:\n        # This is simply a wake-up event that might either trigger putting\n        # more tasks in the queue or trigger the clean up of resources.\n        is_broken = False\n    else:\n        # A worker has terminated and we don't know why, set the state of\n        # the executor as broken\n        exit_codes = \"\"\n        if sys.platform != \"win32\":\n            # In Windows, introspecting terminated workers exitcodes seems\n            # unstable, therefore they are not appended in the exception\n            # message.\n            exit_codes = (\n                \"\\nThe exit codes of the workers are \"\n                f\"{get_exitcodes_terminated_worker(self.processes)}\"\n            )\n        mp.util.debug(\n            \"A worker unexpectedly terminated. Workers that \"\n            \"might have caused the breakage: \"\n            + str(\n                {\n                    p.name: p.exitcode\n                    for p in list(self.processes.values())\n                    if p is not None and p.sentinel in ready\n                }\n            )\n        )\n        bpe = TerminatedWorkerError(\n            \"A worker process managed by the executor was unexpectedly \"\n            \"terminated. This could be caused by a segmentation fault \"\n            \"while calling the function or by an excessive memory usage \"\n            \"causing the Operating System to kill the worker.\\n\"\n            f\"{exit_codes}\\n\"\n            \"Detailed tracebacks of the workers should have been printed \"\n            \"to stderr in the executor process if faulthandler was not \"\n            \"disabled.\"\n        )\n\n    self.thread_wakeup.clear()\n\n    return result_item, is_broken, bpe",
+      "hash_value": "ae12f6cd9b3e04bdd0dffb1f089c6ed4",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def wait_result_broken_or_wakeup(self):\n    # Wait for a result to be ready in the result_queue while checking\n    # that all worker processes are still running, or for a wake up\n    # signal send. The wake up signals come either from new tasks being\n    # submitted, from the executor being shutdown/gc-ed, or from the\n    # shutdown of the python interpreter.\n    result_reader = self.result_queue._reader\n    wakeup_reader = self.thread_wakeup._reader\n    readers = [result_reader, wakeup_reader]\n    worker_sentinels = [p.sentinel for p in list(self.processes.values())]\n    ready = wait(readers + worker_sentinels)\n\n    bpe = None\n    is_broken = True\n    result_item = None\n    if result_reader in ready:\n        try:\n            result_item = result_reader.recv()\n            if isinstance(result_item, _RemoteTraceback):\n                bpe = BrokenProcessPool(\n                    \"A task has failed to un-serialize. Please ensure that\"\n                    \" the arguments of the function are all picklable.\"\n                )\n                bpe.__cause__ = result_item\n            else:\n                is_broken = False\n        except BaseException as e:\n            bpe = BrokenProcessPool(\n                \"A result has failed to un-serialize. Please ensure that \"\n                \"the objects returned by the function are always \"\n                \"picklable.\"\n            )\n            tb = traceback.format_exception(\n                type(e), e, getattr(e, \"__traceback__\", None)\n            )\n            bpe.__cause__ = _RemoteTraceback(\"\".join(tb))\n\n    elif wakeup_reader in ready:\n        # This is simply a wake-up event that might either trigger putting\n        # more tasks in the queue or trigger the clean up of resources.\n        is_broken = False\n    else:\n        # A worker has terminated and we don't know why, set the state of\n        # the executor as broken\n        exit_codes = \"\"\n        if sys.platform != \"win32\":\n            # In Windows, introspecting terminated workers exitcodes seems\n            # unstable, therefore they are not appended in the exception\n            # message.\n            exit_codes = (\n                \"\\nThe exit codes of the workers are \"\n                f\"{get_exitcodes_terminated_worker(self.processes)}\"\n            )\n        mp.util.debug(\n            \"A worker unexpectedly terminated. Workers that \"\n            \"might have caused the breakage: \"\n            + str(\n                {\n                    p.name: p.exitcode\n                    for p in list(self.processes.values())\n                    if p is not None and p.sentinel in ready\n                }\n            )\n        )\n        bpe = TerminatedWorkerError(\n            \"A worker process managed by the executor was unexpectedly \"\n            \"terminated. This could be caused by a segmentation fault \"\n            \"while calling the function or by an excessive memory usage \"\n            \"causing the Operating System to kill the worker.\\n\"\n            f\"{exit_codes}\\n\"\n            \"Detailed tracebacks of the workers should have been printed \"\n            \"to stderr in the executor process if faulthandler was not \"\n            \"disabled.\"\n        )\n\n    self.thread_wakeup.clear()\n\n    return result_item, is_broken, bpe",
+          "triple_sequences": [
+            {
+              "action_api": "wait()",
+              "action_description": "Wait for events",
+              "action_id": "wait_for_events",
+              "object": "readers + worker_sentinels",
+              "object_description": "Thread function arguments",
+              "object_id": "thread_arguments",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "result_reader.recv()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "result_item, _RemoteTraceback",
+              "object_description": "Exception type name",
+              "object_id": "exception_type",
+              "intention_description": "Determine presence of required module",
+              "intention_id": "determine_required_module_presence"
+            },
+            {
+              "action_api": "traceback.format_exception()",
+              "action_description": "Extracts current call stack as FrameSummary objects",
+              "action_id": "extract_call_stack",
+              "object": "type(e), e, getattr(e, \"__traceback__\", None)",
+              "object_description": "Exception type name",
+              "object_id": "exception_type",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "str.join()",
+              "action_description": "Join characters into string",
+              "action_id": "join_characters_into_string",
+              "object": "tb",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "get_exitcodes_terminated_worker()",
+              "action_description": "Retrieves process information",
+              "action_id": "get_process_info",
+              "object": "self.processes",
+              "object_description": "User process",
+              "object_id": "user_process",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "mp.util.debug()",
+              "action_description": "Logs debug information",
+              "action_id": "get_process_info",
+              "object": "\"A worker unexpectedly terminated. Workers that might have caused the breakage: \" + str({p.name: p.exitcode for p in list(self.processes.values()) if p is not None and p.sentinel in ready})",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "self.thread_wakeup.clear()",
+              "action_description": "Removes all keyboard hooks",
+              "action_id": "remove_keyboard_hooks",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release system resource",
+              "intention_id": "release_system_resource"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

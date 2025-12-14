@@ -1,0 +1,344 @@
+[
+  {
+    "pyfile": "conf.py",
+    "code_snippet": "import git\nimport github\nimport requests\n\nimport io\nimport os\nimport subprocess\nimport sys\nimport tempfile\nimport zipfile\n\non_rtd = os.environ.get('READTHEDOCS') == 'True'\n\nif on_rtd:\n    rtd_version = os.environ.get('READTHEDOCS_VERSION')\n    branch = 'master' if rtd_version == 'latest' else rtd_version\n\n    github_token = os.environ['GITHUB_TOKEN']\n    head_sha = git.Repo(search_parent_directories=True).head.commit.hexsha\n    g = github.Github()\n    runs = g.get_repo('YannickJadoul/Parselmouth').get_workflow(\"wheels.yml\").get_runs(branch=branch)\n    artifacts_url = next(r for r in runs if r.head_sha == head_sha).artifacts_url\n\n    archive_download_url = next(artifact for artifact in requests.get(artifacts_url).json()['artifacts'] if artifact['name'] == 'rtd-wheel')['archive_download_url']\n    artifact_bin = io.BytesIO(requests.get(archive_download_url, headers={'Authorization': f'token {github_token}'}, stream=True).content)\n\n    with zipfile.ZipFile(artifact_bin) as zf, tempfile.TemporaryDirectory() as tmpdir:\n        assert len(zf.namelist()) == 1\n        zf.extractall(tmpdir)\n        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', tmpdir + '/' + zf.namelist()[0]])\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.__getitem__",
+        "git.Repo",
+        "git.Repo.head.commit.hexsha",
+        "github.Github",
+        "github.Github.get_repo",
+        "github.Repository.get_workflow",
+        "github.Workflow.get_runs",
+        "requests.get",
+        "requests.get.json",
+        "io.BytesIO",
+        "requests.get",
+        "zipfile.ZipFile",
+        "zipfile.ZipFile.namelist",
+        "zipfile.ZipFile.extractall",
+        "subprocess.check_call"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('READTHEDOCS')",
+        "os.environ.get('READTHEDOCS_VERSION')",
+        "os.environ['GITHUB_TOKEN']",
+        "git.Repo(search_parent_directories=True)",
+        "git.Repo(search_parent_directories=True).head.commit.hexsha",
+        "github.Github()",
+        "github.Github().get_repo('YannickJadoul/Parselmouth')",
+        "github.Github().get_repo('YannickJadoul/Parselmouth').get_workflow('wheels.yml')",
+        "github.Github().get_repo('YannickJadoul/Parselmouth').get_workflow('wheels.yml').get_runs(branch=branch)",
+        "requests.get(artifacts_url)",
+        "requests.get(artifacts_url).json()",
+        "io.BytesIO(requests.get(archive_download_url, headers={'Authorization': f'token {github_token}'}, stream=True).content)",
+        "requests.get(archive_download_url, headers={'Authorization': f'token {github_token}'}, stream=True)",
+        "zipfile.ZipFile(artifact_bin)",
+        "zipfile.ZipFile(artifact_bin).namelist()",
+        "zipfile.ZipFile(artifact_bin).extractall(tmpdir)",
+        "subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', tmpdir + '/' + zf.namelist()[0]])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "git.Repo",
+          "id": "init_git_wrapper",
+          "description": "Initializes Git command wrapper for specified directory",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "git.Repo.head.commit.hexsha",
+          "id": "get_git_head",
+          "description": "Retrieves current HEAD reference of repository",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "github.Github",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "github.Github.get_repo",
+          "id": "get_git_object",
+          "description": "Retrieves object from repository by reference",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "github.Repository.get_workflow",
+          "id": "get_git_object",
+          "description": "Retrieves object from repository by reference",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "github.Workflow.get_runs",
+          "id": "get_git_object",
+          "description": "Retrieves object from repository by reference",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "zipfile.ZipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.namelist",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.extractall",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport git\nimport github\nimport requests\nimport io\nimport subprocess\nimport sys\nimport tempfile\nimport zipfile\n\non_rtd = os.environ.get('READTHEDOCS') == 'True'\n\nif on_rtd:\n    rtd_version = os.environ.get('READTHEDOCS_VERSION')\n    branch = 'master' if rtd_version == 'latest' else rtd_version\n\n    github_token = os.environ['GITHUB_TOKEN']\n    head_sha = git.Repo(search_parent_directories=True).head.commit.hexsha\n    g = github.Github()\n    runs = g.get_repo('YannickJadoul/Parselmouth').get_workflow(\"wheels.yml\").get_runs(branch=branch)\n    artifacts_url = next(r for r in runs if r.head_sha == head_sha).artifacts_url\n\n    archive_download_url = next(artifact for artifact in requests.get(artifacts_url).json()['artifacts'] if artifact['name'] == 'rtd-wheel')['archive_download_url']\n    artifact_bin = io.BytesIO(requests.get(archive_download_url, headers={'Authorization': f'token {github_token}'}, stream=True).content)\n\n    with zipfile.ZipFile(artifact_bin) as zf, tempfile.TemporaryDirectory() as tmpdir:\n        assert len(zf.namelist()) == 1\n        zf.extractall(tmpdir)\n        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', tmpdir + '/' + zf.namelist()[0]])"
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# Imports relevant to the flagged line\nimport contextlib\nimport os\nimport re\nimport shutil\nimport string\nimport subprocess\nimport sys\nimport tempfile\n\nimport setuptools.command.sdist\n\n# Global variables and constants used\nDIR = os.path.abspath(os.path.dirname(__file__))\n\ndef get_and_replace(filename, binary=False, **opts):\n    with open(filename, \"rb\" if binary else \"r\") as f:\n        contents = f.read()\n    # Replacement has to be done on text in Python 3 (both work in Python 2)\n    if binary:\n        return string.Template(contents.decode()).substitute(opts).encode()\n    else:\n        return string.Template(contents).substitute(opts)\n\n# Backport from Python 3\n@contextlib.contextmanager\ndef TemporaryDirectory():  # noqa: N802\n    \"Prepare a temporary directory, cleanup when done\"\n    try:\n        tmpdir = tempfile.mkdtemp()\n        yield tmpdir\n    finally:\n        shutil.rmtree(tmpdir)\n\n# Remove the CMake install directory when done\n@contextlib.contextmanager\ndef remove_output(*sources):\n    try:\n        yield\n    finally:\n        for src in sources:\n            shutil.rmtree(src)\n\n# Immediate block containing the flagged line (with at least 10 lines before and after)\nwith remove_output(\"pybind11/include\", \"pybind11/share\"):\n    # Generate the files if they are not present.\n    with TemporaryDirectory() as tmpdir:\n        cmd = [\"cmake\", \"-S\", \".\", \"-B\", tmpdir] + [\n            \"-DCMAKE_INSTALL_PREFIX=pybind11\",\n            \"-DBUILD_TESTING=OFF\",\n            \"-DPYBIND11_NOPYTHON=ON\",\n        ]\n        cmake_opts = dict(cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)\n        subprocess.check_call(cmd, **cmake_opts)\n        subprocess.check_call([\"cmake\", \"--install\", tmpdir], **cmake_opts)\n\n    txt = get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)\n    code = compile(txt, setup_py, \"exec\")\n    exec(code, {\"SDist\": SDist})\n\n# Data dependencies for the flagged line:\n# - cmd: defined as a list just above the flagged line\n# - cmake_opts: defined as a dict just above the flagged line\n# - DIR: defined globally as os.path.abspath(os.path.dirname(__file__))\n# - sys.stdout, sys.stderr: from sys import\n# - subprocess: imported at the top\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.abspath",
+        "open",
+        "file.read",
+        "string.Template",
+        "string.Template.substitute",
+        "string.Template.encode",
+        "tempfile.mkdtemp",
+        "shutil.rmtree",
+        "shutil.rmtree",
+        "subprocess.check_call",
+        "subprocess.check_call",
+        "compile",
+        "exec"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(__file__)",
+        "os.path.abspath(os.path.dirname(__file__))",
+        "open(filename, 'rb' if binary else 'r')",
+        "file.read()",
+        "string.Template(contents.decode()) or string.Template(contents)",
+        "string.Template(...).substitute(opts)",
+        "string.Template(...).encode()",
+        "tempfile.mkdtemp()",
+        "shutil.rmtree(tmpdir)",
+        "shutil.rmtree(src)",
+        "subprocess.check_call(cmd, **cmake_opts)",
+        "subprocess.check_call(['cmake', '--install', tmpdir], **cmake_opts)",
+        "compile(txt, setup_py, 'exec')",
+        "exec(code, {'SDist': SDist})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "string.Template",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "string.Template.substitute",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "string.Template.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "tempfile.mkdtemp",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nimport string\nimport subprocess\nimport sys\nimport tempfile\n\nDIR = os.path.abspath(os.path.dirname(__file__))\n\ndef get_and_replace(filename, binary=False, **opts):\n    with open(filename, \"rb\" if binary else \"r\") as f:\n        contents = f.read()\n    if binary:\n        return string.Template(contents.decode()).substitute(opts).encode()\n    else:\n        return string.Template(contents).substitute(opts)\n\n@contextlib.contextmanager\ndef TemporaryDirectory():\n    try:\n        tmpdir = tempfile.mkdtemp()\n        yield tmpdir\n    finally:\n        shutil.rmtree(tmpdir)\n\n@contextlib.contextmanager\ndef remove_output(*sources):\n    try:\n        yield\n    finally:\n        for src in sources:\n            shutil.rmtree(src)\n\nwith remove_output(\"pybind11/include\", \"pybind11/share\"):\n    with TemporaryDirectory() as tmpdir:\n        cmd = [\"cmake\", \"-S\", \".\", \"-B\", tmpdir] + [\n            \"-DCMAKE_INSTALL_PREFIX=pybind11\",\n            \"-DBUILD_TESTING=OFF\",\n            \"-DPYBIND11_NOPYTHON=ON\",\n        ]\n        cmake_opts = dict(cwd=DIR, stdout=sys.stdout, stderr=sys.stderr)\n        subprocess.check_call(cmd, **cmake_opts)\n        subprocess.check_call([\"cmake\", \"--install\", tmpdir], **cmake_opts)\n\n    txt = get_and_replace(setup_py, version=version, extra_cmd=extra_cmd)\n    code = compile(txt, setup_py, \"exec\")\n    exec(code, {\"SDist\": SDist})"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "praat_parselmouth-0.4.5",
+      "total_matches": 2
+    }
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyclamd-0.4.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "pyclamd.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyclamd-0.4.0/pyClamd-0.4.0/pyclamd/pyclamd.py",
+    "line_number": "568",
+    "type_description": "B805:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "567\t                    self.clamd_socket.send(size)\n568\t                    self.clamd_socket.send(chunk)\n569\t                except socket.error:",
+    "context_snippet": "def scan_stream(self, stream, chunk_size=4096):\n    \"\"\"\n    Scan a buffer\n\n    on Python2.X :\n      - input (string): buffer to scan\n    on Python3.X :\n      - input (bytes or bytearray): buffer to scan\n\n    return either:\n      - (dict): {filename1: \"virusname\"}\n      - None: if no virus found\n\n    May raise :\n      - BufferTooLongError: if the buffer size exceeds clamd limits\n      - ConnectionError: in case of communication problem\n    \"\"\"\n    if sys.version_info[0] <= 2:\n        # Python2\n        assert hasattr(stream, \"read\") or isinstance(stream, str), 'Wrong type for [stream], should be str/file-like [was {0}]'.format(type(stream))\n    else:\n        # Python3\n        assert hasattr(stream, \"read\") or isinstance(stream, (bytes, bytearray)), 'Wrong type for [stream], should be bytes/bytearray/file-like [was {0}]'.format(type(stream))\n\n    is_file_like = hasattr(stream, 'read')\n\n    try:\n        self._init_socket()\n        self._send_command('INSTREAM')\n\n    except socket.error:\n        raise ConnectionError('Unable to scan stream')\n\n    if is_file_like:\n        while True:\n            chunk = stream.read(chunk_size)\n            if not chunk:\n                break\n            size = struct.pack('!L', len(chunk))\n            try:\n                self.clamd_socket.send(size)\n                self.clamd_socket.send(chunk)\n            except socket.error:\n                raise\n\n        # Terminating stream\n        self.clamd_socket.send(struct.pack('!L', 0))\n    else:\n        # bytearray\n        for n in range(1 + int(len(stream)/chunk_size)):\n            chunk = stream[n*chunk_size:(n+1)*chunk_size]\n            size = struct.pack('!L', len(chunk))\n            try:\n                self.clamd_socket.send(size)\n                self.clamd_socket.send(chunk)\n            except socket.error:\n                raise\n        else:\n            # Terminating stream\n            self.clamd_socket.send(struct.pack('!L', 0))\n\n    result='...'\n    dr = {}\n    while result:\n        try:\n            result = self._recv_response()\n        except socket.error:\n            raise ConnectionError('Unable to scan stream')\n\n        if len(result) > 0:\n\n            if result == 'INSTREAM size limit exceeded. ERROR':\n                raise BufferTooLongError(result)\n\n            filename, reason, status = self._parse_response(result)\n\n            if status == 'ERROR':\n                dr[filename] = ('ERROR', '{0}'.format(reason))\n\n            elif status == 'FOUND':\n                dr[filename] = ('FOUND', '{0}'.format(reason))\n\n    self._close_socket()\n    if not dr:\n        return None\n    return dr",
+    "hash_value": "ed309a840387b6e270d4485cace851c9"
+  }
+]

@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "six.py",
+    "code_snippet": "import sys\n# pylint:disable=unused-argument,import-error\n\nPY2 = sys.version_info[0] == 2\nPY3 = sys.version_info[0] >= 3\n\nif PY3:\n    import builtins\n    exec_ = getattr(builtins, \"exec\")\n\n    def reraise(tp, value, tb=None):\n        if value.__traceback__ is not tb:\n            raise value.with_traceback(tb)\n        raise value\n\n    xrange = range\n    string_types = (str,)\n    text_type = str\n\nelse:\n    def exec_(code, globs=None, locs=None):\n        \"\"\"Execute code in a namespace.\"\"\"\n        if globs is None:\n            frame = sys._getframe(1)\n            globs = frame.f_globals\n            if locs is None:\n                locs = frame.f_locals\n            del frame\n        elif locs is None:\n            locs = globs\n        exec(\"\"\"exec code in globs, locs\"\"\")\n\n    import __builtin__ as builtins\n    xrange = builtins.xrange\n    string_types = (builtins.basestring,)\n    text_type = builtins.unicode\n\n    exec_(\"\"\"def reraise(tp, value, tb=None):\n    try:\n        raise tp, value, tb\n    finally:\n        tb = None\n\"\"\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.version_info",
+        "getattr",
+        "builtins.exec",
+        "sys._getframe",
+        "exec"
+      ],
+      "api_sequence_with_args": [
+        "sys.version_info[0]",
+        "getattr(builtins, \"exec\")",
+        "builtins.exec(...)",
+        "sys._getframe(1)",
+        "exec(\"\"\"exec code in globs, locs\"\"\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins.exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "sys._getframe",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import sys\n\nPY2 = sys.version_info[0] == 2\nPY3 = sys.version_info[0] >= 3\n\nif PY3:\n    import builtins\n    exec_ = getattr(builtins, \"exec\")\n    # ...\nelse:\n    def exec_(code, globs=None, locs=None):\n        if globs is None:\n            frame = sys._getframe(1)\n            globs = frame.f_globals\n            if locs is None:\n                locs = frame.f_locals\n            del frame\n        elif locs is None:\n            locs = globs\n        exec(\"\"\"exec code in globs, locs\"\"\")\n    import __builtin__ as builtins\n    # ...\n    exec_(\"\"\"def reraise(tp, value, tb=None):\n    try:\n        raise tp, value, tb\n    finally:\n        tb = None\n\"\"\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "gevent-24.11.1",
+      "total_matches": 1
+    }
+  }
+]

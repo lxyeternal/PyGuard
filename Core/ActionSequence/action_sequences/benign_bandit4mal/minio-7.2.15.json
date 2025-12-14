@@ -1,0 +1,178 @@
+[
+  {
+    "metadata": {
+      "package_name": "minio-7.2.15",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "api.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/minio-7.2.15/minio-7.2.15/minio/api.py",
+    "line_number": "3085",
+    "type_description": "B834:open",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3084\t        fileobj = None if name else BytesIO()\n3085\t        with tarfile.open(name=name, mode=mode, fileobj=fileobj) as tar:\n3086\t            for obj in object_list:",
+    "code_snippet": "def upload_snowball_objects(\n        self,\n        bucket_name: str,\n        object_list: Iterable[SnowballObject],\n        metadata: DictType | None = None,\n        sse: Sse | None = None,\n        tags: Tags | None = None,\n        retention: Retention | None = None,\n        legal_hold: bool = False,\n        staging_filename: str | None = None,\n        compression: bool = False,\n) -> ObjectWriteResult:\n    \"\"\"\n    Uploads multiple objects in a single put call. It is done by creating\n    intermediate TAR file optionally compressed which is uploaded to S3\n    service.\n\n    :param bucket_name: Name of the bucket.\n    :param object_list: An iterable containing\n        :class:`SnowballObject <SnowballObject>` object.\n    :param metadata: Any additional metadata to be uploaded along\n        with your PUT request.\n    :param sse: Server-side encryption.\n    :param tags: :class:`Tags` for the object.\n    :param retention: :class:`Retention` configuration object.\n    :param legal_hold: Flag to set legal hold for the object.\n    :param staging_filename: A staging filename to create intermediate\n        tarball.\n    :param compression: Flag to compress TAR ball.\n    :return: :class:`ObjectWriteResult` object.\n\n    Example::\n        # Upload snowball object.\n        result = client.upload_snowball_objects(\n            \"my-bucket\",\n            [\n                SnowballObject(\"my-object1\", filename=\"/etc/hostname\"),\n                SnowballObject(\n                    \"my-object2\", data=io.BytesIO(\"hello\"), length=5,\n                ),\n                SnowballObject(\n                    \"my-object3\", data=io.BytesIO(\"world\"), length=5,\n                    mod_time=datetime.now(),\n                ),\n            ],\n        )\n    \"\"\"\n    check_bucket_name(bucket_name, s3_check=self._base_url.is_aws_host)\n\n    object_name = f\"snowball.{random()}.tar\"\n\n    # turn list like objects into an iterator.\n    object_list = itertools.chain(object_list)\n\n    metadata = metadata or {}\n    metadata[\"X-Amz-Meta-Snowball-Auto-Extract\"] = \"true\"\n\n    name = staging_filename\n    mode = \"w:gz\" if compression else \"w\"\n    fileobj = None if name else BytesIO()\n    with tarfile.open(name=name, mode=mode, fileobj=fileobj) as tar:\n        for obj in object_list:\n            if obj.filename:\n                tar.add(obj.filename, obj.object_name)\n            else:\n                info = tarfile.TarInfo(obj.object_name)\n                info.size = cast(int, obj.length)\n                info.mtime = int(\n                    time.to_float(obj.mod_time or time.utcnow()),\n                )\n                tar.addfile(info, obj.data)\n\n    if not name:\n        length = cast(BytesIO, fileobj).tell()\n        cast(BytesIO, fileobj).seek(0)\n    else:\n        length = os.stat(name).st_size\n\n    part_size = 0 if length < MIN_PART_SIZE else length\n\n    if name:\n        return self.fput_object(\n            bucket_name,\n            object_name,\n            cast(str, staging_filename),\n            metadata=metadata,\n            sse=sse,\n            tags=tags,\n            retention=retention,\n            legal_hold=legal_hold,\n            part_size=part_size,\n        )\n    return self.put_object(\n        bucket_name,\n        object_name,\n        cast(BinaryIO, fileobj),\n        length,\n        metadata=cast(Union[DictType, None], metadata),\n        sse=sse,\n        tags=tags,\n        retention=retention,\n        legal_hold=legal_hold,\n        part_size=part_size,\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "check_bucket_name",
+        "random",
+        "itertools.chain",
+        "tarfile.open",
+        "tarfile.TarFile.add",
+        "tarfile.TarInfo",
+        "cast",
+        "time.to_float",
+        "time.utcnow",
+        "tarfile.TarFile.addfile",
+        "cast",
+        "cast",
+        "os.stat",
+        "self.fput_object",
+        "self.put_object"
+      ],
+      "api_sequence_with_args": [
+        "check_bucket_name(bucket_name, s3_check=self._base_url.is_aws_host)",
+        "random()",
+        "itertools.chain(object_list)",
+        "tarfile.open(name=name, mode=mode, fileobj=fileobj)",
+        "tar.add(obj.filename, obj.object_name)",
+        "tarfile.TarInfo(obj.object_name)",
+        "cast(int, obj.length)",
+        "time.to_float(obj.mod_time or time.utcnow())",
+        "time.utcnow()",
+        "tar.addfile(info, obj.data)",
+        "cast(BytesIO, fileobj).tell()",
+        "cast(BytesIO, fileobj).seek(0)",
+        "os.stat(name).st_size",
+        "self.fput_object(bucket_name, object_name, cast(str, staging_filename), metadata=metadata, sse=sse, tags=tags, retention=retention, legal_hold=legal_hold, part_size=part_size)",
+        "self.put_object(bucket_name, object_name, cast(BinaryIO, fileobj), length, metadata=cast(Union[DictType, None], metadata), sse=sse, tags=tags, retention=retention, legal_hold=legal_hold, part_size=part_size)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "check_bucket_name",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "random",
+          "id": "get_random_number",
+          "description": "No direct match in taxonomy; closest is random number generation, but not in provided categories. Not included in mapped_sequence.",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "itertools.chain",
+          "id": "apply_lambda_to_lists",
+          "description": "Applies lambda function to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.add",
+          "id": "add_file_zip",
+          "description": "Adds file to ZIP archive with specified archive name",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "tarfile.TarInfo",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "cast",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "time.to_float",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.utcnow",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "tarfile.TarFile.addfile",
+          "id": "add_file_zip",
+          "description": "Adds file to ZIP archive with specified archive name",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "cast",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "cast",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.fput_object",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self.put_object",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def upload_snowball_objects(self, bucket_name, object_list, metadata=None, sse=None, tags=None, retention=None, legal_hold=False, staging_filename=None, compression=False):\n    check_bucket_name(bucket_name, s3_check=self._base_url.is_aws_host)\n    object_name = f\"snowball.{random()}.tar\"\n    object_list = itertools.chain(object_list)\n    metadata = metadata or {}\n    metadata[\"X-Amz-Meta-Snowball-Auto-Extract\"] = \"true\"\n    name = staging_filename\n    mode = \"w:gz\" if compression else \"w\"\n    fileobj = None if name else BytesIO()\n    with tarfile.open(name=name, mode=mode, fileobj=fileobj) as tar:\n        for obj in object_list:\n            if obj.filename:\n                tar.add(obj.filename, obj.object_name)\n            else:\n                info = tarfile.TarInfo(obj.object_name)\n                info.size = cast(int, obj.length)\n                info.mtime = int(time.to_float(obj.mod_time or time.utcnow()))\n                tar.addfile(info, obj.data)\n    if not name:\n        length = cast(BytesIO, fileobj).tell()\n        cast(BytesIO, fileobj).seek(0)\n    else:\n        length = os.stat(name).st_size\n    part_size = 0 if length < MIN_PART_SIZE else length\n    if name:\n        return self.fput_object(bucket_name, object_name, cast(str, staging_filename), metadata=metadata, sse=sse, tags=tags, retention=retention, legal_hold=legal_hold, part_size=part_size)\n    return self.put_object(bucket_name, object_name, cast(BinaryIO, fileobj), length, metadata=cast(Union[DictType, None], metadata), sse=sse, tags=tags, retention=retention, legal_hold=legal_hold, part_size=part_size)"
+    }
+  }
+]

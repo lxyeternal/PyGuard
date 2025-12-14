@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "paste-3.10.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_fileapp.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/paste-3.10.1/paste-3.10.1/tests/test_fileapp.py",
+    "line_number": "120",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "119\t        file.write(\"X\" * fileapp.CACHE_SIZE) # exceed the cashe size\n120\t        file.write(\"YZ\")\n121\t        file.close()",
+    "context_snippet": "def test_file():\n    tempfile = \"test_fileapp.%s.txt\" % (random.random())\n    content = LETTERS * 20\n    content = content.encode('utf8')\n    with open(tempfile, \"wb\") as fp:\n        fp.write(content)\n    try:\n        app = fileapp.FileApp(tempfile)\n        res = TestApp(app).get(\"/\")\n        assert len(content) == int(res.header('content-length'))\n        assert 'text/plain' == res.header('content-type')\n        assert content == res.body\n        assert content == app.content  # this is cashed\n        lastmod = res.header('last-modified')\n        print(\"updating\", tempfile)\n        file = open(tempfile,\"a+\")\n        file.write(\"0123456789\")\n        file.close()\n        res = TestApp(app).get(\"/\",headers={'Cache-Control': 'max-age=0'})\n        assert len(content)+10 == int(res.header('content-length'))\n        assert 'text/plain' == res.header('content-type')\n        assert content + b\"0123456789\" == res.body\n        assert app.content # we are still cached\n        file = open(tempfile,\"a+\")\n        file.write(\"X\" * fileapp.CACHE_SIZE) # exceed the cashe size\n        file.write(\"YZ\")\n        file.close()\n        res = TestApp(app).get(\"/\",headers={'Cache-Control': 'max-age=0'})\n        newsize = fileapp.CACHE_SIZE + len(content)+12\n        assert newsize == int(res.header('content-length'))\n        assert newsize == len(res.body)\n        assert res.body.startswith(content) and res.body.endswith(b'XYZ')\n        assert not app.content # we are no longer cached\n    finally:\n        os.unlink(tempfile)",
+    "hash_value": "084db38692f3476e127e6a52572642dc"
+  }
+]

@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "base.py",
+    "code_snippet": "import re\nimport requests\nfrom bs4 import BeautifulSoup\nfrom .misc import raise_runtime_error\n\nclass WebDriverManagerBase:\n    fallback_url = None\n    driver_filenames = None\n    ...\n    def _parse_github_page(self, version):\n        if version == \"latest\":\n            release_url = f\"{self.fallback_url}latest\"\n            matcher = r\".*\\/releases\\/download\\/.*{}\".format(self.os_name)\n        else:\n            release_url = f\"{self.fallback_url}tag/{version}\"\n            matcher = r\".*\\/releases\\/download\\/{}/.*{}\".format(version, self.os_name)\n\n        response = requests.get(release_url)\n        if response.status_code != 200:\n            return None\n\n        tree = BeautifulSoup(response.text, \"html.parser\")\n        links = tree.find_all(\"a\", href=re.compile(matcher))\n        if len(links) == 2:\n            matcher = f\"{matcher}.*{self.bitness}\"\n            links = tree.find_all(\"a\", href=re.compile(matcher))\n\n        if links:\n            return f\"https://github.com{links[0]['href']}\"\n\n        return None\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "requests.get",
+        "BeautifulSoup",
+        "BeautifulSoup.find_all",
+        "re.compile"
+      ],
+      "api_sequence_with_args": [
+        "requests.get(release_url)",
+        "BeautifulSoup(response.text, \"html.parser\")",
+        "BeautifulSoup.find_all(\"a\", href=re.compile(matcher))",
+        "re.compile(matcher)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "bs4.BeautifulSoup",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "bs4.BeautifulSoup.find_all",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "re.compile",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        }
+      ],
+      "contextual_code": "import re\nimport requests\nfrom bs4 import BeautifulSoup\n\nclass WebDriverManagerBase:\n    fallback_url = None\n    driver_filenames = None\n    ...\n    def _parse_github_page(self, version):\n        if version == \"latest\":\n            release_url = f\"{self.fallback_url}latest\"\n            matcher = r\".*\\/releases\\/download\\/.*{}\".format(self.os_name)\n        else:\n            release_url = f\"{self.fallback_url}tag/{version}\"\n            matcher = r\".*\\/releases\\/download\\/{}/.*{}\".format(version, self.os_name)\n\n        response = requests.get(release_url)\n        if response.status_code != 200:\n            return None\n\n        tree = BeautifulSoup(response.text, \"html.parser\")\n        links = tree.find_all(\"a\", href=re.compile(matcher))\n        if len(links) == 2:\n            matcher = f\"{matcher}.*{self.bitness}\"\n            links = tree.find_all(\"a\", href=re.compile(matcher))\n\n        if links:\n            return f\"https://github.com{links[0]['href']}\"\n\n        return None"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "webdrivermanager-0.10.0",
+      "total_matches": 1
+    }
+  }
+]

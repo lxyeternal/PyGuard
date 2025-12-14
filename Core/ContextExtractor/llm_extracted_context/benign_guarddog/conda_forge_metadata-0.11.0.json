@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "conda_forge_metadata-0.11.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/conda_forge_metadata-0.11.0.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "repodata.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/conda_forge_metadata-0.11.0/conda_forge_metadata-0.11.0/conda_forge_metadata/repodata.py",
+    "line_number": "45",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "label_info = requests.get(\n\"https://api.anaconda.org/channels/conda-forge\",\nheaders={\"Authorization\": f\"token {token}\"},\n).json()",
+    "context_snippet": "import os\nimport requests\n\n@lru_cache\ndef all_labels(use_remote_cache: bool = False) -> List[str]:\n    if use_remote_cache:\n        r = requests.get(\n            \"https://raw.githubusercontent.com/conda-forge/\"\n            \"by-the-numbers/main/data/labels.json\"\n        )\n        r.raise_for_status()\n        return r.json()\n\n    if token := os.environ.get(\"BINSTAR_TOKEN\"):\n        label_info = requests.get(\n            \"https://api.anaconda.org/channels/conda-forge\",\n            headers={\"Authorization\": f\"token {token}\"},\n        ).json()\n\n        return sorted(label for label in label_info if \"/\" not in label)\n\n    logger.info(\"No token detected. Fetching labels from anaconda.org HTML. Slow...\")\n    r = requests.get(\"https://anaconda.org/conda-forge/repo\")\n    r.raise_for_status()\n    html = r.text\n    soup = bs4.BeautifulSoup(html, \"html.parser\")\n    labels = []\n    len_prefix = len(\"/conda-forge/repo?label=\")\n    for element in soup.select(\"ul#Label > li > a\"):\n        href = element.get(\"href\")\n        if not href:\n            continue\n        label = href[len_prefix:]\n        if label and label not in (\"all\", \"empty\") and \"/\" not in label:\n            labels.append(label)\n    return sorted(labels)\n\n# Data dependencies:\n# - 'requests' is imported at the top\n# - 'os' is imported at the top\n# - 'token' is set from os.environ.get(\"BINSTAR_TOKEN\")\n# - The function is decorated with @lru_cache\n# - 'label_info' is the result of the requests.get(...).json() call\n# - 'logger' is a global variable set by getLogger(__name__)\n# - 'bs4' is imported at the top\n",
+    "hash_value": "7ecad33757be4dba87099a4090982805",
+    "detection_index": 1
+  }
+]

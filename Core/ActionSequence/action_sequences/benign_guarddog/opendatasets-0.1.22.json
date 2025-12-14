@@ -1,0 +1,201 @@
+[
+  {
+    "pyfile": "kaggle_api.py",
+    "code_snippet": "import os\nfrom opendatasets.utils.kaggle_direct import get_kaggle_dataset_id, is_kaggle_url\nfrom opendatasets.utils.archive import extract_archive\nimport click\nimport json\n\n\ndef _get_kaggle_key():\n    user_input = click.prompt(\"Your Kaggle Key\", hide_input=True)\n    if user_input.startswith('{'):\n        try:\n            import json\n            api_details = json.loads(user_input)\n            return api_details['key']\n        except Exception:\n            return user_input\n    return user_input\n\n\ndef read_kaggle_creds():\n    try:\n        if os.path.exists('./kaggle.json'):\n            with open('./kaggle.json', 'r') as f:\n                key = f.read()\n                data = json.loads(key)\n                if 'username' in data and 'key' in data:\n                    os.environ['KAGGLE_USERNAME'] = data['username']\n                    os.environ['KAGGLE_KEY'] = data['key']\n                    return True\n    except Exception:\n        return False\n\n\ndef download_kaggle_dataset(dataset_url, data_dir, force=False, dry_run=False):\n    dataset_id = get_kaggle_dataset_id(dataset_url)\n    id = dataset_id.split('/')[1]\n    target_dir = os.path.join(data_dir, id)\n\n    if not force and os.path.exists(target_dir) and len(os.listdir(target_dir)) > 0:\n        print('Skipping, found downloaded files in \"{}\" (use force=True to force download)'.format(\n            target_dir))\n        return\n\n    if not read_kaggle_creds():\n        print(\"Please provide your Kaggle credentials to download this dataset. Learn more: http://bit.ly/kaggle-creds\")\n        os.environ['KAGGLE_USERNAME'] = click.prompt(\"Your Kaggle username\")\n        os.environ['KAGGLE_KEY'] = _get_kaggle_key()\n\n    if not dry_run:\n        from kaggle import api\n        api.authenticate()\n        if dataset_id.split('/')[0] == 'competitions' or dataset_id.split('/')[0] == 'c':\n            api.competition_download_files(\n                id,\n                target_dir,\n                force=force,\n                quiet=False)\n            zip_fname = target_dir + '/' + id + '.zip'\n            extract_archive(zip_fname, target_dir)\n            try:\n                os.remove(zip_fname)\n            except OSError as e:\n                print('Could not delete zip file, got' + str(e))\n        else:\n            api.dataset_download_files(\n                dataset_id,\n                target_dir,\n                force=force,\n                quiet=False,\n                unzip=True)\n\n    else:\n        print(\"This is a dry run, skipping..\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "click.prompt",
+        "json.loads",
+        "os.path.exists",
+        "open",
+        "json.loads",
+        "os.environ.__setitem__",
+        "os.environ.__setitem__",
+        "os.path.exists",
+        "os.listdir",
+        "read_kaggle_creds",
+        "click.prompt",
+        "click.prompt",
+        "_get_kaggle_key",
+        "kaggle.api.authenticate",
+        "kaggle.api.competition_download_files",
+        "extract_archive",
+        "os.remove",
+        "kaggle.api.dataset_download_files"
+      ],
+      "api_sequence_with_args": [
+        "click.prompt(\"Your Kaggle Key\", hide_input=True)",
+        "json.loads(user_input)",
+        "os.path.exists('./kaggle.json')",
+        "open('./kaggle.json', 'r')",
+        "json.loads(key)",
+        "os.environ.__setitem__('KAGGLE_USERNAME', data['username'])",
+        "os.environ.__setitem__('KAGGLE_KEY', data['key'])",
+        "os.path.exists(target_dir)",
+        "os.listdir(target_dir)",
+        "read_kaggle_creds()",
+        "click.prompt(\"Your Kaggle username\")",
+        "click.prompt(\"Your Kaggle Key\", hide_input=True)",
+        "_get_kaggle_key()",
+        "kaggle.api.authenticate()",
+        "kaggle.api.competition_download_files(id, target_dir, force=force, quiet=False)",
+        "extract_archive(zip_fname, target_dir)",
+        "os.remove(zip_fname)",
+        "kaggle.api.dataset_download_files(dataset_id, target_dir, force=force, quiet=False, unzip=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "click.prompt",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.environ.__setitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.__setitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.listdir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "read_kaggle_creds",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "click.prompt",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "click.prompt",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "_get_kaggle_key",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "kaggle.api.authenticate",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "kaggle.api.competition_download_files",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "extract_archive",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "kaggle.api.dataset_download_files",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        }
+      ],
+      "contextual_code": "def _get_kaggle_key():\n    user_input = click.prompt(\"Your Kaggle Key\", hide_input=True)\n    if user_input.startswith('{'):\n        try:\n            import json\n            api_details = json.loads(user_input)\n            return api_details['key']\n        except Exception:\n            return user_input\n    return user_input\n\n\ndef read_kaggle_creds():\n    try:\n        if os.path.exists('./kaggle.json'):\n            with open('./kaggle.json', 'r') as f:\n                key = f.read()\n                data = json.loads(key)\n                if 'username' in data and 'key' in data:\n                    os.environ['KAGGLE_USERNAME'] = data['username']\n                    os.environ['KAGGLE_KEY'] = data['key']\n                    return True\n    except Exception:\n        return False\n\n\ndef download_kaggle_dataset(dataset_url, data_dir, force=False, dry_run=False):\n    dataset_id = get_kaggle_dataset_id(dataset_url)\n    id = dataset_id.split('/')[1]\n    target_dir = os.path.join(data_dir, id)\n\n    if not force and os.path.exists(target_dir) and len(os.listdir(target_dir)) > 0:\n        print('Skipping, found downloaded files in \"{}\" (use force=True to force download)'.format(\n            target_dir))\n        return\n\n    if not read_kaggle_creds():\n        print(\"Please provide your Kaggle credentials to download this dataset. Learn more: http://bit.ly/kaggle-creds\")\n        os.environ['KAGGLE_USERNAME'] = click.prompt(\"Your Kaggle username\")\n        os.environ['KAGGLE_KEY'] = _get_kaggle_key()\n\n    if not dry_run:\n        from kaggle import api\n        api.authenticate()\n        if dataset_id.split('/')[0] == 'competitions' or dataset_id.split('/')[0] == 'c':\n            api.competition_download_files(\n                id,\n                target_dir,\n                force=force,\n                quiet=False)\n            zip_fname = target_dir + '/' + id + '.zip'\n            extract_archive(zip_fname, target_dir)\n            try:\n                os.remove(zip_fname)\n            except OSError as e:\n                print('Could not delete zip file, got' + str(e))\n        else:\n            api.dataset_download_files(\n                dataset_id,\n                target_dir,\n                force=force,\n                quiet=False,\n                unzip=True)\n\n    else:\n        print(\"This is a dry run, skipping..\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "opendatasets-0.1.22",
+      "total_matches": 1
+    }
+  }
+]

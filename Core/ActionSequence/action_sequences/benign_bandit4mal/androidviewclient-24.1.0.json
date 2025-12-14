@@ -1,0 +1,358 @@
+[
+  {
+    "metadata": {
+      "package_name": "androidviewclient-24.1.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "culebron.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/androidviewclient-24.1.0/androidviewclient-24.1.0/src/com/dtmilano/android/culebron.py",
+    "line_number": "399",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "398\t                    print(f\"ERROR: e={e} type={type(e)}\", file=sys.stderr)\n399\t            stream = io.BytesIO(received.read())\n400\t            if TIMING:",
+    "code_snippet": "def takeScreenshotAndShowItOnWindow(self):\n    \"\"\"\n    Takes the current screenshot and shows it on the main window.\n    It also:\n     - sizes the window\n     - create the canvas\n     - set the focus\n     - enable the events\n     - create widgets\n     - finds the targets (as explained in L{findTargets})\n     - hides the vignette (that could have been showed before)\n    \"\"\"\n\n    if PROFILE:\n        print(\"PROFILING: takeScreenshotAndShowItOnWindow()\", file=sys.stderr)\n        profileStart()\n\n    if DEBUG:\n        print(\"takeScreenshotAndShowItOnWindow()\", file=sys.stderr)\n    t0 = None\n    if self.vc and self.vc.uiAutomatorHelper:\n        if self.vc.uiAutomatorHelper:\n            if TIMING:\n                t0 = time.time()\n            try:\n                self.vc.uiAutomatorHelper.ui_device.wait_for_window_update()\n            except RuntimeError as e:\n                if DEBUG:\n                    print(f\"ERROR: {e} waiting for windows update\", file=sys.stderr)\n            if TIMING:\n                print(f\"# takeScreenshotAndShowItOnWindow: waiting for window update: {time.time() - t0:.2f}s\")\n                t0 = time.time()\n            self.vc.uiAutomatorHelper.ui_device.wait_for_idle()\n            if TIMING:\n                print(f\"# takeScreenshotAndShowItOnWindow: waiting for idle: {time.time() - t0:.2f}s\")\n        if TIMING:\n            t0 = time.time()\n        received = None\n        try:\n            received = self.vc.uiAutomatorHelper.ui_device.take_screenshot()\n        except Exception as e:\n            if \"Cannot get screenshot\" in str(e):\n                try:\n                    activity = self.vc.uiAutomatorHelper.device.get_top_activity_name()\n                except Exception:\n                    activity = \"Unknown\"\n                print(f\"⛔️ ERROR: Cannot get screenshot for {activity}\", file=sys.stderr)\n                return\n            else:\n                print(f\"ERROR: e={e} type={type(e)}\", file=sys.stderr)\n        stream = io.BytesIO(received.read())\n        if TIMING:\n            print(f\"# takeScreenshotAndShowItOnWindow: screenshot: {time.time() - t0:.2f}s\")\n        try:\n            self.unscaledScreenshot = Image.open(stream)\n        except IOError as ex:\n            print(ex, file=sys.stderr)\n            print(repr(stream))\n            sys.exit(1)\n    else:\n        self.unscaledScreenshot = self.device.takeSnapshot(reconnect=True)\n    self.image = self.unscaledScreenshot\n    (width, height) = self.image.size\n    if self.scale != 1:\n        scaledWidth = int(width * self.scale)\n        scaledHeight = int(height * self.scale)\n        self.image = self.image.resize((scaledWidth, scaledHeight), PIL.Image.LANCZOS)\n        (width, height) = self.image.size\n        if self.isDarwin and 14 < self.sdkVersion < 23:\n            if sys.version_info[0] < 3:\n                stream = io.StringIO()\n            else:\n                stream = io.BytesIO()\n            self.image.save(stream, 'GIF')\n            import base64\n            gif = base64.b64encode(stream.getvalue())\n            stream.close()\n    if self.canvas is None:\n        if DEBUG:\n            print(\"⬜️ Creating canvas\", width, 'x', height, file=sys.stderr)\n        self.placeholder.grid_forget()\n        self.canvas = tkinter.Canvas(self.mainFrame, width=width, height=height)\n        if DEBUG:\n            print(\"⬜️ canvas\", self.canvas, file=sys.stderr)\n        self.canvas.focus_set()\n        self.enableEvents()\n        self.createMessageArea(width, height)\n        self.createVignette(width, height)\n    if self.isDarwin and self.scale != 1 and 14 < self.sdkVersion < 23:\n        # Extremely weird Tkinter bug, I guess\n        # If the image was rotated and then resized if ImageTk.PhotoImage(self.image)\n        # is used as usual then the result is a completely transparent image and only\n        # the \"Please wait...\" is seen.\n        # Converting it to GIF seems to solve the problem\n        self.screenshot = tkinter.PhotoImage(data=gif)\n    else:\n        self.screenshot = ImageTk.PhotoImage(self.image)\n    if self.imageId is not None:\n        self.canvas.delete(self.imageId)\n    self.imageId = self.canvas.create_image(0, 0, anchor=tkinter.NW, image=self.screenshot, tag=\"screenshot\")\n    if DEBUG:\n        try:\n            print(\"⬜️ Grid info\", self.canvas.grid_info(), file=sys.stderr)\n        except:\n            print(\"⬜️ Exception getting grid info\", file=sys.stderr)\n    gridInfo = None\n    try:\n        gridInfo = self.canvas.grid_info()\n    except:\n        if DEBUG:\n            print(\"⬜️ Adding canvas to grid (1,1)\", file=sys.stderr)\n        self.canvas.grid(row=1, column=1, rowspan=4)\n    if not gridInfo:\n        self.canvas.grid(row=1, column=1, rowspan=4)\n    try:\n        self.findTargets()\n        self.hideVignette()\n        if self.autoScreenshots:\n            print(f'Taking screenshot {self.device.screenshot_number}', file=sys.stderr)\n            self.saveSnapshot(showDialog=False)\n\n    except Exception as ex:\n        print(\"⛔️ %s\" % ex, file=sys.stderr)\n    if DEBUG:\n        try:\n            self.printGridInfo()\n        except:\n            pass\n    if PROFILE:\n        profileEnd()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "time.time",
+        "self.vc.uiAutomatorHelper.ui_device.wait_for_window_update",
+        "time.time",
+        "self.vc.uiAutomatorHelper.ui_device.wait_for_idle",
+        "time.time",
+        "self.vc.uiAutomatorHelper.ui_device.take_screenshot",
+        "io.BytesIO",
+        "received.read",
+        "time.time",
+        "Image.open",
+        "sys.exit",
+        "self.device.takeSnapshot",
+        "self.image.resize",
+        "io.StringIO",
+        "io.BytesIO",
+        "self.image.save",
+        "base64.b64encode",
+        "stream.getvalue",
+        "stream.close",
+        "tkinter.Canvas",
+        "self.canvas.focus_set",
+        "self.enableEvents",
+        "self.createMessageArea",
+        "self.createVignette",
+        "tkinter.PhotoImage",
+        "ImageTk.PhotoImage",
+        "self.canvas.delete",
+        "self.canvas.create_image",
+        "self.canvas.grid_info",
+        "self.canvas.grid",
+        "self.findTargets",
+        "self.hideVignette",
+        "self.saveSnapshot"
+      ],
+      "api_sequence_with_args": [
+        "time.time()",
+        "self.vc.uiAutomatorHelper.ui_device.wait_for_window_update()",
+        "time.time()",
+        "self.vc.uiAutomatorHelper.ui_device.wait_for_idle()",
+        "time.time()",
+        "self.vc.uiAutomatorHelper.ui_device.take_screenshot()",
+        "io.BytesIO(received.read())",
+        "received.read()",
+        "time.time()",
+        "Image.open(stream)",
+        "sys.exit(1)",
+        "self.device.takeSnapshot(reconnect=True)",
+        "self.image.resize((scaledWidth, scaledHeight), PIL.Image.LANCZOS)",
+        "io.StringIO()",
+        "io.BytesIO()",
+        "self.image.save(stream, 'GIF')",
+        "base64.b64encode(stream.getvalue())",
+        "stream.getvalue()",
+        "stream.close()",
+        "tkinter.Canvas(self.mainFrame, width=width, height=height)",
+        "self.canvas.focus_set()",
+        "self.enableEvents()",
+        "self.createMessageArea(width, height)",
+        "self.createVignette(width, height)",
+        "tkinter.PhotoImage(data=gif)",
+        "ImageTk.PhotoImage(self.image)",
+        "self.canvas.delete(self.imageId)",
+        "self.canvas.create_image(0, 0, anchor=tkinter.NW, image=self.screenshot, tag=\"screenshot\")",
+        "self.canvas.grid_info()",
+        "self.canvas.grid(row=1, column=1, rowspan=4)",
+        "self.findTargets()",
+        "self.hideVignette()",
+        "self.saveSnapshot(showDialog=False)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self.vc.uiAutomatorHelper.ui_device.wait_for_window_update",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self.vc.uiAutomatorHelper.ui_device.wait_for_idle",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self.vc.uiAutomatorHelper.ui_device.take_screenshot",
+          "id": "capture_entire_screen",
+          "description": "Captures screenshot of the entire screen",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "screen_capture"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "received.read",
+          "id": "get_buffer_bytes",
+          "description": "Retrieves bytes value from in-memory buffer",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "Image.open",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "self.device.takeSnapshot",
+          "id": "capture_entire_screen",
+          "description": "Captures screenshot of the entire screen",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "screen_capture"
+        },
+        {
+          "api_name": "self.image.resize",
+          "id": "save_image_file",
+          "description": "Saves image to file in PNG format",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "image_processing"
+        },
+        {
+          "api_name": "io.StringIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.image.save",
+          "id": "save_image_file",
+          "description": "Saves image to file in PNG format",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "image_processing"
+        },
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "stream.getvalue",
+          "id": "get_buffer_bytes",
+          "description": "Retrieves bytes value from in-memory buffer",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "stream.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "tkinter.Canvas",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self.canvas.focus_set",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.enableEvents",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.createMessageArea",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.createVignette",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "tkinter.PhotoImage",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "ImageTk.PhotoImage",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self.canvas.delete",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.canvas.create_image",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self.canvas.grid_info",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.canvas.grid",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.findTargets",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.hideVignette",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.saveSnapshot",
+          "id": "save_image_file",
+          "description": "Saves image to file in PNG format",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "image_processing"
+        }
+      ],
+      "contextual_code": "if self.vc and self.vc.uiAutomatorHelper:\n    if self.vc.uiAutomatorHelper:\n        if TIMING:\n            t0 = time.time()\n        try:\n            self.vc.uiAutomatorHelper.ui_device.wait_for_window_update()\n        except RuntimeError as e:\n            ...\n        if TIMING:\n            print(f\"# takeScreenshotAndShowItOnWindow: waiting for window update: {time.time() - t0:.2f}s\")\n            t0 = time.time()\n        self.vc.uiAutomatorHelper.ui_device.wait_for_idle()\n        if TIMING:\n            print(f\"# takeScreenshotAndShowItOnWindow: waiting for idle: {time.time() - t0:.2f}s\")\n    if TIMING:\n        t0 = time.time()\n    received = None\n    try:\n        received = self.vc.uiAutomatorHelper.ui_device.take_screenshot()\n    except Exception as e:\n        ...\n    stream = io.BytesIO(received.read())\n    if TIMING:\n        print(f\"# takeScreenshotAndShowItOnWindow: screenshot: {time.time() - t0:.2f}s\")\n    try:\n        self.unscaledScreenshot = Image.open(stream)\n    except IOError as ex:\n        print(ex, file=sys.stderr)\n        print(repr(stream))\n        sys.exit(1)\nelse:\n    self.unscaledScreenshot = self.device.takeSnapshot(reconnect=True)\nself.image = self.unscaledScreenshot\n(width, height) = self.image.size\nif self.scale != 1:\n    scaledWidth = int(width * self.scale)\n    scaledHeight = int(height * self.scale)\n    self.image = self.image.resize((scaledWidth, scaledHeight), PIL.Image.LANCZOS)\n    (width, height) = self.image.size\n    if self.isDarwin and 14 < self.sdkVersion < 23:\n        if sys.version_info[0] < 3:\n            stream = io.StringIO()\n        else:\n            stream = io.BytesIO()\n        self.image.save(stream, 'GIF')\n        import base64\n        gif = base64.b64encode(stream.getvalue())\n        stream.close()\nif self.canvas is None:\n    self.canvas = tkinter.Canvas(self.mainFrame, width=width, height=height)\n    self.canvas.focus_set()\n    self.enableEvents()\n    self.createMessageArea(width, height)\n    self.createVignette(width, height)\nif self.isDarwin and self.scale != 1 and 14 < self.sdkVersion < 23:\n    self.screenshot = tkinter.PhotoImage(data=gif)\nelse:\n    self.screenshot = ImageTk.PhotoImage(self.image)\nif self.imageId is not None:\n    self.canvas.delete(self.imageId)\nself.imageId = self.canvas.create_image(0, 0, anchor=tkinter.NW, image=self.screenshot, tag=\"screenshot\")\ngridInfo = None\ntry:\n    gridInfo = self.canvas.grid_info()\nexcept:\n    self.canvas.grid(row=1, column=1, rowspan=4)\nif not gridInfo:\n    self.canvas.grid(row=1, column=1, rowspan=4)\ntry:\n    self.findTargets()\n    self.hideVignette()\n    if self.autoScreenshots:\n        self.saveSnapshot(showDialog=False)\nexcept Exception as ex:\n    print(\"⛔️ %s\" % ex, file=sys.stderr)"
+    }
+  }
+]

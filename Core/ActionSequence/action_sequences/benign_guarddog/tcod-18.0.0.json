@@ -1,0 +1,41 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import platform\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nSDL_VERSION_NEEDED = (2, 0, 5)\n\nSETUP_DIR = Path(__file__).parent  # setup.py current directory\n\ndef check_sdl_version() -> None:\n    \"\"\"Check the local SDL version on Linux distributions.\"\"\"\n    if not sys.platform.startswith(\"linux\"):\n        return\n    needed_version = \"{}.{}.{}\".format(*SDL_VERSION_NEEDED)\n    try:\n        sdl_version_str = subprocess.check_output([\"sdl2-config\", \"--version\"], universal_newlines=True).strip()  # noqa: S603, S607\n    except FileNotFoundError as exc:\n        msg = (\n            f\"libsdl2-dev or equivalent must be installed on your system and must be at least version {needed_version}.\"\n            \"\\nsdl2-config must be on PATH.\"\n        )\n        raise RuntimeError(msg) from exc\n    print(f\"Found SDL {sdl_version_str}.\")\n    sdl_version = tuple(int(s) for s in sdl_version_str.split(\".\"))\n    if sdl_version < SDL_VERSION_NEEDED:\n        msg = f\"SDL version must be at least {needed_version}, (found {sdl_version_str})\"\n        raise RuntimeError(msg)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.platform.startswith",
+        "subprocess.check_output"
+      ],
+      "api_sequence_with_args": [
+        "sys.platform.startswith(\"linux\")",
+        "subprocess.check_output([\"sdl2-config\", \"--version\"], universal_newlines=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import subprocess\nimport sys\n\ndef check_sdl_version() -> None:\n    if not sys.platform.startswith(\"linux\"):\n        return\n    try:\n        sdl_version_str = subprocess.check_output([\"sdl2-config\", \"--version\"], universal_newlines=True).strip()\n    except FileNotFoundError as exc:\n        msg = (\n            f\"libsdl2-dev or equivalent must be installed on your system and must be at least version {needed_version}.\"\n            \"\\nsdl2-config must be on PATH.\"\n        )\n        raise RuntimeError(msg) from exc"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "tcod-18.0.0",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "quantplay-2.1.80",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "kotak.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/quantplay-2.1.80/quantplay-2.1.80/quantplay/broker/kotak.py",
+    "line_number": "270",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "269\n270\t        self.configuration[\"view_token\"] = view_token.get(\"data\").get(\"token\")\n271\t        self.configuration[\"sid\"] = view_token.get(\"data\").get(\"sid\")",
+    "code_snippet": "def login(\n    self,\n    consumer_key: str,\n    consumer_secret: str,\n    mobilenumber: str,\n    password: str,\n) -> None:\n    base64_string = str(consumer_key) + \":\" + str(consumer_secret)\n    base64_token = base64_string.encode(\"ascii\")\n\n    base64_bytes = base64.b64encode(base64_token)\n    final_base64_token = base64_bytes.decode(\"ascii\")\n\n    session_init = requests.post(\n        url=f\"{SESSION_PROD_BASE_URL}oauth2/token\",\n        headers={\n            \"Authorization\": \"Basic \" + final_base64_token,\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"grant_type\": \"client_credentials\"}),\n    )\n\n    if not session_init.ok:\n        raise InvalidArgumentException(json.loads(session_init.content))\n\n    json_resp = json.loads(session_init.text)\n    self.configuration[\"bearer_token\"] = json_resp.get(\"access_token\")\n\n    view_token_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/v2/validate\",\n        headers={\n            \"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"],\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"mobileNumber\": mobilenumber, \"password\": password}),\n    )\n    view_token = json.loads(view_token_resp.text)\n\n    self.configuration[\"view_token\"] = view_token.get(\"data\").get(\"token\")\n    self.configuration[\"sid\"] = view_token.get(\"data\").get(\"sid\")\n\n    decode_jwt = jwt.decode(  # type: ignore\n        self.configuration[\"view_token\"], options={\"verify_signature\": False}\n    )\n    userid = decode_jwt.get(\"sub\")\n    self.configuration[\"kotakUserId\"] = userid\n\n    generate_otp_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/otp/generate\",\n        headers={\"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"]},\n        data=json.dumps({\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True}),\n    )\n\n    _generate_otp = json.loads(generate_otp_resp.text)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "base64.b64encode",
+        "bytes.decode",
+        "requests.post",
+        "json.loads",
+        "json.loads",
+        "requests.post",
+        "json.loads",
+        "jwt.decode",
+        "requests.post",
+        "json.loads"
+      ],
+      "api_sequence_with_args": [
+        "base64.b64encode(base64_token)",
+        "base64_bytes.decode('ascii')",
+        "requests.post(url=f\"{SESSION_PROD_BASE_URL}oauth2/token\", headers={...}, data=json.dumps({\"grant_type\": \"client_credentials\"}))",
+        "json.loads(session_init.content)",
+        "json.loads(session_init.text)",
+        "requests.post(url=f\"{PROD_BASE_URL}login/1.0/login/v2/validate\", headers={...}, data=json.dumps({\"mobileNumber\": mobilenumber, \"password\": password}))",
+        "json.loads(view_token_resp.text)",
+        "jwt.decode(self.configuration[\"view_token\"], options={\"verify_signature\": False})",
+        "requests.post(url=f\"{PROD_BASE_URL}login/1.0/login/otp/generate\", headers={...}, data=json.dumps({\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True}))",
+        "json.loads(generate_otp_resp.text)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "jwt.decode",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "def login(self, consumer_key: str, consumer_secret: str, mobilenumber: str, password: str) -> None:\n    base64_string = str(consumer_key) + \":\" + str(consumer_secret)\n    base64_token = base64_string.encode(\"ascii\")\n    base64_bytes = base64.b64encode(base64_token)\n    final_base64_token = base64_bytes.decode(\"ascii\")\n\n    session_init = requests.post(\n        url=f\"{SESSION_PROD_BASE_URL}oauth2/token\",\n        headers={\n            \"Authorization\": \"Basic \" + final_base64_token,\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"grant_type\": \"client_credentials\"}),\n    )\n\n    if not session_init.ok:\n        raise InvalidArgumentException(json.loads(session_init.content))\n\n    json_resp = json.loads(session_init.text)\n    self.configuration[\"bearer_token\"] = json_resp.get(\"access_token\")\n\n    view_token_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/v2/validate\",\n        headers={\n            \"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"],\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"mobileNumber\": mobilenumber, \"password\": password}),\n    )\n    view_token = json.loads(view_token_resp.text)\n\n    self.configuration[\"view_token\"] = view_token.get(\"data\").get(\"token\")\n    self.configuration[\"sid\"] = view_token.get(\"data\").get(\"sid\")\n\n    decode_jwt = jwt.decode(\n        self.configuration[\"view_token\"], options={\"verify_signature\": False}\n    )\n    userid = decode_jwt.get(\"sub\")\n    self.configuration[\"kotakUserId\"] = userid\n\n    generate_otp_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/otp/generate\",\n        headers={\"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"]},\n        data=json.dumps({\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True}),\n    )\n\n    _generate_otp = json.loads(generate_otp_resp.text)"
+    }
+  }
+]

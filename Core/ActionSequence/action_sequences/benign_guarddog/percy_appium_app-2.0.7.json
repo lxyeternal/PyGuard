@@ -1,0 +1,201 @@
+[
+  {
+    "pyfile": "cli_wrapper.py",
+    "code_snippet": "from functools import lru_cache\nimport os\nimport requests\n\nfrom percy.errors import CLIException\nfrom percy.common import log\nfrom percy.environment import Environment\n\n# Maybe get the CLI API address from the environment\nPERCY_CLI_API = os.environ.get('PERCY_CLI_API') or 'http://localhost:5338'\n\nclass CLIWrapper:\n    def __init__(self) -> None:\n        pass\n\n    # Check if Percy is enabled, caching the result so it is only checked once\n    @staticmethod\n    @lru_cache(maxsize=None)\n    def is_percy_enabled():\n        try:\n            response = requests.get(f'{PERCY_CLI_API}/percy/healthcheck', timeout=10)\n            response.raise_for_status()\n            data = response.json()\n\n            if not data['success']: raise CLIException(data['error'])\n            Environment.percy_build_id = data['build']['id']\n            Environment.percy_build_url = data['build']['url']\n            Environment.session_type = data.get('type', None)\n            version = response.headers.get('x-percy-core-version')\n\n            if version.split('.')[0] != '1':\n                log(f'Unsupported Percy CLI version, {version}')\n                return False\n\n            if int(version.split('.')[1]) < 27:\n                log('Please upgrade to latest CLI version for using this SDK. Minimum compatible version is 1.27.0-beta.0')\n                return False\n\n            return True\n        except Exception as e:\n            log('Percy is not running, disabling screenshots')\n            log(e, on_debug=True)\n            return False\n\n    def post_screenshots(self, name, tag, tiles, external_debug_url=None,\n        ignored_elements_data=None, considered_elements_data=None, sync=None, test_case=None,\n            th_test_case_execution_id=None,labels=None\n    ):\n        body = self._request_body(name, tag, tiles, external_debug_url,\n            ignored_elements_data, considered_elements_data, sync, test_case, th_test_case_execution_id, labels\n        )\n\n        body['client_info'] = Environment._get_client_info()\n        body['environment_info'] = Environment._get_env_info()\n\n        response = requests.post(f'{PERCY_CLI_API}/percy/comparison', json=body, timeout=600)\n        # Handle errors\n        response.raise_for_status()\n        data = response.json()\n\n        if response.status_code != 200:\n            raise CLIException(data.get('error', 'UnknownException'))\n        return data\n\n    def post_failed_event(self, error):\n        try:\n            body = {\n                \"clientInfo\": Environment._get_client_info(True),\n                \"message\": error,\n                \"errorKind\": 'sdk'\n            }\n\n            response = requests.post(f'{PERCY_CLI_API}/percy/events', json=body, timeout=30)\n            # Handle errors\n            response.raise_for_status()\n            data = response.json()\n\n            if response.status_code != 200:\n                raise CLIException(data.get('error', 'UnknownException'))\n            return data\n        except Exception as e:\n            log(e, on_debug=True)\n            return None\n\n    def post_poa_screenshots(self, name, session_id, command_executor_url, capabilities, options=None):\n        body = {\n                'sessionId': session_id,\n                'commandExecutorUrl': command_executor_url,\n                'capabilities': dict(capabilities),\n                'snapshotName': name,\n                'options': options\n            }\n\n        body['client_info'] = Environment._get_client_info()\n        body['environment_info'] = Environment._get_env_info()\n\n        response = requests.post(f'{PERCY_CLI_API}/percy/automateScreenshot', json=body, timeout=600)\n        # Handle errors\n        response.raise_for_status()\n        data = response.json()\n\n        if response.status_code != 200:\n            raise CLIException(data.get('error', 'UnknownException'))\n        return data.get('data', {})\n\n    @staticmethod\n    def _request_body(name, tag, tiles, external_debug_url, ignored_elements_data,\n        considered_elements_data, sync, test_case, th_test_case_execution_id, labels\n    ):\n        tiles = list(map(dict, tiles))\n        return {\n            \"name\": name,\n            \"tag\": tag,\n            \"tiles\": tiles,\n            \"ignored_elements_data\": ignored_elements_data,\n            \"external_debug_url\": external_debug_url,\n            \"considered_elements_data\": considered_elements_data,\n            \"sync\": sync,\n            \"test_case\": test_case,\n            \"th_test_case_execution_id\": th_test_case_execution_id,\n            \"labels\": labels\n        }\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "requests.get",
+        "requests.get.raise_for_status",
+        "requests.get.json",
+        "requests.get.headers.get",
+        "log",
+        "log",
+        "requests.post",
+        "requests.post.raise_for_status",
+        "requests.post.json",
+        "requests.post",
+        "requests.post.raise_for_status",
+        "requests.post.json",
+        "requests.post",
+        "requests.post.raise_for_status",
+        "requests.post.json",
+        "log",
+        "log"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('PERCY_CLI_API')",
+        "requests.get(f'{PERCY_CLI_API}/percy/healthcheck', timeout=10)",
+        "requests.get(...).raise_for_status()",
+        "requests.get(...).json()",
+        "requests.get(...).headers.get('x-percy-core-version')",
+        "log('Unsupported Percy CLI version, {version}')",
+        "log('Please upgrade to latest CLI version for using this SDK. Minimum compatible version is 1.27.0-beta.0')",
+        "requests.post(f'{PERCY_CLI_API}/percy/comparison', json=body, timeout=600)",
+        "requests.post(...).raise_for_status()",
+        "requests.post(...).json()",
+        "requests.post(f'{PERCY_CLI_API}/percy/events', json=body, timeout=30)",
+        "requests.post(...).raise_for_status()",
+        "requests.post(...).json()",
+        "requests.post(f'{PERCY_CLI_API}/percy/automateScreenshot', json=body, timeout=600)",
+        "requests.post(...).raise_for_status()",
+        "requests.post(...).json()",
+        "log('Percy is not running, disabling screenshots')",
+        "log(e, on_debug=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get.headers.get",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "log",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "log",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.post.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.post.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.post.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "log",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "log",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\nfrom percy.common import log\nfrom percy.errors import CLIException\nfrom percy.environment import Environment\n\nPERCY_CLI_API = os.environ.get('PERCY_CLI_API') or 'http://localhost:5338'\n\nclass CLIWrapper:\n    @staticmethod\n    def is_percy_enabled():\n        try:\n            response = requests.get(f'{PERCY_CLI_API}/percy/healthcheck', timeout=10)\n            response.raise_for_status()\n            data = response.json()\n            if not data['success']:\n                raise CLIException(data['error'])\n            Environment.percy_build_id = data['build']['id']\n            Environment.percy_build_url = data['build']['url']\n            Environment.session_type = data.get('type', None)\n            version = response.headers.get('x-percy-core-version')\n            if version.split('.')[0] != '1':\n                log(f'Unsupported Percy CLI version, {version}')\n                return False\n            if int(version.split('.')[1]) < 27:\n                log('Please upgrade to latest CLI version for using this SDK. Minimum compatible version is 1.27.0-beta.0')\n                return False\n            return True\n        except Exception as e:\n            log('Percy is not running, disabling screenshots')\n            log(e, on_debug=True)\n            return False\n\n    def post_screenshots(self, name, tag, tiles, external_debug_url=None,\n        ignored_elements_data=None, considered_elements_data=None, sync=None, test_case=None,\n            th_test_case_execution_id=None,labels=None\n    ):\n        body = self._request_body(name, tag, tiles, external_debug_url,\n            ignored_elements_data, considered_elements_data, sync, test_case, th_test_case_execution_id, labels\n        )\n        body['client_info'] = Environment._get_client_info()\n        body['environment_info'] = Environment._get_env_info()\n        response = requests.post(f'{PERCY_CLI_API}/percy/comparison', json=body, timeout=600)\n        response.raise_for_status()\n        data = response.json()\n        if response.status_code != 200:\n            raise CLIException(data.get('error', 'UnknownException'))\n        return data\n\n    def post_failed_event(self, error):\n        try:\n            body = {\n                \"clientInfo\": Environment._get_client_info(True),\n                \"message\": error,\n                \"errorKind\": 'sdk'\n            }\n            response = requests.post(f'{PERCY_CLI_API}/percy/events', json=body, timeout=30)\n            response.raise_for_status()\n            data = response.json()\n            if response.status_code != 200:\n                raise CLIException(data.get('error', 'UnknownException'))\n            return data\n        except Exception as e:\n            log(e, on_debug=True)\n            return None\n\n    def post_poa_screenshots(self, name, session_id, command_executor_url, capabilities, options=None):\n        body = {\n                'sessionId': session_id,\n                'commandExecutorUrl': command_executor_url,\n                'capabilities': dict(capabilities),\n                'snapshotName': name,\n                'options': options\n            }\n        body['client_info'] = Environment._get_client_info()\n        body['environment_info'] = Environment._get_env_info()\n        response = requests.post(f'{PERCY_CLI_API}/percy/automateScreenshot', json=body, timeout=600)\n        response.raise_for_status()\n        data = response.json()\n        if response.status_code != 200:\n            raise CLIException(data.get('error', 'UnknownException'))\n        return data.get('data', {})"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "percy_appium_app-2.0.7",
+      "total_matches": 4
+    }
+  }
+]

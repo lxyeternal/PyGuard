@@ -1,0 +1,901 @@
+Run started:2025-04-12 11:34:26.374989
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/apps.py:7
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+6	
+7	recommended_config = """
+8	Warning: The recommend way of setting django tenants up is shown in the documentation.
+9	Please see https://django-tenants.readthedocs.io/en/latest/install.html?highlight=#configure-tenant-and-shared-applications
+10	"""
+11	
+12	
+13	class DjangoTenantsConfig(AppConfig):
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/clone.py:8
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+7	
+8	CLONE_SCHEMA_FUNCTION = r"""
+9	-- https://github.com/denishpatel/pg-clone-schema/ rev 0d3b522
+10	-- https://github.com/tomturner/django-tenants/issues/322
+11	
+12	-- Function: clone_schema(text, text, boolean, boolean)
+13	
+14	-- DROP FUNCTION clone_schema(text, text, boolean, boolean);
+15	
+16	CREATE OR REPLACE FUNCTION public.clone_schema(
+17	    source_schema text,
+18	    dest_schema text,
+19	    include_recs boolean,
+20	    ddl_only     boolean)
+21	  RETURNS void AS
+22	$BODY$
+23	
+24	--  This function will clone all sequences, tables, data, views & functions from any existing schema to a new one
+25	-- SAMPLE CALL:
+26	-- SELECT clone_schema('public', 'new_schema', True, False);
+27	
+28	DECLARE
+29	  src_oid          oid;
+30	  tbl_oid          oid;
+31	  func_oid         oid;
+32	  object           text;
+33	  buffer           text;
+34	  buffer2          text;
+35	  srctbl           text;
+36	  default_         text;
+37	  column_          text;
+38	  qry              text;
+39	  ix_old_name      text;
+40	  ix_new_name      text;
+41	  dest_qry         text;
+42	  v_def            text;
+43	  src_path_old     text;
+44	  aclstr           text;
+45	  grantor          text;
+46	  grantee          text;
+47	  privs            text;
+48	  records_count    bigint;
+49	  seqval           bigint;
+50	  sq_last_value    bigint;
+51	  sq_max_value     bigint;
+52	  sq_start_value   bigint;
+53	  sq_increment_by  bigint;
+54	  sq_min_value     bigint;
+55	  sq_cache_value   bigint;
+56	  sq_is_called     boolean;
+57	  sq_is_cycled     boolean;
+58	  sq_data_type     text;
+59	  sq_cycled        char(10);
+60	  arec             RECORD;
+61	  cnt              integer;
+62	  cnt2             integer;
+63	  seq_cnt          integer;
+64	  pos              integer;
+65	  action           text := 'N/A';
+66	  v_ret            text;
+67	  v_diag1          text;
+68	  v_diag2          text;
+69	  v_diag3          text;
+70	  v_diag4          text;
+71	  v_diag5          text;
+72	  v_diag6          text;
+73	
+74	BEGIN
+75	
+76	  -- Check that source_schema exists
+77	  SELECT oid INTO src_oid
+78	    FROM pg_namespace
+79	   WHERE nspname = quote_ident(source_schema);
+80	  IF NOT FOUND
+81	    THEN
+82	    RAISE NOTICE 'source schema % does not exist!', source_schema;
+83	    RETURN ;
+84	  END IF;
+85	
+86	  -- Check that dest_schema does not yet exist
+87	  PERFORM nspname
+88	    FROM pg_namespace
+89	   WHERE nspname = quote_ident(dest_schema);
+90	  IF FOUND
+91	    THEN
+92	    RAISE NOTICE 'dest schema % already exists!', dest_schema;
+93	    RETURN ;
+94	  END IF;
+95	  IF ddl_only and include_recs THEN
+96	    RAISE WARNING 'You cannot specify to clone data and generate ddl at the same time.';
+97	    RETURN ;
+98	  END IF;
+99	
+100	  -- Set the search_path to source schema. Before exiting set it back to what it was before.
+101	  SELECT setting INTO src_path_old FROM pg_settings WHERE name='search_path';
+102	  EXECUTE 'SET search_path = ' || quote_ident(source_schema) ;
+103	  -- RAISE NOTICE 'Using source search_path=%', buffer;
+104	
+105	  -- Validate required types exist.  If not, create them.
+106	  select a.objtypecnt, b.permtypecnt INTO cnt, cnt2 FROM
+107	  (SELECT count(*) as objtypecnt FROM pg_catalog.pg_type t LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+108	  WHERE (t.typrelid = 0 OR (SELECT c.relkind = 'c' FROM pg_catalog.pg_class c WHERE c.oid = t.typrelid))
+109	  AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_type el WHERE el.oid = t.typelem AND el.typarray = t.oid)
+110	  AND n.nspname <> 'pg_catalog' AND n.nspname <> 'information_schema' AND pg_catalog.pg_type_is_visible(t.oid) AND pg_catalog.format_type(t.oid, NULL) = 'obj_type') a,
+111	  (SELECT count(*) as permtypecnt FROM pg_catalog.pg_type t LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+112	  WHERE (t.typrelid = 0 OR (SELECT c.relkind = 'c' FROM pg_catalog.pg_class c WHERE c.oid = t.typrelid))
+113	  AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_type el WHERE el.oid = t.typelem AND el.typarray = t.oid)
+114	  AND n.nspname <> 'pg_catalog' AND n.nspname <> 'information_schema' AND pg_catalog.pg_type_is_visible(t.oid) AND pg_catalog.format_type(t.oid, NULL) = 'perm_type') b;
+115	  IF cnt = 0 THEN
+116	    CREATE TYPE obj_type AS ENUM ('TABLE','VIEW','COLUMN','SEQUENCE','FUNCTION','SCHEMA','DATABASE');
+117	  END IF;
+118	  IF cnt2 = 0 THEN
+119	    CREATE TYPE perm_type AS ENUM ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','USAGE','CREATE','EXECUTE','CONNECT','TEMPORARY');
+120	  END IF;
+121	
+122	  IF ddl_only THEN
+123	    RAISE NOTICE 'Only generating DDL, not actually creating anything...';
+124	  END IF;
+125	
+126	  IF ddl_only THEN
+127	    RAISE NOTICE '%', 'CREATE SCHEMA ' || quote_ident(dest_schema);
+128	  ELSE
+129	    EXECUTE 'CREATE SCHEMA ' || quote_ident(dest_schema) ;
+130	  END IF;
+131	
+132	  -- MV: Create Collations
+133	  action := 'Collations';
+134	  cnt := 0;
+135	  FOR arec IN
+136	    SELECT n.nspname as schemaname, a.rolname as ownername , c.collname, c.collprovider,  c.collcollate as locale,
+137	    'CREATE COLLATION ' || quote_ident(dest_schema) || '."' || c.collname || '" (provider = ' || CASE WHEN c.collprovider = 'i' THEN 'icu' WHEN c.collprovider = 'c' THEN 'libc' ELSE '' END || ', locale = ''' || c.collcollate || ''');' as COLL_DDL
+138	    FROM pg_collation c JOIN pg_namespace n ON (c.collnamespace = n.oid) JOIN pg_roles a ON (c.collowner = a.oid) WHERE n.nspname = quote_ident(source_schema) order by c.collname
+139	  LOOP
+140	    BEGIN
+141	      cnt := cnt + 1;
+142	      IF ddl_only THEN
+143	        RAISE INFO '%', arec.coll_ddl;
+144	      ELSE
+145	        EXECUTE arec.coll_ddl;
+146	      END IF;
+147	    END;
+148	  END LOOP;
+149	  RAISE NOTICE '  COLLATIONS cloned: %', LPAD(cnt::text, 5, ' ');
+150	
+151	  -- MV: Create Domains
+152	  action := 'Domains';
+153	  cnt := 0;
+154	  FOR arec IN
+155	    SELECT n.nspname as "Schema", t.typname as "Name", pg_catalog.format_type(t.typbasetype, t.typtypmod) as "Type",
+156	    (SELECT c.collname FROM pg_catalog.pg_collation c, pg_catalog.pg_type bt WHERE c.oid = t.typcollation AND
+157	    bt.oid = t.typbasetype AND t.typcollation <> bt.typcollation) as "Collation",
+158	    CASE WHEN t.typnotnull THEN 'not null' END as "Nullable", t.typdefault as "Default",
+159	    pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.pg_get_constraintdef(r.oid, true) FROM pg_catalog.pg_constraint r WHERE t.oid = r.contypid), ' ') as "Check",
+160	    'CREATE DOMAIN ' || quote_ident(dest_schema) || '.' || t.typname || ' AS ' || pg_catalog.format_type(t.typbasetype, t.typtypmod) ||
+161	    CASE WHEN t.typnotnull IS NOT NULL THEN ' NOT NULL ' ELSE ' ' END || CASE WHEN t.typdefault IS NOT NULL THEN 'DEFAULT ' || t.typdefault || ' ' ELSE ' ' END ||
+162	    pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.pg_get_constraintdef(r.oid, true) FROM pg_catalog.pg_constraint r WHERE t.oid = r.contypid), ' ') || ';' AS DOM_DDL
+163	    FROM pg_catalog.pg_type t LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+164	    WHERE t.typtype = 'd' AND n.nspname = quote_ident(source_schema) AND pg_catalog.pg_type_is_visible(t.oid) ORDER BY 1, 2
+165	  LOOP
+166	    BEGIN
+167	      cnt := cnt + 1;
+168	      IF ddl_only THEN
+169	        RAISE INFO '%', arec.dom_ddl;
+170	      ELSE
+171	        EXECUTE arec.dom_ddl;
+172	      END IF;
+173	    END;
+174	  END LOOP;
+175	  RAISE NOTICE '     DOMAINS cloned: %', LPAD(cnt::text, 5, ' ');
+176	
+177	  -- MV: Create types
+178	  action := 'Types';
+179	  cnt := 0;
+180	  FOR arec IN
+181	    SELECT c.relkind, n.nspname AS schemaname, t.typname AS typname, t.typcategory, CASE WHEN t.typcategory='C' THEN
+182	    'CREATE TYPE ' || quote_ident(dest_schema) || '.' || t.typname || ' AS (' || array_to_string(array_agg(a.attname || ' ' || pg_catalog.format_type(a.atttypid, a.atttypmod) ORDER BY c.relname, a.attnum),', ') || ');'
+183	    WHEN t.typcategory='E' THEN
+184	    'CREATE TYPE ' || quote_ident(dest_schema) || '.' || t.typname || ' AS ENUM (' || REPLACE(quote_literal(array_to_string(array_agg(e.enumlabel ORDER BY e.enumsortorder),',')), ',', ''',''') || ');'
+185	    ELSE '' END AS type_ddl FROM pg_type t JOIN pg_namespace n ON (n.oid = t.typnamespace)
+186	    LEFT JOIN pg_enum e ON (t.oid = e.enumtypid)
+187	    LEFT JOIN pg_class c ON (c.reltype = t.oid) LEFT JOIN pg_attribute a ON (a.attrelid = c.oid)
+188	    WHERE n.nspname = quote_ident(source_schema) and (c.relkind IS NULL or c.relkind = 'c') and t.typcategory in ('C', 'E') group by 1,2,3,4 order by n.nspname, t.typcategory, t.typname
+189	  LOOP
+190	    BEGIN
+191	      cnt := cnt + 1;
+192	      -- Keep composite and enum types in separate branches for fine tuning later if needed.
+193	      IF arec.typcategory = 'E' THEN
+194	          -- RAISE NOTICE '%', arec.type_ddl;
+195	      IF ddl_only THEN
+196	        RAISE INFO '%', arec.type_ddl;
+197	      ELSE
+198	        EXECUTE arec.type_ddl;
+199	      END IF;
+200	
+201	      ELSEIF arec.typcategory = 'C' THEN
+202	        -- RAISE NOTICE '%', arec.type_ddl;
+203	        IF ddl_only THEN
+204	          RAISE INFO '%', arec.type_ddl;
+205	        ELSE
+206	          EXECUTE arec.type_ddl;
+207	        END IF;
+208	      ELSE
+209	          RAISE NOTICE 'Unhandled type:%-%', arec.typcategory, arec.typname;
+210	      END IF;
+211	    END;
+212	  END LOOP;
+213	  RAISE NOTICE '       TYPES cloned: %', LPAD(cnt::text, 5, ' ');
+214	
+215	  -- Create sequences
+216	  action := 'Sequences';
+217	  seq_cnt := 0;
+218	  -- TODO: Find a way to make this sequence's owner is the correct table.
+219	  FOR object IN
+220	    SELECT sequence_name::text
+221	      FROM information_schema.sequences
+222	     WHERE sequence_schema = quote_ident(source_schema)
+223	  LOOP
+224	    seq_cnt := seq_cnt + 1;
+225	    IF ddl_only THEN
+226	      RAISE INFO '%', 'CREATE SEQUENCE ' || quote_ident(dest_schema) || '.' || quote_ident(object) || ';';
+227	    ELSE
+228	      EXECUTE 'CREATE SEQUENCE ' || quote_ident(dest_schema) || '.' || quote_ident(object);
+229	    END IF;
+230	    srctbl := quote_ident(source_schema) || '.' || quote_ident(object);
+231	
+232	    EXECUTE 'SELECT last_value, is_called
+233	              FROM ' || quote_ident(source_schema) || '.' || quote_ident(object) || ';'
+234	              INTO sq_last_value, sq_is_called;
+235	
+236	    EXECUTE 'SELECT max_value, start_value, increment_by, min_value, cache_size, cycle, data_type
+237	              FROM pg_catalog.pg_sequences WHERE schemaname='|| quote_literal(source_schema) || ' AND sequencename=' || quote_literal(object) || ';'
+238	              INTO sq_max_value, sq_start_value, sq_increment_by, sq_min_value, sq_cache_value, sq_is_cycled, sq_data_type ;
+239	
+240	    IF sq_is_cycled
+241	      THEN
+242	        sq_cycled := 'CYCLE';
+243	    ELSE
+244	        sq_cycled := 'NO CYCLE';
+245	    END IF;
+246	
+247	    qry := 'ALTER SEQUENCE '   || quote_ident(dest_schema) || '.' || quote_ident(object)
+248	           || ' AS ' || sq_data_type
+249	           || ' INCREMENT BY ' || sq_increment_by
+250	           || ' MINVALUE '     || sq_min_value
+251	           || ' MAXVALUE '     || sq_max_value
+252	           || ' START WITH '   || sq_start_value
+253	           || ' RESTART '      || sq_min_value
+254	           || ' CACHE '        || sq_cache_value
+255	           || ' '              || sq_cycled || ' ;' ;
+256	
+257	    IF ddl_only THEN
+258	      RAISE INFO '%', qry;
+259	    ELSE
+260	      EXECUTE qry;
+261	    END IF;
+262	
+263	    buffer := quote_ident(dest_schema) || '.' || quote_ident(object);
+264	    IF include_recs THEN
+265	      EXECUTE 'SELECT setval( ''' || buffer || ''', ' || sq_last_value || ', ' || sq_is_called || ');' ;
+266	    ELSE
+267	      if ddl_only THEN
+268	        RAISE INFO '%', 'SELECT setval( ''' || buffer || ''', ' || sq_start_value || ', ' || sq_is_called || ');' ;
+269	      ELSE
+270	        EXECUTE 'SELECT setval( ''' || buffer || ''', ' || sq_start_value || ', ' || sq_is_called || ');' ;
+271	      END IF;
+272	
+273	    END IF;
+274	  END LOOP;
+275	  RAISE NOTICE '   SEQUENCES cloned: %', LPAD(seq_cnt::text, 5, ' ');
+276	
+277	-- Create tables
+278	  action := 'Tables';
+279	  cnt := 0;
+280	  FOR object IN
+281	    SELECT TABLE_NAME::text
+282	      FROM information_schema.tables
+283	     WHERE table_schema = quote_ident(source_schema)
+284	       AND table_type = 'BASE TABLE'
+285	
+286	  LOOP
+287	    cnt := cnt + 1;
+288	    buffer := quote_ident(dest_schema) || '.' || quote_ident(object);
+289	    IF ddl_only THEN
+290	      RAISE INFO '%', 'CREATE TABLE ' || buffer || ' (LIKE ' || quote_ident(source_schema) || '.' || quote_ident(object) || ' INCLUDING ALL)';
+291	    ELSE
+292	      EXECUTE 'CREATE TABLE ' || buffer || ' (LIKE ' || quote_ident(source_schema) || '.' || quote_ident(object) || ' INCLUDING ALL)';
+293	    END IF;
+294	
+295	    -- INCLUDING ALL creates new index names, we restore them to the old name.
+296	    -- There should be no conflicts since they live in different schemas
+297	    FOR ix_old_name, ix_new_name IN
+298	      SELECT old.indexname, new.indexname
+299	      FROM pg_indexes old, pg_indexes new
+300	      WHERE old.schemaname = source_schema
+301	        AND new.schemaname = dest_schema
+302	        AND old.tablename = new.tablename
+303	        AND old.tablename = object
+304	        AND old.indexname <> new.indexname
+305	        AND regexp_replace(old.indexdef, E'.*USING','') = regexp_replace(new.indexdef, E'.*USING','')
+306	        ORDER BY old.indexname, new.indexname
+307	    LOOP
+308	      IF ddl_only THEN
+309	        RAISE INFO '%', 'ALTER INDEX ' || quote_ident(dest_schema) || '.'  || quote_ident(ix_new_name) || ' RENAME TO ' || quote_ident(ix_old_name) || ';';
+310	      ELSE
+311	        EXECUTE 'ALTER INDEX ' || quote_ident(dest_schema) || '.'  || quote_ident(ix_new_name) || ' RENAME TO ' || quote_ident(ix_old_name) || ';';
+312	      END IF;
+313	    END LOOP;
+314	
+315	    records_count := 0;
+316	    IF include_recs
+317	      THEN
+318	      -- Insert records from source table
+319	      RAISE NOTICE 'Populating cloned table, %', buffer;
+320	      EXECUTE 'INSERT INTO ' || buffer || ' SELECT * FROM ' || quote_ident(source_schema) || '.' || quote_ident(object) || ';';
+321	
+322	      -- restart the counter for PK's internal identity sequence
+323	      EXECUTE 'SELECT count(*) FROM ' || quote_ident(dest_schema) || '.' || quote_ident(object) || ';' INTO records_count;
+324	      FOR column_ IN
+325	        SELECT column_name::text
+326	            FROM information_schema.columns
+327	        WHERE
+328	            table_schema = dest_schema AND
+329	            table_name = object AND
+330	            is_identity = 'YES'
+331	      LOOP
+332	          EXECUTE 'ALTER TABLE ' || quote_ident(dest_schema) || '.' || quote_ident(object) || ' ALTER COLUMN ' || quote_ident(column_) || ' RESTART WITH ' || records_count + 1 || ';';
+333	      END LOOP;
+334	    END IF;
+335	
+336	    SET search_path = '';
+337	    FOR column_, default_ IN
+338	      SELECT column_name::text,
+339	             REPLACE(column_default::text, source_schema, dest_schema)
+340	        FROM information_schema.COLUMNS
+341	       WHERE table_schema = source_schema
+342	         AND TABLE_NAME = object
+343	         AND column_default LIKE 'nextval(%' || quote_ident(source_schema) || '%::regclass)'
+344	    LOOP
+345	      IF ddl_only THEN
+346	        -- May need to come back and revisit this since previous sql will not return anything since no schema as created!
+347	        RAISE INFO '%', 'ALTER TABLE ' || buffer || ' ALTER COLUMN ' || column_ || ' SET DEFAULT ' || default_ || ';';
+348	      ELSE
+349	        EXECUTE 'ALTER TABLE ' || buffer || ' ALTER COLUMN ' || column_ || ' SET DEFAULT ' || default_;
+350	      END IF;
+351	    END LOOP;
+352	    EXECUTE 'SET search_path = ' || quote_ident(source_schema) ;
+353	
+354	  END LOOP;
+355	  RAISE NOTICE '      TABLES cloned: %', LPAD(cnt::text, 5, ' ');
+356	
+357	  --  add FK constraint
+358	  action := 'FK Constraints';
+359	  cnt := 0;
+360	  SET search_path = '';
+361	  FOR qry IN
+362	    SELECT 'ALTER TABLE ' || quote_ident(dest_schema) || '.' || quote_ident(rn.relname)
+363	                          || ' ADD CONSTRAINT ' || quote_ident(ct.conname) || ' ' || REPLACE(pg_get_constraintdef(ct.oid), 'REFERENCES ' ||quote_ident(source_schema), 'REFERENCES ' || quote_ident(dest_schema)) || ';'
+364	      FROM pg_constraint ct
+365	      JOIN pg_class rn ON rn.oid = ct.conrelid
+366	     WHERE connamespace = src_oid
+367	       AND rn.relkind = 'r'
+368	       AND ct.contype = 'f'
+369	  LOOP
+370	    cnt := cnt + 1;
+371	    IF ddl_only THEN
+372	      RAISE INFO '%', qry;
+373	    ELSE
+374	      EXECUTE qry;
+375	    END IF;
+376	  END LOOP;
+377	  EXECUTE 'SET search_path = ' || quote_ident(source_schema) ;
+378	  RAISE NOTICE '       FKEYS cloned: %', LPAD(cnt::text, 5, ' ');
+379	
+380	-- Create views
+381	  action := 'Views';
+382	  cnt := 0;
+383	  FOR object IN
+384	    SELECT table_name::text,
+385	           view_definition
+386	      FROM information_schema.views
+387	     WHERE table_schema = quote_ident(source_schema)
+388	
+389	  LOOP
+390	    cnt := cnt + 1;
+391	    buffer := quote_ident(dest_schema) || '.' || quote_ident(object);
+392	    SELECT view_definition INTO v_def
+393	      FROM information_schema.views
+394	     WHERE table_schema = quote_ident(source_schema)
+395	       AND table_name = quote_ident(object);
+396	
+397	    IF ddl_only THEN
+398	      RAISE INFO '%', 'CREATE OR REPLACE VIEW ' || buffer || ' AS ' || v_def || ';' ;
+399	    ELSE
+400	    EXECUTE 'CREATE OR REPLACE VIEW ' || buffer || ' AS ' || v_def || ';' ;
+401	    END IF;
+402	  END LOOP;
+403	  RAISE NOTICE '       VIEWS cloned: %', LPAD(cnt::text, 5, ' ');
+404	
+405	  -- Create Materialized views
+406	    action := 'Mat. Views';
+407	    cnt := 0;
+408	    FOR object IN
+409	      SELECT matviewname::text,
+410	             definition
+411	        FROM pg_catalog.pg_matviews
+412	       WHERE schemaname = quote_ident(source_schema)
+413	
+414	    LOOP
+415	      cnt := cnt + 1;
+416	      buffer := dest_schema || '.' || quote_ident(object);
+417	      SELECT replace(definition,';','') INTO v_def
+418	        FROM pg_catalog.pg_matviews
+419	       WHERE schemaname = quote_ident(source_schema)
+420	         AND matviewname = quote_ident(object);
+421	
+422	         IF include_recs THEN
+423	           EXECUTE 'CREATE MATERIALIZED VIEW ' || buffer || ' AS ' || v_def || ';' ;
+424	         ELSE
+425	           IF ddl_only THEN
+426	             RAISE INFO '%', 'CREATE MATERIALIZED VIEW ' || buffer || ' AS ' || v_def || ' WITH NO DATA;' ;
+427	           ELSE
+428	             EXECUTE 'CREATE MATERIALIZED VIEW ' || buffer || ' AS ' || v_def || ' WITH NO DATA;' ;
+429	           END IF;
+430	
+431	         END IF;
+432	
+433	    END LOOP;
+434	    RAISE NOTICE '   MAT VIEWS cloned: %', LPAD(cnt::text, 5, ' ');
+435	
+436	-- Create functions
+437	  action := 'Functions';
+438	  cnt := 0;
+439	  FOR func_oid IN
+440	    SELECT oid
+441	      FROM pg_proc
+442	     WHERE pronamespace = src_oid
+443	  LOOP
+444	    cnt := cnt + 1;
+445	    SELECT pg_get_functiondef(func_oid) INTO qry;
+446	    SELECT replace(qry, source_schema, dest_schema) INTO dest_qry;
+447	    IF ddl_only THEN
+448	      RAISE INFO '%', dest_qry;
+449	    ELSE
+450	      EXECUTE dest_qry;
+451	    END IF;
+452	
+453	  END LOOP;
+454	  RAISE NOTICE '   FUNCTIONS cloned: %', LPAD(cnt::text, 5, ' ');
+455	
+456	  -- MV: Create Triggers
+457	  action := 'Triggers';
+458	  cnt := 0;
+459	  FOR arec IN
+460	    SELECT trigger_schema, trigger_name, event_object_table, action_order, action_condition, action_statement, action_orientation, action_timing, array_to_string(array_agg(event_manipulation::text), ' OR '),
+461	    'CREATE TRIGGER ' || trigger_name || ' ' || action_timing || ' ' || array_to_string(array_agg(event_manipulation::text), ' OR ') || ' ON ' || quote_ident(dest_schema) || '.' || event_object_table ||
+462	    ' FOR EACH ' || action_orientation || ' ' || action_statement || ';' as TRIG_DDL
+463	    FROM information_schema.triggers where trigger_schema = quote_ident(source_schema) GROUP BY 1,2,3,4,5,6,7,8
+464	  LOOP
+465	    BEGIN
+466	      cnt := cnt + 1;
+467	      IF ddl_only THEN
+468	        RAISE INFO '%', arec.trig_ddl;
+469	      ELSE
+470	        EXECUTE arec.trig_ddl;
+471	      END IF;
+472	
+473	    END;
+474	  END LOOP;
+475	  RAISE NOTICE '    TRIGGERS cloned: %', LPAD(cnt::text, 5, ' ');
+476	
+477	  -- ---------------------
+478	  -- MV: Permissions: Defaults
+479	  -- ---------------------
+480	  action := 'PRIVS: Defaults';
+481	  cnt := 0;
+482	  FOR arec IN
+483	    SELECT pg_catalog.pg_get_userbyid(d.defaclrole) AS "owner", n.nspname AS schema,
+484	    CASE d.defaclobjtype WHEN 'r' THEN 'table' WHEN 'S' THEN 'sequence' WHEN 'f' THEN 'function' WHEN 'T' THEN 'type' WHEN 'n' THEN 'schema' END AS atype,
+485	    d.defaclacl as defaclacl, pg_catalog.array_to_string(d.defaclacl, ',') as defaclstr
+486	    FROM pg_catalog.pg_default_acl d LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = d.defaclnamespace) WHERE n.nspname IS NOT NULL and n.nspname = quote_ident(source_schema) ORDER BY 3, 2, 1
+487	  LOOP
+488	    BEGIN
+489	      -- RAISE NOTICE 'owner=%  type=%  defaclacl=%  defaclstr=%', arec.owner, arec.atype, arec.defaclacl, arec.defaclstr;
+490	
+491	      FOREACH aclstr IN ARRAY arec.defaclacl
+492	      LOOP
+493	          cnt := cnt + 1;
+494	          -- RAISE NOTICE 'aclstr=%', aclstr;
+495	          -- break up into grantor, grantee, and privs, mydb_update=rwU/mydb_owner
+496	          SELECT split_part(aclstr, '=',1) INTO grantee;
+497	          SELECT split_part(aclstr, '=',2) INTO grantor;
+498	          SELECT split_part(grantor, '/',1) INTO privs;
+499	          SELECT split_part(grantor, '/',2) INTO grantor;
+500	          -- RAISE NOTICE 'grantor=%  grantee=%  privs=%', grantor, grantee, privs;
+501	
+502	          IF arec.atype = 'function' THEN
+503	            -- Just having execute is enough to grant all apparently.
+504	            buffer := 'ALTER DEFAULT PRIVILEGES FOR ROLE ' || grantor || ' IN SCHEMA ' || quote_ident(dest_schema) || ' GRANT ALL ON FUNCTIONS TO "' || grantee || '";';
+505	            IF ddl_only THEN
+506	              RAISE INFO '%', buffer;
+507	            ELSE
+508	              EXECUTE buffer;
+509	            END IF;
+510	
+511	          ELSIF arec.atype = 'sequence' THEN
+512	            IF POSITION('r' IN privs) > 0 AND POSITION('w' IN privs) > 0 AND POSITION('U' IN privs) > 0 THEN
+513	              -- arU is enough for all privs
+514	              buffer := 'ALTER DEFAULT PRIVILEGES FOR ROLE ' || grantor || ' IN SCHEMA ' || quote_ident(dest_schema) || ' GRANT ALL ON SEQUENCES TO "' || grantee || '";';
+515	              IF ddl_only THEN
+516	                RAISE INFO '%', buffer;
+517	              ELSE
+518	                EXECUTE buffer;
+519	              END IF;
+520	
+521	            ELSE
+522	              -- have to specify each priv individually
+523	              buffer2 := '';
+524	              IF POSITION('r' IN privs) > 0 THEN
+525	                    buffer2 := 'SELECT';
+526	              END IF;
+527	              IF POSITION('w' IN privs) > 0 THEN
+528	                IF buffer2 = '' THEN
+529	                  buffer2 := 'UPDATE';
+530	                ELSE
+531	                  buffer2 := buffer2 || ', UPDATE';
+532	                END IF;
+533	              END IF;
+534	              IF POSITION('U' IN privs) > 0 THEN
+535	                    IF buffer2 = '' THEN
+536	                  buffer2 := 'USAGE';
+537	                ELSE
+538	                  buffer2 := buffer2 || ', USAGE';
+539	                END IF;
+540	              END IF;
+541	              buffer := 'ALTER DEFAULT PRIVILEGES FOR ROLE ' || grantor || ' IN SCHEMA ' || quote_ident(dest_schema) || ' GRANT ' || buffer2 || ' ON SEQUENCES TO "' || grantee || '";';
+542	              IF ddl_only THEN
+543	                RAISE INFO '%', buffer;
+544	              ELSE
+545	                EXECUTE buffer;
+546	              END IF;
+547	
+548	            END IF;
+549	          ELSIF arec.atype = 'table' THEN
+550	            -- do each priv individually, jeeeesh!
+551	            buffer2 := '';
+552	            IF POSITION('a' IN privs) > 0 THEN
+553	              buffer2 := 'INSERT';
+554	            END IF;
+555	            IF POSITION('r' IN privs) > 0 THEN
+556	              IF buffer2 = '' THEN
+557	                buffer2 := 'SELECT';
+558	              ELSE
+559	                buffer2 := buffer2 || ', SELECT';
+560	              END IF;
+561	            END IF;
+562	            IF POSITION('w' IN privs) > 0 THEN
+563	              IF buffer2 = '' THEN
+564	                buffer2 := 'UPDATE';
+565	              ELSE
+566	                buffer2 := buffer2 || ', UPDATE';
+567	              END IF;
+568	            END IF;
+569	            IF POSITION('d' IN privs) > 0 THEN
+570	              IF buffer2 = '' THEN
+571	                buffer2 := 'DELETE';
+572	              ELSE
+573	                buffer2 := buffer2 || ', DELETE';
+574	              END IF;
+575	            END IF;
+576	            IF POSITION('t' IN privs) > 0 THEN
+577	              IF buffer2 = '' THEN
+578	                buffer2 := 'TRIGGER';
+579	              ELSE
+580	                buffer2 := buffer2 || ', TRIGGER';
+581	              END IF;
+582	            END IF;
+583	            IF POSITION('T' IN privs) > 0 THEN
+584	              IF buffer2 = '' THEN
+585	                buffer2 := 'TRUNCATE';
+586	              ELSE
+587	                buffer2 := buffer2 || ', TRUNCATE';
+588	              END IF;
+589	            END IF;
+590	            buffer := 'ALTER DEFAULT PRIVILEGES FOR ROLE ' || grantor || ' IN SCHEMA ' || quote_ident(dest_schema) || ' GRANT ' || buffer2 || ' ON TABLES TO "' || grantee || '";';
+591	            IF ddl_only THEN
+592	              RAISE INFO '%', buffer;
+593	            ELSE
+594	              EXECUTE buffer;
+595	            END IF;
+596	
+597	          ELSE
+598	              RAISE WARNING 'Doing nothing for type=%  privs=%', arec.atype, privs;
+599	          END IF;
+600	      END LOOP;
+601	    END;
+602	  END LOOP;
+603	
+604	  RAISE NOTICE '  DFLT PRIVS cloned: %', LPAD(cnt::text, 5, ' ');
+605	
+606	  -- MV: PRIVS: schema
+607	  -- crunchy data extension, check_access
+608	  -- SELECT role_path, base_role, as_role, objtype, schemaname, objname, array_to_string(array_agg(privname),',') as privs  FROM all_access()
+609	  -- WHERE base_role != CURRENT_USER and objtype = 'schema' and schemaname = 'public' group by 1,2,3,4,5,6;
+610	
+611	  action := 'PRIVS: Schema';
+612	  cnt := 0;
+613	  FOR arec IN
+614	    SELECT 'GRANT ' || p.perm::perm_type || ' ON SCHEMA ' || quote_ident(dest_schema) || ' TO "' || r.rolname || '";' as schema_ddl
+615	    FROM pg_catalog.pg_namespace AS n CROSS JOIN pg_catalog.pg_roles AS r CROSS JOIN (VALUES ('USAGE'), ('CREATE')) AS p(perm)
+616	    WHERE n.nspname = quote_ident(source_schema) AND NOT r.rolsuper AND has_schema_privilege(r.oid, n.oid, p.perm) order by r.rolname, p.perm::perm_type
+617	  LOOP
+618	    BEGIN
+619	      cnt := cnt + 1;
+620	      IF ddl_only THEN
+621	        RAISE INFO '%', arec.schema_ddl;
+622	      ELSE
+623	        EXECUTE arec.schema_ddl;
+624	      END IF;
+625	
+626	    END;
+627	  END LOOP;
+628	  RAISE NOTICE 'SCHEMA PRIVS cloned: %', LPAD(cnt::text, 5, ' ');
+629	
+630	  -- MV: PRIVS: sequences
+631	  action := 'PRIVS: Sequences';
+632	  cnt := 0;
+633	  FOR arec IN
+634	    SELECT 'GRANT ' || p.perm::perm_type || ' ON ' || quote_ident(dest_schema) || '.' || t.relname::text || ' TO "' || r.rolname || '";' as seq_ddl
+635	    FROM pg_catalog.pg_class AS t CROSS JOIN pg_catalog.pg_roles AS r CROSS JOIN (VALUES ('SELECT'), ('USAGE'), ('UPDATE')) AS p(perm)
+636	    WHERE t.relnamespace::regnamespace::name = quote_ident(source_schema) AND t.relkind = 'S'  AND NOT r.rolsuper AND has_sequence_privilege(r.oid, t.oid, p.perm)
+637	  LOOP
+638	    BEGIN
+639	      cnt := cnt + 1;
+640	      IF ddl_only OR seq_cnt = 0 THEN
+641	        RAISE INFO '%', arec.seq_ddl;
+642	      ELSE
+643	        EXECUTE arec.seq_ddl;
+644	      END IF;
+645	
+646	    END;
+647	  END LOOP;
+648	  RAISE NOTICE '  SEQ. PRIVS cloned: %', LPAD(cnt::text, 5, ' ');
+649	
+650	  -- MV: PRIVS: functions
+651	  action := 'PRIVS: Functions';
+652	  cnt := 0;
+653	  FOR arec IN
+654	    SELECT 'GRANT EXECUTE ON FUNCTION ' || quote_ident(dest_schema) || '.' || regexp_replace(f.oid::regprocedure::text, '^((("[^"]*")|([^"][^.]*))\.)?', '') || ' TO "' || r.rolname || '";' as func_ddl
+655	    FROM pg_catalog.pg_proc f CROSS JOIN pg_catalog.pg_roles AS r WHERE f.pronamespace::regnamespace::name = quote_ident(source_schema) AND NOT r.rolsuper AND has_function_privilege(r.oid, f.oid, 'EXECUTE')
+656	    order by regexp_replace(f.oid::regprocedure::text, '^((("[^"]*")|([^"][^.]*))\.)?', '')
+657	  LOOP
+658	    BEGIN
+659	      cnt := cnt + 1;
+660	      IF ddl_only THEN
+661	        RAISE INFO '%', arec.func_ddl;
+662	      ELSE
+663	        EXECUTE arec.func_ddl;
+664	      END IF;
+665	
+666	    END;
+667	  END LOOP;
+668	  RAISE NOTICE '  FUNC PRIVS cloned: %', LPAD(cnt::text, 5, ' ');
+669	
+670	  -- MV: PRIVS: tables
+671	  action := 'PRIVS: Tables';
+672	  -- regular, partitioned, and foreign tables plus view and materialized view permissions. TODO: implement foreign table defs.
+673	  cnt := 0;
+674	  FOR arec IN
+675	    SELECT 'GRANT ' || p.perm::perm_type || CASE WHEN t.relkind in ('r', 'p', 'f') THEN ' ON TABLE ' WHEN t.relkind in ('v', 'm')  THEN ' ON ' END || quote_ident(dest_schema) || '.' || t.relname::text || ' TO "' || r.rolname || '";' as tbl_ddl,
+676	    has_table_privilege(r.oid, t.oid, p.perm) AS granted, t.relkind
+677	    FROM pg_catalog.pg_class AS t CROSS JOIN pg_catalog.pg_roles AS r CROSS JOIN (VALUES (TEXT 'SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS p(perm)
+678	    WHERE t.relnamespace::regnamespace::name = quote_ident(source_schema)  AND t.relkind in ('r', 'p', 'f', 'v', 'm')  AND NOT r.rolsuper AND has_table_privilege(r.oid, t.oid, p.perm) order by t.relname::text, t.relkind
+679	  LOOP
+680	    BEGIN
+681	      cnt := cnt + 1;
+682	      -- RAISE NOTICE 'ddl=%', arec.tbl_ddl;
+683	      IF arec.relkind = 'f' THEN
+684	        RAISE WARNING 'Foreign tables are not currently implemented, so skipping privs for them. ddl=%', arec.tbl_ddl;
+685	      ELSE
+686	        IF ddl_only THEN
+687	          RAISE INFO '%', arec.tbl_ddl;
+688	        ELSE
+689	          EXECUTE arec.tbl_ddl;
+690	        END IF;
+691	
+692	      END IF;
+693	    END;
+694	  END LOOP;
+695	  RAISE NOTICE ' TABLE PRIVS cloned: %', LPAD(cnt::text, 5, ' ');
+696	
+697	  -- Set the search_path back to what it was before
+698	  EXECUTE 'SET search_path = ' || src_path_old;
+699	
+700	  EXCEPTION
+701	     WHEN others THEN
+702	     BEGIN
+703	         GET STACKED DIAGNOSTICS v_diag1 = MESSAGE_TEXT, v_diag2 = PG_EXCEPTION_DETAIL, v_diag3 = PG_EXCEPTION_HINT, v_diag4 = RETURNED_SQLSTATE, v_diag5 = PG_CONTEXT, v_diag6 = PG_EXCEPTION_CONTEXT;
+704	 	 -- v_ret := 'line=' || v_diag6 || '. '|| v_diag4 || '. ' || v_diag1 || ' .' || v_diag2 || ' .' || v_diag3;
+705	 	 v_ret := 'line=' || v_diag6 || '. '|| v_diag4 || '. ' || v_diag1;
+706	         RAISE EXCEPTION 'Action: %  Diagnostics: %',action, v_ret;
+707	         -- Set the search_path back to what it was before
+708	         EXECUTE 'SET search_path = ' || src_path_old;
+709	         RETURN;
+710	     END;
+711	
+712	RETURN;
+713	END;
+714	
+715	$BODY$
+716	  LANGUAGE plpgsql VOLATILE
+717	  COST 100;
+718	ALTER FUNCTION public.clone_schema(text, text, boolean, boolean) OWNER TO "{db_user}";
+719	"""
+720	
+721	
+722	class CloneSchema:
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/management/commands/__init__.py:88
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+87	        if not all_tenants:
+88	            raise CommandError("""There are no tenants in the system.
+89	To learn how create a tenant, see:
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/management/commands/collectstatic_schemas.py:48
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+47	            raise CommandError(
+48	                """There are no tenants in the system.
+49	        To learn how create a tenant, see:
+50	        https://django-tenants.readthedocs.org/en/latest/use.html#creating-a-tenant"""
+
+--------------------------------------------------
+>> Issue: [B825:request] http.client.HTTPConnection.request
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/middleware/main.py:37
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b825_request.html
+36	        try:
+37	            hostname = self.hostname_from_request(request)
+38	        except DisallowedHost:
+
+--------------------------------------------------
+>> Issue: [B825:request] http.client.HTTPConnection.request
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/middleware/subfolder.py:45
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b825_request.html
+44	        domain_model = get_tenant_domain_model()
+45	        hostname = self.hostname_from_request(request)
+46	        subfolder_prefix_path = "/{}/".format(get_subfolder_prefix())
+
+--------------------------------------------------
+>> Issue: [B839:pool] multiprocessing.Pool
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/migration_executors/multiproc.py:71
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b839_pool.html
+70	            )
+71	            p = multiprocessing.Pool(processes=processes)
+72	            p.map(
+
+--------------------------------------------------
+>> Issue: [B323:blacklist] multiprocessing_Pool
+   Severity: Medium   Confidence: High
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/migration_executors/multiproc.py:71
+   More Info: https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b323-multiprocessing-pool
+70	            )
+71	            p = multiprocessing.Pool(processes=processes)
+72	            p.map(
+
+--------------------------------------------------
+>> Issue: [B839:pool] multiprocessing.Pool
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/migration_executors/multiproc.py:104
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b839_pool.html
+103	        )
+104	        p = multiprocessing.Pool(processes=processes)
+105	        p.map(
+
+--------------------------------------------------
+>> Issue: [B323:blacklist] multiprocessing_Pool
+   Severity: Medium   Confidence: High
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/migration_executors/multiproc.py:104
+   More Info: https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b323-multiprocessing-pool
+103	        )
+104	        p = multiprocessing.Pool(processes=processes)
+105	        p.map(
+
+--------------------------------------------------
+>> Issue: [B828:signal] signal.signal
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/tests/test_tenants.py:688
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b828_signal.html
+687	        """
+688	        with catch_signal(schema_migrated) as handler:
+689	            self.sync_shared()
+
+--------------------------------------------------
+>> Issue: [B828:signal] signal.signal
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/tests/test_tenants.py:705
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b828_signal.html
+704	        tenant = get_tenant_model()(schema_name='test')
+705	        with catch_signal(schema_migrated) as handler:
+706	            tenant.save()
+
+--------------------------------------------------
+>> Issue: [B828:signal] signal.signal
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/tests/test_tenants.py:734
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b828_signal.html
+733	        # test the signal gets called when running migrate
+734	        with catch_signal(schema_migrated) as handler:
+735	            call_command('migrate_schemas', interactive=False, verbosity=0)
+
+--------------------------------------------------
+>> Issue: [B828:signal] signal.signal
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/django_tenants/tests/test_tenants.py:800
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b828_signal.html
+799	        # test the signal gets called when running migrate
+800	        with catch_signal(schema_migrated) as handler:
+801	            call_command("migrate_schemas", interactive=False, verbosity=0)
+
+--------------------------------------------------
+>> Issue: [B823:ip_found] ip_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/examples/tenant_multi_types/tenant_multi_types_tutorial/middleware.py:11
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b823_ip_found.html
+10	        hostname_without_port = remove_www_and_dev(request.get_host().split(':')[0])
+11	        if hostname_without_port in ("127.0.0.1", "localhost"):
+12	            request.urlconf = get_public_schema_urlconf()
+
+--------------------------------------------------
+>> Issue: [B823:ip_found] ip_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/examples/tenant_tutorial/tenant_tutorial/middleware.py:10
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b823_ip_found.html
+9	        hostname_without_port = remove_www_and_dev(request.get_host().split(':')[0])
+10	        if hostname_without_port in ("127.0.0.1", "localhost"):
+11	            request.urlconf = get_public_schema_urlconf()
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/setup.py:35
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+34	    scripts=[],
+35	    url='https://github.com/django-tenants/django-tenants',
+36	    license='MIT',
+
+--------------------------------------------------
+>> Issue: [B814:read] os.read
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/django-tenants-3.7.0/django-tenants-3.7.0/setup.py:38
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b814_read.html
+37	    description='Tenant support for Django using PostgreSQL schemas.',
+38	    long_description=io.open('README.rst', encoding='utf-8').read() if exists("README.rst") else "",
+39	    classifiers=[
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 5803
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 9.0
+		High: 9.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 16.0
+		High: 2.0
+Files skipped (0):

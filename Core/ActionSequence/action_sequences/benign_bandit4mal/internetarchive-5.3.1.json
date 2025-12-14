@@ -1,0 +1,48 @@
+[
+  {
+    "metadata": {
+      "package_name": "internetarchive-5.3.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "catalog.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/internetarchive-5.3.1/internetarchive-5.3.1/internetarchive/catalog.py",
+    "line_number": "156",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "155\t            j = r.json()\n156\t            for row in j.get('value', {}).get('catalog', []):\n157\t                yield CatalogTask(row, self)",
+    "code_snippet": "def iter_tasks(self, params: MutableMapping | None = None) -> Iterable[CatalogTask]:\n    \"\"\"A generator that can make arbitrary requests to the\n    Tasks API. It handles paging (via cursor) automatically.\n\n    :param params: Query parameters, refer to\n                   `Tasks API\n                   <https://archive.org/services/docs/api/tasks.html>`_\n                   for available parameters.\n\n    :returns: collections.Iterable[CatalogTask]\n    \"\"\"\n    params = params or {}\n    while True:\n        r = self.make_tasks_request(params)\n        j = r.json()\n        for row in j.get('value', {}).get('catalog', []):\n            yield CatalogTask(row, self)\n        for row in j.get('value', {}).get('history', []):\n            yield CatalogTask(row, self)\n        if not j.get('value', {}).get('cursor'):\n            break\n        params['cursor'] = j['value']['cursor']",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.make_tasks_request",
+        "requests.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "self.make_tasks_request(params)",
+        "requests.Response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.make_tasks_request",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def iter_tasks(self, params: MutableMapping | None = None) -> Iterable[CatalogTask]:\n    params = params or {}\n    while True:\n        r = self.make_tasks_request(params)\n        j = r.json()\n        for row in j.get('value', {}).get('catalog', []):\n            yield CatalogTask(row, self)\n        for row in j.get('value', {}).get('history', []):\n            yield CatalogTask(row, self)\n        if not j.get('value', {}).get('cursor'):\n            break\n        params['cursor'] = j['value']['cursor']"
+    }
+  }
+]

@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "package_name": "quantplay-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/quantplay-2.1.80.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "kotak.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/quantplay-2.1.80/quantplay-2.1.80/quantplay/broker/kotak.py",
+      "line_number": "270",
+      "type_description": "B820:get",
+      "context_snippet": "def login(\n    self,\n    consumer_key: str,\n    consumer_secret: str,\n    mobilenumber: str,\n    password: str,\n) -> None:\n    base64_string = str(consumer_key) + \":\" + str(consumer_secret)\n    base64_token = base64_string.encode(\"ascii\")\n\n    base64_bytes = base64.b64encode(base64_token)\n    final_base64_token = base64_bytes.decode(\"ascii\")\n\n    session_init = requests.post(\n        url=f\"{SESSION_PROD_BASE_URL}oauth2/token\",\n        headers={\n            \"Authorization\": \"Basic \" + final_base64_token,\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"grant_type\": \"client_credentials\"}),\n    )\n\n    if not session_init.ok:\n        raise InvalidArgumentException(json.loads(session_init.content))\n\n    json_resp = json.loads(session_init.text)\n    self.configuration[\"bearer_token\"] = json_resp.get(\"access_token\")\n\n    view_token_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/v2/validate\",\n        headers={\n            \"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"],\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"mobileNumber\": mobilenumber, \"password\": password}),\n    )\n    view_token = json.loads(view_token_resp.text)\n\n    self.configuration[\"view_token\"] = view_token.get(\"data\").get(\"token\")\n    self.configuration[\"sid\"] = view_token.get(\"data\").get(\"sid\")\n\n    decode_jwt = jwt.decode(  # type: ignore\n        self.configuration[\"view_token\"], options={\"verify_signature\": False}\n    )\n    userid = decode_jwt.get(\"sub\")\n    self.configuration[\"kotakUserId\"] = userid\n\n    generate_otp_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/otp/generate\",\n        headers={\"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"]},\n        data=json.dumps({\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True}),\n    )\n\n    _generate_otp = json.loads(generate_otp_resp.text)\n",
+      "hash_value": "911d6e4213affe399abd73467af7c319",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def login(\n    self,\n    consumer_key: str,\n    consumer_secret: str,\n    mobilenumber: str,\n    password: str,\n) -> None:\n    base64_string = str(consumer_key) + \":\" + str(consumer_secret)\n    base64_token = base64_string.encode(\"ascii\")\n\n    base64_bytes = base64.b64encode(base64_token)\n    final_base64_token = base64_bytes.decode(\"ascii\")\n\n    session_init = requests.post(\n        url=f\"{SESSION_PROD_BASE_URL}oauth2/token\",\n        headers={\n            \"Authorization\": \"Basic \" + final_base64_token,\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"grant_type\": \"client_credentials\"}),\n    )\n\n    if not session_init.ok:\n        raise InvalidArgumentException(json.loads(session_init.content))\n\n    json_resp = json.loads(session_init.text)\n    self.configuration[\"bearer_token\"] = json_resp.get(\"access_token\")\n\n    view_token_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/v2/validate\",\n        headers={\n            \"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"],\n            \"Content-Type\": \"application/json\",\n        },\n        data=json.dumps({\"mobileNumber\": mobilenumber, \"password\": password}),\n    )\n    view_token = json.loads(view_token_resp.text)\n\n    self.configuration[\"view_token\"] = view_token.get(\"data\").get(\"token\")\n    self.configuration[\"sid\"] = view_token.get(\"data\").get(\"sid\")\n\n    decode_jwt = jwt.decode(  # type: ignore\n        self.configuration[\"view_token\"], options={\"verify_signature\": False}\n    )\n    userid = decode_jwt.get(\"sub\")\n    self.configuration[\"kotakUserId\"] = userid\n\n    generate_otp_resp = requests.post(\n        url=f\"{PROD_BASE_URL}login/1.0/login/otp/generate\",\n        headers={\"Authorization\": \"Bearer \" + self.configuration[\"bearer_token\"]},\n        data=json.dumps({\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True}),\n    )\n\n    _generate_otp = json.loads(generate_otp_resp.text)\n",
+          "triple_sequences": [
+            {
+              "action_api": "str.encode()",
+              "action_description": "Encodes string to bytes using default encoding",
+              "action_id": "encode_string_to_bytes",
+              "object": "base64_string.encode(\"ascii\")",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Encode string to bytes",
+              "intention_id": "encode_string_to_bytes"
+            },
+            {
+              "action_api": "base64.b64encode()",
+              "action_description": "Encodes bytes to base64-encoded bytes",
+              "action_id": "encode_bytes_to_base64",
+              "object": "base64_token",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for base64 encoding",
+              "intention_id": "prepare_data_base64_encoding"
+            },
+            {
+              "action_api": "bytes.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "base64_bytes.decode(\"ascii\")",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "url=f\"{SESSION_PROD_BASE_URL}oauth2/token\", headers={...}, data=json.dumps({\"grant_type\": \"client_credentials\"})",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "{\"grant_type\": \"client_credentials\"}",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "session_init.content",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "session_init.text",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "url=f\"{PROD_BASE_URL}login/1.0/login/v2/validate\", headers={...}, data=json.dumps({\"mobileNumber\": mobilenumber, \"password\": password})",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "{\"mobileNumber\": mobilenumber, \"password\": password}",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "view_token_resp.text",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "jwt.decode()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "self.configuration[\"view_token\"], options={\"verify_signature\": False}",
+              "object_description": "Account name and token",
+              "object_id": "account_credentials",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "url=f\"{PROD_BASE_URL}login/1.0/login/otp/generate\", headers={...}, data=json.dumps({\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True})",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "{\"userId\": userid, \"sendEmail\": True, \"isWhitelisted\": True}",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "generate_otp_resp.text",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

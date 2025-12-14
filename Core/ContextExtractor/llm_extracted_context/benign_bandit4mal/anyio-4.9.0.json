@@ -1,0 +1,53 @@
+[
+  {
+    "metadata": {
+      "package_name": "anyio-4.9.0",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "_tempfile.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/src/anyio/_core/_tempfile.py",
+    "line_number": "419",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "418\t            await checkpoint_if_cancelled()\n419\t            result = self._fp.write(b)\n420\t            await self._check()",
+    "context_snippet": "async def write(self, b: ReadableBuffer | str) -> int:\n    \"\"\"\n    Asynchronously write data to the spooled temporary file.\n\n    If the file has not yet been rolled over, the data is written synchronously,\n    and a rollover is triggered if the size exceeds the maximum size.\n\n    :param s: The data to write.\n    :return: The number of bytes written.\n    :raises RuntimeError: If the underlying file is not initialized.\n\n    \"\"\"\n    if not self._rolled:\n        await checkpoint_if_cancelled()\n        result = self._fp.write(b)\n        await self._check()\n        return result\n\n    return await super().write(b)  # type: ignore[misc]",
+    "hash_value": "30b698f5bc8405aabcfaad68fecd9245"
+  },
+  {
+    "pyfile": "_trio.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/src/anyio/_backends/_trio.py",
+    "line_number": "311",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "310\t            if self._stdout:\n311\t                await self._stdout.aclose()\n312\t            if self._stderr:",
+    "context_snippet": "class Process(abc.Process):\n    _process: trio.Process\n    _stdin: abc.ByteSendStream | None\n    _stdout: abc.ByteReceiveStream | None\n    _stderr: abc.ByteReceiveStream | None\n\n    async def aclose(self) -> None:\n        with CancelScope(shield=True):\n            if self._stdin:\n                await self._stdin.aclose()\n            if self._stdout:\n                await self._stdout.aclose()\n            if self._stderr:\n                await self._stderr.aclose()\n\n        try:\n            await self.wait()\n        except BaseException:\n            self.kill()\n            with CancelScope(shield=True):\n                await self.wait()\n            raise\n\n    async def wait(self) -> int:\n        return await self._process.wait()\n\n    def terminate(self) -> None:\n        self._process.terminate()\n\n    def kill(self) -> None:\n        self._process.kill()\n\n    def send_signal(self, signal: Signals) -> None:\n        self._process.send_signal(signal)\n\n    @property\n    def pid(self) -> int:\n        return self._process.pid\n\n    @property\n    def returncode(self) -> int | None:\n        return self._process.returncode\n\n    @property\n    def stdin(self) -> abc.ByteSendStream | None:\n        return self._stdin\n\n    @property\n    def stdout(self) -> abc.ByteReceiveStream | None:\n        return self._stdout\n\n    @property\n    def stderr(self) -> abc.ByteReceiveStream | None:\n        return self._stderr",
+    "hash_value": "ca46e3203d5fd05bc18cb297ded4e758"
+  },
+  {
+    "pyfile": "test_sockets.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/tests/test_sockets.py",
+    "line_number": "539",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "538\t        with socket.socket(family, socket.SOCK_STREAM) as server_sock:\n539\t            server_sock.settimeout(1)\n540\t            server_sock.bind((\"localhost\", 0))",
+    "context_snippet": "@pytest.mark.parametrize(\"anyio_backend\", asyncio_params)\nasync def test_unretrieved_future_exception_server_crash(\n    self, family: AnyIPAddressFamily, caplog: LogCaptureFixture\n) -> None:\n    \"\"\"\n    Test that there won't be any leftover Futures that don't get their exceptions\n    retrieved.\n\n    See https://github.com/encode/httpcore/issues/382 for details.\n    \"\"\"\n\n    def serve() -> None:\n        sock, addr = server_sock.accept()\n        event.wait(3)\n        sock.close()\n        del sock\n        gc.collect()\n\n    with socket.socket(family, socket.SOCK_STREAM) as server_sock:\n        server_sock.settimeout(1)\n        server_sock.bind((\"localhost\", 0))\n        server_sock.listen()\n        server_addr = server_sock.getsockname()[:2]\n        event = threading.Event()\n        thread = Thread(target=serve)\n        thread.start()\n        async with await connect_tcp(*server_addr) as stream:\n            await stream.send(b\"GET\")\n            event.set()\n            with pytest.raises(BrokenResourceError):\n                await stream.receive()\n\n        thread.join()\n        gc.collect()\n        caplog_text = \"\\n\".join(\n            msg\n            for msg in caplog.messages\n            if not re.search(\"took [0-9.]+ seconds\", msg)\n        )\n        assert not caplog_text",
+    "hash_value": "a7d188f318b915deea04b3a6d8f61742"
+  },
+  {
+    "pyfile": "test_tls.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/anyio-4.9.0/anyio-4.9.0/tests/streams/test_tls.py",
+    "line_number": "222",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "221\t        )\n222\t        server_sock.settimeout(1)\n223\t        server_sock.bind((\"127.0.0.1\", 0))",
+    "context_snippet": "class TestTLSStream:\n    async def test_send_receive(\n        self, server_context: ssl.SSLContext, client_context: ssl.SSLContext\n    ) -> None:\n        def serve_sync() -> None:\n            conn, addr = server_sock.accept()\n            conn.settimeout(1)\n            data = conn.recv(10)\n            conn.send(data[::-1])\n            conn.close()\n\n        server_sock = server_context.wrap_socket(\n            socket.socket(), server_side=True, suppress_ragged_eofs=False\n        )\n        server_sock.settimeout(1)\n        server_sock.bind((\"127.0.0.1\", 0))\n        server_sock.listen()\n        server_thread = Thread(target=serve_sync)\n        server_thread.start()\n\n        async with await connect_tcp(*server_sock.getsockname()) as stream:\n            wrapper = await TLSStream.wrap(\n                stream, hostname=\"localhost\", ssl_context=client_context\n            )\n            await wrapper.send(b\"hello\")\n            response = await wrapper.receive()\n\n        server_thread.join()\n        server_sock.close()\n        assert response == b\"olleh\"",
+    "hash_value": "9a7249dc4b9f1b319e8e18b672766171"
+  }
+]

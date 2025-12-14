@@ -1,0 +1,41 @@
+[
+  {
+    "pyfile": "pyperclip.py",
+    "code_snippet": "from __future__ import annotations\n\nimport pyperclip\n\nfrom prompt_toolkit.selection import SelectionType\n\nfrom .base import Clipboard, ClipboardData\n\n__all__ = [\n    \"PyperclipClipboard\",\n]\n\nclass PyperclipClipboard(Clipboard):\n    \"\"\"\n    Clipboard that synchronizes with the Windows/Mac/Linux system clipboard,\n    using the pyperclip module.\n    \"\"\"\n\n    def __init__(self) -> None:\n        self._data: ClipboardData | None = None\n\n    def set_data(self, data: ClipboardData) -> None:\n        self._data = data\n        pyperclip.copy(data.text)\n\n    def get_data(self) -> ClipboardData:\n        text = pyperclip.paste()\n\n        # When the clipboard data is equal to what we copied last time, reuse\n        # the `ClipboardData` instance. That way we're sure to keep the same\n        # `SelectionType`.\n        if self._data and self._data.text == text:\n            return self._data\n\n        # Pyperclip returned something else. Create a new `ClipboardData`\n        # instance.\n        else:\n            return ClipboardData(\n                text=text,\n                type=SelectionType.LINES if \"\\n\" in text else SelectionType.CHARACTERS,\n            )\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "pyperclip.copy",
+        "pyperclip.paste"
+      ],
+      "api_sequence_with_args": [
+        "pyperclip.copy(data.text)",
+        "pyperclip.paste()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "import pyperclip\n\nclass PyperclipClipboard(Clipboard):\n    def set_data(self, data: ClipboardData) -> None:\n        self._data = data\n        pyperclip.copy(data.text)\n\n    def get_data(self) -> ClipboardData:\n        text = pyperclip.paste()\n        if self._data and self._data.text == text:\n            return self._data\n        else:\n            return ClipboardData(\n                text=text,\n                type=SelectionType.LINES if \"\\n\" in text else SelectionType.CHARACTERS,\n            )"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "prompt_toolkit-3.0.50",
+      "total_matches": 2
+    }
+  }
+]

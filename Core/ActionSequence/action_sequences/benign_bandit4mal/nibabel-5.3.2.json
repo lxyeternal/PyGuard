@@ -1,0 +1,118 @@
+[
+  {
+    "metadata": {
+      "package_name": "nibabel-5.3.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "parse_gifti_fast.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/nibabel-5.3.2/nibabel-5.3.2/nibabel/gifti/parse_gifti_fast.py",
+    "line_number": "128",
+    "type_description": "B801:b64decode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "127\t    # a tunable chunk size.\n128\t    dec = base64.b64decode(data.encode('ascii'))\n129\t    if enclabel == 'B64BIN':",
+    "code_snippet": "import base64\nimport zlib\nimport numpy as np\nfrom io import StringIO\nfrom .util import array_index_order_codes, gifti_encoding_codes, gifti_endian_codes\nfrom ..nifti1 import data_type_codes\n\ndef read_data_block(darray, fname, data, mmap):\n    \"\"\"Parses data from a <Data> element, or loads from an external file.\n\n    Parameters\n    ----------\n    darray : GiftiDataArray\n         GiftiDataArray object representing the parent <DataArray> of this\n         <Data> element\n\n    fname : str or None\n         Name of GIFTI file being loaded, or None if in-memory\n\n    data : str or None\n         Data to parse, or None if data is in an external file\n\n    mmap : {True, False, 'c', 'r', 'r+'}\n        Controls the use of numpy memory mapping for reading data.  Only has\n        an effect when loading GIFTI images with data stored in external files\n        (``DataArray`` elements with an ``Encoding`` equal to\n        ``ExternalFileBinary``).  If ``False``, do not try numpy ``memmap``\n        for data array.  If one of ``{'c', 'r', 'r+'}``, try numpy ``memmap``\n        with ``mode=mmap``.  A `mmap` value of ``True`` gives the same\n        behavior as ``mmap='c'``.  If the file cannot be memory-mapped, ignore\n        `mmap` value and read array from file.\n\n    Returns\n    -------\n    ``numpy.ndarray`` or ``numpy.memmap`` containing the parsed data\n    \"\"\"\n    if mmap not in (True, False, 'c', 'r', 'r+'):\n        raise ValueError(\"mmap value should be one of True, False, 'c', 'r', 'r+'\")\n    if mmap is True:\n        mmap = 'c'\n    enclabel = gifti_encoding_codes.label[darray.encoding]\n\n    if enclabel not in ('ASCII', 'B64BIN', 'B64GZ', 'External'):\n        raise GiftiParseError(f'Unknown encoding {darray.encoding}')\n\n    # Encode the endianness in the dtype\n    byteorder = gifti_endian_codes.byteorder[darray.endian]\n    dtype = data_type_codes.dtype[darray.datatype].newbyteorder(byteorder)\n\n    shape = tuple(darray.dims)\n    order = array_index_order_codes.npcode[darray.ind_ord]\n\n    # GIFTI_ENCODING_ASCII\n    if enclabel == 'ASCII':\n        return np.loadtxt(StringIO(data), dtype=dtype, ndmin=1).reshape(shape, order=order)\n\n    # We assume that the external data file is raw uncompressed binary, with\n    # the data type/endianness/ordering specified by the other DataArray\n    # attributes\n    if enclabel == 'External':\n        if fname is None:\n            raise GiftiParseError(\n                'ExternalFileBinary is not supported when loading from in-memory XML'\n            )\n        ext_fname = op.join(op.dirname(fname), darray.ext_fname)\n        if not op.exists(ext_fname):\n            raise GiftiParseError('Cannot locate external file ' + ext_fname)\n        # We either create a memmap, or load into memory\n        newarr = None\n        if mmap:\n            try:\n                return np.memmap(\n                    ext_fname,\n                    dtype=dtype,\n                    mode=mmap,\n                    offset=darray.ext_offset,\n                    shape=shape,\n                    order=order,\n                )\n            # If the memmap fails, we ignore the error and load the data into\n            # memory below\n            except (AttributeError, TypeError, ValueError):\n                pass\n        # mmap=False or np.memmap failed\n        if newarr is None:\n            return np.fromfile(\n                ext_fname,\n                dtype=dtype,\n                count=np.prod(darray.dims),\n                offset=darray.ext_offset,\n            ).reshape(shape, order=order)\n\n    # Numpy arrays created from bytes objects are read-only.\n    # Neither b64decode nor decompress will return bytearrays, and there\n    # are not equivalents to fobj.readinto to allow us to pass them, so\n    # there is not a simple way to avoid making copies.\n    # If this becomes a problem, we should write a decoding interface with\n    # a tunable chunk size.\n    dec = base64.b64decode(data.encode('ascii'))\n    if enclabel == 'B64BIN':\n        buff = bytearray(dec)\n    else:\n        # GIFTI_ENCODING_B64GZ\n        buff = bytearray(zlib.decompress(dec))\n    del dec\n    return np.frombuffer(buff, dtype=dtype).reshape(shape, order=order)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "gifti_encoding_codes.label.__getitem__",
+        "gifti_endian_codes.byteorder.__getitem__",
+        "data_type_codes.dtype.__getitem__",
+        "numpy.dtype.newbyteorder",
+        "array_index_order_codes.npcode.__getitem__",
+        "numpy.loadtxt",
+        "io.StringIO",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.exists",
+        "numpy.memmap",
+        "numpy.fromfile",
+        "numpy.prod",
+        "base64.b64decode",
+        "str.encode",
+        "zlib.decompress",
+        "numpy.frombuffer"
+      ],
+      "api_sequence_with_args": [
+        "gifti_encoding_codes.label[darray.encoding]",
+        "gifti_endian_codes.byteorder[darray.endian]",
+        "data_type_codes.dtype[darray.datatype]",
+        "numpy.dtype.newbyteorder(byteorder)",
+        "array_index_order_codes.npcode[darray.ind_ord]",
+        "numpy.loadtxt(StringIO(data), dtype=dtype, ndmin=1)",
+        "StringIO(data)",
+        "os.path.join(os.path.dirname(fname), darray.ext_fname)",
+        "os.path.dirname(fname)",
+        "os.path.exists(ext_fname)",
+        "numpy.memmap(ext_fname, dtype=dtype, mode=mmap, offset=darray.ext_offset, shape=shape, order=order)",
+        "numpy.fromfile(ext_fname, dtype=dtype, count=numpy.prod(darray.dims), offset=darray.ext_offset)",
+        "numpy.prod(darray.dims)",
+        "base64.b64decode(data.encode('ascii'))",
+        "data.encode('ascii')",
+        "zlib.decompress(dec)",
+        "numpy.frombuffer(buff, dtype=dtype)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "numpy.memmap",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "numpy.fromfile",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "base64.b64decode",
+          "id": "decode_base64_to_bytes",
+          "description": "Decodes base64-encoded string to bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "zlib.decompress",
+          "id": "decompress_data_zlib",
+          "description": "Decompresses zlib-compressed data",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "compression_decompression"
+        }
+      ],
+      "contextual_code": "def read_data_block(darray, fname, data, mmap):\n    if mmap not in (True, False, 'c', 'r', 'r+'):\n        raise ValueError(\"mmap value should be one of True, False, 'c', 'r', 'r+'\")\n    if mmap is True:\n        mmap = 'c'\n    enclabel = gifti_encoding_codes.label[darray.encoding]\n    if enclabel not in ('ASCII', 'B64BIN', 'B64GZ', 'External'):\n        raise GiftiParseError(f'Unknown encoding {darray.encoding}')\n    byteorder = gifti_endian_codes.byteorder[darray.endian]\n    dtype = data_type_codes.dtype[darray.datatype].newbyteorder(byteorder)\n    shape = tuple(darray.dims)\n    order = array_index_order_codes.npcode[darray.ind_ord]\n    if enclabel == 'ASCII':\n        return np.loadtxt(StringIO(data), dtype=dtype, ndmin=1).reshape(shape, order=order)\n    if enclabel == 'External':\n        if fname is None:\n            raise GiftiParseError('ExternalFileBinary is not supported when loading from in-memory XML')\n        ext_fname = os.path.join(os.path.dirname(fname), darray.ext_fname)\n        if not os.path.exists(ext_fname):\n            raise GiftiParseError('Cannot locate external file ' + ext_fname)\n        newarr = None\n        if mmap:\n            try:\n                return np.memmap(ext_fname, dtype=dtype, mode=mmap, offset=darray.ext_offset, shape=shape, order=order)\n            except (AttributeError, TypeError, ValueError):\n                pass\n        if newarr is None:\n            return np.fromfile(ext_fname, dtype=dtype, count=np.prod(darray.dims), offset=darray.ext_offset).reshape(shape, order=order)\n    dec = base64.b64decode(data.encode('ascii'))\n    if enclabel == 'B64BIN':\n        buff = bytearray(dec)\n    else:\n        buff = bytearray(zlib.decompress(dec))\n    del dec\n    return np.frombuffer(buff, dtype=dtype).reshape(shape, order=order)"
+    }
+  }
+]

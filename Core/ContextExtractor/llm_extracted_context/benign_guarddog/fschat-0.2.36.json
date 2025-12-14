@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "fschat-0.2.36",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/fschat-0.2.36.txt",
+      "total_matches": 3
+    }
+  },
+  {
+    "pyfile": "api_provider.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/fschat-0.2.36/fschat-0.2.36/fastchat/serve/api_provider.py",
+    "line_number": "260",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "res = requests.post(\nf\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\",\njson={\n\"prompt\": {\n\"messages\": conv_bard,\n...        )",
+    "context_snippet": "def bard_api_stream_iter(model_name, conv, temperature, top_p, api_key=None):\n    del top_p  # not supported\n    del temperature  # not supported\n\n    if api_key is None:\n        api_key = os.environ[\"BARD_API_KEY\"]\n\n    # convert conv to conv_bard\n    conv_bard = []\n    for turn in conv:\n        if turn[\"role\"] == \"user\":\n            conv_bard.append({\"author\": \"0\", \"content\": turn[\"content\"]})\n        elif turn[\"role\"] == \"assistant\":\n            conv_bard.append({\"author\": \"1\", \"content\": turn[\"content\"]})\n        else:\n            raise ValueError(f\"Unsupported role: {turn['role']}\")\n\n    params = {\n        \"model\": model_name,\n        \"prompt\": conv_bard,\n    }\n    logger.info(f\"==== request ====\\n{params}\")\n\n    try:\n        res = requests.post(\n            f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\",\n            json={\n                \"prompt\": {\n                    \"messages\": conv_bard,\n                },\n            },\n            timeout=30,\n        )\n    except Exception as e:\n        logger.error(f\"==== error ====\\n{e}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {e}.\",\n            \"error_code\": 1,\n        }\n\n    if res.status_code != 200:\n        logger.error(f\"==== error ==== ({res.status_code}): {res.text}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: status code {res.status_code}.\",\n            \"error_code\": 1,\n        }\n\n    response_json = res.json()\n    if \"candidates\" not in response_json:\n        logger.error(f\"==== error ==== response blocked: {response_json}\")\n        reason = response_json[\"filters\"][0][\"reason\"]\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {reason}.\",\n            \"error_code\": 1,\n        }\n\n    response = response_json[\"candidates\"][0][\"content\"]\n    pos = 0\n    while pos < len(response):\n        # simulate token streaming\n        pos += random.randint(3, 6)\n        time.sleep(0.002)\n        data = {\n            \"text\": response[:pos],\n            \"error_code\": 0,\n        }\n        yield data",
+    "hash_value": "bbfd9c9b33fbfbfcc362f64609191b0d",
+    "detection_index": 1
+  }
+]

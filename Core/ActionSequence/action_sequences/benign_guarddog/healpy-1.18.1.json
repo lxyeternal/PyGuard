@@ -1,0 +1,230 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport errno\nimport fnmatch\nimport sys\nimport shlex\nimport shutil\nfrom Cython.Distutils import build_ext\nfrom distutils.sysconfig import get_config_vars\nfrom subprocess import check_output, CalledProcessError, check_call\nfrom setuptools import setup, Extension\nfrom distutils.command.build_clib import build_clib\nfrom distutils.errors import DistutilsExecError\nfrom distutils.dir_util import mkpath\nfrom distutils.file_util import copy_file\nfrom distutils import log\n\nclass build_external_clib(build_clib):\n    \"\"\"Subclass of Distutils' standard build_clib subcommand. Adds support for\n    libraries that are installed externally and detected with pkg-config, with\n    an optional fallback to build from a local configure-make-install style\n    distribution.\"\"\"\n\n    def __init__(self, dist):\n        build_clib.__init__(self, dist)\n        self.build_args = {}\n\n    def env(self):\n        \"\"\"Construct an environment dictionary suitable for having pkg-config\n        pick up .pc files in the build_clib directory.\"\"\"\n        # Test if pkg-config is present. If not, fall back to pykg-config.\n        try:\n            env = self._env\n        except AttributeError:\n            env = dict(os.environ)\n\n            try:\n                check_output([\"pkg-config\", \"--version\"])\n            except OSError as e:\n                if e.errno != errno.ENOENT:\n                    raise\n                log.warn(\"pkg-config is not installed, falling back to pykg-config\")\n                env[\"PKG_CONFIG\"] = shutil.which('pykg-config.py')\n            else:\n                env[\"PKG_CONFIG\"] = \"pkg-config\"\n\n            build_clib = os.path.realpath(self.build_clib)\n            pkg_config_path = (\n                os.path.join(build_clib, \"lib64\", \"pkgconfig\")\n                + \":\"\n                + os.path.join(build_clib, \"lib\", \"pkgconfig\")\n            )\n            try:\n                pkg_config_path += \":\" + env[\"PKG_CONFIG_PATH\"]\n            except KeyError:\n                pass\n            env[\"PKG_CONFIG_PATH\"] = pkg_config_path\n\n            self._env = env\n        return env\n\n    def pkgconfig(self, *packages):\n        env = self.env()\n        PKG_CONFIG = tuple(shlex.split(env[\"PKG_CONFIG\"], posix=(os.sep == \"/\")))\n        kw = {}\n        index_key_flag = (\n            (2, \"--cflags-only-I\", (\"include_dirs\",)),\n            (0, \"--cflags-only-other\", (\"extra_compile_args\", \"extra_link_args\")),\n            (2, \"--libs-only-L\", (\"library_dirs\", \"runtime_library_dirs\")),\n            (2, \"--libs-only-l\", (\"libraries\",)),\n            (0, \"--libs-only-other\", (\"extra_link_args\",)),\n        )\n        for index, flag, keys in index_key_flag:\n            cmd = PKG_CONFIG + (flag,) + tuple(packages)\n            log.debug(\"%s\", \" \".join(cmd))\n            args = [\n                token[index:].decode() for token in check_output(cmd, env=env).split()\n            ]\n            if args:\n                for key in keys:\n                    kw.setdefault(key, []).extend(args)\n        return kw\n\n    def finalize_options(self):\n        \"\"\"Run 'autoreconf -i' for any bundled libraries to generate the\n        configure script.\"\"\"\n        build_clib.finalize_options(self)\n        env = self.env()\n\n        for lib_name, build_info in self.libraries:\n            if \"sources\" not in build_info:\n                log.info(\n                    \"checking if configure script for library '%s' exists\", lib_name\n                )\n                if not os.path.exists(\n                    os.path.join(build_info[\"local_source\"], \"configure\")\n                ):\n                    log.info(\"running 'autoreconf -i' for library '%s'\", lib_name)\n                    check_call(\n                        [\"autoreconf\", \"-i\"], cwd=build_info[\"local_source\"], env=env\n                    )\n\n    def build_library(\n        self,\n        library,\n        pkg_config_name,\n        local_source=None,\n        supports_non_srcdir_builds=True,\n    ):\n        log.info(\"checking if library '%s' is installed\", library)\n        try:\n            build_args = self.pkgconfig(pkg_config_name)\n            log.info(\"found '%s' installed, using it\", library)\n        except CalledProcessError:\n\n            # If local_source is not specified, then immediately fail.\n            if local_source is None:\n                raise DistutilsExecError(\"library '%s' is not installed\", library)\n\n            log.info(\"building library '%s' from source\", library)\n\n            env = self.env()\n\n            # Determine which compilers we are to use, and what flags.\n            # This is based on what distutils.sysconfig.customize_compiler()\n            # does, but that function has a problem that it doesn't produce\n            # necessary (e.g. architecture) flags for C++ compilers.\n            cc, cxx, opt, cflags = get_config_vars(\"CC\", \"CXX\", \"OPT\", \"CFLAGS\")\n            cxxflags = cflags\n\n            if \"CC\" in env:\n                cc = env[\"CC\"]\n            if \"CXX\" in env:\n                cxx = env[\"CXX\"]\n            if \"CFLAGS\" in env:\n                cflags = opt + \" \" + env[\"CFLAGS\"]\n            if \"CXXFLAGS\" in env:\n                cxxflags = opt + \" \" + env[\"CXXFLAGS\"]\n\n            # Use a subdirectory of build_temp as the build directory.\n            build_temp = os.path.realpath(os.path.join(self.build_temp, library))\n\n            # Destination for headers and libraries is build_clib.\n            build_clib = os.path.realpath(self.build_clib)\n\n            # Create build directories if they do not yet exist.\n            mkpath(build_temp)\n            mkpath(build_clib)\n\n            if not supports_non_srcdir_builds:\n                self._stage_files_recursive(local_source, build_temp)\n\n            # Run configure.\n            cmd = [\n                \"/bin/sh\",\n                os.path.join(os.path.realpath(local_source), \"configure\"),\n                \"--prefix=\" + build_clib,\n                \"--disable-curl\",\n                \"--with-pic\",\n                \"--disable-maintainer-mode\",\n            ]\n\n            log.info(\"%s\", \" \".join(cmd))\n            check_call(\n                cmd,\n                cwd=build_temp,\n                env=dict(env, CC=cc, CXX=cxx, CFLAGS=cflags, CXXFLAGS=cxxflags),\n            )\n\n            # Run make install.\n            cmd = [\"make\", \"install\"]\n            log.info(\"%s\", \" \".join(cmd))\n            check_call(cmd, cwd=build_temp, env=env)\n\n            build_args = self.pkgconfig(pkg_config_name)\n\n        return build_args\n        # Done!\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "shutil.which",
+        "os.path.realpath",
+        "os.path.join",
+        "os.path.join",
+        "check_output",
+        "os.path.realpath",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "check_call",
+        "get_config_vars",
+        "os.path.realpath",
+        "os.path.join",
+        "os.path.realpath",
+        "mkpath",
+        "mkpath",
+        "os.path.realpath",
+        "os.path.join",
+        "check_call",
+        "check_call"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "shutil.which('pykg-config.py')",
+        "os.path.realpath(self.build_clib)",
+        "os.path.join(build_clib, 'lib64', 'pkgconfig')",
+        "os.path.join(build_clib, 'lib', 'pkgconfig')",
+        "check_output([\"pkg-config\", \"--version\"])",
+        "os.path.realpath(self.build_clib)",
+        "os.path.join(build_info[\"local_source\"], \"configure\")",
+        "os.path.exists(os.path.join(build_info[\"local_source\"], \"configure\"))",
+        "os.path.join(build_info[\"local_source\"], \"configure\")",
+        "check_call([\"autoreconf\", \"-i\"], cwd=build_info[\"local_source\"], env=env)",
+        "get_config_vars(\"CC\", \"CXX\", \"OPT\", \"CFLAGS\")",
+        "os.path.realpath(os.path.join(self.build_temp, library))",
+        "os.path.realpath(self.build_clib)",
+        "mkpath(build_temp)",
+        "mkpath(build_clib)",
+        "os.path.realpath(local_source)",
+        "os.path.join(os.path.realpath(local_source), \"configure\")",
+        "check_call(cmd, cwd=build_temp, env=dict(env, CC=cc, CXX=cxx, CFLAGS=cflags, CXXFLAGS=cxxflags))",
+        "check_call([\"make\", \"install\"], cwd=build_temp, env=env)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "get_config_vars",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "mkpath",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "mkpath",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nfrom subprocess import check_output, check_call\nfrom distutils.dir_util import mkpath\nfrom distutils.errors import DistutilsExecError\nfrom distutils.command.build_clib import build_clib\nfrom distutils.sysconfig import get_config_vars\n\nclass build_external_clib(build_clib):\n    def env(self):\n        try:\n            env = self._env\n        except AttributeError:\n            env = dict(os.environ)\n            try:\n                check_output([\"pkg-config\", \"--version\"])\n            except OSError as e:\n                if e.errno != errno.ENOENT:\n                    raise\n                env[\"PKG_CONFIG\"] = shutil.which('pykg-config.py')\n            else:\n                env[\"PKG_CONFIG\"] = \"pkg-config\"\n            build_clib = os.path.realpath(self.build_clib)\n            pkg_config_path = (\n                os.path.join(build_clib, \"lib64\", \"pkgconfig\")\n                + \":\"\n                + os.path.join(build_clib, \"lib\", \"pkgconfig\")\n            )\n            try:\n                pkg_config_path += \":\" + env[\"PKG_CONFIG_PATH\"]\n            except KeyError:\n                pass\n            env[\"PKG_CONFIG_PATH\"] = pkg_config_path\n            self._env = env\n        return env\n\n    def finalize_options(self):\n        build_clib.finalize_options(self)\n        env = self.env()\n        for lib_name, build_info in self.libraries:\n            if \"sources\" not in build_info:\n                if not os.path.exists(os.path.join(build_info[\"local_source\"], \"configure\")):\n                    check_call([\n                        \"autoreconf\", \"-i\"\n                    ], cwd=build_info[\"local_source\"], env=env)\n\n    def build_library(self, library, pkg_config_name, local_source=None, supports_non_srcdir_builds=True):\n        try:\n            build_args = self.pkgconfig(pkg_config_name)\n        except CalledProcessError:\n            if local_source is None:\n                raise DistutilsExecError(\"library '%s' is not installed\", library)\n            env = self.env()\n            cc, cxx, opt, cflags = get_config_vars(\"CC\", \"CXX\", \"OPT\", \"CFLAGS\")\n            cxxflags = cflags\n            if \"CC\" in env:\n                cc = env[\"CC\"]\n            if \"CXX\" in env:\n                cxx = env[\"CXX\"]\n            if \"CFLAGS\" in env:\n                cflags = opt + \" \" + env[\"CFLAGS\"]\n            if \"CXXFLAGS\" in env:\n                cxxflags = opt + \" \" + env[\"CXXFLAGS\"]\n            build_temp = os.path.realpath(os.path.join(self.build_temp, library))\n            build_clib = os.path.realpath(self.build_clib)\n            mkpath(build_temp)\n            mkpath(build_clib)\n            if not supports_non_srcdir_builds:\n                self._stage_files_recursive(local_source, build_temp)\n            cmd = [\n                \"/bin/sh\",\n                os.path.join(os.path.realpath(local_source), \"configure\"),\n                \"--prefix=\" + build_clib,\n                \"--disable-curl\",\n                \"--with-pic\",\n                \"--disable-maintainer-mode\",\n            ]\n            check_call(\n                cmd,\n                cwd=build_temp,\n                env=dict(env, CC=cc, CXX=cxx, CFLAGS=cflags, CXXFLAGS=cxxflags),\n            )\n            cmd = [\"make\", \"install\"]\n            check_call(cmd, cwd=build_temp, env=env)\n            build_args = self.pkgconfig(pkg_config_name)\n        return build_args"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "healpy-1.18.1",
+      "total_matches": 4
+    }
+  }
+]

@@ -1,0 +1,97 @@
+[
+  {
+    "metadata": {
+      "package_name": "ansible_modules_hashivault-5.3.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "hashivault_read_to_file.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible_modules_hashivault-5.3.0/ansible_modules_hashivault-5.3.0/ansible/plugins/action/hashivault_read_to_file.py",
+    "line_number": "106",
+    "type_description": "B801:b64decode",
+    "severity": "High",
+    "confidence": "Medium",
+    "code_snippet": "import base64 as base64encode\nimport os\nimport tempfile\n\nfrom ansible.playbook.play_context import PlayContext\nfrom ansible.plugins.action import ActionBase\nfrom ansible.utils.vars import merge_hash\n\nclass ActionModule(ActionBase):\n\n    # load and return ansible copy action plugin\n    # copied from `ansible/plugins/action/template.py`\n    def _get_copy_action_plugin(self, connection):\n        return (self._shared_loader_obj.action_loader.get(\n            'copy',\n            task=self._task.copy(),\n            connection=connection,\n            play_context=self._play_context,\n            loader=self._loader,\n            templar=self._templar,\n            shared_loader_obj=self._shared_loader_obj))\n\n    def run(self, tmp=None, task_vars=None):\n\n        if task_vars is None:\n            task_vars = dict()\n\n        results = super(ActionModule, self).run(tmp, task_vars)\n\n        args = self._task.args.copy()\n\n        dest = args.pop('dest', None)\n        force = args.pop('force', True)\n        base64 = args.pop('base64', True)\n\n        new_module_args = {\n            'dest': dest,\n            'force': force,\n        }\n        copy_attributes = [\n            'attributes',\n            'backup',\n            'checksum',\n            'delimiter',\n            'directory_mode',\n            'follow',\n            'group',\n            'local_follow',\n            'mode',\n            'owner',\n            'regexp',\n            'selevel',\n            'serole',\n            'setype',\n            'seuser',\n            'unsafe_writes',\n            'validate',\n        ]\n        for attribute in copy_attributes:\n            value = args.pop(attribute, None)\n            if value is not None:\n                new_module_args[attribute] = value\n\n        become = self._play_context.become\n        become_method = self._play_context.become_method\n\n        old_connection = self._connection\n        self._connection = self._shared_loader_obj.connection_loader.get('local', PlayContext(),\n                                                                         old_connection._new_stdin)\n        self._play_context.become = False\n        self._play_context.become_method = None\n\n        results = merge_hash(\n            results,\n            # executes hashivault_read module on localhost\n            self._execute_module(module_name='hashivault_read', tmp=tmp, task_vars=task_vars, module_args=args)\n        )\n\n        if 'failed' in results and results['failed'] is True:\n            return results\n\n        content = results.pop('value', None)\n\n        if content is None:\n            results['failed'] = True\n            results['rc'] = 1\n            results['msg'] = u'Could not find file `%s` in secret `%s`' % (args['key'], args['secret'])\n            return results\n\n        # write to temp file on ansible host to copy to remote host\n        local_tmp = tempfile.NamedTemporaryFile(delete=False)\n        if base64:\n            try:\n                content = base64encode.b64decode(content)\n            except Exception as ex:\n                results['failed'] = True\n                results['rc'] = 1\n                secret_key = str(args.pop('secret', 'secret')) + \"/\" + str(args.pop('key', ''))\n                results['msg'] = u'Error base64 decoding secret %s: %s' % (secret_key, str(ex))\n                return results\n        else:\n            try:\n                import sys\n                if sys.version_info[0] > 2:\n                    content = bytes(content, 'utf-8')\n                else:\n                    content = bytes(content)\n            except Exception as ex:\n                results['failed'] = True\n                results['rc'] = 1\n                secret_key = str(args.pop('secret', 'secret')) + \"/\" + str(args.pop('key', ''))\n                results['msg'] = u'Error preparing utf-8 secret %s: %s' % (secret_key, str(ex))\n                return results\n        local_tmp.write(content)\n        local_tmp.close()\n        new_module_args['src'] = local_tmp.name\n\n        self._update_module_args('copy', new_module_args, task_vars)\n\n        # `copy` module uses an action plugin, so we have to execute\n        # the plugin instead of directly executing the module\n        copy_action = self._get_copy_action_plugin(old_connection)\n        copy_action._task.args = new_module_args\n        copy_action._play_context.become = become\n        copy_action._play_context.become_method = become_method\n\n        results = merge_hash(\n            results,\n            # executes copy action plugin/module on remote host\n            copy_action.run(task_vars=task_vars)\n        )\n\n        # remove temp file\n        os.unlink(local_tmp.name)\n\n        if force is False and results['changed'] is False:\n            results['failed'] = True\n            results['rc'] = 1\n            results['msg'] = u'File %s already exists. Use `force: true` to overwrite' % dest\n\n        return results",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._shared_loader_obj.connection_loader.get",
+        "tempfile.NamedTemporaryFile",
+        "base64.b64decode",
+        "local_tmp.write",
+        "local_tmp.close",
+        "self._update_module_args",
+        "os.unlink"
+      ],
+      "api_sequence_with_args": [
+        "self._shared_loader_obj.connection_loader.get('local', PlayContext(), old_connection._new_stdin)",
+        "tempfile.NamedTemporaryFile(delete=False)",
+        "base64.b64decode(content)",
+        "local_tmp.write(content)",
+        "local_tmp.close()",
+        "self._update_module_args('copy', new_module_args, task_vars)",
+        "os.unlink(local_tmp.name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._shared_loader_obj.connection_loader.get",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "tempfile.NamedTemporaryFile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "base64.b64decode",
+          "id": "decode_base64_to_bytes",
+          "description": "Decodes base64-encoded string to bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "local_tmp.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "local_tmp.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "self._update_module_args",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "        old_connection = self._connection\n        self._connection = self._shared_loader_obj.connection_loader.get('local', PlayContext(),\n                                                                         old_connection._new_stdin)\n        ...\n        # write to temp file on ansible host to copy to remote host\n        local_tmp = tempfile.NamedTemporaryFile(delete=False)\n        if base64:\n            try:\n                content = base64encode.b64decode(content)\n            except Exception as ex:\n                ...\n                return results\n        else:\n            try:\n                import sys\n                if sys.version_info[0] > 2:\n                    content = bytes(content, 'utf-8')\n                else:\n                    content = bytes(content)\n            except Exception as ex:\n                ...\n                return results\n        local_tmp.write(content)\n        local_tmp.close()\n        new_module_args['src'] = local_tmp.name\n\n        self._update_module_args('copy', new_module_args, task_vars)\n        ...\n        # remove temp file\n        os.unlink(local_tmp.name)"
+    }
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "aioredis-2.0.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "connection.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aioredis-2.0.1/aioredis-2.0.1/aioredis/connection.py",
+    "line_number": "1416",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1415\t            # ensure this connection is connected to Redis\n1416\t            await connection.connect()\n1417\t            # connections that the pool provides should be ready to send",
+    "context_snippet": "async def get_connection(self, command_name, *keys, **options):\n    \"\"\"Get a connection from the pool\"\"\"\n    self._checkpid()\n    async with self._lock:\n        try:\n            connection = self._available_connections.pop()\n        except IndexError:\n            connection = self.make_connection()\n        self._in_use_connections.add(connection)\n\n    try:\n        # ensure this connection is connected to Redis\n        await connection.connect()\n        # connections that the pool provides should be ready to send\n        # a command. if not, the connection was either returned to the\n        # pool before all data has been read or the socket has been\n        # closed. either way, reconnect and verify everything is good.\n        try:\n            if await connection.can_read():\n                raise ConnectionError(\"Connection has data\") from None\n        except ConnectionError:\n            await connection.disconnect()\n            await connection.connect()\n            if await connection.can_read():\n                raise ConnectionError(\"Connection not ready\") from None\n    except BaseException:\n        # release the connection back to the pool so that we don't\n        # leak it\n        await self.release(connection)\n        raise\n\n    return connection",
+    "hash_value": "4847852a1d66d6e9413e488c5067b871"
+  }
+]

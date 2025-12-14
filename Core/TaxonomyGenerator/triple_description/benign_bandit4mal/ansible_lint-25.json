@@ -1,0 +1,196 @@
+{
+  "metadata": {
+    "package_name": "ansible_lint-25",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ansible_lint-25.2.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "runner.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible_lint-25.2.1/ansible_lint-25.2.1/src/ansiblelint/runner.py",
+      "line_number": "660",
+      "type_description": "B814:read",
+      "context_snippet": "@cache\ndef threads() -> int:\n    \"\"\"Determine how many threads to use.\n\n    Inside containers we want to respect limits imposed.\n\n    When present /sys/fs/cgroup/cpu.max can contain something like:\n    $ podman/docker run -it --rm --cpus 1.5 ubuntu:latest cat /sys/fs/cgroup/cpu.max\n    150000 100000\n    # \"max 100000\" is returned when no limits are set.\n\n    See: https://github.com/python/cpython/issues/80235\n    See: https://github.com/python/cpython/issues/70879\n    \"\"\"\n    os_cpu_count = multiprocessing.cpu_count()\n    # Cgroup CPU bandwidth limit available in Linux since 2.6 kernel\n\n    cpu_max_fname = \"/sys/fs/cgroup/cpu.max\"\n    cfs_quota_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_quota_us\"\n    cfs_period_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_period_us\"\n    if os.path.exists(cpu_max_fname):\n        # cgroup v2\n        # https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html\n        with open(cpu_max_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_quota_us, cpu_period_us = fh.read().strip().split()\n    elif os.path.exists(cfs_quota_fname) and os.path.exists(cfs_period_fname):\n        # cgroup v1\n        # https://www.kernel.org/doc/html/latest/scheduler/sched-bwc.html#management\n        with open(cfs_quota_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_quota_us = fh.read().strip()\n        with open(cfs_period_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_period_us = fh.read().strip()\n    else:\n        # No Cgroup CPU bandwidth limit (e.g. non-Linux platform)\n        cpu_quota_us = \"max\"\n        cpu_period_us = \"100000\"  # unused, for consistency with default values\n\n    if cpu_quota_us == \"max\":\n        # No active Cgroup quota on a Cgroup-capable platform\n        return os_cpu_count\n    cpu_quota_us_int = int(cpu_quota_us)\n    cpu_period_us_int = int(cpu_period_us)\n    if cpu_quota_us_int > 0 and cpu_period_us_int > 0:\n        return math.ceil(cpu_quota_us_int / cpu_period_us_int)\n    # Setting a negative cpu_quota_us value is a valid way to disable\n    # cgroup CPU bandwidth limits\n    return os_cpu_count\n",
+      "hash_value": "849b6520ca0e0ac912e7d46ef1a588b3",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "@cache\ndef threads() -> int:\n    \"\"\"Determine how many threads to use.\n\n    Inside containers we want to respect limits imposed.\n\n    When present /sys/fs/cgroup/cpu.max can contain something like:\n    $ podman/docker run -it --rm --cpus 1.5 ubuntu:latest cat /sys/fs/cgroup/cpu.max\n    150000 100000\n    # \"max 100000\" is returned when no limits are set.\n\n    See: https://github.com/python/cpython/issues/80235\n    See: https://github.com/python/cpython/issues/70879\n    \"\"\"\n    os_cpu_count = multiprocessing.cpu_count()\n    # Cgroup CPU bandwidth limit available in Linux since 2.6 kernel\n\n    cpu_max_fname = \"/sys/fs/cgroup/cpu.max\"\n    cfs_quota_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_quota_us\"\n    cfs_period_fname = \"/sys/fs/cgroup/cpu/cpu.cfs_period_us\"\n    if os.path.exists(cpu_max_fname):\n        # cgroup v2\n        # https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html\n        with open(cpu_max_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_quota_us, cpu_period_us = fh.read().strip().split()\n    elif os.path.exists(cfs_quota_fname) and os.path.exists(cfs_period_fname):\n        # cgroup v1\n        # https://www.kernel.org/doc/html/latest/scheduler/sched-bwc.html#management\n        with open(cfs_quota_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_quota_us = fh.read().strip()\n        with open(cfs_period_fname, encoding=\"utf-8\") as fh:  # pragma: no cover\n            cpu_period_us = fh.read().strip()\n    else:\n        # No Cgroup CPU bandwidth limit (e.g. non-Linux platform)\n        cpu_quota_us = \"max\"\n        cpu_period_us = \"100000\"  # unused, for consistency with default values\n\n    if cpu_quota_us == \"max\":\n        # No active Cgroup quota on a Cgroup-capable platform\n        return os_cpu_count\n    cpu_quota_us_int = int(cpu_quota_us)\n    cpu_period_us_int = int(cpu_period_us)\n    if cpu_quota_us_int > 0 and cpu_period_us_int > 0:\n        return math.ceil(cpu_quota_us_int / cpu_period_us_int)\n    # Setting a negative cpu_quota_us value is a valid way to disable\n    # cgroup CPU bandwidth limits\n    return os_cpu_count\n",
+          "triple_sequences": [
+            {
+              "action_api": "multiprocessing.cpu_count()",
+              "action_description": "Retrieves processor name",
+              "action_id": "get_processor_name",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get system info",
+              "intention_id": "get_system_info"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "/sys/fs/cgroup/cpu.max",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "/sys/fs/cgroup/cpu.max",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "fh.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "str.strip()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "str.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "/sys/fs/cgroup/cpu/cpu.cfs_quota_us",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "/sys/fs/cgroup/cpu/cpu.cfs_period_us",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "/sys/fs/cgroup/cpu/cpu.cfs_quota_us",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "fh.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "str.strip()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "/sys/fs/cgroup/cpu/cpu.cfs_period_us",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "fh.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "str.strip()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "int()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "cpu_quota_us",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Convert string to integer",
+              "intention_id": "convert_string_to_integer"
+            },
+            {
+              "action_api": "int()",
+              "action_description": "Converts integer to bytes with specified length and byte order",
+              "action_id": "convert_int_to_bytes",
+              "object": "cpu_period_us",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Convert string to integer",
+              "intention_id": "convert_string_to_integer"
+            },
+            {
+              "action_api": "math.ceil()",
+              "action_description": "Generate product of sequence",
+              "action_id": "generate_sequence_product",
+              "object": "cpu_quota_us_int / cpu_period_us_int",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Generate product of sequence",
+              "intention_id": "generate_sequence_product"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

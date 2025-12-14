@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nfrom distutils.core import setup, Extension\n\nimport sgp4\ndescription, long_description = sgp4.__doc__.split('\\n', 1)\n\n# It is hard to write C extensions that support both Python 2 and 3, so\n# we opt here to support the acceleration only for Python 3.\n\next_modules = []\nif sys.version_info[0] == 3:\n\n    # This lets CI force us to exit with an error if compilation fails,\n    # instead of falling back silently to the backup Python code.\n    optional = True\n    if os.environ.get('SGP4_FORCE_COMPILE') == 'true':\n        optional = False\n\n    ext_modules.append(Extension(\n        'sgp4.vallado_cpp',\n        optional=optional,\n        sources=[\n            'extension/SGP4.cpp',\n            'extension/wrapper.cpp',\n        ],\n\n        # TODO: can we safely figure out how to use a pair of options\n        # like these, adapted to as many platforms as possible, to use\n        # multiple processors when available?\n        # extra_compile_args=['-fopenmp'],\n        # extra_link_args=['-fopenmp'],\n        extra_compile_args=['-ffloat-store'],\n    ))\n\n# Read the package's \"__version__\" without importing it.\npath = 'sgp4/__init__.py'\nwith open(path, 'rb') as f:\n    text = f.read().decode('utf-8')\ntext = text.replace('-*- coding: utf-8 -*-', '')  # for Python 2.7\nnamespace = {}\neval(compile(text, path, 'exec'), namespace)\n\nsetup(name = 'sgp4',\n      version = namespace['__version__'],\n      description = description,\n      long_description = long_description,\n      license = 'MIT',\n      author = 'Brandon Rhodes',\n      author_email = 'brandon@rhodesmill.org',\n      url = 'https://github.com/brandon-rhodes/python-sgp4',\n      classifiers = [\n        'Development Status :: 5 - Production/Stable',\n        'Intended Audience :: Science/Research',\n        'License :: OSI Approved :: MIT License',\n        'Programming Language :: Python :: 2',\n        'Programming Language :: Python :: 2.7',\n        'Programming Language :: Python :: 3',\n        'Programming Language :: Python :: 3.8',\n        'Programming Language :: Python :: 3.9',\n        'Programming Language :: Python :: 3.10',\n        'Programming Language :: Python :: 3.11',\n        'Programming Language :: Python :: 3.12',\n        'Topic :: Scientific/Engineering :: Astronomy',\n      ],\n      packages = ['sgp4'],\n      package_data = {'sgp4': ['SGP4-VER.TLE', 'sample*', 'tcppver.out']},\n      ext_modules = ext_modules,\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "open",
+        "file.read",
+        "str.replace",
+        "compile",
+        "eval"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('SGP4_FORCE_COMPILE')",
+        "open('sgp4/__init__.py', 'rb')",
+        "file.read()",
+        "text.replace('-*- coding: utf-8 -*-', '')",
+        "compile(text, path, 'exec')",
+        "eval(compile(text, path, 'exec'), namespace)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "str.replace",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "compile",
+          "id": "compile_code_object",
+          "description": "Compiles source code string into executable code object",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "eval",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\nfrom distutils.core import setup, Extension\n\n# ...\n\nif sys.version_info[0] == 3:\n    optional = True\n    if os.environ.get('SGP4_FORCE_COMPILE') == 'true':\n        optional = False\n    ext_modules.append(Extension(\n        'sgp4.vallado_cpp',\n        optional=optional,\n        sources=[\n            'extension/SGP4.cpp',\n            'extension/wrapper.cpp',\n        ],\n        extra_compile_args=['-ffloat-store'],\n    ))\n\npath = 'sgp4/__init__.py'\nwith open(path, 'rb') as f:\n    text = f.read().decode('utf-8')\ntext = text.replace('-*- coding: utf-8 -*-', '')  # for Python 2.7\nnamespace = {}\neval(compile(text, path, 'exec'), namespace)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "sgp4-2.24",
+      "total_matches": 1
+    }
+  }
+]

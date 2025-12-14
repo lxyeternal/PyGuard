@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "coolprop-6.7.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "manage.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/coolprop-6.7.0/coolprop-6.7.0/externals/fmtlib/support/manage.py",
+    "line_number": "239",
+    "type_description": "B833:input",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "238\t    cmakelists = 'CMakeLists.txt'\n239\t    for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),\n240\t                                inplace=True):\n241\t        prefix = 'set(FMT_VERSION '",
+    "context_snippet": "def release(args):\n    env = create_build_env()\n    fmt_repo = env.fmt_repo\n\n    branch = args.get('<branch>')\n    if branch is None:\n        branch = 'master'\n    if not fmt_repo.update('-b', branch, fmt_repo_url):\n        clean_checkout(fmt_repo, branch)\n\n    # Convert changelog from RST to GitHub-flavored Markdown and get the\n    # version.\n    changelog = 'ChangeLog.rst'\n    changelog_path = os.path.join(fmt_repo.dir, changelog)\n    import rst2md\n    changes, version = rst2md.convert(changelog_path)\n    cmakelists = 'CMakeLists.txt'\n    for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),\n                                inplace=True):\n        prefix = 'set(FMT_VERSION '\n        if line.startswith(prefix):\n            line = prefix + version + ')\\n'\n        sys.stdout.write(line)\n\n    # Update the version in the changelog.\n    title_len = 0\n    for line in fileinput.input(changelog_path, inplace=True):\n        if line.startswith(version + ' - TBD'):\n            line = version + ' - ' + datetime.date.today().isoformat()\n            title_len = len(line)\n            line += '\\n'\n        elif title_len:\n            line = '-' * title_len + '\\n'\n            title_len = 0\n        sys.stdout.write(line)\n\n    # Add the version to the build script.\n    script = os.path.join('doc', 'build.py')\n    script_path = os.path.join(fmt_repo.dir, script)\n    for line in fileinput.input(script_path, inplace=True):\n      m = re.match(r'( *versions = )\\[(.+)\\]', line)\n      if m:\n        line = '{}[{}, \\'{}\\']\\n'.format(m.group(1), m.group(2), version)\n      sys.stdout.write(line)\n\n    fmt_repo.checkout('-B', 'release')\n    fmt_repo.add(changelog, cmakelists, script)\n    fmt_repo.commit('-m', 'Update version')\n\n    # Build the docs and package.\n    run = Runner(fmt_repo.dir)\n    run('cmake', '.')\n    run('make', 'doc', 'package_source')\n    update_site(env)\n\n    # Create a release on GitHub.\n    fmt_repo.push('origin', 'release')\n    auth_headers = {'Authorization': 'token ' + os.getenv('FMT_TOKEN')}\n    r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',\n                      headers=auth_headers,\n                      data=json.dumps({'tag_name': version,\n                                       'target_commitish': 'release',\n                                       'body': changes, 'draft': True}))\n    if r.status_code != 201:\n        raise Exception('Failed to create a release ' + str(r))\n    id = r.json()['id']\n    uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'\n    package = 'fmt-{}.zip'.format(version)\n    r = requests.post(\n        '{}/{}/assets?name={}'.format(uploads_url, id, package),\n        headers={'Content-Type': 'application/zip'} | auth_headers,\n        data=open('build/fmt/' + package, 'rb'))\n    if r.status_code != 201:\n        raise Exception('Failed to upload an asset ' + str(r))\n",
+    "hash_value": "68b3e5035ddaf7b8c111b02baaa4daa3"
+  }
+]

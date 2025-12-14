@@ -1,0 +1,156 @@
+{
+  "metadata": {
+    "package_name": "braintrust-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/braintrust-0.0.197.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "logger.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/braintrust-0.0.197/braintrust-0.0.197/src/braintrust/logger.py",
+      "line_number": "765",
+      "type_description": "B822:request",
+      "context_snippet": "    def flush(self, batch_size: Optional[int] = None):\n        if batch_size is None:\n            batch_size = self.default_batch_size\n\n        # We cannot have multiple threads flushing in parallel, because the\n        # order of published elements would be undefined.\n        with self.flush_lock:\n            # Drain the queue.\n            wrapped_items = []\n            try:\n                for _ in range(self.queue.qsize()):\n                    wrapped_items.append(self.queue.get_nowait())\n            except queue.Empty:\n                pass\n\n            all_items, attachments = self._unwrap_lazy_values(wrapped_items)\n            if len(all_items) == 0:\n                return\n\n            # Construct batches of records to flush in parallel and in sequence.\n            all_items_str = [[bt_dumps(item) for item in bucket] for bucket in all_items]\n            batch_sets = batch_items(\n                items=all_items_str, batch_max_num_items=batch_size, batch_max_num_bytes=self.max_request_size // 2\n            )\n            for batch_set in batch_sets:\n                post_promises = []\n                try:\n                    post_promises = [\n                        HTTP_REQUEST_THREAD_POOL.submit(self._submit_logs_request, batch) for batch in batch_set\n                    ]\n                except RuntimeError:\n                    # If the thread pool has shut down, e.g. because the process\n                    # is terminating, run the requests the old fashioned way.\n                    for batch in batch_set:\n                        self._submit_logs_request(batch)\n\n                concurrent.futures.wait(post_promises)\n                # Raise any exceptions from the promises as one group.\n                post_promise_exceptions = [e for e in (f.exception() for f in post_promises) if e is not None]\n                if post_promise_exceptions:\n                    raise exceptiongroup.BaseExceptionGroup(\n                        f\"Encountered the following errors while logging:\", post_promise_exceptions\n                    )\n\n            attachment_errors: List[Exception] = []\n            for attachment in attachments:\n                try:\n                    result = attachment.upload()\n                    if result[\"upload_status\"] == \"error\":\n                        raise RuntimeError(result.get(\"error_message\"))\n                except Exception as e:\n                    attachment_errors.append(e)\n\n            if len(attachment_errors) == 1:\n                raise attachment_errors[0]\n            elif len(attachment_errors) > 1:\n                raise exceptiongroup.ExceptionGroup(\n                    \"Encountered errors while uploading attachments\",\n                    attachment_errors,\n                )",
+      "hash_value": "a8a4bc0690015fada9ca25a0ed47815e",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    def flush(self, batch_size: Optional[int] = None):\n        if batch_size is None:\n            batch_size = self.default_batch_size\n\n        # We cannot have multiple threads flushing in parallel, because the\n        # order of published elements would be undefined.\n        with self.flush_lock:\n            # Drain the queue.\n            wrapped_items = []\n            try:\n                for _ in range(self.queue.qsize()):\n                    wrapped_items.append(self.queue.get_nowait())\n            except queue.Empty:\n                pass\n\n            all_items, attachments = self._unwrap_lazy_values(wrapped_items)\n            if len(all_items) == 0:\n                return\n\n            # Construct batches of records to flush in parallel and in sequence.\n            all_items_str = [[bt_dumps(item) for item in bucket] for bucket in all_items]\n            batch_sets = batch_items(\n                items=all_items_str, batch_max_num_items=batch_size, batch_max_num_bytes=self.max_request_size // 2\n            )\n            for batch_set in batch_sets:\n                post_promises = []\n                try:\n                    post_promises = [\n                        HTTP_REQUEST_THREAD_POOL.submit(self._submit_logs_request, batch) for batch in batch_set\n                    ]\n                except RuntimeError:\n                    # If the thread pool has shut down, e.g. because the process\n                    # is terminating, run the requests the old fashioned way.\n                    for batch in batch_set:\n                        self._submit_logs_request(batch)\n\n                concurrent.futures.wait(post_promises)\n                # Raise any exceptions from the promises as one group.\n                post_promise_exceptions = [e for e in (f.exception() for f in post_promises) if e is not None]\n                if post_promise_exceptions:\n                    raise exceptiongroup.BaseExceptionGroup(\n                        f\"Encountered the following errors while logging:\", post_promise_exceptions\n                    )\n\n            attachment_errors: List[Exception] = []\n            for attachment in attachments:\n                try:\n                    result = attachment.upload()\n                    if result[\"upload_status\"] == \"error\":\n                        raise RuntimeError(result.get(\"error_message\"))\n                except Exception as e:\n                    attachment_errors.append(e)\n\n            if len(attachment_errors) == 1:\n                raise attachment_errors[0]\n            elif len(attachment_errors) > 1:\n                raise exceptiongroup.ExceptionGroup(\n                    \"Encountered errors while uploading attachments\",\n                    attachment_errors,\n                )",
+          "triple_sequences": [
+            {
+              "action_api": "self.queue.qsize()",
+              "action_description": "Lists all currently alive threads",
+              "action_id": "list_threads",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.queue.get_nowait()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self._unwrap_lazy_values()",
+              "action_description": "Deserializes Python object from bytes",
+              "action_id": "deserialize_from_bytes",
+              "object": "wrapped_items",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "bt_dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "item",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "batch_items()",
+              "action_description": "Generate product of sequence",
+              "action_id": "generate_sequence_product",
+              "object": "items=all_items_str, batch_max_num_items=batch_size, batch_max_num_bytes=self.max_request_size // 2",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "HTTP_REQUEST_THREAD_POOL.submit()",
+              "action_description": "Submits function to thread pool",
+              "action_id": "submit_thread_function",
+              "object": "self._submit_logs_request, batch",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Run function in thread pool",
+              "intention_id": "run_function_thread_pool"
+            },
+            {
+              "action_api": "self._submit_logs_request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "batch",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Send data to server",
+              "intention_id": "send_data_server"
+            },
+            {
+              "action_api": "concurrent.futures.wait()",
+              "action_description": "Waits for thread to finish execution",
+              "action_id": "wait_thread",
+              "object": "post_promises",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "f.exception()",
+              "action_description": "Reads all bytes from process standard output",
+              "action_id": "read_process_stdout",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "exceptiongroup.BaseExceptionGroup()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "f\"Encountered the following errors while logging:\", post_promise_exceptions",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "attachment.upload()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Send file data to server",
+              "intention_id": "send_file_data_server"
+            },
+            {
+              "action_api": "result.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"error_message\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "exceptiongroup.ExceptionGroup()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "\"Encountered errors while uploading attachments\", attachment_errors",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

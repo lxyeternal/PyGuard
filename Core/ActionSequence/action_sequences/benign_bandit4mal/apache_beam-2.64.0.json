@@ -1,0 +1,383 @@
+[
+  {
+    "metadata": {
+      "package_name": "apache_beam-2.64.0",
+      "total_matches": 6,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "streaming_cache.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache_beam-2.64.0/apache_beam-2.64.0/apache_beam/runners/interactive/caching/streaming_cache.py",
+    "line_number": "310",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "309\n310\t    reader = StreamingCacheSource(\n311\t        self._cache_dir,\n312\t        labels,\n313\t        self._is_cache_complete,\n314\t        self.load_pcoder(*labels)).read(tail=tail)\n315",
+    "code_snippet": "def read(self, *labels, **args):\n    \"\"\"Returns a generator to read all records from file.\"\"\"\n    tail = args.pop('tail', False)\n\n    # Only immediately return when the file doesn't exist when the user wants a\n    # snapshot of the cache (when tail is false).\n    if not self.exists(*labels) and not tail:\n      return iter([]), -1\n\n    reader = StreamingCacheSource(\n        self._cache_dir,\n        labels,\n        self._is_cache_complete,\n        self.load_pcoder(*labels)).read(tail=tail)\n\n    # Return an empty iterator if there is nothing in the file yet. This can\n    # only happen when tail is False.\n    try:\n      header = next(reader)\n    except StopIteration:\n      return iter([]), -1\n    return StreamingCache.Reader([header], [reader]).read(), 1",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.exists",
+        "StreamingCacheSource.read",
+        "next",
+        "StreamingCache.Reader.read"
+      ],
+      "api_sequence_with_args": [
+        "self.exists(*labels)",
+        "StreamingCacheSource(self._cache_dir, labels, self._is_cache_complete, self.load_pcoder(*labels)).read(tail=tail)",
+        "next(reader)",
+        "StreamingCache.Reader([header], [reader]).read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "StreamingCacheSource.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "next",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "StreamingCache.Reader.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "def read(self, *labels, **args):\n    tail = args.pop('tail', False)\n    if not self.exists(*labels) and not tail:\n      return iter([]), -1\n\n    reader = StreamingCacheSource(\n        self._cache_dir,\n        labels,\n        self._is_cache_complete,\n        self.load_pcoder(*labels)).read(tail=tail)\n\n    try:\n      header = next(reader)\n    except StopIteration:\n      return iter([]), -1\n    return StreamingCache.Reader([header], [reader]).read(), 1"
+    }
+  },
+  {
+    "pyfile": "standard_coders_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache_beam-2.64.0/apache_beam-2.64.0/apache_beam/coders/standard_coders_test.py",
+    "line_number": "310",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "309\t      doc_sep = '\\n---\\n'\n310\t      docs = open(STANDARD_CODERS_YAML).read().split(doc_sep)\n311",
+    "code_snippet": "@classmethod\ndef tearDownClass(cls):\n    if cls.fix and cls.to_fix:\n      print(\"FIXING\", len(cls.to_fix), \"TESTS\")\n      doc_sep = '\\n---\\n'\n      docs = open(STANDARD_CODERS_YAML).read().split(doc_sep)\n\n      def quote(s):\n        return json.dumps(s.decode('latin1')).replace(r'\\u0000', r'\\0')\n\n      for (doc_ix, expected_encoded), actual_encoded in cls.to_fix.items():\n        print(quote(expected_encoded), \"->\", quote(actual_encoded))\n        docs[doc_ix] = docs[doc_ix].replace(\n            quote(expected_encoded) + ':', quote(actual_encoded) + ':')\n      open(STANDARD_CODERS_YAML, 'w').write(doc_sep.join(docs))",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "open.read",
+        "json.dumps",
+        "str.decode",
+        "json.dumps.replace",
+        "open",
+        "open.write"
+      ],
+      "api_sequence_with_args": [
+        "open(STANDARD_CODERS_YAML)",
+        "open(STANDARD_CODERS_YAML).read()",
+        "json.dumps(s.decode('latin1'))",
+        "s.decode('latin1')",
+        "json.dumps(s.decode('latin1')).replace(r'\\u0000', r'\\0')",
+        "open(STANDARD_CODERS_YAML, 'w')",
+        "open(STANDARD_CODERS_YAML, 'w').write(doc_sep.join(docs))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "str.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "json.dumps.replace",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "if cls.fix and cls.to_fix:\n    doc_sep = '\\n---\\n'\n    docs = open(STANDARD_CODERS_YAML).read().split(doc_sep)\n\n    def quote(s):\n        return json.dumps(s.decode('latin1')).replace(r'\\u0000', r'\\0')\n\n    for (doc_ix, expected_encoded), actual_encoded in cls.to_fix.items():\n        docs[doc_ix] = docs[doc_ix].replace(\n            quote(expected_encoded) + ':', quote(actual_encoded) + ':')\n    open(STANDARD_CODERS_YAML, 'w').write(doc_sep.join(docs))"
+    }
+  },
+  {
+    "pyfile": "flink_uber_jar_job_server.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache_beam-2.64.0/apache_beam-2.64.0/apache_beam/runners/portability/flink_uber_jar_job_server.py",
+    "line_number": "187",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "186\t    if flink_status == 'COMPLETED':\n187\t      flink_status = self.get('v1/jobs/%s' % self._flink_job_id)['state']\n188\t    beam_state = {",
+    "code_snippet": "  def _get_state(self):\n    \"\"\"Query flink to get the current state.\n\n    :return: tuple of int and Timestamp or None\n      timestamp will be None if the state has not changed since the last query.\n    \"\"\"\n    # For just getting the status, execution-result seems cheaper.\n    flink_status = self.get('v1/jobs/%s/execution-result' %\n                            self._flink_job_id)['status']['id']\n    if flink_status == 'COMPLETED':\n      flink_status = self.get('v1/jobs/%s' % self._flink_job_id)['state']\n    beam_state = {\n        'CREATED': beam_job_api_pb2.JobState.STARTING,\n        'RUNNING': beam_job_api_pb2.JobState.RUNNING,\n        'FAILING': beam_job_api_pb2.JobState.RUNNING,\n        'FAILED': beam_job_api_pb2.JobState.FAILED,\n        'CANCELLING': beam_job_api_pb2.JobState.CANCELLING,\n        'CANCELED': beam_job_api_pb2.JobState.CANCELLED,\n        'FINISHED': beam_job_api_pb2.JobState.DONE,\n        'RESTARTING': beam_job_api_pb2.JobState.RUNNING,\n        'SUSPENDED': beam_job_api_pb2.JobState.RUNNING,\n        'RECONCILING': beam_job_api_pb2.JobState.RUNNING,\n        'IN_PROGRESS': beam_job_api_pb2.JobState.RUNNING,\n        'COMPLETED': beam_job_api_pb2.JobState.DONE,\n    }.get(flink_status, beam_job_api_pb2.JobState.UNSPECIFIED)\n    if self.is_terminal_state(beam_state):\n      self.delete_jar()\n    # update the state history if it has changed\n    return beam_state, self.set_state(beam_state)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.get",
+        "self.get",
+        "self.is_terminal_state",
+        "self.delete_jar",
+        "self.set_state"
+      ],
+      "api_sequence_with_args": [
+        "self.get('v1/jobs/%s/execution-result' % self._flink_job_id)",
+        "self.get('v1/jobs/%s' % self._flink_job_id)",
+        "self.is_terminal_state(beam_state)",
+        "self.delete_jar()",
+        "self.set_state(beam_state)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "self.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "self.is_terminal_state",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.delete_jar",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.set_state",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        }
+      ],
+      "contextual_code": "def _get_state(self):\n    # For just getting the status, execution-result seems cheaper.\n    flink_status = self.get('v1/jobs/%s/execution-result' % self._flink_job_id)['status']['id']\n    if flink_status == 'COMPLETED':\n        flink_status = self.get('v1/jobs/%s' % self._flink_job_id)['state']\n    beam_state = {\n        'CREATED': beam_job_api_pb2.JobState.STARTING,\n        'RUNNING': beam_job_api_pb2.JobState.RUNNING,\n        'FAILING': beam_job_api_pb2.JobState.RUNNING,\n        'FAILED': beam_job_api_pb2.JobState.FAILED,\n        'CANCELLING': beam_job_api_pb2.JobState.CANCELLING,\n        'CANCELED': beam_job_api_pb2.JobState.CANCELLED,\n        'FINISHED': beam_job_api_pb2.JobState.DONE,\n        'RESTARTING': beam_job_api_pb2.JobState.RUNNING,\n        'SUSPENDED': beam_job_api_pb2.JobState.RUNNING,\n        'RECONCILING': beam_job_api_pb2.JobState.RUNNING,\n        'IN_PROGRESS': beam_job_api_pb2.JobState.RUNNING,\n        'COMPLETED': beam_job_api_pb2.JobState.DONE,\n    }.get(flink_status, beam_job_api_pb2.JobState.UNSPECIFIED)\n    if self.is_terminal_state(beam_state):\n        self.delete_jar()\n    return beam_state, self.set_state(beam_state)"
+    }
+  },
+  {
+    "pyfile": "textio_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache_beam-2.64.0/apache_beam-2.64.0/apache_beam/io/textio_test.py",
+    "line_number": "970",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "969\t      with gzip.GzipFile(file_name, 'wb') as f:\n970\t        f.write('\\n'.join(lines).encode('utf-8'))\n971",
+    "code_snippet": "def test_read_auto_gzip(self):\n    _, lines = write_data(15)\n    with TempDir() as tempdir:\n      file_name = tempdir.create_temp_file(suffix='.gz')\n\n      with gzip.GzipFile(file_name, 'wb') as f:\n        f.write('\\n'.join(lines).encode('utf-8'))\n\n      with TestPipeline() as pipeline:\n        pcoll = pipeline | 'Read' >> ReadFromText(file_name)\n        assert_that(pcoll, equal_to(lines))",
+    "pattern_analysis": {
+      "api_sequence": [
+        "TempDir.create_temp_file",
+        "gzip.GzipFile",
+        "gzip.GzipFile.write",
+        "gzip.GzipFile.close",
+        "TestPipeline",
+        "ReadFromText"
+      ],
+      "api_sequence_with_args": [
+        "TempDir.create_temp_file(suffix='.gz')",
+        "gzip.GzipFile(file_name, 'wb')",
+        "gzip.GzipFile.write('\\n'.join(lines).encode('utf-8'))",
+        "gzip.GzipFile.close()",
+        "TestPipeline()",
+        "ReadFromText(file_name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "TempDir.create_temp_file",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "gzip.GzipFile",
+          "id": "open_zip_write",
+          "description": "Opens ZIP archive for writing",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "gzip.GzipFile.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "gzip.GzipFile.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "TestPipeline",
+          "id": "init_setup_class",
+          "description": "Instantiates Setup class",
+          "first_id": "data_exfiltration",
+          "second_id": "data_transmission_channels",
+          "third_id": "exfiltration_channel_establishment"
+        },
+        {
+          "api_name": "ReadFromText",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "def test_read_auto_gzip(self):\n    _, lines = write_data(15)\n    with TempDir() as tempdir:\n        file_name = tempdir.create_temp_file(suffix='.gz')\n\n        with gzip.GzipFile(file_name, 'wb') as f:\n            f.write('\\n'.join(lines).encode('utf-8'))\n\n        with TestPipeline() as pipeline:\n            pcoll = pipeline | 'Read' >> ReadFromText(file_name)\n            assert_that(pcoll, equal_to(lines))"
+    }
+  },
+  {
+    "pyfile": "stager_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache_beam-2.64.0/apache_beam-2.64.0/apache_beam/runners/portability/stager_test.py",
+    "line_number": "542",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "541\t      with open(to_path, 'w') as f:\n542\t        f.write('Package content.')\n543\t      return to_path",
+    "code_snippet": "def file_download(_, to_path):\n  with open(to_path, 'w') as f:\n    f.write('Package content.')\n  return to_path",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "file.write"
+      ],
+      "api_sequence_with_args": [
+        "open(to_path, 'w')",
+        "file.write('Package content.')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "def file_download(_, to_path):\n  with open(to_path, 'w') as f:\n    f.write('Package content.')\n  return to_path"
+    }
+  },
+  {
+    "pyfile": "tft_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache_beam-2.64.0/apache_beam-2.64.0/apache_beam/ml/transforms/tft_test.py",
+    "line_number": "163",
+    "type_description": "B836:rmtree",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "162\t  def tearDown(self):\n163\t    shutil.rmtree(self.artifact_location)\n164",
+    "code_snippet": "class ScaleZScoreTest(unittest.TestCase):\n  def setUp(self) -> None:\n    self.artifact_location = tempfile.mkdtemp()\n\n  def tearDown(self):\n    shutil.rmtree(self.artifact_location)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "tempfile.mkdtemp",
+        "shutil.rmtree"
+      ],
+      "api_sequence_with_args": [
+        "tempfile.mkdtemp()",
+        "shutil.rmtree(self.artifact_location)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "tempfile.mkdtemp",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        }
+      ],
+      "contextual_code": "class ScaleZScoreTest(unittest.TestCase):\n  def setUp(self) -> None:\n    self.artifact_location = tempfile.mkdtemp()\n\n  def tearDown(self):\n    shutil.rmtree(self.artifact_location)"
+    }
+  }
+]

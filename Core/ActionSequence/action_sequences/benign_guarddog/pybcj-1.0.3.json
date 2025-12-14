@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\n\nfrom setuptools import Extension, setup\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.command.egg_info import egg_info\n\nsources = [\"src/ext/Bra.c\", \"src/ext/Bra86.c\", \"src/ext/BraIA64.c\", \"src/ext/_bcjmodule.c\"]\nkwargs = {\n    \"name\": \"bcj._bcj\",\n    \"include_dirs\": [\"src/ext\"],\n    \"library_dirs\": [],\n    \"libraries\": [],\n    \"sources\": sources,\n    \"define_macros\": [],\n}\npackages = [\"bcj\"]\nbinary_extension = Extension(**kwargs)\n\n\ndef has_option(option):\n    if option in sys.argv:\n        sys.argv = [s for s in sys.argv if s != option]\n        return True\n    else:\n        return False\n\n\nWARNING_AS_ERROR = has_option(\"--warning-as-error\")\n\n\nclass build_ext_compiler_check(build_ext):\n    def build_extensions(self):\n        for extension in self.extensions:\n            if self.compiler.compiler_type.lower() in (\"unix\", \"mingw32\"):\n                if WARNING_AS_ERROR:\n                    extension.extra_compile_args.append(\"-Werror\")\n            elif self.compiler.compiler_type.lower() == \"msvc\":\n                # /GF eliminates duplicate strings\n                # /Gy does function level linking\n                more_options = [\"/GF\", \"/Gy\"]\n                if WARNING_AS_ERROR:\n                    more_options.append(\"/WX\")\n                extension.extra_compile_args.extend(more_options)\n        super().build_extensions()\n\n\n# Work around pypa/setuptools#436.\nclass my_egg_info(egg_info):\n    def run(self):\n        try:\n            os.remove(os.path.join(self.egg_info, \"SOURCES.txt\"))\n        except FileNotFoundError:\n            pass\n        super().run()\n\n\nsetup(\n    package_dir={\"\": \"src\"},\n    ext_modules=[binary_extension],\n    packages=packages,\n    cmdclass={\"build_ext\": build_ext_compiler_check, \"egg_info\": my_egg_info},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.argv",
+        "os.remove",
+        "os.path.join"
+      ],
+      "api_sequence_with_args": [
+        "sys.argv",
+        "os.remove(os.path.join(self.egg_info, \"SOURCES.txt\"))",
+        "os.path.join(self.egg_info, \"SOURCES.txt\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\n\n# ...\n\ndef has_option(option):\n    if option in sys.argv:\n        sys.argv = [s for s in sys.argv if s != option]\n        return True\n    else:\n        return False\n\n# ...\n\nclass my_egg_info(egg_info):\n    def run(self):\n        try:\n            os.remove(os.path.join(self.egg_info, \"SOURCES.txt\"))\n        except FileNotFoundError:\n            pass\n        super().run()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pybcj-1.0.3",
+      "total_matches": 1
+    }
+  }
+]

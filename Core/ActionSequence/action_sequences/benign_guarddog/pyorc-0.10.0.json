@@ -1,0 +1,131 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport shutil\nimport subprocess\nimport platform\nimport logging\n\nclass BuildExt(build_ext):\n    \"\"\"\n    A custom build extension for build ORC Core library and handling\n    debug build on Windows.\n    \"\"\"\n\n    # ... (other methods and class variables omitted for brevity)\n\n    @staticmethod\n    def _get_build_envs() -> dict:\n        env = os.environ.copy()\n\n        if sys.platform != \"win32\":\n            env[\"CFLAGS\"] = \"-fPIC\"\n            env[\"CXXFLAGS\"] = \"-fPIC\"\n\n        return env\n\n    def _build_with_cmake(self) -> str:\n        build_type = \"DEBUG\" if self.debug else \"RELEASE\"\n\n        cmake_args = [\n            f\"-DCMAKE_BUILD_TYPE={build_type}\",\n            \"-DBUILD_JAVA=OFF\",\n            \"-DBUILD_LIBHDFSPP=OFF\",\n            \"-DCMAKE_POSITION_INDEPENDENT_CODE=ON\",\n        ]\n        if sys.platform == \"win32\":\n            cmake_args.append(\"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded\")\n        if not self.debug or sys.platform == \"win32\":\n            # Skip building tools and tests.\n            cmake_args.append(\"-DBUILD_TOOLS=OFF\")\n            cmake_args.append(\"-DBUILD_CPP_TESTS=OFF\")\n        env = self._get_build_envs()\n        build_dir = os.path.join(\n            self.output_dir, \"orc-{ver}\".format(ver=self.orc_version), \"build\"\n        )\n        if not os.path.exists(build_dir):\n            os.makedirs(build_dir)\n        logging.info(\"Build libraries with cmake\")\n        cmake_cmd = [\"cmake\", \"..\"] + cmake_args\n        logging.info(\"Cmake command: %s\" % cmake_cmd)\n        subprocess.check_call(cmake_cmd, cwd=build_dir, env=env)\n        if sys.platform == \"win32\":\n            subprocess.check_call(\n                [\n                    \"cmake\",\n                    \"--build\",\n                    \".\",\n                    \"--config\",\n                    build_type,\n                    \"--target\",\n                    \"PACKAGE\",\n                ],\n                cwd=build_dir,\n                env=env,\n            )\n        else:\n            j_flag = f\"-j{os.cpu_count() or 1}\"\n            subprocess.check_call([\"make\", j_flag, \"package\"], cwd=build_dir, env=env)\n        return build_dir\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.copy",
+        "sys.platform",
+        "os.path.join",
+        "os.path.exists",
+        "os.makedirs",
+        "logging.info",
+        "subprocess.check_call",
+        "sys.platform",
+        "subprocess.check_call",
+        "os.cpu_count",
+        "subprocess.check_call"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.copy()",
+        "sys.platform",
+        "os.path.join(self.output_dir, \"orc-{ver}\".format(ver=self.orc_version), \"build\")",
+        "os.path.exists(build_dir)",
+        "os.makedirs(build_dir)",
+        "logging.info(\"Build libraries with cmake\")",
+        "subprocess.check_call(cmake_cmd, cwd=build_dir, env=env)",
+        "sys.platform",
+        "subprocess.check_call([\"cmake\", \"--build\", \".\", \"--config\", build_type, \"--target\", \"PACKAGE\"], cwd=build_dir, env=env)",
+        "os.cpu_count()",
+        "subprocess.check_call([\"make\", j_flag, \"package\"], cwd=build_dir, env=env)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "logging.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "def _get_build_envs() -> dict:\n    env = os.environ.copy()\n    if sys.platform != \"win32\":\n        env[\"CFLAGS\"] = \"-fPIC\"\n        env[\"CXXFLAGS\"] = \"-fPIC\"\n    return env\n\ndef _build_with_cmake(self) -> str:\n    build_type = \"DEBUG\" if self.debug else \"RELEASE\"\n    cmake_args = [\n        f\"-DCMAKE_BUILD_TYPE={build_type}\",\n        \"-DBUILD_JAVA=OFF\",\n        \"-DBUILD_LIBHDFSPP=OFF\",\n        \"-DCMAKE_POSITION_INDEPENDENT_CODE=ON\",\n    ]\n    if sys.platform == \"win32\":\n        cmake_args.append(\"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded\")\n    if not self.debug or sys.platform == \"win32\":\n        cmake_args.append(\"-DBUILD_TOOLS=OFF\")\n        cmake_args.append(\"-DBUILD_CPP_TESTS=OFF\")\n    env = self._get_build_envs()\n    build_dir = os.path.join(self.output_dir, \"orc-{ver}\".format(ver=self.orc_version), \"build\")\n    if not os.path.exists(build_dir):\n        os.makedirs(build_dir)\n    logging.info(\"Build libraries with cmake\")\n    cmake_cmd = [\"cmake\", \"..\"] + cmake_args\n    logging.info(\"Cmake command: %s\" % cmake_cmd)\n    subprocess.check_call(cmake_cmd, cwd=build_dir, env=env)\n    if sys.platform == \"win32\":\n        subprocess.check_call([\n            \"cmake\",\n            \"--build\",\n            \".\",\n            \"--config\",\n            build_type,\n            \"--target\",\n            \"PACKAGE\",\n        ], cwd=build_dir, env=env)\n    else:\n        j_flag = f\"-j{os.cpu_count() or 1}\"\n        subprocess.check_call([\"make\", j_flag, \"package\"], cwd=build_dir, env=env)\n    return build_dir"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyorc-0.10.0",
+      "total_matches": 1
+    }
+  }
+]

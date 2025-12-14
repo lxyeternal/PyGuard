@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "pylibjpeg_openjpeg-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/pylibjpeg_openjpeg-2.4.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "utils.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pylibjpeg_openjpeg-2.4.0/pylibjpeg_openjpeg-2.4.0/openjpeg/utils.py",
+      "line_number": "189",
+      "type_description": "B814:read",
+      "context_snippet": "def decode(\n    stream: Union[str, os.PathLike, bytes, bytearray, BinaryIO],\n    j2k_format: Union[int, None] = None,\n    reshape: bool = True,\n) -> np.ndarray:\n    \"\"\"Return the decoded JPEG2000 data from `stream` as a :class:`numpy.ndarray`.\n\n    .. versionchanged:: 1.1\n\n        `stream` can now also be :class:`str` or :class:`pathlib.Path`\n\n    Parameters\n    ----------\n    stream : str, pathlib.Path, bytes, bytearray or file-like\n        The path to the JPEG 2000 file or a Python object containing the\n        encoded JPEG 2000 data. If using a file-like then the object must have\n        ``tell()``, ``seek()`` and ``read()`` methods.\n    j2k_format : int, optional\n        The JPEG 2000 format to use for decoding, one of:\n\n        * ``0``: JPEG-2000 codestream (such as from DICOM *Pixel Data*)\n        * ``1``: JPT-stream (JPEG 2000, JPIP)\n        * ``2``: JP2 file format\n    reshape : bool, optional\n        Reshape and re-view the output array so it matches the image data\n        (default), otherwise return a 1D array of ``np.uint8``.\n\n    Returns\n    -------\n    numpy.ndarray\n        An array of containing the decoded image data.\n\n    Raises\n    ------\n    RuntimeError\n        If the decoding failed.\n    \"\"\"\n    if isinstance(stream, (str, Path)):\n        with open(stream, \"rb\") as f:\n            buffer: BinaryIO = BytesIO(f.read())\n            buffer.seek(0)\n    elif isinstance(stream, (bytes, bytearray)):\n        buffer = BytesIO(stream)\n    else:\n        # BinaryIO\n        required_methods = [\"read\", \"tell\", \"seek\"]\n        if not all([hasattr(stream, meth) for meth in required_methods]):\n            raise TypeError(\n                \"The Python object containing the encoded JPEG 2000 data must \"\n                \"either be bytes or have read(), tell() and seek() methods.\"\n            )\n        buffer = cast(BinaryIO, stream)\n\n    if j2k_format is None:\n        j2k_format = _get_format(buffer)\n\n    if j2k_format not in [0, 1, 2]:\n        raise ValueError(f\"Unsupported 'j2k_format' value: {j2k_format}\")\n\n    return_code, arr = _openjpeg.decode(buffer, j2k_format, as_array=True)\n    if return_code != 0:\n        raise RuntimeError(\n            f\"Error decoding the J2K data: {DECODING_ERRORS.get(return_code, return_code)}\"\n        )\n\n    if not reshape:\n        return cast(np.ndarray, arr)\n\n    meta = get_parameters(buffer, j2k_format)\n    precision = cast(int, meta[\"precision\"])\n    rows = cast(int, meta[\"rows\"])\n    columns = cast(int, meta[\"columns\"])\n    pixels_per_sample = cast(int, meta[\"samples_per_pixel\"])\n    pixel_representation = cast(bool, meta[\"is_signed\"])\n    bpp = ceil(precision / 8)\n\n    bpp = 4 if bpp == 3 else bpp\n    dtype = f\"<u{bpp}\" if not pixel_representation else f\"<i{bpp}\"\n    arr = arr.view(dtype)\n\n    shape = [rows, columns]\n    if pixels_per_sample > 1:\n        shape.append(pixels_per_sample)\n\n    return cast(np.ndarray, arr.reshape(*shape))",
+      "hash_value": "b3ca9ba16c05d70d9db826dd4aa29f9b",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def decode(\n    stream: Union[str, os.PathLike, bytes, bytearray, BinaryIO],\n    j2k_format: Union[int, None] = None,\n    reshape: bool = True,\n) -> np.ndarray:\n    \"\"\"Return the decoded JPEG2000 data from `stream` as a :class:`numpy.ndarray`.\n\n    .. versionchanged:: 1.1\n\n        `stream` can now also be :class:`str` or :class:`pathlib.Path`\n\n    Parameters\n    ----------\n    stream : str, pathlib.Path, bytes, bytearray or file-like\n        The path to the JPEG 2000 file or a Python object containing the\n        encoded JPEG 2000 data. If using a file-like then the object must have\n        ``tell()``, ``seek()`` and ``read()`` methods.\n    j2k_format : int, optional\n        The JPEG 2000 format to use for decoding, one of:\n\n        * ``0``: JPEG-2000 codestream (such as from DICOM *Pixel Data*)\n        * ``1``: JPT-stream (JPEG 2000, JPIP)\n        * ``2``: JP2 file format\n    reshape : bool, optional\n        Reshape and re-view the output array so it matches the image data\n        (default), otherwise return a 1D array of ``np.uint8``.\n\n    Returns\n    -------\n    numpy.ndarray\n        An array of containing the decoded image data.\n\n    Raises\n    ------\n    RuntimeError\n        If the decoding failed.\n    \"\"\"\n    if isinstance(stream, (str, Path)):\n        with open(stream, \"rb\") as f:\n            buffer: BinaryIO = BytesIO(f.read())\n            buffer.seek(0)\n    elif isinstance(stream, (bytes, bytearray)):\n        buffer = BytesIO(stream)\n    else:\n        # BinaryIO\n        required_methods = [\"read\", \"tell\", \"seek\"]\n        if not all([hasattr(stream, meth) for meth in required_methods]):\n            raise TypeError(\n                \"The Python object containing the encoded JPEG 2000 data must \"\n                \"either be bytes or have read(), tell() and seek() methods.\"\n            )\n        buffer = cast(BinaryIO, stream)\n\n    if j2k_format is None:\n        j2k_format = _get_format(buffer)\n\n    if j2k_format not in [0, 1, 2]:\n        raise ValueError(f\"Unsupported 'j2k_format' value: {j2k_format}\")\n\n    return_code, arr = _openjpeg.decode(buffer, j2k_format, as_array=True)\n    if return_code != 0:\n        raise RuntimeError(\n            f\"Error decoding the J2K data: {DECODING_ERRORS.get(return_code, return_code)}\"\n        )\n\n    if not reshape:\n        return cast(np.ndarray, arr)\n\n    meta = get_parameters(buffer, j2k_format)\n    precision = cast(int, meta[\"precision\"])\n    rows = cast(int, meta[\"rows\"])\n    columns = cast(int, meta[\"columns\"])\n    pixels_per_sample = cast(int, meta[\"samples_per_pixel\"])\n    pixel_representation = cast(bool, meta[\"is_signed\"])\n    bpp = ceil(precision / 8)\n\n    bpp = 4 if bpp == 3 else bpp\n    dtype = f\"<u{bpp}\" if not pixel_representation else f\"<i{bpp}\"\n    arr = arr.view(dtype)\n\n    shape = [rows, columns]\n    if pixels_per_sample > 1:\n        shape.append(pixels_per_sample)\n\n    return cast(np.ndarray, arr.reshape(*shape))",
+          "triple_sequences": [
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "stream, \"rb\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "f.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "BytesIO()",
+              "action_description": "Creates in-memory bytes buffer from encoded string",
+              "action_id": "create_memory_bytes",
+              "object": "f.read() or stream",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "buffer.seek(0)",
+              "action_description": "Moves buffer pointer to start",
+              "action_id": "move_buffer_pointer",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "_get_format()",
+              "action_description": "Retrieves file status",
+              "action_id": "path_object_operations",
+              "object": "buffer",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "_openjpeg.decode()",
+              "action_description": "Decompresses zlib-compressed data",
+              "action_id": "decompress_data_zlib",
+              "object": "buffer, j2k_format, as_array=True",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Decompress zlib data",
+              "intention_id": "decompress_zlib_data"
+            },
+            {
+              "action_api": "get_parameters()",
+              "action_description": "Retrieves file status",
+              "action_id": "path_object_operations",
+              "object": "buffer, j2k_format",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "arr.view()",
+              "action_description": "Converts bytes to hexadecimal string",
+              "action_id": "convert_bytes_to_hex",
+              "object": "dtype",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "arr.reshape()",
+              "action_description": "Packs values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "*shape",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

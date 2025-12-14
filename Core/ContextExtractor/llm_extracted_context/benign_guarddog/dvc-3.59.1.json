@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "dvc-3.59.1",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/dvc-3.59.1.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "analytics.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dvc-3.59.1/dvc-3.59.1/dvc/analytics.py",
+    "line_number": "83",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "requests.post(url, json=report, headers=headers, timeout=5)",
+    "context_snippet": "def send(path):\n    \"\"\"\n    Side effect: Removes the report after sending it.\n\n    The report is generated and stored in a temporary file, see:\n    `collect_and_send_report`. Sending happens on another process,\n    thus, the need of removing such file afterwards.\n    \"\"\"\n    import requests\n\n    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, \"https://analytics.dvc.org\")\n    headers = {\"content-type\": \"application/json\"}\n\n    with open(path, encoding=\"utf-8\") as fobj:\n        report = json.load(fobj)\n\n    report.update(_runtime_info())\n\n    logger.debug(\"uploading report to %s\", url)\n    logger.trace(\"Sending %s to %s\", report, url)\n\n    try:\n        requests.post(url, json=report, headers=headers, timeout=5)\n    except requests.exceptions.RequestException as e:\n        logger.trace(\"\", exc_info=True)\n        logger.debug(\"failed to send analytics report %s\", str(e))\n\n    logger.trace(\"removing report %s\", path)\n    os.remove(path)\n\ndef _runtime_info():\n    \"\"\"\n    Gather information from the environment where DVC runs to fill a report.\n    \"\"\"\n    from iterative_telemetry import _generate_ci_id, find_or_create_user_id\n\n    from dvc import __version__\n    from dvc.utils import is_binary\n\n    ci_id = _generate_ci_id()\n    if ci_id:\n        group_id, user_id = ci_id\n    else:\n        group_id, user_id = None, find_or_create_user_id()\n\n    return {\n        \"dvc_version\": __version__,\n        \"is_binary\": is_binary(),\n        \"scm_class\": _scm_in_use(),\n        \"system_info\": _system_info(),\n        \"user_id\": user_id,\n        \"group_id\": group_id,\n    }\n\ndef _scm_in_use():\n    from dvc.exceptions import NotDvcRepoError\n    from dvc.repo import Repo\n    from dvc.scm import NoSCM\n\n    from .scm import SCM, SCMError\n\n    try:\n        scm = SCM(root_dir=Repo.find_root())\n        return type(scm).__name__\n    except SCMError:\n        return NoSCM.__name__\n    except NotDvcRepoError:\n        pass\n\ndef _system_info():\n    import platform\n    import sys\n\n    import distro\n\n    system = platform.system()\n\n    if system == \"Windows\":\n        version = sys.getwindowsversion()  # type: ignore[attr-defined]\n\n        return {\n            \"os\": \"windows\",\n            \"windows_version_build\": version.build,\n            \"windows_version_major\": version.major,\n            \"windows_version_minor\": version.minor,\n            \"windows_version_service_pack\": version.service_pack,\n        }\n\n    if system == \"Darwin\":\n        return {\"os\": \"mac\", \"mac_version\": platform.mac_ver()[0]}\n\n    if system == \"Linux\":\n        return {\n            \"os\": \"linux\",\n            \"linux_distro\": distro.id(),\n            \"linux_distro_like\": distro.like(),\n            \"linux_distro_version\": distro.version(),\n        }\n\n    # We don't collect data for any other system.\n    raise NotImplementedError",
+    "hash_value": "fc9c464d2adb0a5c64916a100fc051e3",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "updater.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dvc-3.59.1/dvc-3.59.1/dvc/updater.py",
+    "line_number": "106",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "resp = requests.get(url, timeout=self.TIMEOUT_GET)",
+    "context_snippet": "def _get_latest_version(self):\n    import json\n\n    import requests\n\n    url = os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)\n    logger.debug(\"Checking updates in %s\", url)\n    try:\n        resp = requests.get(url, timeout=self.TIMEOUT_GET)\n        info = resp.json()\n    except requests.exceptions.RequestException as exc:\n        logger.trace(\"\", exc_info=True)\n        logger.debug(\"Failed to retrieve latest version: %s\", exc)\n        return\n\n    logger.trace(\"received payload: %s (status=%s)\", info, resp.status_code)\n    with open(self.updater_file, \"w+\", encoding=\"utf-8\") as fobj:\n        logger.trace(\"Saving latest version info to %s\", self.updater_file)\n        json.dump(info, fobj)",
+    "hash_value": "716c097349e467dcd03111eb32ff0789",
+    "detection_index": 1
+  }
+]

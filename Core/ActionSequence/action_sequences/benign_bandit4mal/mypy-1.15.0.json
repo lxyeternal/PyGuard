@@ -1,0 +1,98 @@
+[
+  {
+    "metadata": {
+      "package_name": "mypy-1.15.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "testpythoneval.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/mypy-1.15.0/mypy-1.15.0/mypy/test/testpythoneval.py",
+    "line_number": "81",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "80\t        for s in testcase.input:\n81\t            file.write(f\"{s}\\n\")\n82\t    mypy_cmdline.append(f\"--cache-dir={cache_dir}\")",
+    "code_snippet": "def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None:\n    \"\"\"Runs Mypy in a subprocess.\n\n    If this passes without errors, executes the script again with a given Python\n    version.\n    \"\"\"\n    assert testcase.old_cwd is not None, \"test was not properly set up\"\n    # We must enable site packages to get access to installed stubs.\n    mypy_cmdline = [\n        \"--show-traceback\",\n        \"--no-silence-site-packages\",\n        \"--no-error-summary\",\n        \"--hide-error-codes\",\n        \"--allow-empty-bodies\",\n        \"--force-uppercase-builtins\",\n        \"--test-env\",  # Speeds up some checks\n    ]\n    interpreter = python3_path\n    mypy_cmdline.append(f\"--python-version={'.'.join(map(str, PYTHON3_VERSION))}\")\n\n    m = re.search(\"# flags: (.*)$\", \"\\n\".join(testcase.input), re.MULTILINE)\n    if m:\n        additional_flags = m.group(1).split()\n        for flag in additional_flags:\n            if flag.startswith(\"--python-version=\"):\n                targeted_python_version = flag.split(\"=\")[1]\n                targeted_major, targeted_minor = targeted_python_version.split(\".\")\n                if (int(targeted_major), int(targeted_minor)) > (\n                    sys.version_info.major,\n                    sys.version_info.minor,\n                ):\n                    return\n        mypy_cmdline.extend(additional_flags)\n\n    # Write the program to a file.\n    program = \"_\" + testcase.name + \".py\"\n    program_path = os.path.join(test_temp_dir, program)\n    mypy_cmdline.append(program_path)\n    with open(program_path, \"w\", encoding=\"utf8\") as file:\n        for s in testcase.input:\n            file.write(f\"{s}\\n\")\n    mypy_cmdline.append(f\"--cache-dir={cache_dir}\")\n    output = []\n    # Type check the program.\n    out, err, returncode = api.run(mypy_cmdline)\n    # split lines, remove newlines, and remove directory of test case\n    for line in (out + err).splitlines():\n        if line.startswith(test_temp_dir + os.sep):\n            output.append(line[len(test_temp_dir + os.sep) :].rstrip(\"\\r\\n\"))\n        else:\n            # Normalize paths so that the output is the same on Windows and Linux/macOS.\n            line = line.replace(test_temp_dir + os.sep, test_temp_dir + \"/\")\n            output.append(line.rstrip(\"\\r\\n\"))\n    if returncode > 1 and not testcase.output:\n        # Either api.run() doesn't work well in case of a crash, or pytest interferes with it.\n        # Tweak output to prevent tests with empty expected output to pass in case of a crash.\n        output.append(\"!!! Mypy crashed !!!\")\n    if returncode == 0 and not output:\n        # Execute the program.\n        proc = subprocess.run(\n            [interpreter, \"-Wignore\", program], cwd=test_temp_dir, capture_output=True\n        )\n        output.extend(split_lines(proc.stdout, proc.stderr))\n    # Remove temp file.\n    os.remove(program_path)\n    for i, line in enumerate(output):\n        if os.path.sep + \"typeshed\" + os.path.sep in line:\n            output[i] = line.split(os.path.sep)[-1]\n    assert_string_arrays_equal(\n        adapt_output(testcase), output, f\"Invalid output ({testcase.file}, line {testcase.line})\"\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "re.search",
+        "os.path.join",
+        "open",
+        "file.write",
+        "api.run",
+        "subprocess.run",
+        "os.remove"
+      ],
+      "api_sequence_with_args": [
+        "re.search(\"# flags: (.*)$\", \"\\n\".join(testcase.input), re.MULTILINE)",
+        "os.path.join(test_temp_dir, program)",
+        "open(program_path, \"w\", encoding=\"utf8\")",
+        "file.write(f\"{s}\\n\")",
+        "api.run(mypy_cmdline)",
+        "subprocess.run([interpreter, \"-Wignore\", program], cwd=test_temp_dir, capture_output=True)",
+        "os.remove(program_path)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "api.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "m = re.search(\"# flags: (.*)$\", \"\\n\".join(testcase.input), re.MULTILINE)\nif m:\n    additional_flags = m.group(1).split()\n    for flag in additional_flags:\n        if flag.startswith(\"--python-version=\"):\n            targeted_python_version = flag.split(\"=\")[1]\n            targeted_major, targeted_minor = targeted_python_version.split(\".\")\n            if (int(targeted_major), int(targeted_minor)) > (\n                sys.version_info.major,\n                sys.version_info.minor,\n            ):\n                return\n    mypy_cmdline.extend(additional_flags)\n\nprogram = \"_\" + testcase.name + \".py\"\nprogram_path = os.path.join(test_temp_dir, program)\nmypy_cmdline.append(program_path)\nwith open(program_path, \"w\", encoding=\"utf8\") as file:\n    for s in testcase.input:\n        file.write(f\"{s}\\n\")\n\nout, err, returncode = api.run(mypy_cmdline)\nif returncode == 0 and not output:\n    proc = subprocess.run(\n        [interpreter, \"-Wignore\", program], cwd=test_temp_dir, capture_output=True\n    )\n    output.extend(split_lines(proc.stdout, proc.stderr))\nos.remove(program_path)"
+    }
+  }
+]

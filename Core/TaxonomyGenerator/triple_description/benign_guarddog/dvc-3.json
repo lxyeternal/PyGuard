@@ -1,0 +1,225 @@
+{
+  "metadata": {
+    "package_name": "dvc-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/dvc-3.59.1.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "analytics.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dvc-3.59.1/dvc-3.59.1/dvc/analytics.py",
+      "line_number": "83",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "def send(path):\n    \"\"\"\n    Side effect: Removes the report after sending it.\n\n    The report is generated and stored in a temporary file, see:\n    `collect_and_send_report`. Sending happens on another process,\n    thus, the need of removing such file afterwards.\n    \"\"\"\n    import requests\n\n    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, \"https://analytics.dvc.org\")\n    headers = {\"content-type\": \"application/json\"}\n\n    with open(path, encoding=\"utf-8\") as fobj:\n        report = json.load(fobj)\n\n    report.update(_runtime_info())\n\n    logger.debug(\"uploading report to %s\", url)\n    logger.trace(\"Sending %s to %s\", report, url)\n\n    try:\n        requests.post(url, json=report, headers=headers, timeout=5)\n    except requests.exceptions.RequestException as e:\n        logger.trace(\"\", exc_info=True)\n        logger.debug(\"failed to send analytics report %s\", str(e))\n\n    logger.trace(\"removing report %s\", path)\n    os.remove(path)\n\ndef _runtime_info():\n    \"\"\"\n    Gather information from the environment where DVC runs to fill a report.\n    \"\"\"\n    from iterative_telemetry import _generate_ci_id, find_or_create_user_id\n\n    from dvc import __version__\n    from dvc.utils import is_binary\n\n    ci_id = _generate_ci_id()\n    if ci_id:\n        group_id, user_id = ci_id\n    else:\n        group_id, user_id = None, find_or_create_user_id()\n\n    return {\n        \"dvc_version\": __version__,\n        \"is_binary\": is_binary(),\n        \"scm_class\": _scm_in_use(),\n        \"system_info\": _system_info(),\n        \"user_id\": user_id,\n        \"group_id\": group_id,\n    }\n\ndef _scm_in_use():\n    from dvc.exceptions import NotDvcRepoError\n    from dvc.repo import Repo\n    from dvc.scm import NoSCM\n\n    from .scm import SCM, SCMError\n\n    try:\n        scm = SCM(root_dir=Repo.find_root())\n        return type(scm).__name__\n    except SCMError:\n        return NoSCM.__name__\n    except NotDvcRepoError:\n        pass\n\ndef _system_info():\n    import platform\n    import sys\n\n    import distro\n\n    system = platform.system()\n\n    if system == \"Windows\":\n        version = sys.getwindowsversion()  # type: ignore[attr-defined]\n\n        return {\n            \"os\": \"windows\",\n            \"windows_version_build\": version.build,\n            \"windows_version_major\": version.major,\n            \"windows_version_minor\": version.minor,\n            \"windows_version_service_pack\": version.service_pack,\n        }\n\n    if system == \"Darwin\":\n        return {\"os\": \"mac\", \"mac_version\": platform.mac_ver()[0]}\n\n    if system == \"Linux\":\n        return {\n            \"os\": \"linux\",\n            \"linux_distro\": distro.id(),\n            \"linux_distro_like\": distro.like(),\n            \"linux_distro_version\": distro.version(),\n        }\n\n    # We don't collect data for any other system.\n    raise NotImplementedError",
+      "hash_value": "fc9c464d2adb0a5c64916a100fc051e3",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def send(path):\n    \"\"\"\n    Side effect: Removes the report after sending it.\n\n    The report is generated and stored in a temporary file, see:\n    `collect_and_send_report`. Sending happens on another process,\n    thus, the need of removing such file afterwards.\n    \"\"\"\n    import requests\n\n    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, \"https://analytics.dvc.org\")\n    headers = {\"content-type\": \"application/json\"}\n\n    with open(path, encoding=\"utf-8\") as fobj:\n        report = json.load(fobj)\n\n    report.update(_runtime_info())\n\n    logger.debug(\"uploading report to %s\", url)\n    logger.trace(\"Sending %s to %s\", report, url)\n\n    try:\n        requests.post(url, json=report, headers=headers, timeout=5)\n    except requests.exceptions.RequestException as e:\n        logger.trace(\"\", exc_info=True)\n        logger.debug(\"failed to send analytics report %s\", str(e))\n\n    logger.trace(\"removing report %s\", path)\n    os.remove(path)\n\ndef _runtime_info():\n    \"\"\"\n    Gather information from the environment where DVC runs to fill a report.\n    \"\"\"\n    from iterative_telemetry import _generate_ci_id, find_or_create_user_id\n\n    from dvc import __version__\n    from dvc.utils import is_binary\n\n    ci_id = _generate_ci_id()\n    if ci_id:\n        group_id, user_id = ci_id\n    else:\n        group_id, user_id = None, find_or_create_user_id()\n\n    return {\n        \"dvc_version\": __version__,\n        \"is_binary\": is_binary(),\n        \"scm_class\": _scm_in_use(),\n        \"system_info\": _system_info(),\n        \"user_id\": user_id,\n        \"group_id\": group_id,\n    }\n\ndef _scm_in_use():\n    from dvc.exceptions import NotDvcRepoError\n    from dvc.repo import Repo\n    from dvc.scm import NoSCM\n\n    from .scm import SCM, SCMError\n\n    try:\n        scm = SCM(root_dir=Repo.find_root())\n        return type(scm).__name__\n    except SCMError:\n        return NoSCM.__name__\n    except NotDvcRepoError:\n        pass\n\ndef _system_info():\n    import platform\n    import sys\n\n    import distro\n\n    system = platform.system()\n\n    if system == \"Windows\":\n        version = sys.getwindowsversion()  # type: ignore[attr-defined]\n\n        return {\n            \"os\": \"windows\",\n            \"windows_version_build\": version.build,\n            \"windows_version_major\": version.major,\n            \"windows_version_minor\": version.minor,\n            \"windows_version_service_pack\": version.service_pack,\n        }\n\n    if system == \"Darwin\":\n        return {\"os\": \"mac\", \"mac_version\": platform.mac_ver()[0]}\n\n    if system == \"Linux\":\n        return {\n            \"os\": \"linux\",\n            \"linux_distro\": distro.id(),\n            \"linux_distro_like\": distro.like(),\n            \"linux_distro_version\": distro.version(),\n        }\n\n    # We don't collect data for any other system.\n    raise NotImplementedError",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "DVC_ANALYTICS_ENDPOINT",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "json.load()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "fobj",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "report.update()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "_runtime_info()",
+              "object_description": "System info",
+              "object_id": "system_info",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "url, json=report, headers=headers, timeout=5",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit data via HTTP POST",
+              "intention_id": "transmit_data_http_post"
+            },
+            {
+              "action_api": "os.remove()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "_generate_ci_id()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "find_or_create_user_id()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "is_binary()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "_scm_in_use()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "_system_info()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "SCM()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "root_dir=Repo.find_root()",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "type().__name__",
+              "action_description": "Retrieves attribute value",
+              "action_id": "get_os_id",
+              "object": "scm",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "NoSCM.__name__",
+              "action_description": "Retrieves attribute value",
+              "action_id": "get_os_id",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Extract structured data from file",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "platform.system()",
+              "action_description": "Retrieves operating system identifier",
+              "action_id": "get_os_id",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system name",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "sys.getwindowsversion()",
+              "action_description": "Retrieves operating system version",
+              "action_id": "get_os_version",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system version",
+              "intention_id": "get_operating_system_version"
+            },
+            {
+              "action_api": "platform.mac_ver()",
+              "action_description": "Retrieves operating system version",
+              "action_id": "get_os_version",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system version",
+              "intention_id": "get_operating_system_version"
+            },
+            {
+              "action_api": "distro.id()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system name",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "distro.like()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system name",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "distro.version()",
+              "action_description": "Instantiates class or function (custom)",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system version",
+              "intention_id": "get_operating_system_version"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

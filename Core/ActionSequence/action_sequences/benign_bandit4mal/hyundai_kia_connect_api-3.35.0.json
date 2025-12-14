@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "hyundai_kia_connect_api-3.35.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "KiaUvoApiCN.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/hyundai_kia_connect_api-3.35.0/hyundai_kia_connect_api-3.35.0/hyundai_kia_connect_api/KiaUvoApiCN.py",
+    "line_number": "928",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "927\n928\t        response30d = requests.post(\n929\t            url,\n930\t            json={\"periodTarget\": 0},\n931\t            headers=self._get_authenticated_headers(token),\n932\t        )",
+    "code_snippet": "def _get_driving_info(self, token: Token, vehicle: Vehicle) -> dict:\n    url = self.SPA_API_URL + \"vehicles/\" + vehicle.id + \"/drvhistory\"\n\n    responseAlltime = requests.post(\n        url,\n        json={\"periodTarget\": 1},\n        headers=self._get_authenticated_headers(token),\n    )\n    responseAlltime = responseAlltime.json()\n    _LOGGER.debug(f\"{DOMAIN} - get_driving_info responseAlltime {responseAlltime}\")\n    _check_response_for_errors(responseAlltime)\n\n    response30d = requests.post(\n        url,\n        json={\"periodTarget\": 0},\n        headers=self._get_authenticated_headers(token),\n    )\n    response30d = response30d.json()\n    _LOGGER.debug(f\"{DOMAIN} - get_driving_info response30d {response30d}\")\n    _check_response_for_errors(response30d)\n    if get_child_value(responseAlltime, \"resMsg.drivingInfoDetail.0\"):\n        drivingInfo = responseAlltime[\"resMsg\"][\"drivingInfoDetail\"][0]\n\n        drivingInfo[\"dailyStats\"] = []\n        for day in response30d[\"resMsg\"][\"drivingInfoDetail\"]:\n            processedDay = DailyDrivingStats(\n                date=dt.datetime.strptime(day[\"drivingDate\"], \"%Y%m%d\"),\n                total_consumed=day[\"totalPwrCsp\"],\n                engine_consumption=day[\"motorPwrCsp\"],\n                climate_consumption=day[\"climatePwrCsp\"],\n                onboard_electronics_consumption=day[\"eDPwrCsp\"],\n                battery_care_consumption=day[\"batteryMgPwrCsp\"],\n                regenerated_energy=day[\"regenPwr\"],\n                distance=day[\"calculativeOdo\"],\n                distance_unit=vehicle.odometer_unit,\n            )\n            drivingInfo[\"dailyStats\"].append(processedDay)\n\n        for drivingInfoItem in response30d[\"resMsg\"][\"drivingInfo\"]:\n            if drivingInfoItem[\"drivingPeriod\"] == 0:\n                drivingInfo[\"consumption30d\"] = round(\n                    drivingInfoItem[\"totalPwrCsp\"]\n                    / drivingInfoItem[\"calculativeOdo\"]\n                )\n                break\n\n        return drivingInfo\n    else:\n        _LOGGER.debug(\n            f\"{DOMAIN} - Driving info didn't return valid data. This may be normal if the car doesn't support it.\"\n        )\n        return None",
+    "pattern_analysis": {
+      "api_sequence": [
+        "requests.post",
+        "requests.post",
+        "dict.get",
+        "dict.get"
+      ],
+      "api_sequence_with_args": [
+        "requests.post(url, json={\"periodTarget\": 1}, headers=self._get_authenticated_headers(token))",
+        "requests.post(url, json={\"periodTarget\": 0}, headers=self._get_authenticated_headers(token))",
+        "responseAlltime.json()",
+        "response30d.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "dict.get('json')",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "dict.get('json')",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def _get_driving_info(self, token: Token, vehicle: Vehicle) -> dict:\n    url = self.SPA_API_URL + \"vehicles/\" + vehicle.id + \"/drvhistory\"\n\n    responseAlltime = requests.post(\n        url,\n        json={\"periodTarget\": 1},\n        headers=self._get_authenticated_headers(token),\n    )\n    responseAlltime = responseAlltime.json()\n    _LOGGER.debug(f\"{DOMAIN} - get_driving_info responseAlltime {responseAlltime}\")\n    _check_response_for_errors(responseAlltime)\n\n    response30d = requests.post(\n        url,\n        json={\"periodTarget\": 0},\n        headers=self._get_authenticated_headers(token),\n    )\n    response30d = response30d.json()\n    _LOGGER.debug(f\"{DOMAIN} - get_driving_info response30d {response30d}\")\n    _check_response_for_errors(response30d)\n    # ... rest of code omitted as it does not contain sensitive API calls"
+    }
+  }
+]

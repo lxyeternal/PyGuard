@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "nvitop-1.4.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "libcuda.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/nvitop-1.4.2/nvitop-1.4.2/nvitop/api/libcuda.py",
+    "line_number": "428",
+    "type_description": "B841:cdll",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "427\t                    try:\n428\t                        __cudaLib = _ctypes.CDLL(lib_filename)\n429\t                        break",
+    "code_snippet": "def __LoadCudaLibrary() -> None:\n    \"\"\"Load the library if it isn't loaded already.\n\n    Raises:\n        CUDAError_NotInitialized:\n            If cannot found the CUDA driver library.\n    \"\"\"\n    global __cudaLib  # pylint: disable=global-statement\n\n    if __cudaLib is None:\n        # Lock to ensure only one caller loads the library\n        with __libLoadLock:\n            # Ensure the library still isn't loaded\n            if __cudaLib is None:\n                # Platform specific libcuda location\n                system = _platform.system()\n                if system == 'Darwin':\n                    lib_filenames = [\n                        'libcuda.1.dylib',  # check library path first\n                        'libcuda.dylib',\n                        '/usr/local/cuda/lib/libcuda.1.dylib',\n                        '/usr/local/cuda/lib/libcuda.dylib',\n                    ]\n                elif system == 'Linux':\n                    lib_filenames = [\n                        'libcuda.so',  # check library path first\n                        '/usr/lib64/nvidia/libcuda.so',  # Redhat/CentOS/Fedora\n                        '/usr/lib/x86_64-linux-gnu/libcuda.so',  # Ubuntu\n                        '/usr/lib/wsl/lib/libcuda.so',  # WSL\n                    ]\n                    # Also add libraries with version suffix `.1`\n                    lib_filenames = list(\n                        _itertools.chain.from_iterable((f'{lib}.1', lib) for lib in lib_filenames),\n                    )\n                elif system == 'Windows':\n                    bits = 8 * _ctypes.sizeof(_ctypes.c_void_p)  # 64 or 32\n                    lib_filenames = [f'nvcuda{bits}.dll', 'nvcuda.dll']\n                # Open library\n                for lib_filename in lib_filenames:\n                    try:\n                        __cudaLib = _ctypes.CDLL(lib_filename)\n                        break\n                    except OSError:\n                        pass\n                if __cudaLib is None:\n                    _cudaCheckReturn(CUDA_ERROR_NOT_INITIALIZED)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "_platform.system",
+        "_ctypes.sizeof",
+        "_ctypes.CDLL",
+        "_cudaCheckReturn"
+      ],
+      "api_sequence_with_args": [
+        "_platform.system()",
+        "_ctypes.sizeof(_ctypes.c_void_p)",
+        "_ctypes.CDLL(lib_filename)",
+        "_cudaCheckReturn(CUDA_ERROR_NOT_INITIALIZED)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "_platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "_ctypes.sizeof",
+          "id": "get_python_major",
+          "description": "Retrieves major version of Python interpreter",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "_ctypes.CDLL",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "_cudaCheckReturn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def __LoadCudaLibrary() -> None:\n    global __cudaLib\n    if __cudaLib is None:\n        with __libLoadLock:\n            if __cudaLib is None:\n                system = _platform.system()\n                if system == 'Darwin':\n                    lib_filenames = [\n                        'libcuda.1.dylib',\n                        'libcuda.dylib',\n                        '/usr/local/cuda/lib/libcuda.1.dylib',\n                        '/usr/local/cuda/lib/libcuda.dylib',\n                    ]\n                elif system == 'Linux':\n                    lib_filenames = [\n                        'libcuda.so',\n                        '/usr/lib64/nvidia/libcuda.so',\n                        '/usr/lib/x86_64-linux-gnu/libcuda.so',\n                        '/usr/lib/wsl/lib/libcuda.so',\n                    ]\n                    lib_filenames = list(\n                        _itertools.chain.from_iterable((f'{lib}.1', lib) for lib in lib_filenames),\n                    )\n                elif system == 'Windows':\n                    bits = 8 * _ctypes.sizeof(_ctypes.c_void_p)\n                    lib_filenames = [f'nvcuda{bits}.dll', 'nvcuda.dll']\n                for lib_filename in lib_filenames:\n                    try:\n                        __cudaLib = _ctypes.CDLL(lib_filename)\n                        break\n                    except OSError:\n                        pass\n                if __cudaLib is None:\n                    _cudaCheckReturn(CUDA_ERROR_NOT_INITIALIZED)"
+    }
+  }
+]

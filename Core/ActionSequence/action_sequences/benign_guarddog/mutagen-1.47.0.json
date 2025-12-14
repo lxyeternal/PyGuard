@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\nimport tarfile\nimport shutil\nimport sys\n\nclass distcheck(sdist):\n\n    def _check_manifest(self):\n        assert self.get_archive_files()\n\n        # make sure MANIFEST.in includes all tracked files\n        if subprocess.call([\"git\", \"status\"],\n                           stdout=subprocess.PIPE,\n                           stderr=subprocess.PIPE) == 0:\n            # contains the packaged files after run() is finished\n            included_files = self.filelist.files\n            assert included_files\n\n            process = subprocess.Popen(\n                [\"git\", \"ls-tree\", \"-r\", \"HEAD\", \"--name-only\"],\n                stdout=subprocess.PIPE, universal_newlines=True)\n            out, err = process.communicate()\n            assert process.returncode == 0\n\n            tracked_files = out.splitlines()\n            to_ignore = [\n                \".gitignore\",\n                \".codecov.yml\",\n                \".github/workflows/test.yml\",\n                \".readthedocs.yaml\",\n                \"docs/requirements.txt\",\n            ]\n            for ignore in to_ignore:\n                tracked_files.remove(ignore)\n\n            tracked_files = [\n                f for f in tracked_files if os.path.dirname(f) != \"fuzzing\"]\n\n            diff = set(tracked_files) - set(included_files)\n            assert not diff, (\n                \"Not all tracked files included in tarball, check MANIFEST.in\",\n                diff)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "subprocess.call",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "os.path.dirname"
+      ],
+      "api_sequence_with_args": [
+        "subprocess.call([\"git\", \"status\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "subprocess.Popen([\"git\", \"ls-tree\", \"-r\", \"HEAD\", \"--name-only\"], stdout=subprocess.PIPE, universal_newlines=True)",
+        "subprocess.Popen.communicate()",
+        "os.path.dirname(f)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\n\nclass distcheck(sdist):\n    def _check_manifest(self):\n        # ...\n        if subprocess.call([\"git\", \"status\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:\n            # ...\n            process = subprocess.Popen([\n                \"git\", \"ls-tree\", \"-r\", \"HEAD\", \"--name-only\"],\n                stdout=subprocess.PIPE, universal_newlines=True)\n            out, err = process.communicate()\n            # ...\n            tracked_files = out.splitlines()\n            # ...\n            tracked_files = [\n                f for f in tracked_files if os.path.dirname(f) != \"fuzzing\"]\n            # ..."
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "mutagen-1.47.0",
+      "total_matches": 1
+    }
+  }
+]

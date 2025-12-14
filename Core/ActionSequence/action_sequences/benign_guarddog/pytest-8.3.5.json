@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "__init__.py",
+    "code_snippet": "def _resolve_warning_category(category: str) -> type[Warning]:\n    \"\"\"\n    Copied from warnings._getcategory, but changed so it lets exceptions (specially ImportErrors)\n    propagate so we can get access to their tracebacks (#9218).\n    \"\"\"\n    __tracebackhide__ = True\n    if not category:\n        return Warning\n\n    if \".\" not in category:\n        import builtins as m\n\n        klass = category\n    else:\n        module, _, klass = category.rpartition(\".\")\n        m = __import__(module, None, None, [klass])\n    cat = getattr(m, klass)\n    if not issubclass(cat, Warning):\n        raise UsageError(f\"{cat} is not a Warning subclass\")\n    return cast(Type[Warning], cat)\n\n# Data dependencies and relevant imports:\n# - 'getattr' is a built-in function\n# - 'UsageError' is imported from .exceptions\n# - 'cast', 'Type' are imported from typing\n# - 'Warning' is a built-in exception class\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "__import__",
+        "getattr",
+        "issubclass",
+        "cast"
+      ],
+      "api_sequence_with_args": [
+        "__import__(module, None, None, [klass])",
+        "getattr(m, klass)",
+        "issubclass(cat, Warning)",
+        "cast(Type[Warning], cat)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "__import__",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "issubclass",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "cast",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        }
+      ],
+      "contextual_code": "def _resolve_warning_category(category: str) -> type[Warning]:\n    if not category:\n        return Warning\n\n    if \".\" not in category:\n        import builtins as m\n        klass = category\n    else:\n        module, _, klass = category.rpartition(\".\")\n        m = __import__(module, None, None, [klass])\n    cat = getattr(m, klass)\n    if not issubclass(cat, Warning):\n        raise UsageError(f\"{cat} is not a Warning subclass\")\n    return cast(Type[Warning], cat)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pytest-8.3.5",
+      "total_matches": 1
+    }
+  }
+]

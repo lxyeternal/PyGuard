@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "package_name": "rosdistro-1.0.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "rosdistro_convert.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/rosdistro-1.0.1/rosdistro-1.0.1/src/rosdistro/cli/rosdistro_convert.py",
+    "line_number": "184",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "183\t        f.write('# see REP 137: http://ros.org/reps/rep-0137.html\\n')\n184\t        f.write('---\\n')\n185\t        f.write(yaml_str)",
+    "code_snippet": "def convert_release(dist_name, targets):\n    url = BASE_SRC_URL + '/releases/%s.yaml' % dist_name\n    print('Load \"%s\"' % url)\n    yaml_str = load_url(url)\n    input_ = yaml.safe_load(yaml_str)\n\n    # improve conversion performance by reusing results from last run\n    last_dist = None\n    if os.path.exists(dist_name + '/release.yaml'):\n        with open(dist_name + '/release.yaml', 'r') as f:\n            last_data = yaml.safe_load(f.read())\n            last_dist = ReleaseFile(dist_name, last_data)\n\n    output = {}\n    output['type'] = 'release'\n    output['version'] = 1\n    output['platforms'] = {'ubuntu': targets[dist_name]}\n    output['repositories'] = {}\n\n    for repo_name in sorted(input_['repositories']):\n        input_repo = input_['repositories'][repo_name]\n        output_repo = {}\n        output_repo['url'] = input_repo['url']\n        output_repo['version'] = input_repo['version']\n        if output_repo['version'] is None:\n            print('- \"' + repo_name + '\" has no version')\n            del output_repo['version']\n        pkg_name = repo_name\n        if 'packages' in input_repo:\n            output_repo['packages'] = {}\n            unary_repo = len(input_repo['packages']) == 1\n            for pkg_name in input_repo['packages']:\n                if unary_repo:\n                    if input_repo['packages'][pkg_name] is None:\n                        if pkg_name == repo_name:\n                            del output_repo['packages']\n                        else:\n                            output_repo['packages'][pkg_name] = {'subfolder': pkg_name}\n                    else:\n                        output_repo['packages'][pkg_name] = input_repo['packages'][pkg_name]\n                    break\n                output_repo['packages'][pkg_name] = None\n                if input_repo['packages'][pkg_name] is not None and input_repo['packages'][pkg_name] != pkg_name:\n                    output_repo['packages'][pkg_name] = {'subfolder': input_repo['packages'][pkg_name]}\n        output['repositories'][repo_name] = output_repo\n\n        if 'version' in output_repo and output_repo['version'] is not None:\n            tag_template = _get_tag_template(dist_name, output_repo, pkg_name, last_dist.repositories[repo_name] if last_dist and repo_name in last_dist.repositories else None)\n            output_repo['tags'] = {'release': tag_template}\n\n    yaml_str = yaml.dump(output, default_flow_style=False)\n    yaml_str = yaml_str.replace(': null', ':')\n    with open(dist_name + '/release.yaml', 'w') as f:\n        f.write('%YAML 1.1\\n')\n        f.write('# ROS release file\\n')\n        f.write('# see REP 137: http://ros.org/reps/rep-0137.html\\n')\n        f.write('---\\n')\n        f.write(yaml_str)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "open",
+        "yaml.safe_load",
+        "open",
+        "yaml.dump",
+        "open",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists(dist_name + '/release.yaml')",
+        "open(dist_name + '/release.yaml', 'r')",
+        "yaml.safe_load(yaml_str)",
+        "open(dist_name + '/release.yaml', 'w')",
+        "yaml.dump(output, default_flow_style=False)",
+        "open(dist_name + '/release.yaml', 'w')",
+        "open.write('%YAML 1.1\\n')",
+        "open.write('# ROS release file\\n')",
+        "open.write('# see REP 137: http://ros.org/reps/rep-0137.html\\n')",
+        "open.write('---\\n')",
+        "open.write(yaml_str)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "yaml.safe_load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "yaml.dump",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "if os.path.exists(dist_name + '/release.yaml'):\n    with open(dist_name + '/release.yaml', 'r') as f:\n        last_data = yaml.safe_load(f.read())\n\n# ...\n\nyaml_str = yaml.dump(output, default_flow_style=False)\nyaml_str = yaml_str.replace(': null', ':')\nwith open(dist_name + '/release.yaml', 'w') as f:\n    f.write('%YAML 1.1\\n')\n    f.write('# ROS release file\\n')\n    f.write('# see REP 137: http://ros.org/reps/rep-0137.html\\n')\n    f.write('---\\n')\n    f.write(yaml_str)"
+    }
+  }
+]

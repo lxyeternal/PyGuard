@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import subprocess\nimport sys\n\ndef check_krb5_config(*options, **kwargs):\n    try:\n        cmd = kwargs.get('command_name', 'krb5-config')\n        process = subprocess.Popen((cmd,) + options, stdout=subprocess.PIPE, universal_newlines=True)\n        output, unused_err = process.communicate()\n        retcode = process.poll()\n        if retcode:\n            raise subprocess.CalledProcessError(retcode, cmd, output=output)\n        return output.split()\n    except OSError as e:\n        if e.errno == 2 and cmd != \"krb5-config.mit\":\n            try:\n                return check_krb5_config(*options, command_name=\"krb5-config.mit\")\n            except OSError as e2:\n                if e2.errno == 2:\n                    raise Exception(\"You are missing krb5-config(.mit)\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.poll",
+        "subprocess.CalledProcessError"
+      ],
+      "api_sequence_with_args": [
+        "subprocess.Popen((cmd,) + options, stdout=subprocess.PIPE, universal_newlines=True)",
+        "subprocess.Popen.communicate()",
+        "subprocess.Popen.poll()",
+        "subprocess.CalledProcessError(retcode, cmd, output=output)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.poll",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "subprocess.CalledProcessError",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "import subprocess\n\ndef check_krb5_config(*options, **kwargs):\n    try:\n        cmd = kwargs.get('command_name', 'krb5-config')\n        process = subprocess.Popen((cmd,) + options, stdout=subprocess.PIPE, universal_newlines=True)\n        output, unused_err = process.communicate()\n        retcode = process.poll()\n        if retcode:\n            raise subprocess.CalledProcessError(retcode, cmd, output=output)\n        return output.split()\n    except OSError as e:\n        if e.errno == 2 and cmd != \"krb5-config.mit\":\n            try:\n                return check_krb5_config(*options, command_name=\"krb5-config.mit\")\n            except OSError as e2:\n                if e2.errno == 2:\n                    raise Exception(\"You are missing krb5-config(.mit)\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pykerberos-1.2.4",
+      "total_matches": 1
+    }
+  }
+]

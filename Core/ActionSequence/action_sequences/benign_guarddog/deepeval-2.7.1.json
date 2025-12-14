@@ -1,0 +1,141 @@
+[
+  {
+    "pyfile": "telemetry.py",
+    "code_snippet": "import requests\n\ndef get_anonymous_public_ip():\n    try:\n        response = requests.get(\"https://api.ipify.org\", timeout=5)\n        if response.status_code == 200:\n            return response.text\n    except requests.RequestException:\n        pass\n    return None\n\n# Data dependencies and relevant context:\n# - The function uses the 'requests' library, which is imported at the top.\n# - The function is called in the global scope to set 'anonymous_public_ip'.\nanonymous_public_ip = None\n\nif not telemetry_opt_out():\n    from opentelemetry import trace\n    from opentelemetry.sdk.trace import TracerProvider\n    from opentelemetry.sdk.trace.export import BatchSpanProcessor\n    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (\n        OTLPSpanExporter,\n    )\n\n    anonymous_public_ip = get_anonymous_public_ip()\n    sentry_sdk.init(\n        dsn=\"https://5ef587d58109ee45d6544f3657efdd1f@o4506098477236224.ingest.sentry.io/4506098479136768\",\n        profiles_sample_rate=1.0,\n        traces_sample_rate=1.0,  # For performance monitoring\n        send_default_pii=False,  # Don't send personally identifiable information\n        attach_stacktrace=False,  # Don't attach stack traces to messages\n        default_integrations=False,  # Disable Sentry's default integrations\n    )\n\n    # Set up the Tracer Provider\n    trace.set_tracer_provider(TracerProvider())\n    tracer_provider = trace.get_tracer_provider()\n\n    # New Relic License Key and OTLP Endpoint\n    NEW_RELIC_LICENSE_KEY = \"1711c684db8a30361a7edb0d0398772cFFFFNRAL\"\n    NEW_RELIC_OTLP_ENDPOINT = \"https://otlp.nr-data.net:4317\"\n    otlp_exporter = OTLPSpanExporter(\n        endpoint=NEW_RELIC_OTLP_ENDPOINT,\n        headers={\"api-key\": NEW_RELIC_LICENSE_KEY},\n    )\n\n    # Add the OTLP exporter to the span processor\n    span_processor = BatchSpanProcessor(otlp_exporter)\n    tracer_provider.add_span_processor(span_processor)\n\n    logging.getLogger(\"opentelemetry.exporter.otlp\").setLevel(logging.CRITICAL)\n\n    # Create a tracer for your application\n    tracer = trace.get_tracer(__name__)\n\n    # Initialize PostHog\n    posthog = Posthog(\n        project_api_key=\"phc_IXvGRcscJJoIb049PtjIZ65JnXQguOUZ5B5MncunFdB\",\n        host=\"https://us.i.posthog.com\",\n    )\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "telemetry_opt_out",
+        "requests.get",
+        "sentry_sdk.init",
+        "opentelemetry.trace.set_tracer_provider",
+        "opentelemetry.trace.get_tracer_provider",
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter",
+        "opentelemetry.sdk.trace.export.BatchSpanProcessor",
+        "opentelemetry.sdk.trace.TracerProvider.add_span_processor",
+        "logging.getLogger",
+        "logging.Logger.setLevel",
+        "opentelemetry.trace.get_tracer",
+        "Posthog"
+      ],
+      "api_sequence_with_args": [
+        "telemetry_opt_out()",
+        "requests.get(\"https://api.ipify.org\", timeout=5)",
+        "sentry_sdk.init(dsn=\"https://5ef587d58109ee45d6544f3657efdd1f@o4506098477236224.ingest.sentry.io/4506098479136768\", profiles_sample_rate=1.0, traces_sample_rate=1.0, send_default_pii=False, attach_stacktrace=False, default_integrations=False)",
+        "opentelemetry.trace.set_tracer_provider(TracerProvider())",
+        "opentelemetry.trace.get_tracer_provider()",
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter(endpoint=NEW_RELIC_OTLP_ENDPOINT, headers={\"api-key\": NEW_RELIC_LICENSE_KEY})",
+        "opentelemetry.sdk.trace.export.BatchSpanProcessor(otlp_exporter)",
+        "opentelemetry.sdk.trace.TracerProvider.add_span_processor(span_processor)",
+        "logging.getLogger(\"opentelemetry.exporter.otlp\")",
+        "logging.Logger.setLevel(logging.CRITICAL)",
+        "opentelemetry.trace.get_tracer(__name__)",
+        "Posthog(project_api_key=\"phc_IXvGRcscJJoIb049PtjIZ65JnXQguOUZ5B5MncunFdB\", host=\"https://us.i.posthog.com\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "telemetry_opt_out",
+          "id": "check_persistence_entry",
+          "description": "Checks if persistence entry exists for specified program name",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "startup_checking"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "sentry_sdk.init",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "opentelemetry.trace.set_tracer_provider",
+          "id": "init_setup_class",
+          "description": "Instantiates Setup class",
+          "first_id": "data_exfiltration",
+          "second_id": "data_transmission_channels",
+          "third_id": "exfiltration_channel_establishment"
+        },
+        {
+          "api_name": "opentelemetry.trace.get_tracer_provider",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter",
+          "id": "init_sender_class",
+          "description": "Instantiates Sender class",
+          "first_id": "data_exfiltration",
+          "second_id": "exfiltration_component_initialization",
+          "third_id": "exfiltration_component_creation"
+        },
+        {
+          "api_name": "opentelemetry.sdk.trace.export.BatchSpanProcessor",
+          "id": "init_logger_class",
+          "description": "Instantiates LOGGER class",
+          "first_id": "data_exfiltration",
+          "second_id": "exfiltration_component_initialization",
+          "third_id": "exfiltration_component_creation"
+        },
+        {
+          "api_name": "opentelemetry.sdk.trace.TracerProvider.add_span_processor",
+          "id": "add_http_header",
+          "description": "Adds HTTP header to request object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "logging.getLogger",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logging.Logger.setLevel",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "opentelemetry.trace.get_tracer",
+          "id": "init_details_class",
+          "description": "Instantiates Details class with configuration",
+          "first_id": "data_exfiltration",
+          "second_id": "exfiltration_component_initialization",
+          "third_id": "exfiltration_component_creation"
+        },
+        {
+          "api_name": "Posthog",
+          "id": "init_logger_class",
+          "description": "Instantiates LOGGER class",
+          "first_id": "data_exfiltration",
+          "second_id": "exfiltration_component_initialization",
+          "third_id": "exfiltration_component_creation"
+        }
+      ],
+      "contextual_code": "import requests\n\ndef get_anonymous_public_ip():\n    try:\n        response = requests.get(\"https://api.ipify.org\", timeout=5)\n        if response.status_code == 200:\n            return response.text\n    except requests.RequestException:\n        pass\n    return None\n\nanonymous_public_ip = None\n\nif not telemetry_opt_out():\n    from opentelemetry import trace\n    from opentelemetry.sdk.trace import TracerProvider\n    from opentelemetry.sdk.trace.export import BatchSpanProcessor\n    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (\n        OTLPSpanExporter,\n    )\n\n    anonymous_public_ip = get_anonymous_public_ip()\n    sentry_sdk.init(\n        dsn=\"https://5ef587d58109ee45d6544f3657efdd1f@o4506098477236224.ingest.sentry.io/4506098479136768\",\n        profiles_sample_rate=1.0,\n        traces_sample_rate=1.0,  # For performance monitoring\n        send_default_pii=False,  # Don't send personally identifiable information\n        attach_stacktrace=False,  # Don't attach stack traces to messages\n        default_integrations=False,  # Disable Sentry's default integrations\n    )\n\n    trace.set_tracer_provider(TracerProvider())\n    tracer_provider = trace.get_tracer_provider()\n\n    NEW_RELIC_LICENSE_KEY = \"1711c684db8a30361a7edb0d0398772cFFFFNRAL\"\n    NEW_RELIC_OTLP_ENDPOINT = \"https://otlp.nr-data.net:4317\"\n    otlp_exporter = OTLPSpanExporter(\n        endpoint=NEW_RELIC_OTLP_ENDPOINT,\n        headers={\"api-key\": NEW_RELIC_LICENSE_KEY},\n    )\n\n    span_processor = BatchSpanProcessor(otlp_exporter)\n    tracer_provider.add_span_processor(span_processor)\n\n    logging.getLogger(\"opentelemetry.exporter.otlp\").setLevel(logging.CRITICAL)\n\n    tracer = trace.get_tracer(__name__)\n\n    posthog = Posthog(\n        project_api_key=\"phc_IXvGRcscJJoIb049PtjIZ65JnXQguOUZ5B5MncunFdB\",\n        host=\"https://us.i.posthog.com\",\n    )"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "deepeval-2.7.1",
+      "total_matches": 1
+    }
+  }
+]

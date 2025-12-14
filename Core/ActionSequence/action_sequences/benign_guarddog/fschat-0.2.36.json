@@ -1,0 +1,82 @@
+[
+  {
+    "pyfile": "api_provider.py",
+    "code_snippet": "import json\nimport os\nimport random\nimport time\n\nimport requests\n\nfrom fastchat.utils import build_logger\n\nlogger = build_logger(\"gradio_web_server\", \"gradio_web_server.log\")\n\n# --- Context for Match 1 (Line 260): bard_api_stream_iter ---\ndef bard_api_stream_iter(model_name, conv, temperature, top_p, api_key=None):\n    del top_p  # not supported\n    del temperature  # not supported\n\n    if api_key is None:\n        api_key = os.environ[\"BARD_API_KEY\"]\n\n    # convert conv to conv_bard\n    conv_bard = []\n    for turn in conv:\n        if turn[\"role\"] == \"user\":\n            conv_bard.append({\"author\": \"0\", \"content\": turn[\"content\"]})\n        elif turn[\"role\"] == \"assistant\":\n            conv_bard.append({\"author\": \"1\", \"content\": turn[\"content\"]})\n        else:\n            raise ValueError(f\"Unsupported role: {turn['role']}\")\n\n    params = {\n        \"model\": model_name,\n        \"prompt\": conv_bard,\n    }\n    logger.info(f\"==== request ====\\n{params}\")\n\n    try:\n        res = requests.post(\n            f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\",\n            json={\n                \"prompt\": {\n                    \"messages\": conv_bard,\n                },\n            },\n            timeout=30,\n        )\n    except Exception as e:\n        logger.error(f\"==== error ====\\n{e}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {e}.\",\n            \"error_code\": 1,\n        }\n\n    if res.status_code != 200:\n        logger.error(f\"==== error ==== ({res.status_code}): {res.text}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: status code {res.status_code}.\",\n            \"error_code\": 1,\n        }\n\n    response_json = res.json()\n    if \"candidates\" not in response_json:\n        logger.error(f\"==== error ==== response blocked: {response_json}\")\n        reason = response_json[\"filters\"][0][\"reason\"]\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {reason}.\",\n            \"error_code\": 1,\n        }\n\n    response = response_json[\"candidates\"][0][\"content\"]\n    pos = 0\n    while pos < len(response):\n        # simulate token streaming\n        pos += random.randint(3, 6)\n        time.sleep(0.002)\n        data = {\n            \"text\": response[:pos],\n            \"error_code\": 0,\n        }\n        yield data\n\n# --- Context for Match 2 (Line 334): ai2_api_stream_iter ---\ndef ai2_api_stream_iter(\n    model_name,\n    model_id,\n    messages,\n    temperature,\n    top_p,\n    max_new_tokens,\n    api_key=None,\n    api_base=None,\n):\n    # get keys and needed values\n    ai2_key = api_key or os.environ.get(\"AI2_API_KEY\")\n    api_base = api_base or \"https://inferd.allen.ai/api/v1/infer\"\n\n    # Make requests\n    gen_params = {\n        \"model\": model_name,\n        \"prompt\": messages,\n        \"temperature\": temperature,\n        \"top_p\": top_p,\n        \"max_new_tokens\": max_new_tokens,\n    }\n    logger.info(f\"==== request ====\\n{gen_params}\")\n\n    # AI2 uses vLLM, which requires that `top_p` be 1.0 for greedy sampling:\n    # https://github.com/vllm-project/vllm/blob/v0.1.7/vllm/sampling_params.py#L156-L157\n    if temperature == 0.0 and top_p < 1.0:\n        raise ValueError(\"top_p must be 1 when temperature is 0.0\")\n\n    res = requests.post(\n        api_base,\n        stream=True,\n        headers={\"Authorization\": f\"Bearer {ai2_key}\"},\n        json={\n            \"model_id\": model_id,\n            # This input format is specific to the Tulu2 model. Other models\n            # may require different input formats. See the model's schema\n            # documentation on InferD for more information.\n            \"input\": {\n                \"messages\": messages,\n                \"opts\": {\n                    \"max_tokens\": max_new_tokens,\n                    \"temperature\": temperature,\n                    \"top_p\": top_p,\n                    \"logprobs\": 1,  # increase for more choices\n                },\n            },\n        },\n        timeout=5,\n    )\n\n    if res.status_code != 200:\n        logger.error(f\"unexpected response ({res.status_code}): {res.text}\")\n        raise ValueError(\"unexpected response from InferD\", res)\n\n    text = \"\"\n    for line in res.iter_lines():\n        if line:\n            part = json.loads(line)\n            if \"result\" in part and \"output\" in part[\"result\"]:\n                for t in part[\"result\"][\"output\"][\"text\"]:\n                    text += t\n            else:\n                logger.error(f\"unexpected part: {part}\")\n                raise ValueError(\"empty result in InferD response\")\n\n            data = {\n                \"text\": text,\n                \"error_code\": 0,\n            }\n            yield data\n\n# --- Context for Match 3 (Line 443): nvidia_api_stream_iter ---\ndef nvidia_api_stream_iter(model_name, messages, temp, top_p, max_tokens, api_base):\n    assert model_name in [\"llama2-70b-steerlm-chat\", \"yi-34b-chat\"]\n\n    api_key = os.environ[\"NVIDIA_API_KEY\"]\n    headers = {\n        \"Authorization\": f\"Bearer {api_key}\",\n        \"accept\": \"text/event-stream\",\n        \"content-type\": \"application/json\",\n    }\n    # nvidia api does not accept 0 temperature\n    if temp == 0.0:\n        temp = 0.0001\n\n    payload = {\n        \"messages\": messages,\n        \"temperature\": temp,\n        \"top_p\": top_p,\n        \"max_tokens\": max_tokens,\n        \"seed\": 42,\n        \"stream\": True,\n    }\n    logger.info(f\"==== request ====\\n{payload}\")\n\n    response = requests.post(\n        api_base, headers=headers, json=payload, stream=True, timeout=1\n    )\n    text = \"\"\n    for line in response.iter_lines():\n        if line:\n            data = line.decode(\"utf-8\")\n            if data.endswith(\"[DONE]\"):\n                break\n            data = json.loads(data[6:])[\"choices\"][0][\"delta\"][\"content\"]\n            text += data\n            yield {\"text\": text, \"error_code\": 0}\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "requests.post",
+        "requests.post",
+        "requests.post",
+        "requests.post",
+        "json.loads",
+        "json.loads"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"BARD_API_KEY\"]",
+        "requests.post(f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\", json={\"prompt\": {\"messages\": conv_bard}}, timeout=30)",
+        "requests.post(api_base, stream=True, headers={\"Authorization\": f\"Bearer {ai2_key}\"}, json={...}, timeout=5)",
+        "requests.post(api_base, headers=headers, json=payload, stream=True, timeout=1)",
+        "json.loads(line)",
+        "json.loads(data[6:])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import json\nimport os\nimport random\nimport time\nimport requests\nfrom fastchat.utils import build_logger\n\nlogger = build_logger(\"gradio_web_server\", \"gradio_web_server.log\")\n\ndef bard_api_stream_iter(model_name, conv, temperature, top_p, api_key=None):\n    del top_p  # not supported\n    del temperature  # not supported\n\n    if api_key is None:\n        api_key = os.environ[\"BARD_API_KEY\"]\n\n    conv_bard = []\n    for turn in conv:\n        if turn[\"role\"] == \"user\":\n            conv_bard.append({\"author\": \"0\", \"content\": turn[\"content\"]})\n        elif turn[\"role\"] == \"assistant\":\n            conv_bard.append({\"author\": \"1\", \"content\": turn[\"content\"]})\n        else:\n            raise ValueError(f\"Unsupported role: {turn['role']}\")\n\n    params = {\n        \"model\": model_name,\n        \"prompt\": conv_bard,\n    }\n    logger.info(f\"==== request ====\\n{params}\")\n\n    try:\n        res = requests.post(\n            f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\",\n            json={\n                \"prompt\": {\n                    \"messages\": conv_bard,\n                },\n            },\n            timeout=30,\n        )\n    except Exception as e:\n        logger.error(f\"==== error ====\\n{e}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {e}.\",\n            \"error_code\": 1,\n        }\n\n    if res.status_code != 200:\n        logger.error(f\"==== error ==== ({res.status_code}): {res.text}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: status code {res.status_code}.\",\n            \"error_code\": 1,\n        }\n\n    response_json = res.json()\n    if \"candidates\" not in response_json:\n        logger.error(f\"==== error ==== response blocked: {response_json}\")\n        reason = response_json[\"filters\"][0][\"reason\"]\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {reason}.\",\n            \"error_code\": 1,\n        }\n\n    response = response_json[\"candidates\"][0][\"content\"]\n    pos = 0\n    while pos < len(response):\n        pos += random.randint(3, 6)\n        time.sleep(0.002)\n        data = {\n            \"text\": response[:pos],\n            \"error_code\": 0,\n        }\n        yield data\n\ndef ai2_api_stream_iter(\n    model_name,\n    model_id,\n    messages,\n    temperature,\n    top_p,\n    max_new_tokens,\n    api_key=None,\n    api_base=None,\n):\n    ai2_key = api_key or os.environ.get(\"AI2_API_KEY\")\n    api_base = api_base or \"https://inferd.allen.ai/api/v1/infer\"\n\n    gen_params = {\n        \"model\": model_name,\n        \"prompt\": messages,\n        \"temperature\": temperature,\n        \"top_p\": top_p,\n        \"max_new_tokens\": max_new_tokens,\n    }\n    logger.info(f\"==== request ====\\n{gen_params}\")\n\n    if temperature == 0.0 and top_p < 1.0:\n        raise ValueError(\"top_p must be 1 when temperature is 0.0\")\n\n    res = requests.post(\n        api_base,\n        stream=True,\n        headers={\"Authorization\": f\"Bearer {ai2_key}\"},\n        json={\n            \"model_id\": model_id,\n            \"input\": {\n                \"messages\": messages,\n                \"opts\": {\n                    \"max_tokens\": max_new_tokens,\n                    \"temperature\": temperature,\n                    \"top_p\": top_p,\n                    \"logprobs\": 1,\n                },\n            },\n        },\n        timeout=5,\n    )\n\n    if res.status_code != 200:\n        logger.error(f\"unexpected response ({res.status_code}): {res.text}\")\n        raise ValueError(\"unexpected response from InferD\", res)\n\n    text = \"\"\n    for line in res.iter_lines():\n        if line:\n            part = json.loads(line)\n            if \"result\" in part and \"output\" in part[\"result\"]:\n                for t in part[\"result\"][\"output\"][\"text\"]:\n                    text += t\n            else:\n                logger.error(f\"unexpected part: {part}\")\n                raise ValueError(\"empty result in InferD response\")\n\n            data = {\n                \"text\": text,\n                \"error_code\": 0,\n            }\n            yield data\n\ndef nvidia_api_stream_iter(model_name, messages, temp, top_p, max_tokens, api_base):\n    assert model_name in [\"llama2-70b-steerlm-chat\", \"yi-34b-chat\"]\n\n    api_key = os.environ[\"NVIDIA_API_KEY\"]\n    headers = {\n        \"Authorization\": f\"Bearer {api_key}\",\n        \"accept\": \"text/event-stream\",\n        \"content-type\": \"application/json\",\n    }\n    if temp == 0.0:\n        temp = 0.0001\n\n    payload = {\n        \"messages\": messages,\n        \"temperature\": temp,\n        \"top_p\": top_p,\n        \"max_tokens\": max_tokens,\n        \"seed\": 42,\n        \"stream\": True,\n    }\n    logger.info(f\"==== request ====\\n{payload}\")\n\n    response = requests.post(\n        api_base, headers=headers, json=payload, stream=True, timeout=1\n    )\n    text = \"\"\n    for line in response.iter_lines():\n        if line:\n            data = line.decode(\"utf-8\")\n            if data.endswith(\"[DONE]\"):\n                break\n            data = json.loads(data[6:])[\"choices\"][0][\"delta\"][\"content\"]\n            text += data\n            yield {\"text\": text, \"error_code\": 0}\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "fschat-0.2.36",
+      "total_matches": 3
+    }
+  }
+]

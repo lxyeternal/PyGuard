@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "tfds_nightly-4.9.8.dev202504110044",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "cifar10_h.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tfds_nightly-4.9.8.dev202504110044/tfds_nightly-4.9.8.dev202504110044/tensorflow_datasets/image_classification/cifar10_h/cifar10_h.py",
+    "line_number": "122",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "121\t      with epath.Path(labels_path).open() as label_f:\n122\t        label_names = [name for name in label_f.read().split(\"\\n\") if name]\n123\t      self.info.features[label_key].names = label_names",
+    "context_snippet": "def _split_generators(self, dl_manager):\n    \"\"\"Returns SplitGenerators.\"\"\"\n    cifar_path = dl_manager.download_and_extract(self._cifar_info.url)\n    cifar_info = self._cifar_info\n\n    cifar_path = os.path.join(cifar_path, cifar_info.prefix)\n\n    human_annotations_path = dl_manager.download_and_extract(\n        self._cifar_info.human_annotations_url\n    )\n    human_annotations_file = os.path.join(\n        human_annotations_path, \"cifar10h-raw.csv\"\n    )\n\n    # Load the label names\n    for label_key, label_file in zip(\n        cifar_info.label_keys, cifar_info.label_files\n    ):\n      labels_path = os.path.join(cifar_path, label_file)\n      with epath.Path(labels_path).open() as label_f:\n        label_names = [name for name in label_f.read().split(\"\\n\") if name]\n      self.info.features[label_key].names = label_names\n\n    # Define the splits\n    def gen_filenames(filenames):\n      for f in filenames:\n        yield os.path.join(cifar_path, f)\n\n    return {\n        \"train\": self._generate_examples(\n            \"train_\",\n            gen_filenames(cifar_info.train_files),\n            human_annotations_file,\n        ),\n        \"test\": self._generate_examples(\n            \"test_\",\n            gen_filenames(cifar_info.test_files),\n            human_annotations_file,\n        ),\n    }",
+    "hash_value": "3ff207e47790a3eb640642ad964bdfee"
+  },
+  {
+    "pyfile": "shuffle.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tfds_nightly-4.9.8.dev202504110044/tfds_nightly-4.9.8.dev202504110044/tensorflow_datasets/core/shuffle.py",
+    "line_number": "180",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "179\t    self._fobj.write(struct.pack('=Q', data_size))\n180\t    self._fobj.write(data)\n181\t    self._length += 1",
+    "context_snippet": "class _Bucket(object):\n  \"\"\"Holds (key, binary value) tuples to disk, fast.\n\n  Bucket instances are designed to be used either:\n    1. Many buckets are written in parallel, then they are read one by one. When\n    reading, the data can be fully loaded in memory to be sorted.\n    This is how buckets are currently used in Shuffler.\n    2. Buckets are being written one at a time (or on different machines/jobs).\n    Before writing the data, it is sorted in memory. Many bucket are read in\n    parallel.\n    This is not currently used, but could be if we decide do parallelize the\n    writing of final sharded tfrecord files.\n\n  File format (assuming a key of 16 bytes):\n    key1 (16 bytes) | size1 (8 bytes) | data1 (size1 bytes) |\n    key2 (16 bytes) | size2 (8 bytes) | data2 (size2 bytes) |\n    ...\n  \"\"\"\n\n  def __init__(self, path: epath.Path):\n    \"\"\"Initialize a _Bucket instance.\n\n    Args:\n      path: Path to bucket file, where to write to or read from.\n    \"\"\"\n    self._path = path\n    self._fobj = None\n    self._length = 0\n    self._size = 0\n\n  @property\n  def size(self) -> int:\n    return self._size\n\n  def __len__(self) -> int:\n    return self._length\n\n  def add(self, key: type_utils.Key, data: bytes):\n    \"\"\"Adds (key, data) to bucket.\n\n    Args:\n      key (int): the key.\n      data (binary): the data.\n    \"\"\"\n    if not self._fobj:\n      file_utils.makedirs_cached(os.path.dirname(self._path))\n      self._fobj = tf.io.gfile.GFile(self._path, mode='wb')\n    data_size = len(data)\n\n    try:\n      self._fobj.write(_hkey_to_bytes(key))\n    except tf.errors.ResourceExhaustedError as error:\n      # catch \"Too many open files\"\n      if error.message.endswith('Too many open files'):\n        _increase_open_files_limit()\n        self._fobj.write(_hkey_to_bytes(key))\n      else:\n        raise error\n    # http://docs.python.org/3/library/struct.html#byte-order-size-and-alignment\n    # The equal sign (\"=\") is important here, has it guarantees the standard\n    # size (Q: 8 bytes) is used, as opposed to native size, which can differ\n    # from one platform to the other. This way we know exactly 8 bytes have been\n    # written, and we can read that same amount of bytes later.\n    # We do not specify endianess (platform dependent), but this is OK since the\n    # temporary files are going to be written and read by the same platform.\n    self._fobj.write(struct.pack('=Q', data_size))\n    self._fobj.write(data)\n    self._length += 1\n    self._size += data_size",
+    "hash_value": "c23bfac69a7c72e3998447fb51e00dc0"
+  }
+]

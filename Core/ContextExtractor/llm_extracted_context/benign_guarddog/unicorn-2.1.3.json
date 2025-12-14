@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "unicorn-2.1.3",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/unicorn-2.1.3.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/unicorn-2.1.3/unicorn-2.1.3/setup.py",
+    "line_number": "116",
+    "type_description": "code-execution",
+    "original_snippet": "subprocess.check_call(['msbuild', 'unicorn.sln', '-m', '-p:Platform=' + plat, '-p:Configuration=' + conf],\ncwd=BUILD_DIR)",
+    "context_snippet": "def build_libraries():\n    \"\"\"\n    Prepare the unicorn directory for a binary distribution or installation.\n    Builds shared libraries and copies header files.\n\n    Will use a src/ dir if one exists in the current directory, otherwise assumes it's in the repo\n    \"\"\"\n    clean_bins()\n    os.mkdir(HEADERS_DIR)\n    os.mkdir(LIBS_DIR)\n\n    # copy public headers\n    shutil.copytree(os.path.join(UC_DIR, 'include', 'unicorn'), os.path.join(HEADERS_DIR, 'unicorn'))\n\n    # check if a prebuilt library exists and if so, use it instead of building\n    if os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE)):\n        shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', LIBRARY_FILE), LIBS_DIR)\n        if STATIC_LIBRARY_FILE is not None and os.path.exists(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE)):\n            shutil.copy(os.path.join(ROOT_DIR, 'prebuilt', STATIC_LIBRARY_FILE), LIBS_DIR)\n        return\n\n    # otherwise, build\n    if not os.path.exists(BUILD_DIR):\n        os.mkdir(BUILD_DIR)\n\n    has_msbuild = shutil.which('msbuild') is not None\n    conf = 'Debug' if int(os.getenv('DEBUG', 0)) else 'Release'\n    cmake_args = ['cmake', '-B', BUILD_DIR, \"-DCMAKE_BUILD_TYPE=\" + conf, \"-DUNICORN_BUILD_TESTS=off\"]\n    if os.getenv(\"UNICORN_TRACER\"):\n        cmake_args += [\"-DUNICORN_TRACER=on\"]\n    if conf == 'Debug':\n        cmake_args += [\"-DUNICORN_LOGGING=on\"]\n\n    if has_msbuild and sys.platform == 'win32':\n        generators = os.getenv('GENERATORS') or 'Visual Studio 16 2019'\n        plat = 'Win32' if platform.architecture()[0] == '32bit' else 'x64'\n        cmake_args += ['-G', generators, \"-A\", plat]\n        subprocess.check_call(cmake_args, cwd=UC_DIR)\n        subprocess.check_call(['msbuild', 'unicorn.sln', '-m', '-p:Platform=' + plat, '-p:Configuration=' + conf],\n                              cwd=BUILD_DIR)\n\n        obj_dir = os.path.join(BUILD_DIR, conf)\n        shutil.copy(os.path.join(obj_dir, LIBRARY_FILE), LIBS_DIR)\n        shutil.copy(os.path.join(obj_dir, STATIC_LIBRARY_FILE), LIBS_DIR)\n    else:\n        cmake_args += ['-S', UC_DIR]\n        subprocess.check_call(cmake_args, cwd=UC_DIR)\n        threads = os.getenv(\"THREADS\", \"4\")\n        subprocess.check_call([\"cmake\", \"--build\", \".\", \"-j\" + threads], cwd=BUILD_DIR)\n\n        shutil.copy(os.path.join(BUILD_DIR, LIBRARY_FILE), LIBS_DIR)\n        shutil.copy(os.path.join(BUILD_DIR, STATIC_LIBRARY_FILE), LIBS_DIR)\n",
+    "hash_value": "d62a0d584ade3493fd17d99c5ba43e8e",
+    "detection_index": 1
+  }
+]

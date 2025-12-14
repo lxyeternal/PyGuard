@@ -1,0 +1,78 @@
+[
+  {
+    "metadata": {
+      "package_name": "apache-superset-5.0.0rc2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "trino.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apache-superset-5.0.0rc2/apache-superset-5.0.0rc2/superset/db_engine_specs/trino.py",
+    "line_number": "441",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "440\t        cols = [col]\n441\t        col_type = col.get(\"type\")\n442",
+    "code_snippet": "@classmethod\n    def _expand_columns(cls, col: ResultSetColumnType) -> list[ResultSetColumnType]:\n        \"\"\"\n        Expand the given column out to one or more columns by analysing their types,\n        descending into ROWS and expanding out their inner fields recursively.\n\n        We can only navigate named fields in ROWs in this way, so we can't expand out\n        MAP or ARRAY types, nor fields in ROWs which have no name (in fact the trino\n        library doesn't correctly parse unnamed fields in ROWs). We won't be able to\n        expand ROWs which are nested underneath any of those types, either.\n\n        Expanded columns are named foo.bar.baz and we provide a query_as property to\n        instruct the base engine spec how to correctly query them: instead of quoting\n        the whole string they have to be quoted like \"foo\".\"bar\".\"baz\" and we then\n        alias them to the full dotted string for ease of reference.\n        \"\"\"\n        # pylint: disable=import-outside-toplevel\n        from trino.sqlalchemy import datatype\n\n        cols = [col]\n        col_type = col.get(\"type\")\n\n        if not isinstance(col_type, datatype.ROW):\n            return cols\n\n        for inner_name, inner_type in col_type.attr_types:\n            outer_name = col[\"name\"]\n            name = \".\".join([outer_name, inner_name])\n            query_name = \".\".join([f'\"{piece}\"' for piece in name.split(\".\")])\n            column_spec = cls.get_column_spec(str(inner_type))\n            is_dttm = column_spec.is_dttm if column_spec else False\n\n            inner_col = ResultSetColumnType(\n                name=name,\n                column_name=name,\n                type=inner_type,\n                is_dttm=is_dttm,\n                query_as=f'{query_name} AS \"{name}\"',\n            )\n            cols.extend(cls._expand_columns(inner_col))\n\n        return cols",
+    "pattern_analysis": {
+      "api_sequence": [
+        "col.get",
+        "isinstance",
+        "cls.get_column_spec",
+        "column_spec.is_dttm",
+        "cls._expand_columns"
+      ],
+      "api_sequence_with_args": [
+        "col.get(\"type\")",
+        "isinstance(col_type, datatype.ROW)",
+        "cls.get_column_spec(str(inner_type))",
+        "column_spec.is_dttm",
+        "cls._expand_columns(inner_col)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "col.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "cls.get_column_spec",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "column_spec.is_dttm",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "cls._expand_columns",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        }
+      ],
+      "contextual_code": "from trino.sqlalchemy import datatype\n\ncols = [col]\ncol_type = col.get(\"type\")\n\nif not isinstance(col_type, datatype.ROW):\n    return cols\n\nfor inner_name, inner_type in col_type.attr_types:\n    outer_name = col[\"name\"]\n    name = \".\".join([outer_name, inner_name])\n    query_name = \".\".join([f'\"{piece}\"' for piece in name.split(\".\")])\n    column_spec = cls.get_column_spec(str(inner_type))\n    is_dttm = column_spec.is_dttm if column_spec else False\n\n    inner_col = ResultSetColumnType(\n        name=name,\n        column_name=name,\n        type=inner_type,\n        is_dttm=is_dttm,\n        query_as=f'{query_name} AS \"{name}\"',\n    )\n    cols.extend(cls._expand_columns(inner_col))"
+    }
+  }
+]

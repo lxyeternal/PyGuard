@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "plexapi-4.16.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "gdm.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/plexapi-4.16.1/plexapi-4.16.1/plexapi/gdm.py",
+    "line_number": "92",
+    "type_description": "B808:settimeout",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "91\t        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\n92\t        sock.settimeout(gdm_timeout)\n93",
+    "context_snippet": "def update(self, scan_for_clients):\n    \"\"\"Scan for new GDM services.\n\n    Examples of the dict list assigned to self.entries by this function:\n\n        Server:\n\n            [{'data': {\n                 'Content-Type': 'plex/media-server',\n                 'Host': '53f4b5b6023d41182fe88a99b0e714ba.plex.direct',\n                 'Name': 'myfirstplexserver',\n                 'Port': '32400',\n                 'Resource-Identifier': '646ab0aa8a01c543e94ba975f6fd6efadc36b7',\n                 'Updated-At': '1585769946',\n                 'Version': '1.18.8.2527-740d4c206',\n            },\n             'from': ('10.10.10.100', 32414)}]\n\n        Clients:\n\n            [{'data': {'Content-Type': 'plex/media-player',\n                 'Device-Class': 'stb',\n                 'Name': 'plexamp',\n                 'Port': '36000',\n                 'Product': 'Plexamp',\n                 'Protocol': 'plex',\n                 'Protocol-Capabilities': 'timeline,playback,playqueues,playqueues-creation',\n                 'Protocol-Version': '1',\n                 'Resource-Identifier': 'b6e57a3f-e0f8-494f-8884-f4b58501467e',\n                 'Version': '1.1.0',\n            },\n             'from': ('10.10.10.101', 32412)}]\n    \"\"\"\n\n    gdm_msg = 'M-SEARCH * HTTP/1.0'.encode('ascii')\n    gdm_timeout = 1\n\n    self.entries = []\n    known_responses = []\n\n    # setup socket for discovery -> multicast message\n    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\n    sock.settimeout(gdm_timeout)\n\n    # Set the time-to-live for messages for local network\n    sock.setsockopt(socket.IPPROTO_IP,\n                    socket.IP_MULTICAST_TTL,\n                    struct.pack(\"B\", gdm_timeout))\n\n    if scan_for_clients:\n        # setup socket for broadcast to Plex clients\n        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)\n        gdm_ip = '255.255.255.255'\n        gdm_port = 32412\n    else:\n        # setup socket for multicast to Plex server(s)\n        gdm_ip = '239.0.0.250'\n        gdm_port = 32414\n\n    try:\n        # Send data to the multicast group\n        sock.sendto(gdm_msg, (gdm_ip, gdm_port))\n\n        # Look for responses from all recipients\n        while True:\n            try:\n                bdata, host = sock.recvfrom(1024)\n                data = bdata.decode('utf-8')\n                if '200 OK' in data.splitlines()[0]:\n                    ddata = {k: v.strip() for (k, v) in (\n                        line.split(':') for line in\n                        data.splitlines() if ':' in line)}\n                    identifier = ddata.get('Resource-Identifier')\n                    if identifier and identifier in known_responses:\n                        continue\n                    known_responses.append(identifier)\n                    self.entries.append({'data': ddata,\n                                         'from': host})\n            except socket.timeout:\n                break\n    finally:\n        sock.close()",
+    "hash_value": "2c67442b1be237721fc2b8e1add56ede"
+  }
+]

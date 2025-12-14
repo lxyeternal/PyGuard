@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "cos_python_sdk_v5-1.9.36",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "cos_client.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/cos_python_sdk_v5-1.9.36/cos_python_sdk_v5-1.9.36/qcloud_cos/cos_client.py",
+    "line_number": "3573",
+    "type_description": "B822:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3572\t            headers=headers))\n3573\t        rt = self.send_request(\n3574\t            method='GET',\n3575\t            url=url,\n3576\t            bucket=Bucket,\n3577\t            auth=CosS3Auth(self._conf, params=params),\n3578\t            headers=headers,\n3579\t            params=params)\n3580\t        data = xml_to_dict(rt.content)",
+    "code_snippet": "def list_objects(self, Bucket, Prefix=\"\", Delimiter=\"\", Marker=\"\", MaxKeys=1000, EncodingType=\"\", **kwargs):\n    \"\"\"获取文件列表\n\n    :param Bucket(string): 存储桶名称.\n    :param Prefix(string): 设置匹配文件的前缀.\n    :param Delimiter(string): 分隔符.\n    :param Marker(string): 从marker开始列出条目.\n    :param MaxKeys(int): 设置单次返回最大的数量,最大为1000.\n    :param EncodingType(string): 设置返回结果编码方式,只能设置为url.\n    :param kwargs(dict): 设置请求headers.\n    :return(dict): 文件的相关信息，包括Etag等信息.\n\n    .. code-block:: python\n\n        config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象\n        client = CosS3Client(config)\n        # 列出bucket\n        response = client.list_objects(\n            Bucket='bucket',\n            MaxKeys=100,\n            Prefix='中文',\n            Delimiter='/'\n        )\n    \"\"\"\n    decodeflag = True  # 是否需要对结果进行decode\n    headers = mapped(kwargs)\n    url = self._conf.uri(bucket=Bucket)\n    logger.info(\"list objects, url=:{url} ,headers=:{headers}\".format(\n        url=url,\n        headers=headers))\n    params = {\n        'prefix': Prefix,\n        'delimiter': Delimiter,\n        'marker': Marker,\n        'max-keys': MaxKeys\n    }\n    if EncodingType:\n        if EncodingType != 'url':\n            raise CosClientError('EncodingType must be url')\n        decodeflag = False  # 用户自己设置了EncodingType不需要去decode\n        params['encoding-type'] = EncodingType\n    else:\n        params['encoding-type'] = 'url'\n    params = format_values(params)\n    rt = self.send_request(\n        method='GET',\n        url=url,\n        bucket=Bucket,\n        params=params,\n        headers=headers,\n        auth=CosS3Auth(self._conf, params=params))\n    data = xml_to_dict(rt.content)\n    format_dict(data, ['Contents', 'CommonPrefixes'])\n    if decodeflag:\n        decode_result(\n            data,\n            [\n                'Prefix',\n                'Marker',\n                'NextMarker'\n            ],\n            [\n                ['Contents', 'Key'],\n                ['CommonPrefixes', 'Prefix']\n            ]\n        )\n    return data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._conf.uri",
+        "logger.info",
+        "format_values",
+        "self.send_request",
+        "CosS3Auth",
+        "xml_to_dict",
+        "format_dict",
+        "decode_result"
+      ],
+      "api_sequence_with_args": [
+        "self._conf.uri(bucket=Bucket)",
+        "logger.info(\"list objects, url=:{url} ,headers=:{headers}\".format(url=url, headers=headers))",
+        "format_values(params)",
+        "self.send_request(method='GET', url=url, bucket=Bucket, params=params, headers=headers, auth=CosS3Auth(self._conf, params=params))",
+        "CosS3Auth(self._conf, params=params)",
+        "xml_to_dict(rt.content)",
+        "format_dict(data, ['Contents', 'CommonPrefixes'])",
+        "decode_result(data, ['Prefix', 'Marker', 'NextMarker'], [['Contents', 'Key'], ['CommonPrefixes', 'Prefix']])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._conf.uri",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "format_values",
+          "id": "encode_url_query",
+          "description": "Encodes mapping object to URL query string",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "self.send_request",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "CosS3Auth",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "xml_to_dict",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "format_dict",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "decode_result",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "def list_objects(self, Bucket, Prefix=\"\", Delimiter=\"\", Marker=\"\", MaxKeys=1000, EncodingType=\"\", **kwargs):\n    headers = mapped(kwargs)\n    url = self._conf.uri(bucket=Bucket)\n    logger.info(\"list objects, url=:{url} ,headers=:{headers}\".format(\n        url=url,\n        headers=headers))\n    params = {\n        'prefix': Prefix,\n        'delimiter': Delimiter,\n        'marker': Marker,\n        'max-keys': MaxKeys\n    }\n    if EncodingType:\n        if EncodingType != 'url':\n            raise CosClientError('EncodingType must be url')\n        decodeflag = False\n        params['encoding-type'] = EncodingType\n    else:\n        params['encoding-type'] = 'url'\n    params = format_values(params)\n    rt = self.send_request(\n        method='GET',\n        url=url,\n        bucket=Bucket,\n        params=params,\n        headers=headers,\n        auth=CosS3Auth(self._conf, params=params))\n    data = xml_to_dict(rt.content)\n    format_dict(data, ['Contents', 'CommonPrefixes'])\n    if decodeflag:\n        decode_result(\n            data,\n            [\n                'Prefix',\n                'Marker',\n                'NextMarker'\n            ],\n            [\n                ['Contents', 'Key'],\n                ['CommonPrefixes', 'Prefix']\n            ]\n        )\n    return data"
+    }
+  }
+]

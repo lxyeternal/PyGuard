@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "py4j-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/py4j-0.10.9.9.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "java_gateway.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/py4j-0.10.9.9/py4j-0.10.9.9/src/py4j/java_gateway.py",
+      "line_number": "2459",
+      "type_description": "B806:sendall",
+      "context_snippet": "class CallbackConnection(Thread):\n    \"\"\"A `CallbackConnection` receives callbacks and garbage collection\n       requests from the Java side.\n    \"\"\"\n    def __init__(\n            self, pool, input, socket_instance, gateway_client,\n            callback_server_parameters, callback_server):\n        super(CallbackConnection, self).__init__()\n        self.pool = pool\n        self.input = input\n        self.socket = socket_instance\n        self.gateway_client = gateway_client\n\n        # TODO Remove in 1.0. Take it from the callback_server directly\n        self.callback_server_parameters = callback_server_parameters\n\n        if not callback_server_parameters:\n            # TODO Remove in 1.0. This should never be the case.\n            self.callback_server_parameters = CallbackServerParameters()\n\n        self.callback_server = callback_server\n\n        self.daemon = self.callback_server_parameters.daemonize_connections\n\n    def run(self):\n        logger.info(\"Callback Connection ready to receive messages\")\n        reset = False\n        authenticated = self.callback_server_parameters.auth_token is None\n        try:\n            while True:\n                command = smart_decode(self.input.readline())[:-1]\n                if not authenticated:\n                    token = self.callback_server_parameters.auth_token\n                    # Will raise an exception if auth fails in any way.\n                    authenticated = do_client_auth(\n                        command, self.input, self.socket, token)\n                    continue\n\n                obj_id = smart_decode(self.input.readline())[:-1]\n                logger.info(\n                    \"Received command {0} on object id {1}\".\n                    format(command, obj_id))\n                if obj_id is None or len(obj_id.strip()) == 0:\n                    break\n                if command == proto.CALL_PROXY_COMMAND_NAME:\n                    return_message = self._call_proxy(obj_id, self.input)\n                    self.socket.sendall(return_message.encode(\"utf-8\"))\n                elif command == proto.GARBAGE_COLLECT_PROXY_COMMAND_NAME:\n                    self.input.readline()\n                    _garbage_collect_proxy(self.pool, obj_id)\n                    self.socket.sendall(\n                        proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n                else:\n                    logger.error(\"Unknown command {0}\".format(command))\n                    # We're sending something to prevent blokincg, but at this\n                    # point, the protocol is broken.\n                    self.socket.sendall(\n                        proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\"))\n        except Py4JAuthenticationError:\n            reset = True\n            logger.exception(\"Could not authenticate connection.\")\n        except socket.timeout:\n            reset = True\n            logger.info(\n                \"Timeout while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        except Exception:\n            # This is a normal exception...\n            logger.info(\n                \"Error while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        self.close(reset)\n",
+      "hash_value": "2cd4b082efaf6386185d2efc160bc1b6",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "class CallbackConnection(Thread):\n    \"\"\"A `CallbackConnection` receives callbacks and garbage collection\n       requests from the Java side.\n    \"\"\"\n    def __init__(\n            self, pool, input, socket_instance, gateway_client,\n            callback_server_parameters, callback_server):\n        super(CallbackConnection, self).__init__()\n        self.pool = pool\n        self.input = input\n        self.socket = socket_instance\n        self.gateway_client = gateway_client\n\n        # TODO Remove in 1.0. Take it from the callback_server directly\n        self.callback_server_parameters = callback_server_parameters\n\n        if not callback_server_parameters:\n            # TODO Remove in 1.0. This should never be the case.\n            self.callback_server_parameters = CallbackServerParameters()\n\n        self.callback_server = callback_server\n\n        self.daemon = self.callback_server_parameters.daemonize_connections\n\n    def run(self):\n        logger.info(\"Callback Connection ready to receive messages\")\n        reset = False\n        authenticated = self.callback_server_parameters.auth_token is None\n        try:\n            while True:\n                command = smart_decode(self.input.readline())[:-1]\n                if not authenticated:\n                    token = self.callback_server_parameters.auth_token\n                    # Will raise an exception if auth fails in any way.\n                    authenticated = do_client_auth(\n                        command, self.input, self.socket, token)\n                    continue\n\n                obj_id = smart_decode(self.input.readline())[:-1]\n                logger.info(\n                    \"Received command {0} on object id {1}\".\n                    format(command, obj_id))\n                if obj_id is None or len(obj_id.strip()) == 0:\n                    break\n                if command == proto.CALL_PROXY_COMMAND_NAME:\n                    return_message = self._call_proxy(obj_id, self.input)\n                    self.socket.sendall(return_message.encode(\"utf-8\"))\n                elif command == proto.GARBAGE_COLLECT_PROXY_COMMAND_NAME:\n                    self.input.readline()\n                    _garbage_collect_proxy(self.pool, obj_id)\n                    self.socket.sendall(\n                        proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n                else:\n                    logger.error(\"Unknown command {0}\".format(command))\n                    # We're sending something to prevent blokincg, but at this\n                    # point, the protocol is broken.\n                    self.socket.sendall(\n                        proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\"))\n        except Py4JAuthenticationError:\n            reset = True\n            logger.exception(\"Could not authenticate connection.\")\n        except socket.timeout:\n            reset = True\n            logger.info(\n                \"Timeout while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        except Exception:\n            # This is a normal exception...\n            logger.info(\n                \"Error while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        self.close(reset)\n",
+          "triple_sequences": [
+            {
+              "action_api": "self.input.readline()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "self.input",
+              "object_description": "Socket address",
+              "object_id": "socket_address",
+              "intention_description": "Receive command from server",
+              "intention_id": "receive_command_from_server"
+            },
+            {
+              "action_api": "smart_decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "self.input.readline()",
+              "object_description": "Socket address",
+              "object_id": "socket_address",
+              "intention_description": "Decode command output",
+              "intention_id": "decode_command_output"
+            },
+            {
+              "action_api": "do_client_auth()",
+              "action_description": "Checks validity of authentication cookie",
+              "action_id": "check_roblox_cookie",
+              "object": "command, self.input, self.socket, token",
+              "object_description": "Account name and token",
+              "object_id": "account_credentials",
+              "intention_description": "Check validity of authentication cookie",
+              "intention_id": "check_authentication_cookie"
+            },
+            {
+              "action_api": "self._call_proxy()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "obj_id, self.input",
+              "object_description": "System command",
+              "object_id": "system_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "self.socket.sendall()",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "return_message.encode(\"utf-8\")",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Send command output to server",
+              "intention_id": "send_command_output_server"
+            },
+            {
+              "action_api": "_garbage_collect_proxy()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "self.pool, obj_id",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Delete directory content",
+              "intention_id": "delete_directory_content"
+            },
+            {
+              "action_api": "self.socket.sendall()",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\")",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Send command output to server",
+              "intention_id": "send_command_output_server"
+            },
+            {
+              "action_api": "self.socket.sendall()",
+              "action_description": "Sends data over socket connection",
+              "action_id": "send_socket_data",
+              "object": "proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\")",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Send command output to server",
+              "intention_id": "send_command_output_server"
+            },
+            {
+              "action_api": "self.close()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "reset",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

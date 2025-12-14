@@ -1,0 +1,151 @@
+[
+  {
+    "pyfile": "setup_tests.py",
+    "code_snippet": "from __future__ import annotations\n\nimport base64\nimport io\nimport os\nimport platform\nimport shutil\nimport stat\nimport tarfile\nfrom pathlib import Path\nfrom urllib import request\n\nfrom utils import (\n    DRIVERS_TOOLS,\n    ENV_FILE,\n    HERE,\n    LOGGER,\n    PLATFORM,\n    ROOT,\n    TEST_SUITE_MAP,\n    Distro,\n    get_test_options,\n    read_env,\n    run_command,\n    write_env,\n)\n\n# ... (other global variables and constants omitted for brevity)\n\ndef is_set(var: str) -> bool:\n    value = os.environ.get(var, \"\")\n    return len(value.strip()) > 0\n\ndef get_distro() -> Distro:\n    name = \"\"\n    version_id = \"\"\n    arch = platform.machine()\n    with open(\"/etc/os-release\") as fid:\n        for line in fid.readlines():\n            line = line.replace('\"', \"\")  # noqa: PLW2901\n            if line.startswith(\"NAME=\"):\n                _, _, name = line.strip().partition(\"=\")\n            if line.startswith(\"VERSION_ID=\"):\n                _, _, version_id = line.strip().partition(\"=\")\n    return Distro(name=name, version_id=version_id, arch=arch)\n\ndef setup_libmongocrypt():\n    target = \"\"\n    if PLATFORM == \"windows\":\n        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.\n        if is_set(\"TEST_FLE_GCP_AUTO\"):\n            run_command('powershell.exe \"Invoke-WebRequest -URI https://oauth2.googleapis.com/\"')\n        target = \"windows-test\"\n\n    elif PLATFORM == \"darwin\":\n        target = \"macos\"\n\n    else:\n        distro = get_distro()\n        if distro.name.startswith(\"Debian\"):\n            target = f\"debian{distro.version_id}\"\n        elif distro.name.startswith(\"Red Hat\"):\n            if distro.version_id.startswith(\"7\"):\n                target = \"rhel-70-64-bit\"\n            elif distro.version_id.startswith(\"8\"):\n                if distro.arch == \"aarch64\":\n                    target = \"rhel-82-arm64\"\n                else:\n                    target = \"rhel-80-64-bit\"\n\n    if not is_set(\"LIBMONGOCRYPT_URL\"):\n        if not target:\n            raise ValueError(\"Cannot find libmongocrypt target for current platform!\")\n        url = f\"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz\"\n    else:\n        url = os.environ[\"LIBMONGOCRYPT_URL\"]\n\n    shutil.rmtree(HERE / \"libmongocrypt\", ignore_errors=True)\n\n    LOGGER.info(f\"Fetching {url}...\")\n    with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310\n        if response.status == 200:\n            fileobj = io.BytesIO(response.read())\n        with tarfile.open(\"libmongocrypt.tar.gz\", fileobj=fileobj) as fid:\n            fid.extractall(Path.cwd() / \"libmongocrypt\")\n    LOGGER.info(f\"Fetching {url}... done.\")\n\n    run_command(\"ls -la libmongocrypt\")\n    run_command(\"ls -la libmongocrypt/nocrypto\")\n\n    if PLATFORM == \"windows\":\n        # libmongocrypt's windows dll is not marked executable.\n        run_command(\"chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "open",
+        "io.BytesIO",
+        "tarfile.open",
+        "tarfile.TarFile.extractall",
+        "shutil.rmtree",
+        "LOGGER.info",
+        "request.urlopen",
+        "request.Request",
+        "io.BytesIO",
+        "run_command",
+        "run_command",
+        "run_command"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(var, \"\")",
+        "open(\"/etc/os-release\")",
+        "io.BytesIO(response.read())",
+        "tarfile.open(\"libmongocrypt.tar.gz\", fileobj=fileobj)",
+        "tarfile.TarFile.extractall(Path.cwd() / \"libmongocrypt\")",
+        "shutil.rmtree(HERE / \"libmongocrypt\", ignore_errors=True)",
+        "LOGGER.info(f\"Fetching {url}...\")",
+        "request.urlopen(request.Request(url), timeout=15.0)",
+        "request.Request(url)",
+        "io.BytesIO(response.read())",
+        "run_command(\"ls -la libmongocrypt\")",
+        "run_command(\"ls -la libmongocrypt/nocrypto\")",
+        "run_command(\"chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.extractall",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "LOGGER.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "request.urlopen",
+          "id": "open_url_get_timeout",
+          "description": "Opens URL with GET parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "request.Request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "io.BytesIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "run_command",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "run_command",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "run_command",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "def is_set(var: str) -> bool:\n    value = os.environ.get(var, \"\")\n    return len(value.strip()) > 0\n\ndef get_distro() -> Distro:\n    name = \"\"\n    version_id = \"\"\n    arch = platform.machine()\n    with open(\"/etc/os-release\") as fid:\n        for line in fid.readlines():\n            line = line.replace('\"', \"\")\n            if line.startswith(\"NAME=\"):\n                _, _, name = line.strip().partition(\"=\")\n            if line.startswith(\"VERSION_ID=\"):\n                _, _, version_id = line.strip().partition(\"=\")\n    return Distro(name=name, version_id=version_id, arch=arch)\n\ndef setup_libmongocrypt():\n    target = \"\"\n    if PLATFORM == \"windows\":\n        if is_set(\"TEST_FLE_GCP_AUTO\"):\n            run_command('powershell.exe \"Invoke-WebRequest -URI https://oauth2.googleapis.com/\"')\n        target = \"windows-test\"\n    elif PLATFORM == \"darwin\":\n        target = \"macos\"\n    else:\n        distro = get_distro()\n        if distro.name.startswith(\"Debian\"):\n            target = f\"debian{distro.version_id}\"\n        elif distro.name.startswith(\"Red Hat\"):\n            if distro.version_id.startswith(\"7\"):\n                target = \"rhel-70-64-bit\"\n            elif distro.version_id.startswith(\"8\"):\n                if distro.arch == \"aarch64\":\n                    target = \"rhel-82-arm64\"\n                else:\n                    target = \"rhel-80-64-bit\"\n    if not is_set(\"LIBMONGOCRYPT_URL\"):\n        if not target:\n            raise ValueError(\"Cannot find libmongocrypt target for current platform!\")\n        url = f\"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz\"\n    else:\n        url = os.environ[\"LIBMONGOCRYPT_URL\"]\n    shutil.rmtree(HERE / \"libmongocrypt\", ignore_errors=True)\n    LOGGER.info(f\"Fetching {url}...\")\n    with request.urlopen(request.Request(url), timeout=15.0) as response:\n        if response.status == 200:\n            fileobj = io.BytesIO(response.read())\n        with tarfile.open(\"libmongocrypt.tar.gz\", fileobj=fileobj) as fid:\n            fid.extractall(Path.cwd() / \"libmongocrypt\")\n    LOGGER.info(f\"Fetching {url}... done.\")\n    run_command(\"ls -la libmongocrypt\")\n    run_command(\"ls -la libmongocrypt/nocrypto\")\n    if PLATFORM == \"windows\":\n        run_command(\"chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pymongo-4.12.0",
+      "total_matches": 1
+    }
+  }
+]

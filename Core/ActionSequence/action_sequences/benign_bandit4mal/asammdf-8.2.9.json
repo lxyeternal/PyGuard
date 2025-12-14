@@ -1,0 +1,218 @@
+[
+  {
+    "metadata": {
+      "package_name": "asammdf-8.2.9",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "mdf_v4.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asammdf-8.2.9/asammdf-8.2.9/src/asammdf/blocks/mdf_v4.py",
+    "line_number": "10161",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "10160\t                for block in blocks:\n10161\t                    write(bytes(block))\n10162",
+    "code_snippet": "def save(\n    self,\n    dst: WritableBufferType | StrPathType,\n    overwrite: bool = False,\n    compression: CompressionType = v4c.CompressionAlgorithm.NO_COMPRESSION,\n    progress=None,\n    add_history_block: bool = True,\n) -> Path:\n    \"\"\"Save MDF to *dst*. If overwrite is *True* then the destination file\n    is overwritten, otherwise the file name is appended with '.<cntr>', were\n    '<cntr>' is the first counter that produces a new file name\n    (that does not already exist in the filesystem).\n\n    Parameters\n    ----------\n    dst : str\n        destination file name\n    overwrite : bool\n        overwrite flag, default *False*\n    compression : int\n        use compressed data blocks, default 0; valid since version 4.10\n\n        * 0 - no compression\n        * 1 - deflate (slower, but produces smaller files)\n        * 2 - transposition + deflate (slowest, but produces\n          the smallest files)\n\n    add_history_block : bool\n        option to add file history block\n\n    Returns\n    -------\n    output_file : pathlib.Path\n        path to saved file\n\n    \"\"\"\n\n    if is_file_like(dst):\n        dst_ = dst\n        file_like = True\n        if hasattr(dst, \"name\"):\n            dst = Path(dst.name)\n        else:\n            dst = Path(\"__file_like.mf4\")\n        dst_.seek(0)\n        suffix = \".mf4\"\n    else:\n        file_like = False\n        suffix = Path(dst).suffix.lower()\n\n        dst = Path(dst).with_suffix(\".mf4\")\n\n        destination_dir = dst.parent\n        destination_dir.mkdir(parents=True, exist_ok=True)\n\n        if overwrite is False:\n            if dst.is_file():\n                cntr = 0\n                while True:\n                    name = dst.with_suffix(f\".{cntr}.mf4\")\n                    if not name.exists():\n                        break\n                    else:\n                        cntr += 1\n                message = (\n                    f'Destination file \"{dst}\" already exists '\n                    f'and \"overwrite\" is False. Saving MDF file as \"{name}\"'\n                )\n                logger.warning(message)\n                dst = name\n\n        if dst == self.name:\n            destination = dst.with_suffix(\".savetemp\")\n        else:\n            destination = dst\n\n        dst_ = open(destination, \"wb+\")\n\n    if not self.file_history:\n        comment = \"created\"\n    else:\n        comment = \"updated\"\n\n    if add_history_block:\n        fh = FileHistory()\n        fh.comment = f\"\"\"<FHcomment>\n<TX>{comment}</TX>\n<tool_id>{tool.__tool__}</tool_id>\n<tool_vendor>{tool.__vendor__}</tool_vendor>\n<tool_version>{tool.__version__}</tool_version>\n</FHcomment>\"\"\"\n\n        self.file_history.append(fh)\n\n    cg_map = {}\n\n    try:\n        defined_texts = {\"\": 0, b\"\": 0}\n        cc_map = {}\n        si_map = {}\n\n        groups_nr = len(self.groups)\n\n        write = dst_.write\n        tell = dst_.tell\n        seek = dst_.seek\n\n        blocks = []\n\n        write(bytes(self.identification))\n\n        self.header.to_blocks(dst_.tell(), blocks)\n        for block in blocks:\n            write(bytes(block))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "is_file_like",
+        "hasattr",
+        "Path",
+        "Path",
+        "dst_.seek",
+        "Path",
+        "Path",
+        "Path.parent",
+        "Path.parent.mkdir",
+        "Path.is_file",
+        "Path.with_suffix",
+        "Path.with_suffix",
+        "Path.exists",
+        "logger.warning",
+        "Path.with_suffix",
+        "open",
+        "dst_.write",
+        "dst_.tell",
+        "dst_.seek"
+      ],
+      "api_sequence_with_args": [
+        "is_file_like(dst)",
+        "hasattr(dst, \"name\")",
+        "Path(dst.name)",
+        "Path(\"__file_like.mf4\")",
+        "dst_.seek(0)",
+        "Path(dst).suffix.lower()",
+        "Path(dst).with_suffix(\".mf4\")",
+        "Path(dst).with_suffix(\".mf4\").parent",
+        "destination_dir.mkdir(parents=True, exist_ok=True)",
+        "dst.is_file()",
+        "dst.with_suffix(f\".{cntr}.mf4\")",
+        "dst.with_suffix(f\".{cntr}.mf4\")",
+        "name.exists()",
+        "logger.warning(message)",
+        "dst.with_suffix(\".savetemp\")",
+        "open(destination, \"wb+\")",
+        "write(bytes(self.identification))",
+        "dst_.tell()",
+        "dst_.seek"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "is_file_like",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "dst_.seek",
+          "id": "move_buffer_pointer",
+          "description": "Moves buffer pointer to start",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.parent",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.parent.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "Path.is_file",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "Path.with_suffix",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.with_suffix",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "logger.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "Path.with_suffix",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "dst_.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "dst_.tell",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "dst_.seek",
+          "id": "move_buffer_pointer",
+          "description": "Moves buffer pointer to start",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "if is_file_like(dst):\n    dst_ = dst\n    file_like = True\n    if hasattr(dst, \"name\"):\n        dst = Path(dst.name)\n    else:\n        dst = Path(\"__file_like.mf4\")\n    dst_.seek(0)\n    suffix = \".mf4\"\nelse:\n    file_like = False\n    suffix = Path(dst).suffix.lower()\n    dst = Path(dst).with_suffix(\".mf4\")\n    destination_dir = dst.parent\n    destination_dir.mkdir(parents=True, exist_ok=True)\n    if overwrite is False:\n        if dst.is_file():\n            cntr = 0\n            while True:\n                name = dst.with_suffix(f\".{cntr}.mf4\")\n                if not name.exists():\n                    break\n                else:\n                    cntr += 1\n            message = (\n                f'Destination file \"{dst}\" already exists '\n                f'and \"overwrite\" is False. Saving MDF file as \"{name}\"'\n            )\n            logger.warning(message)\n            dst = name\n    if dst == self.name:\n        destination = dst.with_suffix(\".savetemp\")\n    else:\n        destination = dst\n    dst_ = open(destination, \"wb+\")\nwrite = dst_.write\ntell = dst_.tell\nseek = dst_.seek\nwrite(bytes(self.identification))"
+    }
+  }
+]

@@ -1,0 +1,146 @@
+{
+  "metadata": {
+    "package_name": "minio-7",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/minio-7.2.15.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "api.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/minio-7.2.15/minio-7.2.15/minio/api.py",
+      "line_number": "3085",
+      "type_description": "B834:open",
+      "context_snippet": "def upload_snowball_objects(\n        self,\n        bucket_name: str,\n        object_list: Iterable[SnowballObject],\n        metadata: DictType | None = None,\n        sse: Sse | None = None,\n        tags: Tags | None = None,\n        retention: Retention | None = None,\n        legal_hold: bool = False,\n        staging_filename: str | None = None,\n        compression: bool = False,\n) -> ObjectWriteResult:\n    \"\"\"\n    Uploads multiple objects in a single put call. It is done by creating\n    intermediate TAR file optionally compressed which is uploaded to S3\n    service.\n\n    :param bucket_name: Name of the bucket.\n    :param object_list: An iterable containing\n        :class:`SnowballObject <SnowballObject>` object.\n    :param metadata: Any additional metadata to be uploaded along\n        with your PUT request.\n    :param sse: Server-side encryption.\n    :param tags: :class:`Tags` for the object.\n    :param retention: :class:`Retention` configuration object.\n    :param legal_hold: Flag to set legal hold for the object.\n    :param staging_filename: A staging filename to create intermediate\n        tarball.\n    :param compression: Flag to compress TAR ball.\n    :return: :class:`ObjectWriteResult` object.\n\n    Example::\n        # Upload snowball object.\n        result = client.upload_snowball_objects(\n            \"my-bucket\",\n            [\n                SnowballObject(\"my-object1\", filename=\"/etc/hostname\"),\n                SnowballObject(\n                    \"my-object2\", data=io.BytesIO(\"hello\"), length=5,\n                ),\n                SnowballObject(\n                    \"my-object3\", data=io.BytesIO(\"world\"), length=5,\n                    mod_time=datetime.now(),\n                ),\n            ],\n        )\n    \"\"\"\n    check_bucket_name(bucket_name, s3_check=self._base_url.is_aws_host)\n\n    object_name = f\"snowball.{random()}.tar\"\n\n    # turn list like objects into an iterator.\n    object_list = itertools.chain(object_list)\n\n    metadata = metadata or {}\n    metadata[\"X-Amz-Meta-Snowball-Auto-Extract\"] = \"true\"\n\n    name = staging_filename\n    mode = \"w:gz\" if compression else \"w\"\n    fileobj = None if name else BytesIO()\n    with tarfile.open(name=name, mode=mode, fileobj=fileobj) as tar:\n        for obj in object_list:\n            if obj.filename:\n                tar.add(obj.filename, obj.object_name)\n            else:\n                info = tarfile.TarInfo(obj.object_name)\n                info.size = cast(int, obj.length)\n                info.mtime = int(\n                    time.to_float(obj.mod_time or time.utcnow()),\n                )\n                tar.addfile(info, obj.data)\n\n    if not name:\n        length = cast(BytesIO, fileobj).tell()\n        cast(BytesIO, fileobj).seek(0)\n    else:\n        length = os.stat(name).st_size\n\n    part_size = 0 if length < MIN_PART_SIZE else length\n\n    if name:\n        return self.fput_object(\n            bucket_name,\n            object_name,\n            cast(str, staging_filename),\n            metadata=metadata,\n            sse=sse,\n            tags=tags,\n            retention=retention,\n            legal_hold=legal_hold,\n            part_size=part_size,\n        )\n    return self.put_object(\n        bucket_name,\n        object_name,\n        cast(BinaryIO, fileobj),\n        length,\n        metadata=cast(Union[DictType, None], metadata),\n        sse=sse,\n        tags=tags,\n        retention=retention,\n        legal_hold=legal_hold,\n        part_size=part_size,\n    )",
+      "hash_value": "6697cbefd771a4d3bbc6496849bc34d7",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def upload_snowball_objects(\n        self,\n        bucket_name: str,\n        object_list: Iterable[SnowballObject],\n        metadata: DictType | None = None,\n        sse: Sse | None = None,\n        tags: Tags | None = None,\n        retention: Retention | None = None,\n        legal_hold: bool = False,\n        staging_filename: str | None = None,\n        compression: bool = False,\n) -> ObjectWriteResult:\n    \"\"\"\n    Uploads multiple objects in a single put call. It is done by creating\n    intermediate TAR file optionally compressed which is uploaded to S3\n    service.\n\n    :param bucket_name: Name of the bucket.\n    :param object_list: An iterable containing\n        :class:`SnowballObject <SnowballObject>` object.\n    :param metadata: Any additional metadata to be uploaded along\n        with your PUT request.\n    :param sse: Server-side encryption.\n    :param tags: :class:`Tags` for the object.\n    :param retention: :class:`Retention` configuration object.\n    :param legal_hold: Flag to set legal hold for the object.\n    :param staging_filename: A staging filename to create intermediate\n        tarball.\n    :param compression: Flag to compress TAR ball.\n    :return: :class:`ObjectWriteResult` object.\n\n    Example::\n        # Upload snowball object.\n        result = client.upload_snowball_objects(\n            \"my-bucket\",\n            [\n                SnowballObject(\"my-object1\", filename=\"/etc/hostname\"),\n                SnowballObject(\n                    \"my-object2\", data=io.BytesIO(\"hello\"), length=5,\n                ),\n                SnowballObject(\n                    \"my-object3\", data=io.BytesIO(\"world\"), length=5,\n                    mod_time=datetime.now(),\n                ),\n            ],\n        )\n    \"\"\"\n    check_bucket_name(bucket_name, s3_check=self._base_url.is_aws_host)\n\n    object_name = f\"snowball.{random()}.tar\"\n\n    # turn list like objects into an iterator.\n    object_list = itertools.chain(object_list)\n\n    metadata = metadata or {}\n    metadata[\"X-Amz-Meta-Snowball-Auto-Extract\"] = \"true\"\n\n    name = staging_filename\n    mode = \"w:gz\" if compression else \"w\"\n    fileobj = None if name else BytesIO()\n    with tarfile.open(name=name, mode=mode, fileobj=fileobj) as tar:\n        for obj in object_list:\n            if obj.filename:\n                tar.add(obj.filename, obj.object_name)\n            else:\n                info = tarfile.TarInfo(obj.object_name)\n                info.size = cast(int, obj.length)\n                info.mtime = int(\n                    time.to_float(obj.mod_time or time.utcnow()),\n                )\n                tar.addfile(info, obj.data)\n\n    if not name:\n        length = cast(BytesIO, fileobj).tell()\n        cast(BytesIO, fileobj).seek(0)\n    else:\n        length = os.stat(name).st_size\n\n    part_size = 0 if length < MIN_PART_SIZE else length\n\n    if name:\n        return self.fput_object(\n            bucket_name,\n            object_name,\n            cast(str, staging_filename),\n            metadata=metadata,\n            sse=sse,\n            tags=tags,\n            retention=retention,\n            legal_hold=legal_hold,\n            part_size=part_size,\n        )\n    return self.put_object(\n        bucket_name,\n        object_name,\n        cast(BinaryIO, fileobj),\n        length,\n        metadata=cast(Union[DictType, None], metadata),\n        sse=sse,\n        tags=tags,\n        retention=retention,\n        legal_hold=legal_hold,\n        part_size=part_size,\n    )",
+          "triple_sequences": [
+            {
+              "action_api": "check_bucket_name()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "bucket_name",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "random()",
+              "action_description": "Generate random number",
+              "action_id": "generate_random_number",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Generate random number",
+              "intention_id": "generate_random_number"
+            },
+            {
+              "action_api": "itertools.chain()",
+              "action_description": "Generate product of sequence",
+              "action_id": "generate_sequence_product",
+              "object": "object_list",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Generate product of sequence",
+              "intention_id": "generate_sequence_product"
+            },
+            {
+              "action_api": "tarfile.open()",
+              "action_description": "Opens ZIP archive for writing",
+              "action_id": "open_zip_write",
+              "object": "name=name, mode=mode, fileobj=fileobj",
+              "object_description": "ZIP archive file",
+              "object_id": "zip_archive",
+              "intention_description": "Create zip archive",
+              "intention_id": "create_zip_archive"
+            },
+            {
+              "action_api": "tar.add()",
+              "action_description": "Adds file to ZIP archive with specified archive name",
+              "action_id": "add_file_zip",
+              "object": "obj.filename, obj.object_name",
+              "object_description": "Directory path with file",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Add file to zip archive",
+              "intention_id": "add_file_to_archive"
+            },
+            {
+              "action_api": "tarfile.TarInfo()",
+              "action_description": "Creates ZIP archive for writing",
+              "action_id": "create_zip_archive",
+              "object": "obj.object_name",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Create zip archive",
+              "intention_id": "create_zip_archive"
+            },
+            {
+              "action_api": "tar.addfile()",
+              "action_description": "Adds file to ZIP archive with specified archive name",
+              "action_id": "add_file_zip",
+              "object": "info, obj.data",
+              "object_description": "Structured file data",
+              "object_id": "structured_file_data",
+              "intention_description": "Add file to zip archive",
+              "intention_id": "add_file_to_archive"
+            },
+            {
+              "action_api": "cast(BytesIO, fileobj).tell()",
+              "action_description": "Retrieves bytes value from in-memory buffer",
+              "action_id": "get_buffer_bytes",
+              "object": "fileobj",
+              "object_description": "Image binary stream",
+              "object_id": "image_binary_stream",
+              "intention_description": "Get file size",
+              "intention_id": "get_file_size"
+            },
+            {
+              "action_api": "cast(BytesIO, fileobj).seek()",
+              "action_description": "Moves buffer pointer to start",
+              "action_id": "move_buffer_pointer",
+              "object": "0",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare file for temporary storage",
+              "intention_id": "prepare_file_temp_storage"
+            },
+            {
+              "action_api": "os.stat()",
+              "action_description": "Retrieves file status",
+              "action_id": "path_object_operations",
+              "object": "name",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Get file size",
+              "intention_id": "get_file_size"
+            },
+            {
+              "action_api": "self.fput_object()",
+              "action_description": "Uploads file to transfer.sh and returns URL",
+              "action_id": "upload_file_transfer_sh",
+              "object": "bucket_name, object_name, cast(str, staging_filename), metadata=metadata, sse=sse, tags=tags, retention=retention, legal_hold=legal_hold, part_size=part_size",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Transmit file data to server",
+              "intention_id": "transmit_file_data_server"
+            },
+            {
+              "action_api": "self.put_object()",
+              "action_description": "Uploads file to transfer.sh and returns URL",
+              "action_id": "upload_file_transfer_sh",
+              "object": "bucket_name, object_name, cast(BinaryIO, fileobj), length, metadata=cast(Union[DictType, None], metadata), sse=sse, tags=tags, retention=retention, legal_hold=legal_hold, part_size=part_size",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Transmit file data to server",
+              "intention_id": "transmit_file_data_server"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

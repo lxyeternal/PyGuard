@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "d2net.py",
+    "code_snippet": "import sys\nfrom pathlib import Path\nimport subprocess\nimport logging\nimport torch\n\nfrom unav.third_party.local_feature.SuperPoint_SuperGlue.utils.base_model import BaseModel\n\nd2net_path = Path(__file__).parent / '../../third_party/d2net'\nsys.path.append(str(d2net_path))\nfrom lib.model_test import D2Net as _D2Net\nfrom lib.pyramid import process_multiscale\n\n\nclass D2Net(BaseModel):\n    default_conf = {\n        'model_name': 'd2_tf.pth',\n        'use_relu': True,\n        'multiscale': False,\n    }\n    required_inputs = ['image']\n\n    def _init(self, conf):\n        model_file = d2net_path / 'models' / conf['model_name']\n        if not model_file.exists():\n            model_file.parent.mkdir(exist_ok=True)\n            cmd = ['wget', 'https://dsmn.ml/files/d2-net/'+conf['model_name'],\n                   '-O', str(model_file)]\n            ret = subprocess.call(cmd)\n            if ret != 0:\n                logging.warning(\n                    f'Cannot download the D2-Net model with `{cmd}`.')\n                exit(ret)\n\n        self.net = _D2Net(\n            model_file=model_file,\n            use_relu=conf['use_relu'],\n            use_cuda=False)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "pathlib.Path.exists",
+        "pathlib.Path.mkdir",
+        "subprocess.call",
+        "logging.warning",
+        "exit",
+        "lib.model_test.D2Net"
+      ],
+      "api_sequence_with_args": [
+        "pathlib.Path.exists(model_file)",
+        "pathlib.Path.mkdir(exist_ok=True)",
+        "subprocess.call(cmd)",
+        "logging.warning(f'Cannot download the D2-Net model with `{cmd}`.')",
+        "exit(ret)",
+        "lib.model_test.D2Net(model_file=model_file, use_relu=conf['use_relu'], use_cuda=False)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pathlib.Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "pathlib.Path.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "logging.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "lib.model_test.D2Net",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        }
+      ],
+      "contextual_code": "def _init(self, conf):\n    model_file = d2net_path / 'models' / conf['model_name']\n    if not model_file.exists():\n        model_file.parent.mkdir(exist_ok=True)\n        cmd = ['wget', 'https://dsmn.ml/files/d2-net/'+conf['model_name'],\n               '-O', str(model_file)]\n        ret = subprocess.call(cmd)\n        if ret != 0:\n            logging.warning(\n                f'Cannot download the D2-Net model with `{cmd}`.')\n            exit(ret)\n\n    self.net = _D2Net(\n        model_file=model_file,\n        use_relu=conf['use_relu'],\n        use_cuda=False)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "unav-0.1.40",
+      "total_matches": 1
+    }
+  }
+]

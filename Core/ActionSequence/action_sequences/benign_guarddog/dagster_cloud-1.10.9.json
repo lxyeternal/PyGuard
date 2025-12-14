@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "io_manager.py",
+    "code_snippet": "import os\nimport requests\nimport boto3\nimport datetime\nfrom dagster._vendored.dateutil import parser\n\nECS_AGENT_IP = \"169.254.170.2\"\n\nclass PickledObjectServerlessIOManager(UPathIOManager):\n    def __init__(\n        self,\n        s3_bucket,\n        s3_prefix,\n    ):\n        self._bucket = check.str_param(s3_bucket, \"s3_bucket\")\n        self._s3_prefix = check.str_param(s3_prefix, \"s3_prefix\")\n        self._boto_session, self._boto_session_expiration = self._refresh_boto_session()\n        base_path = UPath(s3_prefix) if s3_prefix else None\n        super().__init__(base_path=base_path)\n\n    def _refresh_boto_session(self) -> tuple[boto3.Session, datetime.datetime]:\n        # We have to do this whacky way to get credentials to ensure that we get iam role\n        # we assigned to the task. If we used the default boto behavior, it could get overriden\n        # when users set AWS env vars.\n        relative_uri = os.environ[\"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"]\n        aws_creds = requests.get(f\"http://{ECS_AGENT_IP}{relative_uri}\").json()\n        session = boto3.Session(\n            aws_access_key_id=aws_creds[\"AccessKeyId\"],\n            aws_secret_access_key=aws_creds[\"SecretAccessKey\"],\n            aws_session_token=aws_creds[\"Token\"],\n        )\n        expiration = parser.parse(aws_creds[\"Expiration\"])\n        return session, expiration  # pyright: ignore[reportReturnType]\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "requests.get",
+        "requests.get.json",
+        "boto3.Session",
+        "parser.parse"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"]",
+        "requests.get(f\"http://{ECS_AGENT_IP}{relative_uri}\")",
+        "requests.get(f\"http://{ECS_AGENT_IP}{relative_uri}\").json()",
+        "boto3.Session(aws_access_key_id=aws_creds[\"AccessKeyId\"], aws_secret_access_key=aws_creds[\"SecretAccessKey\"], aws_session_token=aws_creds[\"Token\"])",
+        "parser.parse(aws_creds[\"Expiration\"])"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.get.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "boto3.Session",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "parser.parse",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\nimport boto3\nfrom dagster._vendored.dateutil import parser\n\nECS_AGENT_IP = \"169.254.170.2\"\n\nclass PickledObjectServerlessIOManager(UPathIOManager):\n    def _refresh_boto_session(self) -> tuple[boto3.Session, datetime.datetime]:\n        relative_uri = os.environ[\"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"]\n        aws_creds = requests.get(f\"http://{ECS_AGENT_IP}{relative_uri}\").json()\n        session = boto3.Session(\n            aws_access_key_id=aws_creds[\"AccessKeyId\"],\n            aws_secret_access_key=aws_creds[\"SecretAccessKey\"],\n            aws_session_token=aws_creds[\"Token\"],\n        )\n        expiration = parser.parse(aws_creds[\"Expiration\"])\n        return session, expiration"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "dagster_cloud-1.10.9",
+      "total_matches": 1
+    }
+  }
+]

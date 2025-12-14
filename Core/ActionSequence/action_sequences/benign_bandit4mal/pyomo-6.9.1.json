@@ -1,0 +1,1027 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyomo-6.9.1",
+      "total_matches": 7,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "util.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/scripting/util.py",
+    "line_number": "429",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "428\n429\t                modeldata.read(model)\n430\t                instance = model.create_instance(",
+    "code_snippet": "def create_model(data):\n    \"\"\"\n    Create instance of Pyomo model.\n\n    Return:\n        model:      Model object.\n        instance:   Problem instance.\n        symbol_map: Symbol map created when writing model to a file.\n        filename:    Filename that a model instance was written to.\n    \"\"\"\n    #\n    if not data.options.runtime.logging == 'quiet':\n        sys.stdout.write('[%8.2f] Creating model\\n' % (time.time() - start_time))\n        sys.stdout.flush()\n    #\n    if data.options.runtime.profile_memory >= 1 and pympler_available:\n        global memory_data\n        mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n        data.local.max_memory = mem_used\n        print(\"   Total memory = %d bytes prior to model construction\" % mem_used)\n    #\n    # Find the Model objects\n    #\n    _models = {}\n    _model_IDS = set()\n    for _name, _obj in data.local.usermodel.__dict__.items():\n        if isinstance(_obj, Model) and id(_obj) not in _model_IDS:\n            _models[_name] = _obj\n            _model_IDS.add(id(_obj))\n    model_name = data.options.model.object_name\n    if len(_models) == 1:\n        _name = list(_models.keys())[0]\n        if model_name is None:\n            model_name = _name\n        elif model_name != _name:\n            msg = \"Model '%s' is not defined in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n    elif len(_models) > 1:\n        if model_name is None:\n            msg = \"Multiple models defined in file '%s'!\"\n            raise SystemExit(msg % data.options.model.filename)\n        elif not model_name in _models:\n            msg = \"Unknown model '%s' in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n\n    ep = ExtensionPoint(IPyomoScriptCreateModel)\n\n    if model_name is None:\n        if len(ep) == 0:\n            msg = (\n                \"A model is not defined and the 'pyomo_create_model' is not \"\n                \"provided in module %s\"\n            )\n            raise SystemExit(msg % data.options.model.filename)\n        elif len(ep) > 1:\n            msg = (\n                'Multiple model construction plugins have been registered in module %s!'\n            )\n            raise SystemExit(msg % data.options.model.filename)\n        else:\n            model_options = data.options.model.options.value()\n            tick = time.time()\n            model = ep.service().apply(\n                options=Bunch(**data.options), model_options=Bunch(**model_options)\n            )\n            if data.options.runtime.report_timing is True:\n                print(\n                    \"      %6.2f seconds required to construct instance\"\n                    % (time.time() - tick)\n                )\n                data.local.time_initial_import = None\n                tick = time.time()\n    else:\n        if model_name not in _models:\n            msg = \"Model '%s' is not defined in file '%s'!\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n        model = _models[model_name]\n        if model is None:\n            msg = \"'%s' object is 'None' in module %s\"\n            raise SystemExit(msg % (model_name, data.options.model.filename))\n        elif len(ep) > 0:\n            msg = (\n                \"Model construction function 'create_model' defined in \"\n                \"file '%s', but model is already constructed!\"\n            )\n            raise SystemExit(msg % data.options.model.filename)\n\n    #\n    # Print model\n    #\n    for ep in ExtensionPoint(IPyomoScriptPrintModel):\n        ep.apply(options=data.options, model=model)\n\n    #\n    # Create Problem Instance\n    #\n    ep = ExtensionPoint(IPyomoScriptCreateDataPortal)\n    if len(ep) > 1:\n        msg = 'Multiple model data construction plugins have been registered!'\n        raise SystemExit(msg)\n\n    if len(ep) == 1:\n        modeldata = ep.service().apply(options=data.options, model=model)\n    else:\n        modeldata = DataPortal()\n\n    if model._constructed:\n        #\n        # TODO: use a better test for ConcreteModel\n        #\n        instance = model\n        if (\n            data.options.runtime.report_timing is True\n            and not data.local.time_initial_import is None\n        ):\n            print(\n                \"      %6.2f seconds required to construct instance\"\n                % (data.local.time_initial_import)\n            )\n    else:\n        tick = time.time()\n        if len(data.options.data.files) > 1:\n            #\n            # Load a list of *.dat files\n            #\n            for file in data.options.data.files:\n                suffix = (file).split(\".\")[-1]\n                if suffix != \"dat\":\n                    msg = (\n                        'When specifying multiple data files, they must all '\n                        'be *.dat files.  File specified: %s'\n                    )\n                    raise SystemExit(msg % str(file))\n\n                modeldata.load(filename=file, model=model)\n\n            instance = model.create_instance(\n                modeldata,\n                namespaces=data.options.data.namespaces,\n                profile_memory=data.options.runtime.profile_memory,\n                report_timing=data.options.runtime.report_timing,\n            )\n\n        elif len(data.options.data.files) == 1:\n            #\n            # Load a *.dat file or process a *.py data file\n            #\n            suffix = (data.options.data.files[0]).split(\".\")[-1].lower()\n            if suffix == \"dat\":\n                instance = model.create_instance(\n                    data.options.data.files[0],\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            elif suffix == \"py\":\n                userdata = import_file(data.options.data.files[0], clear_cache=True)\n                if \"modeldata\" in dir(userdata):\n                    if len(ep) == 1:\n                        msg = (\n                            \"Cannot apply 'pyomo_create_modeldata' and use the\"\n                            \" 'modeldata' object that is provided in the model\"\n                        )\n                        raise SystemExit(msg)\n\n                    if userdata.modeldata is None:\n                        msg = \"'modeldata' object is 'None' in module %s\"\n                        raise SystemExit(msg % str(data.options.data.files[0]))\n\n                    modeldata = userdata.modeldata\n\n                else:\n                    if len(ep) == 0:\n                        msg = (\n                            \"Neither 'modeldata' nor 'pyomo_create_dataportal' \"\n                            'is defined in module %s'\n                        )\n                        raise SystemExit(msg % str(data.options.data.files[0]))\n\n                modeldata.read(model)\n                instance = model.create_instance(\n                    modeldata,\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            elif suffix == \"yml\" or suffix == 'yaml':\n                modeldata = yaml.load(\n                    open(data.options.data.files[0]), **yaml_load_args\n                )\n                instance = model.create_instance(\n                    modeldata,\n                    namespaces=data.options.data.namespaces,\n                    profile_memory=data.options.runtime.profile_memory,\n                    report_timing=data.options.runtime.report_timing,\n                )\n            else:\n                raise ValueError(\n                    \"Unknown data file type: \" + data.options.data.files[0]\n                )\n        else:\n            instance = model.create_instance(\n                modeldata,\n                namespaces=data.options.data.namespaces,\n                profile_memory=data.options.runtime.profile_memory,\n                report_timing=data.options.runtime.report_timing,\n            )\n        if data.options.runtime.report_timing is True:\n            print(\n                \"      %6.2f seconds required to construct instance\"\n                % (time.time() - tick)\n            )\n\n    #\n    modify_start_time = time.time()\n    for ep in ExtensionPoint(IPyomoScriptModifyInstance):\n        if data.options.runtime.report_timing is True:\n            tick = time.time()\n        ep.apply(options=data.options, model=model, instance=instance)\n        if data.options.runtime.report_timing is True:\n            print(\"      %6.2f seconds to apply %s\" % (time.time() - tick, type(ep)))\n            tick = time.time()\n    #\n    for transformation in data.options.transform:\n        with TransformationFactory(transformation) as xfrm:\n            instance = xfrm.create_using(instance)\n            if instance is None:\n                raise SystemExit(\n                    \"Unexpected error while applying \"\n                    \"transformation '%s'\" % transformation\n                )\n    #\n    if data.options.runtime.report_timing is True:\n        total_time = time.time() - modify_start_time\n        print(\"      %6.2f seconds required for problem transformations\" % total_time)\n\n    if is_debug_set(logger):\n        print(\"MODEL INSTANCE\")\n        instance.pprint()\n        print(\"\")\n\n    for ep in ExtensionPoint(IPyomoScriptPrintInstance):\n        ep.apply(options=data.options, instance=instance)\n\n    fname = None\n    smap_id = None\n    if not data.options.model.save_file is None:\n        if data.options.runtime.report_timing is True:\n            write_start_time = time.time()\n\n        if data.options.model.save_file == True:\n            if data.local.model_format in (ProblemFormat.cpxlp, ProblemFormat.lpxlp):\n                fname = (data.options.data.files[0])[:-3] + 'lp'\n            else:\n                fname = (data.options.data.files[0])[:-3] + str(data.local.model_format)\n            format = data.local.model_format\n        else:\n            fname = data.options.model.save_file\n            format = data.options.model.save_format\n\n        io_options = {}\n        if data.options.model.symbolic_solver_labels:\n            io_options['symbolic_solver_labels'] = True\n        if data.options.model.file_determinism is not None:\n            io_options['file_determinism'] = data.options.model.file_determinism\n        (fname, smap_id) = instance.write(\n            filename=fname, format=format, io_options=io_options\n        )\n\n        if not data.options.runtime.logging == 'quiet':\n            if not os.path.exists(fname):\n                print(\"ERROR: file \" + fname + \" has not been created!\")\n            else:\n                print(\"Model written to file '\" + str(fname) + \"'\")\n\n        if data.options.runtime.report_timing is True:\n            total_time = time.time() - write_start_time\n            print(\"      %6.2f seconds required to write file\" % total_time)\n\n        if data.options.runtime.profile_memory >= 2 and pympler_available:\n            print(\"\")\n            print(\"      Summary of objects following file output\")\n            post_file_output_summary = pympler.summary.summarize(\n                pympler.muppy.get_objects()\n            )\n            pympler.summary.print_(post_file_output_summary, limit=100)\n\n            print(\"\")\n\n    for ep in ExtensionPoint(IPyomoScriptSaveInstance):\n        ep.apply(options=data.options, instance=instance)\n\n    if data.options.runtime.profile_memory >= 1 and pympler_available:\n        mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n        if mem_used > data.local.max_memory:\n            data.local.max_memory = mem_used\n        print(\"   Total memory = %d bytes following Pyomo instance creation\" % mem_used)\n\n    return Bunch(\n        model=model,\n        instance=instance,\n        smap_id=smap_id,\n        filename=fname,\n        local=data.local,\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.stdout.write",
+        "sys.stdout.flush",
+        "pympler.muppy.get_objects",
+        "pympler.muppy.get_size",
+        "print",
+        "isinstance",
+        "id",
+        "ExtensionPoint",
+        "ExtensionPoint",
+        "time.time",
+        "ep.service.apply",
+        "print",
+        "import_file",
+        "dir",
+        "userdata.modeldata",
+        "modeldata.read",
+        "model.create_instance",
+        "yaml.load",
+        "open",
+        "model.create_instance",
+        "model.create_instance",
+        "time.time",
+        "print",
+        "ExtensionPoint",
+        "ep.apply",
+        "print",
+        "TransformationFactory",
+        "xfrm.create_using",
+        "print",
+        "instance.pprint",
+        "ExtensionPoint",
+        "ep.apply",
+        "os.path.exists",
+        "print",
+        "print",
+        "pympler.muppy.get_objects",
+        "pympler.muppy.get_size",
+        "print"
+      ],
+      "api_sequence_with_args": [
+        "sys.stdout.write('[%8.2f] Creating model\\n' % (time.time() - start_time))",
+        "sys.stdout.flush()",
+        "pympler.muppy.get_objects()",
+        "pympler.muppy.get_size(pympler.muppy.get_objects())",
+        "print(\"   Total memory = %d bytes prior to model construction\" % mem_used)",
+        "isinstance(_obj, Model)",
+        "id(_obj)",
+        "ExtensionPoint(IPyomoScriptCreateModel)",
+        "ExtensionPoint(IPyomoScriptPrintModel)",
+        "time.time()",
+        "ep.service().apply(options=Bunch(**data.options), model_options=Bunch(**model_options))",
+        "print(\"      %6.2f seconds required to construct instance\" % (time.time() - tick))",
+        "import_file(data.options.data.files[0], clear_cache=True)",
+        "dir(userdata)",
+        "userdata.modeldata",
+        "modeldata.read(model)",
+        "model.create_instance(modeldata, namespaces=data.options.data.namespaces, profile_memory=data.options.runtime.profile_memory, report_timing=data.options.runtime.report_timing)",
+        "yaml.load(open(data.options.data.files[0]), **yaml_load_args)",
+        "open(data.options.data.files[0])",
+        "model.create_instance(modeldata, namespaces=data.options.data.namespaces, profile_memory=data.options.runtime.profile_memory, report_timing=data.options.runtime.report_timing)",
+        "model.create_instance(modeldata, namespaces=data.options.data.namespaces, profile_memory=data.options.runtime.profile_memory, report_timing=data.options.runtime.report_timing)",
+        "time.time()",
+        "print(\"      %6.2f seconds required to construct instance\" % (time.time() - tick))",
+        "ExtensionPoint(IPyomoScriptModifyInstance)",
+        "ep.apply(options=data.options, model=model, instance=instance)",
+        "print(\"      %6.2f seconds to apply %s\" % (time.time() - tick, type(ep)))",
+        "TransformationFactory(transformation)",
+        "xfrm.create_using(instance)",
+        "print(\"      %6.2f seconds required for problem transformations\" % total_time)",
+        "instance.pprint()",
+        "ExtensionPoint(IPyomoScriptPrintInstance)",
+        "ep.apply(options=data.options, instance=instance)",
+        "os.path.exists(fname)",
+        "print(\"ERROR: file \" + fname + \" has not been created!\")",
+        "print(\"Model written to file '\" + str(fname) + \"'\")",
+        "pympler.muppy.get_objects()",
+        "pympler.muppy.get_size(pympler.muppy.get_objects())",
+        "print(\"   Total memory = %d bytes following Pyomo instance creation\" % mem_used)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.stdout.write",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys.stdout.flush",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pympler.muppy.get_objects",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "pympler.muppy.get_size",
+          "id": "get_virtual_memory",
+          "description": "Retrieves system virtual memory statistics",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "id",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "ExtensionPoint",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "ExtensionPoint",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "ep.service.apply",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "import_file",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "dir",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "userdata.modeldata",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "modeldata.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "model.create_instance",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "yaml.load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "model.create_instance",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "model.create_instance",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ExtensionPoint",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "ep.apply",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "TransformationFactory",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "xfrm.create_using",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "instance.pprint",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ExtensionPoint",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "ep.apply",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "pympler.muppy.get_objects",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "pympler.muppy.get_size",
+          "id": "get_virtual_memory",
+          "description": "Retrieves system virtual memory statistics",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "if not data.options.runtime.logging == 'quiet':\n    sys.stdout.write('[%8.2f] Creating model\\n' % (time.time() - start_time))\n    sys.stdout.flush()\nif data.options.runtime.profile_memory >= 1 and pympler_available:\n    mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n    data.local.max_memory = mem_used\n    print(\"   Total memory = %d bytes prior to model construction\" % mem_used)\n...\nif suffix == \"py\":\n    userdata = import_file(data.options.data.files[0], clear_cache=True)\n    if \"modeldata\" in dir(userdata):\n        if userdata.modeldata is None:\n            raise SystemExit(msg % str(data.options.data.files[0]))\n        modeldata = userdata.modeldata\n    modeldata.read(model)\n    instance = model.create_instance(\n        modeldata,\n        namespaces=data.options.data.namespaces,\n        profile_memory=data.options.runtime.profile_memory,\n        report_timing=data.options.runtime.report_timing,\n    )\nelif suffix == \"yml\" or suffix == 'yaml':\n    modeldata = yaml.load(\n        open(data.options.data.files[0]), **yaml_load_args\n    )\n    instance = model.create_instance(\n        modeldata,\n        namespaces=data.options.data.namespaces,\n        profile_memory=data.options.runtime.profile_memory,\n        report_timing=data.options.runtime.report_timing,\n    )\n...\nif not os.path.exists(fname):\n    print(\"ERROR: file \" + fname + \" has not been created!\")\nelse:\n    print(\"Model written to file '\" + str(fname) + \"'\")\n...\nif data.options.runtime.profile_memory >= 1 and pympler_available:\n    mem_used = pympler.muppy.get_size(pympler.muppy.get_objects())\n    if mem_used > data.local.max_memory:\n        data.local.max_memory = mem_used\n    print(\"   Total memory = %d bytes following Pyomo instance creation\" % mem_used)"
+    }
+  },
+  {
+    "pyfile": "test_ampl_nl.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/repn/tests/ampl/test_ampl_nl.py",
+    "line_number": "332",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "331\t            model._gen_con_repn = True\n332\t            model.write(nl_file, format=self._nl_version)\n333\t            self.assertEqual(len(model._repn), 2)",
+    "code_snippet": "def test_obj_con_cache(self):\n    if self._nl_version != 'nl_v1':\n        self.skipTest(f'test not applicable to writer {self._nl_version}')\n    model = ConcreteModel()\n    model.x = Var()\n    model.c = Constraint(expr=model.x**2 >= 1)\n    model.obj = Objective(expr=model.x**2)\n\n    with TempfileManager.new_context() as TMP:\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        model.write(nl_file, format=self._nl_version)\n        self.assertFalse(hasattr(model, '_repn'))\n        with open(nl_file) as FILE:\n            nl_ref = FILE.read()\n\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        model._gen_obj_repn = True\n        model.write(nl_file, format=self._nl_version)\n        self.assertEqual(len(model._repn), 1)\n        self.assertIn(model.obj, model._repn)\n        obj_repn = model._repn[model.obj]\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        del model._repn\n        model._gen_obj_repn = None\n        model._gen_con_repn = True\n        model.write(nl_file, format=self._nl_version)\n        self.assertEqual(len(model._repn), 1)\n        self.assertIn(model.c, model._repn)\n        c_repn = model._repn[model.c]\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        del model._repn\n        model._gen_obj_repn = True\n        model._gen_con_repn = True\n        model.write(nl_file, format=self._nl_version)\n        self.assertEqual(len(model._repn), 2)\n        self.assertIn(model.obj, model._repn)\n        self.assertIn(model.c, model._repn)\n        obj_repn = model._repn[model.obj]\n        c_repn = model._repn[model.c]\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        model._gen_obj_repn = None\n        model._gen_con_repn = None\n        model.write(nl_file, format=self._nl_version)\n        self.assertEqual(len(model._repn), 2)\n        self.assertIn(model.obj, model._repn)\n        self.assertIn(model.c, model._repn)\n        self.assertIs(obj_repn, model._repn[model.obj])\n        self.assertIs(c_repn, model._repn[model.c])\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        model._gen_obj_repn = True\n        model._gen_con_repn = True\n        model.write(nl_file, format=self._nl_version)\n        self.assertEqual(len(model._repn), 2)\n        self.assertIn(model.obj, model._repn)\n        self.assertIn(model.c, model._repn)\n        self.assertIsNot(obj_repn, model._repn[model.obj])\n        self.assertIsNot(c_repn, model._repn[model.c])\n        obj_repn = model._repn[model.obj]\n        c_repn = model._repn[model.c]\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        model._gen_obj_repn = False\n        model._gen_con_repn = False\n        try:\n\n            def dont_call_gsr(*args, **kwargs):\n                self.fail(\"generate_standard_repn should not be called\")\n\n            ampl_.generate_standard_repn = dont_call_gsr\n            model.write(nl_file, format=self._nl_version)\n        finally:\n            ampl_.generate_standard_repn = gsr\n        self.assertEqual(len(model._repn), 2)\n        self.assertIn(model.obj, model._repn)\n        self.assertIn(model.c, model._repn)\n        self.assertIs(obj_repn, model._repn[model.obj])\n        self.assertIs(c_repn, model._repn[model.c])\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n\n        # Check that repns generated by the LP wrter will be\n        # processed correctly\n        model._repn[model.c] = c_repn = gsr(model.c.body, quadratic=True)\n        model._repn[model.obj] = obj_repn = gsr(model.obj.expr, quadratic=True)\n        nl_file = TMP.create_tempfile(suffix='.nl')\n        try:\n\n            def dont_call_gsr(*args, **kwargs):\n                self.fail(\"generate_standard_repn should not be called\")\n\n            ampl_.generate_standard_repn = dont_call_gsr\n            model.write(nl_file, format=self._nl_version)\n        finally:\n            ampl_.generate_standard_repn = gsr\n        self.assertEqual(len(model._repn), 2)\n        self.assertIn(model.obj, model._repn)\n        self.assertIn(model.c, model._repn)\n        self.assertIs(obj_repn, model._repn[model.obj])\n        self.assertIs(c_repn, model._repn[model.c])\n        with open(nl_file) as FILE:\n            nl_test = FILE.read()\n        self.assertEqual(nl_ref, nl_test)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "TempfileManager.new_context",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read",
+        "TMP.create_tempfile",
+        "model.write",
+        "open",
+        "FILE.read"
+      ],
+      "api_sequence_with_args": [
+        "TempfileManager.new_context()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()",
+        "TMP.create_tempfile(suffix='.nl')",
+        "model.write(nl_file, format=self._nl_version)",
+        "open(nl_file)",
+        "FILE.read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "TempfileManager.new_context",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "TMP.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "model.write",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "FILE.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "with TempfileManager.new_context() as TMP:\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_ref = FILE.read()\n\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_test = FILE.read()\n\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_test = FILE.read()\n\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_test = FILE.read()\n\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_test = FILE.read()\n\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_test = FILE.read()\n\n    nl_file = TMP.create_tempfile(suffix='.nl')\n    model.write(nl_file, format=self._nl_version)\n    with open(nl_file) as FILE:\n        nl_test = FILE.read()"
+    }
+  },
+  {
+    "pyfile": "test_block.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/core/tests/unit/test_block.py",
+    "line_number": "2974",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2973\t        ):\n2974\t            m.write(filename=\"foo.bogus\")\n2975",
+    "code_snippet": "def test_write_exceptions(self):\n    m = Block()\n    with self.assertRaisesRegex(\n        ValueError, \"\\.\\*Could not infer file format from file name\"\n    ):\n        m.write(filename=\"foo.bogus\")\n\n    with self.assertRaisesRegex(ValueError, \".*Cannot write model in format\"):\n        m.write(format=\"bogus\")",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "def test_write_exceptions(self):\n    m = Block()\n    with self.assertRaisesRegex(\n        ValueError, \".*Could not infer file format from file name\"\n    ):\n        m.write(filename=\"foo.bogus\")\n\n    with self.assertRaisesRegex(ValueError, \".*Cannot write model in format\"):\n        m.write(format=\"bogus\")"
+    }
+  },
+  {
+    "pyfile": "config.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/common/config.py",
+    "line_number": "2135",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2134\t                field = level_info[lvl]['off'] - len(comment)\n2135\t            os.write(' ' * indent_spacing * lvl)\n2136\t            if width - len(_str) - minDocWidth >= 0:",
+    "code_snippet": "def generate_yaml_template(self, indent_spacing=2, width=78, visibility=0):\n    minDocWidth = 20\n    comment = \"  # \"\n    data = list(self._data_collector(0, \"\", visibility))\n    level_info = {}\n    for lvl, pre, val, obj in data:\n        _str = _value2yaml(pre, val, obj)\n        if lvl not in level_info:\n            level_info[lvl] = {'data': [], 'off': 0, 'line': 0, 'over': 0}\n        level_info[lvl]['data'].append(\n            (_str.find(':') + 2, len(_str), len(obj._description or \"\"))\n        )\n    for lvl in sorted(level_info):\n        indent = lvl * indent_spacing\n        _ok = width - indent - len(comment) - minDocWidth\n        offset = max(\n            val if val < _ok else key for key, val, doc in level_info[lvl]['data']\n        )\n        offset += indent + len(comment)\n        over = sum(\n            1 for key, val, doc in level_info[lvl]['data'] if doc + offset > width\n        )\n        if len(level_info[lvl]['data']) - over > 0:\n            line = max(\n                offset + doc\n                for key, val, doc in level_info[lvl]['data']\n                if offset + doc <= width\n            )\n        else:\n            line = width\n        level_info[lvl]['off'] = offset\n        level_info[lvl]['line'] = line\n        level_info[lvl]['over'] = over\n    maxLvl = 0\n    maxDoc = 0\n    pad = 0\n    for lvl in sorted(level_info):\n        _pad = level_info[lvl]['off']\n        _doc = level_info[lvl]['line'] - _pad\n        if _pad > pad:\n            if maxDoc + _pad <= width:\n                pad = _pad\n            else:\n                break\n        if _doc + pad > width:\n            break\n        if _doc > maxDoc:\n            maxDoc = _doc\n        maxLvl = lvl\n    os = io.StringIO()\n    if self._description:\n        os.write(comment.lstrip() + self._description + \"\\n\")\n    for lvl, pre, val, obj in data:\n        _str = _value2yaml(pre, val, obj)\n        if not obj._description:\n            os.write(' ' * indent_spacing * lvl + _str + \"\\n\")\n            continue\n        if lvl <= maxLvl:\n            field = pad - len(comment)\n        else:\n            field = level_info[lvl]['off'] - len(comment)\n        os.write(' ' * indent_spacing * lvl)\n        if width - len(_str) - minDocWidth >= 0:\n            os.write('%%-%ds' % (field - indent_spacing * lvl) % _str)\n        else:\n            os.write(_str + '\\n' + ' ' * field)\n        os.write(comment)\n        txtArea = max(width - field - len(comment), minDocWidth)\n        os.write(\n            (\"\\n\" + ' ' * field + comment).join(\n                textwrap.wrap(obj._description, txtArea, subsequent_indent='  ')\n            )\n        )\n        os.write('\\n')\n    return os.getvalue()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "io.StringIO",
+        "io.StringIO.write",
+        "io.StringIO.write",
+        "io.StringIO.write",
+        "io.StringIO.write",
+        "io.StringIO.write",
+        "io.StringIO.write",
+        "io.StringIO.write",
+        "io.StringIO.getvalue"
+      ],
+      "api_sequence_with_args": [
+        "io.StringIO()",
+        "io.StringIO.write(comment.lstrip() + self._description + \"\\n\")",
+        "io.StringIO.write(' ' * indent_spacing * lvl + _str + \"\\n\")",
+        "io.StringIO.write(' ' * indent_spacing * lvl)",
+        "io.StringIO.write('%%-%ds' % (field - indent_spacing * lvl) % _str)",
+        "io.StringIO.write(_str + '\\n' + ' ' * field)",
+        "io.StringIO.write(comment)",
+        "io.StringIO.write((\"\\n\" + ' ' * field + comment).join(textwrap.wrap(obj._description, txtArea, subsequent_indent='  ')))",
+        "io.StringIO.write('\\n')",
+        "io.StringIO.getvalue()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "io.StringIO",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "io.StringIO.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "io.StringIO.getvalue",
+          "id": "get_buffer_bytes",
+          "description": "Retrieves bytes value from in-memory buffer",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "import io\nimport textwrap\n\ndef generate_yaml_template(self, indent_spacing=2, width=78, visibility=0):\n    # ... (omitted code for brevity)\n    os = io.StringIO()\n    if self._description:\n        os.write(comment.lstrip() + self._description + \"\\n\")\n    for lvl, pre, val, obj in data:\n        _str = _value2yaml(pre, val, obj)\n        if not obj._description:\n            os.write(' ' * indent_spacing * lvl + _str + \"\\n\")\n            continue\n        if lvl <= maxLvl:\n            field = pad - len(comment)\n        else:\n            field = level_info[lvl]['off'] - len(comment)\n        os.write(' ' * indent_spacing * lvl)\n        if width - len(_str) - minDocWidth >= 0:\n            os.write('%%-%ds' % (field - indent_spacing * lvl) % _str)\n        else:\n            os.write(_str + '\\n' + ' ' * field)\n        os.write(comment)\n        txtArea = max(width - field - len(comment), minDocWidth)\n        os.write((\"\\n\" + ' ' * field + comment).join(textwrap.wrap(obj._description, txtArea, subsequent_indent='  ')))\n        os.write('\\n')\n    return os.getvalue()"
+    }
+  },
+  {
+    "pyfile": "convert.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/scripting/convert.py",
+    "line_number": "176",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "175\t    dakfrag.write(\"    upper_bounds \" + \" \".join(var_ub) + '\\n')\n176\t    dakfrag.write(\"    initial_point \" + \" \".join(var_initial) + '\\n')\n177",
+    "code_snippet": "def convert_dakota(options=Bunch(), parser=None):\n    #\n    # Import plugins\n    #\n    import pyomo.environ\n\n    model_file = os.path.basename(options.model.save_file)\n    model_file_no_ext = os.path.splitext(model_file)[0]\n\n    #\n    # Set options for writing the .nl and related files\n    #\n\n    # By default replace .py with .nl\n    if options.model.save_file is None:\n        options.model.save_file = model_file_no_ext + '.nl'\n    options.model.save_format = ProblemFormat.nl\n    # Dakota requires .row/.col files\n    options.model.symbolic_solver_labels = True\n\n    #\n    # Call the core converter\n    #\n    model_data = convert(options, parser)\n\n    #\n    # Generate Dakota input file fragments for the Vars, Objectives, Constraints\n    #\n\n    # TODO: the converted model doesn't expose the right symbol_map\n    #       for only the vars active in the .nl\n\n    model = model_data.instance\n\n    # Easy way\n    # print \"VARIABLE:\"\n    # lines = open(options.save_model.replace('.nl','.col'),'r').readlines()\n    # for varName in lines:\n    #    varName = varName.strip()\n    #    var = model_data.symbol_map.getObject(varName)\n    #    print \"'%s': %s\" % (varName, var)\n    #    #print var.pprint()\n\n    # Hard way\n    variables = 0\n    var_descriptors = []\n    var_lb = []\n    var_ub = []\n    var_initial = []\n    tmpDict = model_data.symbol_map.getByObjectDictionary()\n    for var in model.component_data_objects(Var, active=True):\n        if id(var) in tmpDict:\n            variables += 1\n            var_descriptors.append(var.name)\n\n            # apply user bound, domain bound, or infinite\n            _lb, _ub = var.bounds\n            if _lb is not None:\n                var_lb.append(str(_lb))\n            else:\n                var_lb.append(\"-inf\")\n\n            if _ub is not None:\n                var_ub.append(str(_ub))\n            else:\n                var_ub.append(\"inf\")\n\n            try:\n                val = value(var)\n            except:\n                val = None\n            var_initial.append(str(val))\n\n    objectives = 0\n    obj_descriptors = []\n    for obj in model.component_data_objects(Objective, active=True):\n        objectives += 1\n        obj_descriptors.append(obj.name)\n\n    constraints = 0\n    cons_descriptors = []\n    cons_lb = []\n    cons_ub = []\n    for con in model.component_data_objects(Constraint, active=True):\n        constraints += 1\n        cons_descriptors.append(con.name)\n        if con.lower is not None:\n            cons_lb.append(str(con.lower))\n        else:\n            cons_lb.append(\"-inf\")\n        if con.upper is not None:\n            cons_ub.append(str(con.upper))\n        else:\n            cons_ub.append(\"inf\")\n\n    # Write the Dakota input file fragments\n\n    dakfrag = open(model_file_no_ext + \".dak\", 'w')\n\n    dakfrag.write(\"#--- Dakota variables block ---#\\n\")\n    dakfrag.write(\"variables\\n\")\n    dakfrag.write(\"  continuous_design \" + str(variables) + '\\n')\n    dakfrag.write(\"    descriptors\\n\")\n    for vd in var_descriptors:\n        dakfrag.write(\"      '%s'\\n\" % vd)\n    dakfrag.write(\"    lower_bounds \" + \" \".join(var_lb) + '\\n')\n    dakfrag.write(\"    upper_bounds \" + \" \".join(var_ub) + '\\n')\n    dakfrag.write(\"    initial_point \" + \" \".join(var_initial) + '\\n')\n\n    dakfrag.write(\"#--- Dakota interface block ---#\\n\")\n    dakfrag.write(\"interface\\n\")\n    dakfrag.write(\"  algebraic_mappings = '\" + options.model.save_file + \"'\\n\")\n\n    dakfrag.write(\"#--- Dakota responses block ---#\\n\")\n    dakfrag.write(\"responses\\n\")\n    dakfrag.write(\"  objective_functions \" + str(objectives) + '\\n')\n\n    if constraints > 0:\n        dakfrag.write(\"  nonlinear_inequality_constraints \" + str(constraints) + '\\n')\n        dakfrag.write(\"    lower_bounds \" + \" \".join(cons_lb) + '\\n')\n        dakfrag.write(\"    upper_bounds \" + \" \".join(cons_ub) + '\\n')\n\n    dakfrag.write(\"    descriptors\\n\")\n    for od in obj_descriptors:\n        dakfrag.write(\"      '%s'\\n\" % od)\n    if constraints > 0:\n        for cd in cons_descriptors:\n            dakfrag.write(\"      '%s'\\n\" % cd)\n\n    # TODO: detect whether gradient information available in model\n    dakfrag.write(\"  analytic_gradients\\n\")\n    dakfrag.write(\"  no_hessians\\n\")\n\n    dakfrag.close()\n\n    sys.stdout.write(\n        \"Dakota input fragment written to file '%s'\\n\" % (model_file_no_ext + \".dak\",)\n    )\n    return model_data\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.basename",
+        "os.path.splitext",
+        "open",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.write",
+        "open.close",
+        "sys.stdout.write"
+      ],
+      "api_sequence_with_args": [
+        "os.path.basename(options.model.save_file)",
+        "os.path.splitext(model_file)",
+        "open(model_file_no_ext + \".dak\", 'w')",
+        "dakfrag.write(\"#--- Dakota variables block ---#\\n\")",
+        "dakfrag.write(\"variables\\n\")",
+        "dakfrag.write(\"  continuous_design \" + str(variables) + '\\n')",
+        "dakfrag.write(\"    descriptors\\n\")",
+        "dakfrag.write(\"      '%s'\\n\" % vd) (for each vd in var_descriptors)",
+        "dakfrag.write(\"    lower_bounds \" + \" \".join(var_lb) + '\\n')",
+        "dakfrag.write(\"    upper_bounds \" + \" \".join(var_ub) + '\\n')",
+        "dakfrag.write(\"    initial_point \" + \" \".join(var_initial) + '\\n')",
+        "dakfrag.write(\"#--- Dakota interface block ---#\\n\")",
+        "dakfrag.write(\"interface\\n\")",
+        "dakfrag.write(\"  algebraic_mappings = '\" + options.model.save_file + \"'\\n\")",
+        "dakfrag.write(\"#--- Dakota responses block ---#\\n\")",
+        "dakfrag.write(\"responses\\n\")",
+        "dakfrag.write(\"  objective_functions \" + str(objectives) + '\\n')",
+        "dakfrag.write(\"  nonlinear_inequality_constraints \" + str(constraints) + '\\n') (if constraints > 0)",
+        "dakfrag.write(\"    lower_bounds \" + \" \".join(cons_lb) + '\\n') (if constraints > 0)",
+        "dakfrag.write(\"    upper_bounds \" + \" \".join(cons_ub) + '\\n') (if constraints > 0)",
+        "dakfrag.write(\"    descriptors\\n\")",
+        "dakfrag.write(\"      '%s'\\n\" % od) (for each od in obj_descriptors)",
+        "dakfrag.write(\"      '%s'\\n\" % cd) (for each cd in cons_descriptors, if constraints > 0)",
+        "dakfrag.write(\"  analytic_gradients\\n\")",
+        "dakfrag.write(\"  no_hessians\\n\")",
+        "dakfrag.close()",
+        "sys.stdout.write(\"Dakota input fragment written to file '%s'\\n\" % (model_file_no_ext + \".dak\",))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "sys.stdout.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\n\ndef convert_dakota(options=Bunch(), parser=None):\n    model_file = os.path.basename(options.model.save_file)\n    model_file_no_ext = os.path.splitext(model_file)[0]\n    # ... (model processing code omitted for brevity)\n    dakfrag = open(model_file_no_ext + \".dak\", 'w')\n    dakfrag.write(\"#--- Dakota variables block ---#\\n\")\n    dakfrag.write(\"variables\\n\")\n    dakfrag.write(\"  continuous_design \" + str(variables) + '\\n')\n    dakfrag.write(\"    descriptors\\n\")\n    for vd in var_descriptors:\n        dakfrag.write(\"      '%s'\\n\" % vd)\n    dakfrag.write(\"    lower_bounds \" + \" \".join(var_lb) + '\\n')\n    dakfrag.write(\"    upper_bounds \" + \" \".join(var_ub) + '\\n')\n    dakfrag.write(\"    initial_point \" + \" \".join(var_initial) + '\\n')\n    dakfrag.write(\"#--- Dakota interface block ---#\\n\")\n    dakfrag.write(\"interface\\n\")\n    dakfrag.write(\"  algebraic_mappings = '\" + options.model.save_file + \"'\\n\")\n    dakfrag.write(\"#--- Dakota responses block ---#\\n\")\n    dakfrag.write(\"responses\\n\")\n    dakfrag.write(\"  objective_functions \" + str(objectives) + '\\n')\n    if constraints > 0:\n        dakfrag.write(\"  nonlinear_inequality_constraints \" + str(constraints) + '\\n')\n        dakfrag.write(\"    lower_bounds \" + \" \".join(cons_lb) + '\\n')\n        dakfrag.write(\"    upper_bounds \" + \" \".join(cons_ub) + '\\n')\n    dakfrag.write(\"    descriptors\\n\")\n    for od in obj_descriptors:\n        dakfrag.write(\"      '%s'\\n\" % od)\n    if constraints > 0:\n        for cd in cons_descriptors:\n            dakfrag.write(\"      '%s'\\n\" % cd)\n    dakfrag.write(\"  analytic_gradients\\n\")\n    dakfrag.write(\"  no_hessians\\n\")\n    dakfrag.close()\n    sys.stdout.write(\n        \"Dakota input fragment written to file '%s'\\n\" % (model_file_no_ext + \".dak\",)\n    )"
+    }
+  },
+  {
+    "pyfile": "nl_writer.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/repn/plugins/nl_writer.py",
+    "line_number": "1487",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1486\t        if r_lines:\n1487\t            ostream.write(\"\\n\")\n1488",
+    "code_snippet": "        if r_lines:\n            ostream.write(\"\\n\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ostream.write"
+      ],
+      "api_sequence_with_args": [
+        "ostream.write(\"\\n\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ostream.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "if r_lines:\n    ostream.write(\"\\n\")"
+    }
+  },
+  {
+    "pyfile": "test_nlv2.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyomo-6.9.1/pyomo-6.9.1/pyomo/repn/tests/ampl/test_nlv2.py",
+    "line_number": "1031",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1030\t        with LoggingIntercept(level=logging.DEBUG) as LOG:\n1031\t            nl_writer.NLWriter().write(m, OUT)\n1032\t        self.assertEqual(",
+    "code_snippet": "    def test_external_function_str_args(self):\n        m = ConcreteModel()\n        m.x = Var()\n        m.e = ExternalFunction(library='tmp', function='test')\n        m.o = Objective(expr=m.e(m.x, 'str'))\n\n        # Test explicit newline translation\n        OUT = io.StringIO(newline='\\r\\n')\n        with LoggingIntercept() as LOG:\n            nl_writer.NLWriter().write(m, OUT)\n        self.assertIn(\n            \"Writing NL file containing string arguments to a \"\n            \"text output stream with line endings other than '\\\\n' \",\n            LOG.getvalue(),\n        )\n\n        # Test system-dependent newline translation\n        with TempfileManager:\n            fname = TempfileManager.create_tempfile()\n            with open(fname, 'w') as OUT:\n                with LoggingIntercept() as LOG:\n                    nl_writer.NLWriter().write(m, OUT)\n        if os.linesep == '\\n':\n            self.assertEqual(LOG.getvalue(), \"\")\n        else:\n            self.assertIn(\n                \"Writing NL file containing string arguments to a \"\n                \"text output stream with line endings other than '\\\\n' \",\n                LOG.getvalue(),\n            )\n\n        # Test objects lacking 'tell':\n        r, w = os.pipe()\n        try:\n            OUT = os.fdopen(w, 'w')\n            with LoggingIntercept() as LOG:\n                nl_writer.NLWriter().write(m, OUT)\n            if os.linesep == '\\n':\n                self.assertEqual(LOG.getvalue(), \"\")\n            else:\n                self.assertIn(\n                    \"Writing NL file containing string arguments to a \"\n                    \"text output stream that does not support tell()\",\n                    LOG.getvalue(),\n                )\n        finally:\n            OUT.close()\n            os.close(r)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "io.StringIO",
+        "TempfileManager.create_tempfile",
+        "open",
+        "os.pipe",
+        "os.fdopen",
+        "OUT.close",
+        "os.close"
+      ],
+      "api_sequence_with_args": [
+        "io.StringIO(newline='\\r\\n')",
+        "TempfileManager.create_tempfile()",
+        "open(fname, 'w')",
+        "os.pipe()",
+        "os.fdopen(w, 'w')",
+        "OUT.close()",
+        "os.close(r)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "io.StringIO",
+          "id": "save_image_buffer",
+          "description": "Saves image to in-memory buffer in PNG format",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "image_processing"
+        },
+        {
+          "api_name": "TempfileManager.create_tempfile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.pipe",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "os.fdopen",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "OUT.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        }
+      ],
+      "contextual_code": "import io\nimport os\n\n# Test explicit newline translation\nOUT = io.StringIO(newline='\\r\\n')\n# ...\n# Test system-dependent newline translation\nwith TempfileManager:\n    fname = TempfileManager.create_tempfile()\n    with open(fname, 'w') as OUT:\n        # ...\n        pass\n# ...\n# Test objects lacking 'tell':\nr, w = os.pipe()\ntry:\n    OUT = os.fdopen(w, 'w')\n    # ...\nfinally:\n    OUT.close()\n    os.close(r)"
+    }
+  }
+]

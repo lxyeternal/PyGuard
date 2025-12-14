@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "package_name": "exhale-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/exhale-0.3.7.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "graph.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/exhale-0.3.7/exhale-0.3.7/exhale/graph.py",
+      "line_number": "4094",
+      "type_description": "B815:write",
+      "context_snippet": "def generateUnabridgedAPI(self):\n    '''\n    Generates the unabridged (full) API listing into ``self.unabridged_api_file``.\n    This is necessary as some items may not show up in either hierarchy view,\n    depending on:\n\n    1. The item.  For example, if a namespace has only one member which is a\n       variable, then neither the namespace nor the variable will be declared in the\n       class view hierarchy.  It will be present in the file page it was declared in\n       but not on the main library page.\n\n    2. The configurations of Doxygen.  For example, see the warning in\n       :func:`~exhale.graph.ExhaleRoot.fileRefDiscovery`.  Items whose parents cannot\n       be rediscovered without the programlisting will still be documented, their\n       link appearing in the unabridged API listing.\n\n    Currently, the API is generated in the following (somewhat arbitrary) order:\n\n    - Namespaces\n    - Classes and Structs\n    - Enums\n    - Unions\n    - Functions\n    - Variables\n    - Defines\n    - Typedefs\n    - Directories\n    - Files\n    '''\n    try:\n        from collections.abc import MutableMapping\n    except ImportError:\n        # TODO: remove when dropping python 2.7\n        from collections import MutableMapping\n    class UnabridgedDict(MutableMapping):\n        def __init__(self):\n            self.items = {}\n            for kind in utils.AVAILABLE_KINDS:\n                self.__setitem__(kind, [])\n\n        def _key(self, k):\n            # Just need to fold class and struct to same bucket.\n            if k == \"struct\":\n                return \"class\"\n            return k\n\n        def __getitem__(self, key):\n            k = self._key(key)\n            if k not in self.items:\n                sys.stderr.write(utils.critical(\n                    \"Unabridged API: unexpected kind '{}' (IGNORED)\\n\".format(key)\n                ))\n                self.items[k] = []\n            return self.items[k]\n\n        def __setitem__(self, key, value):\n            self.items[self._key(key)] = value\n\n        def __delitem__(self, key):\n            del self.items[self._key(key)]\n\n        def __iter__(self):\n            return iter(self.items)\n\n        def __len__(self):\n            return len(self.items)\n\n    try:\n        # Gather all nodes in an easy to index dictionary mapping node.kind to the\n        # node itself.  \"class\" and \"struct\" are stored together.\n        unabridged_specs = UnabridgedDict()\n        for node in self.all_nodes:\n            if node.kind == \"page\" and node.refid == \"indexpage\":\n                continue\n            unabridged_specs[node.kind].append(node)\n\n        # Create the buffers to write to and dump the page headings.\n        unabridged_api = StringIO()\n        orphan_api = StringIO()\n        for page, is_orphan in [(unabridged_api, False), (orphan_api, True)]:\n            if is_orphan:\n                page.write(\":orphan:\\n\\n\")\n            page.write(textwrap.dedent('''\n                {heading}\n                {heading_mark}\n            '''.format(\n                heading=configs.fullApiSubSectionTitle,\n                heading_mark=utils.heading_mark(\n                    configs.fullApiSubSectionTitle,\n                    configs.SECTION_HEADING_CHAR if is_orphan\n                    else configs.SUB_SECTION_HEADING_CHAR\n                )\n            )))\n\n        dump_order = [\n            (\"Namespaces\", \"namespace\"),\n            (\"Classes and Structs\", \"class\"),  # NOTE: class/struct stored together!\n            (\"Enums\", \"enum\"),\n            (\"Unions\", \"union\"),\n            (\"Functions\", \"function\"),\n            (\"Variables\", \"variable\"),\n            (\"Defines\", \"define\"),\n            (\"Typedefs\", \"typedef\"),\n            (\"Directories\", \"dir\"),\n            (\"Files\", \"file\"),\n            (\"Pages\", \"page\")\n        ]\n        for title, kind in dump_order:\n            node_list = unabridged_specs[kind]\n            # Write to orphan_api if this kind is to be ignored, or the kind is\n            # \"class\" and \"struct\" was ignored (stored together).\n            if kind in configs.unabridgedOrphanKinds or \\\n                    (kind == \"class\" and \"struct\" in configs.unabridgedOrphanKinds) or \\\n                    (kind == \"struct\" and \"class\" in configs.unabridgedOrphanKinds):\n                dest = orphan_api\n            else:\n                dest = unabridged_api\n            self.enumerateAll(title, node_list, dest)\n\n        # Write out the unabridged api file (gets included to root).\n        with codecs.open(self.unabridged_api_file, \"w\", \"utf-8\") as full_api_file:\n            full_api_file.write(unabridged_api.getvalue())\n\n        # If the orphan file has any .. toctree:: in there, then we want to make\n        # sure to write it.  For example, if files and directories are dumped here,\n        # we want Sphinx to be convinced that they show up in a toctree somewhere.\n        orphan_api_value = orphan_api.getvalue()\n        if \"toctree\" in orphan_api_value:\n            with codecs.open(self.unabridged_orphan_file, \"w\", \"utf-8\") as orphan_file:\n                orphan_file.write(orphan_api_value)\n    except:\n        utils.fancyError(\"Error writing the unabridged API.\")",
+      "hash_value": "657a3d3f390f0e91d9267f15eb067a1a",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def generateUnabridgedAPI(self):\n    '''\n    Generates the unabridged (full) API listing into ``self.unabridged_api_file``.\n    This is necessary as some items may not show up in either hierarchy view,\n    depending on:\n\n    1. The item.  For example, if a namespace has only one member which is a\n       variable, then neither the namespace nor the variable will be declared in the\n       class view hierarchy.  It will be present in the file page it was declared in\n       but not on the main library page.\n\n    2. The configurations of Doxygen.  For example, see the warning in\n       :func:`~exhale.graph.ExhaleRoot.fileRefDiscovery`.  Items whose parents cannot\n       be rediscovered without the programlisting will still be documented, their\n       link appearing in the unabridged API listing.\n\n    Currently, the API is generated in the following (somewhat arbitrary) order:\n\n    - Namespaces\n    - Classes and Structs\n    - Enums\n    - Unions\n    - Functions\n    - Variables\n    - Defines\n    - Typedefs\n    - Directories\n    - Files\n    '''\n    try:\n        from collections.abc import MutableMapping\n    except ImportError:\n        # TODO: remove when dropping python 2.7\n        from collections import MutableMapping\n    class UnabridgedDict(MutableMapping):\n        def __init__(self):\n            self.items = {}\n            for kind in utils.AVAILABLE_KINDS:\n                self.__setitem__(kind, [])\n\n        def _key(self, k):\n            # Just need to fold class and struct to same bucket.\n            if k == \"struct\":\n                return \"class\"\n            return k\n\n        def __getitem__(self, key):\n            k = self._key(key)\n            if k not in self.items:\n                sys.stderr.write(utils.critical(\n                    \"Unabridged API: unexpected kind '{}' (IGNORED)\\n\".format(key)\n                ))\n                self.items[k] = []\n            return self.items[k]\n\n        def __setitem__(self, key, value):\n            self.items[self._key(key)] = value\n\n        def __delitem__(self, key):\n            del self.items[self._key(key)]\n\n        def __iter__(self):\n            return iter(self.items)\n\n        def __len__(self):\n            return len(self.items)\n\n    try:\n        # Gather all nodes in an easy to index dictionary mapping node.kind to the\n        # node itself.  \"class\" and \"struct\" are stored together.\n        unabridged_specs = UnabridgedDict()\n        for node in self.all_nodes:\n            if node.kind == \"page\" and node.refid == \"indexpage\":\n                continue\n            unabridged_specs[node.kind].append(node)\n\n        # Create the buffers to write to and dump the page headings.\n        unabridged_api = StringIO()\n        orphan_api = StringIO()\n        for page, is_orphan in [(unabridged_api, False), (orphan_api, True)]:\n            if is_orphan:\n                page.write(\":orphan:\\n\\n\")\n            page.write(textwrap.dedent('''\n                {heading}\n                {heading_mark}\n            '''.format(\n                heading=configs.fullApiSubSectionTitle,\n                heading_mark=utils.heading_mark(\n                    configs.fullApiSubSectionTitle,\n                    configs.SECTION_HEADING_CHAR if is_orphan\n                    else configs.SUB_SECTION_HEADING_CHAR\n                )\n            )))\n\n        dump_order = [\n            (\"Namespaces\", \"namespace\"),\n            (\"Classes and Structs\", \"class\"),  # NOTE: class/struct stored together!\n            (\"Enums\", \"enum\"),\n            (\"Unions\", \"union\"),\n            (\"Functions\", \"function\"),\n            (\"Variables\", \"variable\"),\n            (\"Defines\", \"define\"),\n            (\"Typedefs\", \"typedef\"),\n            (\"Directories\", \"dir\"),\n            (\"Files\", \"file\"),\n            (\"Pages\", \"page\")\n        ]\n        for title, kind in dump_order:\n            node_list = unabridged_specs[kind]\n            # Write to orphan_api if this kind is to be ignored, or the kind is\n            # \"class\" and \"struct\" was ignored (stored together).\n            if kind in configs.unabridgedOrphanKinds or \\\n                    (kind == \"class\" and \"struct\" in configs.unabridgedOrphanKinds) or \\\n                    (kind == \"struct\" and \"class\" in configs.unabridgedOrphanKinds):\n                dest = orphan_api\n            else:\n                dest = unabridged_api\n            self.enumerateAll(title, node_list, dest)\n\n        # Write out the unabridged api file (gets included to root).\n        with codecs.open(self.unabridged_api_file, \"w\", \"utf-8\") as full_api_file:\n            full_api_file.write(unabridged_api.getvalue())\n\n        # If the orphan file has any .. toctree:: in there, then we want to make\n        # sure to write it.  For example, if files and directories are dumped here,\n        # we want Sphinx to be convinced that they show up in a toctree somewhere.\n        orphan_api_value = orphan_api.getvalue()\n        if \"toctree\" in orphan_api_value:\n            with codecs.open(self.unabridged_orphan_file, \"w\", \"utf-8\") as orphan_file:\n                orphan_file.write(orphan_api_value)\n    except:\n        utils.fancyError(\"Error writing the unabridged API.\")",
+          "triple_sequences": [
+            {
+              "action_api": "codecs.open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "self.unabridged_api_file, \"w\", \"utf-8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "StringIO.getvalue()",
+              "action_description": "Retrieves bytes value from in-memory buffer",
+              "action_id": "get_buffer_bytes",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "file.write()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "unabridged_api.getvalue()",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "StringIO.getvalue()",
+              "action_description": "Retrieves bytes value from in-memory buffer",
+              "action_id": "get_buffer_bytes",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "codecs.open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "self.unabridged_orphan_file, \"w\", \"utf-8\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "file.write()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "orphan_api_value",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "utils.fancyError()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "\"Error writing the unabridged API.\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access command error output",
+              "intention_id": "access_command_error_output"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

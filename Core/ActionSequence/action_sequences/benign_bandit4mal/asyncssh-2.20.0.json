@@ -1,0 +1,433 @@
+[
+  {
+    "metadata": {
+      "package_name": "asyncssh-2.20.0",
+      "total_matches": 6,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "process.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asyncssh-2.20.0/asyncssh-2.20.0/asyncssh/process.py",
+    "line_number": "202",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "201\t        while not self._paused:\n202\t            data = self._file.read(self._bufsize)\n203",
+    "code_snippet": "class _FileReader(_UnicodeReader[AnyStr]):\n    \"\"\"Forward data from a file\"\"\"\n\n    def __init__(self, process: 'SSHProcess[AnyStr]', file: IO[bytes],\n                 bufsize: int, datatype: DataType,\n                 encoding: Optional[str], errors: str):\n        super().__init__(encoding, errors, hasattr(file, 'encoding'))\n\n        self._process: 'SSHProcess[AnyStr]' = process\n        self._file = file\n        self._bufsize = bufsize\n        self._datatype = datatype\n        self._paused = False\n\n    def feed(self) -> None:\n        \"\"\"Feed file data\"\"\"\n\n        while not self._paused:\n            data = self._file.read(self._bufsize)\n\n            if data:\n                self._process.feed_data(self.decode(data), self._datatype)\n            else:\n                self.check_partial()\n                self._process.feed_eof(self._datatype)\n                break\n\n    def pause_reading(self) -> None:\n        \"\"\"Pause reading from the file\"\"\"\n\n        self._paused = True\n\n    def resume_reading(self) -> None:\n        \"\"\"Resume reading from the file\"\"\"\n\n        self._paused = False\n        self.feed()\n\n    def close(self) -> None:\n        \"\"\"Stop forwarding data from the file\"\"\"\n\n        self._file.close()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "file.read",
+        "process.feed_data",
+        "self.decode",
+        "self.check_partial",
+        "process.feed_eof",
+        "file.close"
+      ],
+      "api_sequence_with_args": [
+        "file.read(self._bufsize)",
+        "process.feed_data(self.decode(data), self._datatype)",
+        "self.decode(data)",
+        "self.check_partial()",
+        "process.feed_eof(self._datatype)",
+        "file.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "file.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "process.feed_data",
+          "id": "exfiltrate_folder",
+          "description": "Recursively processes folder for file exfiltration",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.check_partial",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "process.feed_eof",
+          "id": "exfiltrate_folder",
+          "description": "Recursively processes folder for file exfiltration",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "file.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        }
+      ],
+      "contextual_code": "class _FileReader(_UnicodeReader[AnyStr]):\n    def feed(self) -> None:\n        while not self._paused:\n            data = self._file.read(self._bufsize)\n            if data:\n                self._process.feed_data(self.decode(data), self._datatype)\n            else:\n                self.check_partial()\n                self._process.feed_eof(self._datatype)\n                break\n    def close(self) -> None:\n        self._file.close()"
+    }
+  },
+  {
+    "pyfile": "test_process.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asyncssh-2.20.0/asyncssh-2.20.0/tests/test_process.py",
+    "line_number": "426",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "425\t        with open('stdin', 'w', encoding='utf-8') as file:\n426\t            file.write(data)\n427",
+    "code_snippet": "@asynctest\n    async def test_split_unicode(self):\n        \"\"\"Test Unicode split across blocks\"\"\"\n\n        data = '\\u2000test\\u2000'\n\n        with open('stdin', 'w', encoding='utf-8') as file:\n            file.write(data)\n\n        async with self.connect() as conn:\n            result = await conn.run('echo', stdin='stdin', bufsize=2)\n\n        self.assertEqual(result.stdout, data)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "file.write"
+      ],
+      "api_sequence_with_args": [
+        "open('stdin', 'w', encoding='utf-8')",
+        "file.write(data)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "data = '\\u2000test\\u2000'\nwith open('stdin', 'w', encoding='utf-8') as file:\n    file.write(data)"
+    }
+  },
+  {
+    "pyfile": "connection.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asyncssh-2.20.0/asyncssh-2.20.0/asyncssh/connection.py",
+    "line_number": "5843",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5842\t        if self._agent_listener:\n5843\t            self._agent_listener.close()\n5844\t            self._agent_listener = None",
+    "code_snippet": "def _cleanup(self, exc: Optional[Exception]) -> None:\n    \"\"\"Clean up this server connection\"\"\"\n\n    if self._agent_listener:\n        self._agent_listener.close()\n        self._agent_listener = None\n\n    super()._cleanup(exc)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._agent_listener.close",
+        "super()._cleanup"
+      ],
+      "api_sequence_with_args": [
+        "self._agent_listener.close()",
+        "super()._cleanup(exc)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._agent_listener.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "super()._cleanup",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def _cleanup(self, exc: Optional[Exception]) -> None:\n    if self._agent_listener:\n        self._agent_listener.close()\n        self._agent_listener = None\n    super()._cleanup(exc)"
+    }
+  },
+  {
+    "pyfile": "listener.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asyncssh-2.20.0/asyncssh-2.20.0/asyncssh/listener.py",
+    "line_number": "64",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "63\t                        _traceback: Optional[TracebackType]) -> bool:\n64\t        self.close()\n65\t        await self.wait_closed()",
+    "code_snippet": "    async def __aexit__(self, _exc_type: Optional[Type[BaseException]],\n                        _exc_value: Optional[BaseException],\n                        _traceback: Optional[TracebackType]) -> bool:\n        self.close()\n        await self.wait_closed()\n        return False",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.close",
+        "self.wait_closed"
+      ],
+      "api_sequence_with_args": [
+        "self.close()",
+        "self.wait_closed()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "self.wait_closed",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "async def __aexit__(self, _exc_type: Optional[Type[BaseException]],\n                    _exc_value: Optional[BaseException],\n                    _traceback: Optional[TracebackType]) -> bool:\n    self.close()\n    await self.wait_closed()\n    return False"
+    }
+  },
+  {
+    "pyfile": "sftp.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asyncssh-2.20.0/asyncssh-2.20.0/asyncssh/sftp.py",
+    "line_number": "4572",
+    "type_description": "B837:rmdir",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4571\t            try:\n4572\t                await self.rmdir(path)\n4573\t            except SFTPError:",
+    "code_snippet": "    async def rmtree(self, path: _SFTPPath, ignore_errors: bool = False,\n                     onerror: _SFTPOnErrorHandler = None) -> None:\n        \"\"\"Recursively delete a directory tree\n\n           This method removes all the files in a directory tree.\n\n           If ignore_errors is set, errors are ignored. Otherwise,\n           if onerror is set, it will be called with arguments of\n           the function which failed, the path it failed on, and\n           exception information returns by :func:`sys.exc_info()`.\n\n           If follow_symlinks is set, files or directories pointed at by\n           symlinks (and their subdirectories, if any) will be removed\n           in addition to the links pointing at them.\n\n           :param path:\n               The path of the parent directory to remove\n           :param ignore_errors: (optional)\n               Whether or not to ignore errors during the remove\n           :param onerror: (optional)\n               A function to call when errors occur\n           :type path: :class:`PurePath <pathlib.PurePath>`, `str`, or `bytes`\n           :type ignore_errors: `bool`\n           :type onerror: `callable`\n\n           :raises: :exc:`SFTPError` if the server returns an error\n\n        \"\"\"\n\n        async def _unlink(path: bytes) -> None:\n            \"\"\"Internal helper for unlinking non-directories\"\"\"\n\n            assert onerror is not None\n\n            try:\n                await self.unlink(path)\n            except SFTPError:\n                onerror(self.unlink, path, sys.exc_info())\n\n        async def _rmtree(path: bytes) -> None:\n            \"\"\"Internal helper for rmtree recursion\"\"\"\n\n            assert onerror is not None\n\n            tasks = []\n\n            try:\n                async with sem:\n                    async for entry in self.scandir(path):\n                        filename = cast(bytes, entry.filename)\n\n                        if filename in (b'.', b'..'):\n                            continue\n\n                        filename = posixpath.join(path, filename)\n\n                        if entry.attrs.type == FILEXFER_TYPE_DIRECTORY:\n                            task = _rmtree(filename)\n                        else:\n                            task = _unlink(filename)\n\n                        tasks.append(asyncio.ensure_future(task))\n            except SFTPError:\n                onerror(self.scandir, path, sys.exc_info())\n\n            results = await asyncio.gather(*tasks, return_exceptions=True)\n            exc = next((result for result in results\n                        if isinstance(result, Exception)), None)\n\n            if exc:\n                raise exc\n\n            try:\n                await self.rmdir(path)\n            except SFTPError:\n                onerror(self.rmdir, path, sys.exc_info())\n\n        # pylint: disable=function-redefined\n        if ignore_errors:\n            def onerror(*_args: object) -> None:\n                pass\n        elif onerror is None:\n            def onerror(*_args: object) -> None:\n                raise # pylint: disable=misplaced-bare-raise\n        # pylint: enable=function-redefined\n\n        assert onerror is not None\n\n        path = self.encode(path)\n        sem = asyncio.Semaphore(_MAX_SFTP_REQUESTS)\n\n        try:\n            if await self.islink(path):\n                raise SFTPNoSuchFile(path.decode('utf-8', 'backslashreplace') +\n                                     ' must not be a symlink')\n        except SFTPError:\n            onerror(self.islink, path, sys.exc_info())\n            return\n\n        await _rmtree(path)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.encode",
+        "asyncio.Semaphore",
+        "self.islink",
+        "sys.exc_info",
+        "onerror",
+        "self.scandir",
+        "sys.exc_info",
+        "onerror",
+        "posixpath.join",
+        "asyncio.ensure_future",
+        "asyncio.gather",
+        "self.rmdir",
+        "sys.exc_info",
+        "onerror"
+      ],
+      "api_sequence_with_args": [
+        "self.encode(path)",
+        "asyncio.Semaphore(_MAX_SFTP_REQUESTS)",
+        "self.islink(path)",
+        "sys.exc_info()",
+        "onerror(self.islink, path, sys.exc_info())",
+        "self.scandir(path)",
+        "sys.exc_info()",
+        "onerror(self.scandir, path, sys.exc_info())",
+        "posixpath.join(path, filename)",
+        "asyncio.ensure_future(task)",
+        "asyncio.gather(*tasks, return_exceptions=True)",
+        "self.rmdir(path)",
+        "sys.exc_info()",
+        "onerror(self.rmdir, path, sys.exc_info())"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.encode",
+          "id": "create_bytes_encoded",
+          "description": "Creates bytes object from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "asyncio.Semaphore",
+          "id": "init_thread_pool",
+          "description": "Initializes thread pool executor with specified worker count",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "self.islink",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "sys.exc_info",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "onerror",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self.scandir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "sys.exc_info",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "onerror",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "posixpath.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "asyncio.ensure_future",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "asyncio.gather",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "self.rmdir",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "sys.exc_info",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "onerror",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "async def rmtree(self, path: _SFTPPath, ignore_errors: bool = False, onerror: _SFTPOnErrorHandler = None) -> None:\n    async def _unlink(path: bytes) -> None:\n        assert onerror is not None\n        try:\n            await self.unlink(path)\n        except SFTPError:\n            onerror(self.unlink, path, sys.exc_info())\n\n    async def _rmtree(path: bytes) -> None:\n        assert onerror is not None\n        tasks = []\n        try:\n            async with sem:\n                async for entry in self.scandir(path):\n                    filename = cast(bytes, entry.filename)\n                    if filename in (b'.', b'..'):\n                        continue\n                    filename = posixpath.join(path, filename)\n                    if entry.attrs.type == FILEXFER_TYPE_DIRECTORY:\n                        task = _rmtree(filename)\n                    else:\n                        task = _unlink(filename)\n                    tasks.append(asyncio.ensure_future(task))\n        except SFTPError:\n            onerror(self.scandir, path, sys.exc_info())\n        results = await asyncio.gather(*tasks, return_exceptions=True)\n        exc = next((result for result in results if isinstance(result, Exception)), None)\n        if exc:\n            raise exc\n        try:\n            await self.rmdir(path)\n        except SFTPError:\n            onerror(self.rmdir, path, sys.exc_info())\n\n    if ignore_errors:\n        def onerror(*_args: object) -> None:\n            pass\n    elif onerror is None:\n        def onerror(*_args: object) -> None:\n            raise\n    assert onerror is not None\n    path = self.encode(path)\n    sem = asyncio.Semaphore(_MAX_SFTP_REQUESTS)\n    try:\n        if await self.islink(path):\n            raise SFTPNoSuchFile(path.decode('utf-8', 'backslashreplace') + ' must not be a symlink')\n    except SFTPError:\n        onerror(self.islink, path, sys.exc_info())\n        return\n    await _rmtree(path)"
+    }
+  },
+  {
+    "pyfile": "config.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asyncssh-2.20.0/asyncssh-2.20.0/asyncssh/config.py",
+    "line_number": "565",
+    "type_description": "B803:gethostname",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "564\n565\t        local_host = socket.gethostname()\n566",
+    "code_snippet": "def _set_tokens(self) -> None:\n    \"\"\"Set the tokens available for percent expansion\"\"\"\n\n    local_host = socket.gethostname()\n\n    idx = local_host.find('.')\n    short_local_host = local_host if idx < 0 else local_host[:idx]\n\n    host = cast(str, self._options.get('Hostname', self._orig_host))\n    port = str(self._options.get('Port', DEFAULT_PORT))\n    user = cast(str, self._options.get('User') or self._local_user)\n    home = os.path.expanduser('~')\n\n    conn_info = ''.join((local_host, host, port, user))\n    conn_hash = sha1(conn_info.encode('utf-8')).hexdigest()\n\n    self._tokens.update({'C': conn_hash,\n                         'h': host,\n                         'L': short_local_host,\n                         'l': local_host,\n                         'n': self._orig_host,\n                         'p': port,\n                         'r': user,\n                         'u': self._local_user})\n\n    if home != '~':\n        self._tokens['d'] = home\n\n    if hasattr(os, 'getuid'):\n        self._tokens['i'] = str(os.getuid())",
+    "pattern_analysis": {
+      "api_sequence": [
+        "socket.gethostname",
+        "os.path.expanduser",
+        "hashlib.sha1",
+        "hashlib.sha1.hexdigest",
+        "os.getuid"
+      ],
+      "api_sequence_with_args": [
+        "socket.gethostname()",
+        "os.path.expanduser('~')",
+        "hashlib.sha1(conn_info.encode('utf-8'))",
+        "hashlib.sha1(conn_info.encode('utf-8')).hexdigest()",
+        "os.getuid()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "socket.gethostname",
+          "id": "get_hostname",
+          "description": "Retrieves current host name",
+          "first_id": "basic_network_operations",
+          "second_id": "network_information_gathering",
+          "third_id": "address_information"
+        },
+        {
+          "api_name": "os.path.expanduser",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "hashlib.sha1",
+          "id": "create_sha1_hash",
+          "description": "Creates SHA-1 hash object from encoded string",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "hashlib.sha1.hexdigest",
+          "id": "get_sha1_digest",
+          "description": "Returns hexadecimal digest of SHA-1 hash",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_value_retrieval"
+        },
+        {
+          "api_name": "os.getuid",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "def _set_tokens(self) -> None:\n    local_host = socket.gethostname()\n    idx = local_host.find('.')\n    short_local_host = local_host if idx < 0 else local_host[:idx]\n    host = cast(str, self._options.get('Hostname', self._orig_host))\n    port = str(self._options.get('Port', DEFAULT_PORT))\n    user = cast(str, self._options.get('User') or self._local_user)\n    home = os.path.expanduser('~')\n    conn_info = ''.join((local_host, host, port, user))\n    conn_hash = sha1(conn_info.encode('utf-8')).hexdigest()\n    self._tokens.update({'C': conn_hash,\n                         'h': host,\n                         'L': short_local_host,\n                         'l': local_host,\n                         'n': self._orig_host,\n                         'p': port,\n                         'r': user,\n                         'u': self._local_user})\n    if home != '~':\n        self._tokens['d'] = home\n    if hasattr(os, 'getuid'):\n        self._tokens['i'] = str(os.getuid())"
+    }
+  }
+]

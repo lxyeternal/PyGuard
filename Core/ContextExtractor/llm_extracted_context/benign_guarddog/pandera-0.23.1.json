@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "pandera-0.23.1",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/pandera-0.23.1.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "numpy_engine.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pandera-0.23.1/pandera-0.23.1/pandera/engines/numpy_engine.py",
+    "line_number": "127",
+    "type_description": "obfuscation",
+    "original_snippet": "builtin_type = getattr(builtins, builtin_name, None)",
+    "context_snippet": "def _build_number_equivalents(\n    builtin_name: str, pandera_name: str, sizes: List[int]\n) -> Dict[int, List[Union[type, str, np.dtype, dtypes.DataType]]]:\n    \"\"\"Return a dict of equivalent builtin, numpy, pandera dtypes\n    indexed by size in bit_width.\"\"\"\n    builtin_type = getattr(builtins, builtin_name, None)\n    default_np_dtype = np.dtype(builtin_name)\n    default_size = int(default_np_dtype.name.replace(builtin_name, \"\"))\n\n    default_equivalents = [\n        # e.g.: np.int64\n        np.dtype(builtin_name).type,\n        # e.g: pandera.dtypes.Int\n        getattr(dtypes, pandera_name),\n    ]\n    if builtin_type:\n        default_equivalents.append(builtin_type)\n\n    return {\n        bit_width: list(\n            {\n                # e.g.: numpy.int64\n                getattr(np, f\"{builtin_name}{bit_width}\"),\n                # e.g.: pandera.dtypes.Int64\n                getattr(dtypes, f\"{pandera_name}{bit_width}\"),\n                getattr(dtypes, f\"{pandera_name}{bit_width}\")(),\n                # e.g.: pandera.dtypes.Int(64)\n                getattr(dtypes, pandera_name)(),\n            }\n            | set(default_equivalents if bit_width == default_size else [])\n        )\n        for bit_width in sizes\n    }",
+    "hash_value": "a3e83eb9c6f0e9c76859b8a13b111496",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "pandas_engine.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pandera-0.23.1/pandera-0.23.1/pandera/engines/pandas_engine.py",
+    "line_number": "336",
+    "type_description": "obfuscation",
+    "original_snippet": "builtin_type = getattr(builtins, builtin_name, None)  # uint doesn't exist",
+    "context_snippet": "def _register_numpy_numbers(\n    builtin_name: str, pandera_name: str, sizes: List[int]\n) -> None:\n    \"\"\"Register pandera.engines.numpy_engine DataTypes\n    with the pandas engine.\"\"\"\n\n    builtin_type = getattr(builtins, builtin_name, None)  # uint doesn't exist\n\n    # default to int64 regardless of OS\n    default_pd_dtype = {\n        \"int\": np.dtype(\"int64\"),\n        \"uint\": np.dtype(\"uint64\"),\n    }.get(builtin_name, pd.Series([1], dtype=builtin_name).dtype)\n\n    for bit_width in sizes:\n        # e.g.: numpy.int64\n        np_dtype = getattr(np, f\"{builtin_name}{bit_width}\")\n\n        equivalents = {\n            np_dtype,\n            # e.g.: pandera.dtypes.Int64\n            getattr(dtypes, f\"{pandera_name}{bit_width}\"),\n            getattr(dtypes, f\"{pandera_name}{bit_width}\")(),\n        }\n\n        if np_dtype == default_pd_dtype:\n            equivalents |= {\n                default_pd_dtype,\n                builtin_name,\n                getattr(dtypes, pandera_name),\n                getattr(dtypes, pandera_name)(),\n            }\n            if builtin_type:\n                equivalents.add(builtin_type)\n\n            # results from pd.api.types.infer_dtype\n            if builtin_type is float:\n                equivalents.add(\"floating\")\n                equivalents.add(\"mixed-integer-float\")\n            elif builtin_type is int:\n                equivalents.add(\"integer\")\n\n        numpy_data_type = getattr(numpy_engine, f\"{pandera_name}{bit_width}\")\n        Engine.register_dtype(numpy_data_type, equivalents=list(equivalents))",
+    "hash_value": "207d32abdcd8ff40acb111db391088a3",
+    "detection_index": 1
+  }
+]

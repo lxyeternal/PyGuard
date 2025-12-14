@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "package_name": "langchain_community-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/langchain_community-0.3.21.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "golden_query.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/langchain_community-0.3.21/langchain_community-0.3.21/langchain_community/utilities/golden_query.py",
+      "line_number": "47",
+      "type_description": "B821:post",
+      "context_snippet": "import json\nfrom typing import Any, Dict, Optional\n\nimport requests\nfrom langchain_core.utils import get_from_dict_or_env\nfrom pydantic import BaseModel, ConfigDict, model_validator\n\nGOLDEN_BASE_URL = \"https://golden.com\"\nGOLDEN_TIMEOUT = 5000\n\n\nclass GoldenQueryAPIWrapper(BaseModel):\n    \"\"\"Wrapper for Golden.\n\n    Docs for using:\n\n    1. Go to https://golden.com and sign up for an account\n    2. Get your API Key from https://golden.com/settings/api\n    3. Save your API Key into GOLDEN_API_KEY env variable\n\n    \"\"\"\n\n    golden_api_key: Optional[str] = None\n\n    model_config = ConfigDict(\n        extra=\"forbid\",\n    )\n\n    @model_validator(mode=\"before\")\n    @classmethod\n    def validate_environment(cls, values: Dict) -> Any:\n        \"\"\"Validate that api key and python package exists in environment.\"\"\"\n        golden_api_key = get_from_dict_or_env(\n            values, \"golden_api_key\", \"GOLDEN_API_KEY\"\n        )\n        values[\"golden_api_key\"] = golden_api_key\n\n        return values\n\n    def run(self, query: str) -> str:\n        \"\"\"Run query through Golden Query API and return the JSON raw result.\"\"\"\n\n        headers = {\"apikey\": self.golden_api_key or \"\"}\n\n        response = requests.post(\n            f\"{GOLDEN_BASE_URL}/api/v2/public/queries/\",\n            json={\"prompt\": query},\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        if response.status_code != 201:\n            return response.text\n\n        content = json.loads(response.content)\n        query_id = content[\"id\"]\n\n        response = requests.get(\n            (\n                f\"{GOLDEN_BASE_URL}/api/v2/public/queries/{query_id}/results/\"\n                \"?pageSize=10\"\n            ),\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        return response.text\n",
+      "hash_value": "21067de5fb52064504ea857c43dee270",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "import json\nfrom typing import Any, Dict, Optional\n\nimport requests\nfrom langchain_core.utils import get_from_dict_or_env\nfrom pydantic import BaseModel, ConfigDict, model_validator\n\nGOLDEN_BASE_URL = \"https://golden.com\"\nGOLDEN_TIMEOUT = 5000\n\n\nclass GoldenQueryAPIWrapper(BaseModel):\n    \"\"\"Wrapper for Golden.\n\n    Docs for using:\n\n    1. Go to https://golden.com and sign up for an account\n    2. Get your API Key from https://golden.com/settings/api\n    3. Save your API Key into GOLDEN_API_KEY env variable\n\n    \"\"\"\n\n    golden_api_key: Optional[str] = None\n\n    model_config = ConfigDict(\n        extra=\"forbid\",\n    )\n\n    @model_validator(mode=\"before\")\n    @classmethod\n    def validate_environment(cls, values: Dict) -> Any:\n        \"\"\"Validate that api key and python package exists in environment.\"\"\"\n        golden_api_key = get_from_dict_or_env(\n            values, \"golden_api_key\", \"GOLDEN_API_KEY\"\n        )\n        values[\"golden_api_key\"] = golden_api_key\n\n        return values\n\n    def run(self, query: str) -> str:\n        \"\"\"Run query through Golden Query API and return the JSON raw result.\"\"\"\n\n        headers = {\"apikey\": self.golden_api_key or \"\"}\n\n        response = requests.post(\n            f\"{GOLDEN_BASE_URL}/api/v2/public/queries/\",\n            json={\"prompt\": query},\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        if response.status_code != 201:\n            return response.text\n\n        content = json.loads(response.content)\n        query_id = content[\"id\"]\n\n        response = requests.get(\n            (\n                f\"{GOLDEN_BASE_URL}/api/v2/public/queries/{query_id}/results/\"\n                \"?pageSize=10\"\n            ),\n            headers=headers,\n            timeout=GOLDEN_TIMEOUT,\n        )\n        return response.text\n",
+          "triple_sequences": [
+            {
+              "action_api": "get_from_dict_or_env()",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "values, \"golden_api_key\", \"GOLDEN_API_KEY\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "f\"https://golden.com/api/v2/public/queries/\", json={\"prompt\": query}, headers=headers, timeout=GOLDEN_TIMEOUT",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Send data to server",
+              "intention_id": "send_data_server"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "response.content",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "requests.get()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "f\"https://golden.com/api/v2/public/queries/{query_id}/results/?pageSize=10\", headers=headers, timeout=GOLDEN_TIMEOUT",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "metadata": {
+    "package_name": "line_bot_sdk-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/line_bot_sdk-3.16.3.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "async_rest.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/line_bot_sdk-3.16.3/line_bot_sdk-3.16.3/linebot/v3/audience/async_rest.py",
+      "line_number": "171",
+      "type_description": "B825:request",
+      "context_snippet": "import io\nimport json\nimport logging\nimport re\nimport ssl\n\nimport aiohttp\nfrom urllib.parse import urlencode, quote_plus\n\nfrom linebot.v3.audience.exceptions import ApiException, ApiValueError\n\nlogger = logging.getLogger(__name__)\n\nclass RESTResponse(io.IOBase):\n\n    def __init__(self, resp, data):\n        self.aiohttp_response = resp\n        self.status = resp.status\n        self.reason = resp.reason\n        self.data = data\n\n    def getheaders(self):\n        \"\"\"Returns a CIMultiDictProxy of the response headers.\"\"\"\n        return self.aiohttp_response.headers\n\n    def getheader(self, name, default=None):\n        \"\"\"Returns a given response header.\"\"\"\n        return self.aiohttp_response.headers.get(name, default)\n\nclass RESTClientObject(object):\n\n    def __init__(self, configuration, pools_size=4, maxsize=None):\n\n        # maxsize is number of requests to host that are allowed in parallel\n        if maxsize is None:\n            maxsize = configuration.connection_pool_maxsize\n\n        ssl_context = ssl.create_default_context(cafile=configuration.ssl_ca_cert)\n        if configuration.cert_file:\n            ssl_context.load_cert_chain(\n                configuration.cert_file, keyfile=configuration.key_file\n            )\n\n        if not configuration.verify_ssl:\n            ssl_context.check_hostname = False\n            ssl_context.verify_mode = ssl.CERT_NONE\n\n        connector = aiohttp.TCPConnector(\n            limit=maxsize,\n            ssl=ssl_context\n        )\n\n        self.proxy = configuration.proxy\n        self.proxy_headers = configuration.proxy_headers\n\n        # https pool manager\n        self.pool_manager = aiohttp.ClientSession(\n            connector=connector,\n            trust_env=True\n        )\n\n    async def close(self):\n        await self.pool_manager.close()\n\n    async def request(self, method, url, query_params=None, headers=None,\n                      body=None, post_params=None, _preload_content=True,\n                      _request_timeout=None):\n        \"\"\"Execute request\n\n        :param method: http request method\n        :param url: http request url\n        :param query_params: query parameters in the url\n        :param headers: http request headers\n        :param body: request json body, for `application/json`\n        :param post_params: request post parameters,\n                            `application/x-www-form-urlencoded`\n                            and `multipart/form-data`\n        :param _preload_content: this is a non-applicable field for\n                                 the AiohttpClient.\n        :param _request_timeout: timeout setting for this request. If one\n                                 number provided, it will be total request\n                                 timeout. It can also be a pair (tuple) of\n                                 (connection, read) timeouts.\n        \"\"\"\n        method = method.upper()\n        assert method in ['GET', 'HEAD', 'DELETE', 'POST', 'PUT',\n                          'PATCH', 'OPTIONS']\n\n        if post_params and body:\n            raise ApiValueError(\n                \"body parameter cannot be used with post_params parameter.\"\n            )\n\n        post_params = post_params or {}\n        headers = headers or {}\n        # url already contains the URL query string\n        # so reset query_params to empty dict\n        query_params = {}\n        timeout = _request_timeout or 5 * 60\n\n        if 'Content-Type' not in headers:\n            headers['Content-Type'] = 'application/json'\n\n        args = {\n            \"method\": method,\n            \"url\": url,\n            \"timeout\": timeout,\n            \"headers\": headers\n        }\n\n        if self.proxy:\n            args[\"proxy\"] = self.proxy\n        if self.proxy_headers:\n            args[\"proxy_headers\"] = self.proxy_headers\n\n        if query_params:\n            args[\"url\"] += '?' + urlencode(query_params)\n\n        # For `POST`, `PUT`, `PATCH`, `OPTIONS`, `DELETE`\n        if method in ['POST', 'PUT', 'PATCH', 'OPTIONS', 'DELETE']:\n            if re.search('json', headers['Content-Type'], re.IGNORECASE):\n                if body is not None:\n                    body = json.dumps(body)\n                args[\"data\"] = body\n            elif headers['Content-Type'] == 'application/x-www-form-urlencoded':  # noqa: E501\n                args[\"data\"] = aiohttp.FormData(post_params)\n            elif headers['Content-Type'] == 'multipart/form-data':\n                # must del headers['Content-Type'], or the correct\n                # Content-Type which generated by aiohttp\n                del headers['Content-Type']\n                data = aiohttp.FormData()\n                for param in post_params:\n                    k, v = param\n                    if isinstance(v, tuple) and len(v) == 3:\n                        data.add_field(k,\n                                       value=v[1],\n                                       filename=v[0],\n                                       content_type=v[2])\n                    else:\n                        data.add_field(k, v)\n                args[\"data\"] = data\n\n            # Pass a `bytes` parameter directly in the body to support\n            # other content types than Json when `body` argument is provided\n            # in serialized form\n            elif isinstance(body, bytes):\n                args[\"data\"] = body\n            else:\n                # Cannot generate the request from given parameters\n                msg = \"\"\"Cannot prepare a request message for provided\n                         arguments. Please check that your arguments match\n                         declared content type.\"\"\"\n                raise ApiException(status=0, reason=msg)\n\n        r = await self.pool_manager.request(**args)\n        if _preload_content:\n\n            data = await r.read()\n            r = RESTResponse(r, data)\n\n            # log response body\n            logger.debug(\"response body: %s\", r.data)\n\n            if not 200 <= r.status <= 299:\n                raise ApiException(http_resp=r)\n\n        return r",
+      "hash_value": "122c53f4d3cae05e2a11039f848c0079",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "import io\nimport json\nimport logging\nimport re\nimport ssl\n\nimport aiohttp\nfrom urllib.parse import urlencode, quote_plus\n\nfrom linebot.v3.audience.exceptions import ApiException, ApiValueError\n\nlogger = logging.getLogger(__name__)\n\nclass RESTResponse(io.IOBase):\n\n    def __init__(self, resp, data):\n        self.aiohttp_response = resp\n        self.status = resp.status\n        self.reason = resp.reason\n        self.data = data\n\n    def getheaders(self):\n        \"\"\"Returns a CIMultiDictProxy of the response headers.\"\"\"\n        return self.aiohttp_response.headers\n\n    def getheader(self, name, default=None):\n        \"\"\"Returns a given response header.\"\"\"\n        return self.aiohttp_response.headers.get(name, default)\n\nclass RESTClientObject(object):\n\n    def __init__(self, configuration, pools_size=4, maxsize=None):\n\n        # maxsize is number of requests to host that are allowed in parallel\n        if maxsize is None:\n            maxsize = configuration.connection_pool_maxsize\n\n        ssl_context = ssl.create_default_context(cafile=configuration.ssl_ca_cert)\n        if configuration.cert_file:\n            ssl_context.load_cert_chain(\n                configuration.cert_file, keyfile=configuration.key_file\n            )\n\n        if not configuration.verify_ssl:\n            ssl_context.check_hostname = False\n            ssl_context.verify_mode = ssl.CERT_NONE\n\n        connector = aiohttp.TCPConnector(\n            limit=maxsize,\n            ssl=ssl_context\n        )\n\n        self.proxy = configuration.proxy\n        self.proxy_headers = configuration.proxy_headers\n\n        # https pool manager\n        self.pool_manager = aiohttp.ClientSession(\n            connector=connector,\n            trust_env=True\n        )\n\n    async def close(self):\n        await self.pool_manager.close()\n\n    async def request(self, method, url, query_params=None, headers=None,\n                      body=None, post_params=None, _preload_content=True,\n                      _request_timeout=None):\n        \"\"\"Execute request\n\n        :param method: http request method\n        :param url: http request url\n        :param query_params: query parameters in the url\n        :param headers: http request headers\n        :param body: request json body, for `application/json`\n        :param post_params: request post parameters,\n                            `application/x-www-form-urlencoded`\n                            and `multipart/form-data`\n        :param _preload_content: this is a non-applicable field for\n                                 the AiohttpClient.\n        :param _request_timeout: timeout setting for this request. If one\n                                 number provided, it will be total request\n                                 timeout. It can also be a pair (tuple) of\n                                 (connection, read) timeouts.\n        \"\"\"\n        method = method.upper()\n        assert method in ['GET', 'HEAD', 'DELETE', 'POST', 'PUT',\n                          'PATCH', 'OPTIONS']\n\n        if post_params and body:\n            raise ApiValueError(\n                \"body parameter cannot be used with post_params parameter.\"\n            )\n\n        post_params = post_params or {}\n        headers = headers or {}\n        # url already contains the URL query string\n        # so reset query_params to empty dict\n        query_params = {}\n        timeout = _request_timeout or 5 * 60\n\n        if 'Content-Type' not in headers:\n            headers['Content-Type'] = 'application/json'\n\n        args = {\n            \"method\": method,\n            \"url\": url,\n            \"timeout\": timeout,\n            \"headers\": headers\n        }\n\n        if self.proxy:\n            args[\"proxy\"] = self.proxy\n        if self.proxy_headers:\n            args[\"proxy_headers\"] = self.proxy_headers\n\n        if query_params:\n            args[\"url\"] += '?' + urlencode(query_params)\n\n        # For `POST`, `PUT`, `PATCH`, `OPTIONS`, `DELETE`\n        if method in ['POST', 'PUT', 'PATCH', 'OPTIONS', 'DELETE']:\n            if re.search('json', headers['Content-Type'], re.IGNORECASE):\n                if body is not None:\n                    body = json.dumps(body)\n                args[\"data\"] = body\n            elif headers['Content-Type'] == 'application/x-www-form-urlencoded':  # noqa: E501\n                args[\"data\"] = aiohttp.FormData(post_params)\n            elif headers['Content-Type'] == 'multipart/form-data':\n                # must del headers['Content-Type'], or the correct\n                # Content-Type which generated by aiohttp\n                del headers['Content-Type']\n                data = aiohttp.FormData()\n                for param in post_params:\n                    k, v = param\n                    if isinstance(v, tuple) and len(v) == 3:\n                        data.add_field(k,\n                                       value=v[1],\n                                       filename=v[0],\n                                       content_type=v[2])\n                    else:\n                        data.add_field(k, v)\n                args[\"data\"] = data\n\n            # Pass a `bytes` parameter directly in the body to support\n            # other content types than Json when `body` argument is provided\n            # in serialized form\n            elif isinstance(body, bytes):\n                args[\"data\"] = body\n            else:\n                # Cannot generate the request from given parameters\n                msg = \"\"\"Cannot prepare a request message for provided\n                         arguments. Please check that your arguments match\n                         declared content type.\"\"\"\n                raise ApiException(status=0, reason=msg)\n\n        r = await self.pool_manager.request(**args)\n        if _preload_content:\n\n            data = await r.read()\n            r = RESTResponse(r, data)\n\n            # log response body\n            logger.debug(\"response body: %s\", r.data)\n\n            if not 200 <= r.status <= 299:\n                raise ApiException(http_resp=r)\n\n        return r",
+          "triple_sequences": [
+            {
+              "action_api": "ssl.create_default_context()",
+              "action_description": "Creates SSL context with specified protocol",
+              "action_id": "create_ssl_context",
+              "object": "configuration.ssl_ca_cert",
+              "object_description": "Certificate file",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "ssl_context.load_cert_chain()",
+              "action_description": "Creates SSL context with specified protocol",
+              "action_id": "create_ssl_context",
+              "object": "configuration.cert_file, configuration.key_file",
+              "object_description": "Certificate file",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "aiohttp.TCPConnector()",
+              "action_description": "Creates HTTP connection to specified host",
+              "action_id": "create_http_connection",
+              "object": "limit=maxsize, ssl=ssl_context",
+              "object_description": "Network port number",
+              "object_id": "network_port",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "aiohttp.ClientSession()",
+              "action_description": "Creates HTTP session for making asynchronous requests",
+              "action_id": "create_http_session",
+              "object": "connector=connector, trust_env=True",
+              "object_description": "Network interface name",
+              "object_id": "network_interface_name",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "self.pool_manager.close()",
+              "action_description": "Closes the HTTP response object",
+              "action_id": "close_http_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            },
+            {
+              "action_api": "self.pool_manager.request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "method, url, timeout, headers, proxy, proxy_headers, data",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "body",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "aiohttp.FormData()",
+              "action_description": "Creates multipart writer for HTTP requests",
+              "action_id": "create_multipart_writer",
+              "object": "post_params",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "data.add_field()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "k, v or k, value=v[1], filename=v[0], content_type=v[2]",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "re.search()",
+              "action_description": "Compiles regular expression pattern",
+              "action_id": "compile_regex",
+              "object": "'json', headers['Content-Type'], re.IGNORECASE",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "RESTResponse()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "r, data",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "r.read()",
+              "action_description": "Iterates over response content in chunks",
+              "action_id": "iterate_response_chunks",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "logger.debug()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "r.data",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "raise ApiException()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "http_resp=r",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "urlencode()",
+              "action_description": "Encodes mapping object to URL query string",
+              "action_id": "encode_url_query",
+              "object": "query_params",
+              "object_description": "Query parameter",
+              "object_id": "query_parameter",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

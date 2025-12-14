@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "pandas_gbq-0.28.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/pandas_gbq-0.28.0.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "gbq.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pandas_gbq-0.28.0/pandas_gbq-0.28.0/pandas_gbq/gbq.py",
+    "line_number": "516",
+    "type_description": "shady-links",
+    "original_snippet": "\"Consider using BigQuery DataFrames (https://bit.ly/bigframes-intro)\"",
+    "context_snippet": "    def _download_results(\n        self,\n        rows_iter,\n        max_results=None,\n        progress_bar_type=None,\n        user_dtypes=None,\n    ):\n        # No results are desired, so don't bother downloading anything.\n        if max_results == 0:\n            return None\n\n        if user_dtypes is None:\n            user_dtypes = {}\n\n        create_bqstorage_client = self.use_bqstorage_api\n        if max_results is not None:\n            create_bqstorage_client = False\n\n        # If we're downloading a large table, BigQuery DataFrames might be a\n        # better fit. Not all code paths will populate rows_iter._table, but\n        # if it's not populated that means we are working with a small result\n        # set.\n        if (table_ref := getattr(rows_iter, \"_table\", None)) is not None:\n            table = self.client.get_table(table_ref)\n            if (\n                isinstance((num_bytes := table.num_bytes), int)\n                and num_bytes > pandas_gbq.constants.BYTES_TO_RECOMMEND_BIGFRAMES\n            ):\n                num_gib = num_bytes / pandas_gbq.constants.BYTES_IN_GIB\n                warnings.warn(\n                    f\"Recommendation: Your results are {num_gib:.1f} GiB. \"\n                    \"Consider using BigQuery DataFrames (https://bit.ly/bigframes-intro)\"\n                    \"to process large results with pandas compatible APIs with transparent SQL \"\n                    \"pushdown to BigQuery engine. This provides an opportunity to save on costs \"\n                    \"and improve performance. \"\n                    \"Please reach out to bigframes-feedback@google.com with any \"\n                    \"questions or concerns. To disable this message, run \"\n                    \"warnings.simplefilter('ignore', category=pandas_gbq.exceptions.LargeResultsWarning)\",\n                    category=pandas_gbq.exceptions.LargeResultsWarning,\n                    # user's code\n                    # -> read_gbq\n                    # -> run_query\n                    # -> download_results\n                    stacklevel=4,\n                )\n\n        try:\n            schema_fields = [field.to_api_repr() for field in rows_iter.schema]\n            conversion_dtypes = _bqschema_to_nullsafe_dtypes(schema_fields)\n            conversion_dtypes.update(user_dtypes)\n            df = rows_iter.to_dataframe(\n                dtypes=conversion_dtypes,\n                progress_bar_type=progress_bar_type,\n                create_bqstorage_client=create_bqstorage_client,\n            )\n        except self.http_error as ex:\n            self.process_http_error(ex)\n\n        df = _finalize_dtypes(df, schema_fields)\n\n        logger.debug(\"Got {} rows.\\n\".format(rows_iter.total_rows))\n        return df",
+    "hash_value": "15d352b510897ce494357bf79ade9792",
+    "detection_index": 1
+  }
+]

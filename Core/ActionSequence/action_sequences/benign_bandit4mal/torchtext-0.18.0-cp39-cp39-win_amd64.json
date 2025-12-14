@@ -1,0 +1,418 @@
+[
+  {
+    "metadata": {
+      "package_name": "torchtext-0.18.0-cp39-cp39-win_amd64",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "vectors.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/torchtext-0.18.0-cp39-cp39-win_amd64/torchtext/vocab/vectors.py",
+    "line_number": "98",
+    "type_description": "B819:urlretrieve",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "97\t                        try:\n98\t                            urlretrieve(url, dest, reporthook=reporthook(t))\n99\t                        except KeyboardInterrupt as e:  # remove the partial zip file",
+    "code_snippet": "def cache(self, name, cache, url=None, max_vectors=None):\n    import ssl\n\n    ssl._create_default_https_context = ssl._create_unverified_context\n    if os.path.isfile(name):\n        path = name\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = os.path.join(cache, os.path.basename(name)) + file_suffix\n    else:\n        path = os.path.join(cache, name)\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = path + file_suffix\n\n    if not os.path.isfile(path_pt):\n        if not os.path.isfile(path) and url:\n            logger.info(\"Downloading vectors from {}\".format(url))\n            if not os.path.exists(cache):\n                os.makedirs(cache)\n            dest = os.path.join(cache, os.path.basename(url))\n            if not os.path.isfile(dest):\n                with tqdm(unit=\"B\", unit_scale=True, miniters=1, desc=dest) as t:\n                    try:\n                        urlretrieve(url, dest, reporthook=reporthook(t))\n                    except KeyboardInterrupt as e:  # remove the partial zip file\n                        os.remove(dest)\n                        raise e\n            logger.info(\"Extracting vectors into {}\".format(cache))\n            ext = os.path.splitext(dest)[1][1:]\n            if ext == \"zip\":\n                with zipfile.ZipFile(dest, \"r\") as zf:\n                    zf.extractall(cache)\n            elif ext == \"gz\":\n                if dest.endswith(\".tar.gz\"):\n                    with tarfile.open(dest, \"r:gz\") as tar:\n                        tar.extractall(path=cache)\n        if not os.path.isfile(path):\n            raise RuntimeError(\"no vectors found at {}\".format(path))\n\n        logger.info(\"Loading vectors from {}\".format(path))\n        ext = os.path.splitext(path)[1][1:]\n        if ext == \"gz\":\n            open_file = gzip.open\n        else:\n            open_file = open\n\n        vectors_loaded = 0\n        with open_file(path, \"rb\") as f:\n            num_lines, dim = _infer_shape(f)\n            if not max_vectors or max_vectors > num_lines:\n                max_vectors = num_lines\n\n            itos, vectors, dim = [], torch.zeros((max_vectors, dim)), None\n\n            for line in tqdm(f, total=max_vectors):\n                # Explicitly splitting on \" \" is important, so we don't\n                # get rid of Unicode non-breaking spaces in the vectors.\n                entries = line.rstrip().split(b\" \")\n\n                word, entries = entries[0], entries[1:]\n                if dim is None and len(entries) > 1:\n                    dim = len(entries)\n                elif len(entries) == 1:\n                    logger.warning(\n                        \"Skipping token {} with 1-dimensional \" \"vector {}; likely a header\".format(word, entries)\n                    )\n                    continue\n                elif dim != len(entries):\n                    raise RuntimeError(\n                        \"Vector for token {} has {} dimensions, but previously \"\n                        \"read vectors have {} dimensions. All vectors must have \"\n                        \"the same number of dimensions.\".format(word, len(entries), dim)\n                    )\n\n                try:\n                    if isinstance(word, bytes):\n                        word = word.decode(\"utf-8\")\n                except UnicodeDecodeError:\n                    logger.info(\"Skipping non-UTF8 token {}\".format(repr(word)))\n                    continue\n\n                vectors[vectors_loaded] = torch.tensor([float(x) for x in entries])\n                vectors_loaded += 1\n                itos.append(word)\n\n                if vectors_loaded == max_vectors:\n                    break\n\n        self.itos = itos\n        self.stoi = {word: i for i, word in enumerate(itos)}\n        self.vectors = torch.Tensor(vectors).view(-1, dim)\n        self.dim = dim\n        logger.info(\"Saving vectors to {}\".format(path_pt))\n        if not os.path.exists(cache):\n            os.makedirs(cache)\n        torch.save((self.itos, self.stoi, self.vectors, self.dim), path_pt)\n    else:\n        logger.info(\"Loading vectors from {}\".format(path_pt))\n        self.itos, self.stoi, self.vectors, self.dim = torch.load(path_pt)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ssl._create_unverified_context",
+        "os.path.isfile",
+        "os.path.join",
+        "os.path.basename",
+        "os.path.isfile",
+        "os.path.join",
+        "os.path.isfile",
+        "os.path.isfile",
+        "logger.info",
+        "os.path.exists",
+        "os.makedirs",
+        "os.path.join",
+        "os.path.basename",
+        "os.path.isfile",
+        "tqdm",
+        "urlretrieve",
+        "reporthook",
+        "os.remove",
+        "logger.info",
+        "os.path.splitext",
+        "zipfile.ZipFile",
+        "zipfile.ZipFile.extractall",
+        "tarfile.open",
+        "tarfile.TarFile.extractall",
+        "os.path.isfile",
+        "logger.info",
+        "os.path.splitext",
+        "gzip.open",
+        "open",
+        "tqdm",
+        "logger.warning",
+        "torch.zeros",
+        "torch.tensor",
+        "logger.info",
+        "os.path.exists",
+        "os.makedirs",
+        "torch.save",
+        "logger.info",
+        "torch.load"
+      ],
+      "api_sequence_with_args": [
+        "ssl._create_unverified_context",
+        "os.path.isfile(name)",
+        "os.path.join(cache, os.path.basename(name))",
+        "os.path.basename(name)",
+        "os.path.isfile(path_pt)",
+        "os.path.join(cache, name)",
+        "os.path.isfile(path_pt)",
+        "os.path.isfile(path)",
+        "logger.info(\"Downloading vectors from {}\".format(url))",
+        "os.path.exists(cache)",
+        "os.makedirs(cache)",
+        "os.path.join(cache, os.path.basename(url))",
+        "os.path.basename(url)",
+        "os.path.isfile(dest)",
+        "tqdm(unit=\"B\", unit_scale=True, miniters=1, desc=dest)",
+        "urlretrieve(url, dest, reporthook=reporthook(t))",
+        "reporthook(t)",
+        "os.remove(dest)",
+        "logger.info(\"Extracting vectors into {}\".format(cache))",
+        "os.path.splitext(dest)",
+        "zipfile.ZipFile(dest, \"r\")",
+        "zipfile.ZipFile.extractall(cache)",
+        "tarfile.open(dest, \"r:gz\")",
+        "tarfile.TarFile.extractall(path=cache)",
+        "os.path.isfile(path)",
+        "logger.info(\"Loading vectors from {}\".format(path))",
+        "os.path.splitext(path)",
+        "gzip.open(path, \"rb\")",
+        "open(path, \"rb\")",
+        "tqdm(f, total=max_vectors)",
+        "logger.warning(\"Skipping token {} with 1-dimensional vector {}; likely a header\".format(word, entries))",
+        "torch.zeros((max_vectors, dim))",
+        "torch.tensor([float(x) for x in entries])",
+        "logger.info(\"Saving vectors to {}\".format(path_pt))",
+        "os.path.exists(cache)",
+        "os.makedirs(cache)",
+        "torch.save((self.itos, self.stoi, self.vectors, self.dim), path_pt)",
+        "logger.info(\"Loading vectors from {}\".format(path_pt))",
+        "torch.load(path_pt)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ssl._create_unverified_context",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "tqdm",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "reporthook",
+          "id": "add_http_header",
+          "description": "Adds HTTP header to request object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.extractall",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.extractall",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "gzip.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tqdm",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "logger.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "torch.zeros",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "torch.tensor",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "torch.save",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "torch.load",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "import ssl\nimport os\nimport zipfile\nimport tarfile\nimport gzip\nimport torch\nfrom tqdm import tqdm\n\ndef cache(self, name, cache, url=None, max_vectors=None):\n    ssl._create_default_https_context = ssl._create_unverified_context\n    if os.path.isfile(name):\n        path = name\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = os.path.join(cache, os.path.basename(name)) + file_suffix\n    else:\n        path = os.path.join(cache, name)\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = path + file_suffix\n\n    if not os.path.isfile(path_pt):\n        if not os.path.isfile(path) and url:\n            logger.info(\"Downloading vectors from {}\".format(url))\n            if not os.path.exists(cache):\n                os.makedirs(cache)\n            dest = os.path.join(cache, os.path.basename(url))\n            if not os.path.isfile(dest):\n                with tqdm(unit=\"B\", unit_scale=True, miniters=1, desc=dest) as t:\n                    try:\n                        urlretrieve(url, dest, reporthook=reporthook(t))\n                    except KeyboardInterrupt as e:\n                        os.remove(dest)\n                        raise e\n            logger.info(\"Extracting vectors into {}\".format(cache))\n            ext = os.path.splitext(dest)[1][1:]\n            if ext == \"zip\":\n                with zipfile.ZipFile(dest, \"r\") as zf:\n                    zf.extractall(cache)\n            elif ext == \"gz\":\n                if dest.endswith(\".tar.gz\"):\n                    with tarfile.open(dest, \"r:gz\") as tar:\n                        tar.extractall(path=cache)\n        if not os.path.isfile(path):\n            raise RuntimeError(\"no vectors found at {}\".format(path))\n\n        logger.info(\"Loading vectors from {}\".format(path))\n        ext = os.path.splitext(path)[1][1:]\n        if ext == \"gz\":\n            open_file = gzip.open\n        else:\n            open_file = open\n\n        vectors_loaded = 0\n        with open_file(path, \"rb\") as f:\n            num_lines, dim = _infer_shape(f)\n            if not max_vectors or max_vectors > num_lines:\n                max_vectors = num_lines\n\n            itos, vectors, dim = [], torch.zeros((max_vectors, dim)), None\n\n            for line in tqdm(f, total=max_vectors):\n                entries = line.rstrip().split(b\" \")\n                word, entries = entries[0], entries[1:]\n                if dim is None and len(entries) > 1:\n                    dim = len(entries)\n                elif len(entries) == 1:\n                    logger.warning(\"Skipping token {} with 1-dimensional vector {}; likely a header\".format(word, entries))\n                    continue\n                elif dim != len(entries):\n                    raise RuntimeError(\"Vector for token {} has {} dimensions, but previously read vectors have {} dimensions. All vectors must have the same number of dimensions.\".format(word, len(entries), dim))\n\n                try:\n                    if isinstance(word, bytes):\n                        word = word.decode(\"utf-8\")\n                except UnicodeDecodeError:\n                    logger.info(\"Skipping non-UTF8 token {}\".format(repr(word)))\n                    continue\n\n                vectors[vectors_loaded] = torch.tensor([float(x) for x in entries])\n                vectors_loaded += 1\n                itos.append(word)\n\n                if vectors_loaded == max_vectors:\n                    break\n\n        self.itos = itos\n        self.stoi = {word: i for i, word in enumerate(itos)}\n        self.vectors = torch.Tensor(vectors).view(-1, dim)\n        self.dim = dim\n        logger.info(\"Saving vectors to {}\".format(path_pt))\n        if not os.path.exists(cache):\n            os.makedirs(cache)\n        torch.save((self.itos, self.stoi, self.vectors, self.dim), path_pt)\n    else:\n        logger.info(\"Loading vectors from {}\".format(path_pt))\n        self.itos, self.stoi, self.vectors, self.dim = torch.load(path_pt)"
+    }
+  }
+]

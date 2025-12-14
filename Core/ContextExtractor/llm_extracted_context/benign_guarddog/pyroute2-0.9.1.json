@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyroute2-0.9.1",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/pyroute2-0.9.1.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyroute2-0.9.1/pyroute2-0.9.1/pyroute2/plan9/__init__.py",
+    "line_number": "419",
+    "type_description": "obfuscation",
+    "original_snippet": "cls = getattr(builtins, spec['class'])",
+    "context_snippet": "import builtins\nimport json\n\nclass Plan9Exit(Exception):\n    pass\n\ndef parse(self, data, seq=None, callback=None, skip_alien_seq=False):\n    offset = 0\n    while offset <= len(data) - 5:\n        (length, key, tag) = struct.unpack_from('=IBH', data, offset)\n        if skip_alien_seq and tag != seq:\n            continue\n        if not 0 < length <= len(data):\n            break\n        parser = self.get_parser(key, 0, tag)\n        msg = parser(data, offset, length)\n        if key == Rerror:\n            spec = json.loads(msg['ename'])\n            if spec['class'] in dir(builtins):\n                cls = getattr(builtins, spec['class'])\n            elif spec['class'] == 'Plan9Exit':\n                cls = Plan9Exit\n            else:\n                cls = Exception\n            if not spec.get('argv'):\n                spec['argv'] = [spec['str']]\n            raise cls(*spec['argv'])\n        offset += length\n        if msg is None:\n            continue\n        yield msg",
+    "hash_value": "5e5a7b7565c7f4edad3bb8f61872f579",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "process.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyroute2-0.9.1/pyroute2-0.9.1/pyroute2/process.py",
+    "line_number": "153",
+    "type_description": "obfuscation",
+    "original_snippet": "error_class = getattr(builtins, payload['exception'], None)",
+    "context_snippet": "import builtins\nimport json\nfrom pyroute2.netlink import exceptions as pyroute2_exceptions\n\nclass ChildProcess:\n    ...\n    def communicate(\n        self, timeout: int = USE_DEFAULT_TIMEOUT\n    ) -> tuple[bytes, list[int]]:\n        '''Communicate with the child process.\n\n        Raises:\n\n        * struct.error -- error unpacking response from the child process\n        * OSError -- OS level error communicating with the child process\n        * TimeoutError -- the child process is alive, but doesn't response\n        * RuntimeError -- the child process is dead or not started\n        * TypeError -- error loading propagated exception\n        '''\n        if not self._running:\n            raise RuntimeError('child process not started yet')\n        if timeout == USE_DEFAULT_TIMEOUT:\n            timeout = config.default_communicate_timeout\n        rl, _, _ = select.select([self.ctrl_r], [], [], timeout)\n        if not len(rl):\n            # no data received within timeout\n            # 1. the child process is killed\n            # 2. the child process is stuck\n            #\n            # So first check the process, if it is killed, raise\n            # RuntimeError, otherwise raise TimeoutError.\n            #\n            c_pid, w_status = os.waitpid(self.pid, os.WNOHANG)\n            if c_pid != 0:\n                # process is dead\n                self._exitcode = os.waitstatus_to_exitcode(w_status)\n                raise RuntimeError(\n                    f'child process is dead, status: {self.exitcode}'\n                )\n            # process is alive, but stuck, kill it\n            self.stop(kill=True, reason='no response from the child')\n            raise TimeoutError(f'no response from the child pid {self.pid}')\n\n        ret_data = b''\n        # raises OSError\n        (raw_data, fds, _, _) = socket.recv_fds(self.ctrl_r, 1024, 1)\n        # get the return type\n        # raises struct.error\n        (ret_type,) = struct.unpack('B', raw_data[:1])\n        raw_data = raw_data[1:]\n        if ret_type == 1:\n            # exception\n            payload = json.loads(raw_data.decode('utf-8'))\n            if not set(payload.keys()) == set(('exception', 'options')):\n                raise TypeError('error loading child exception')\n            if payload.get('exception') is not None:\n                error_class = getattr(builtins, payload['exception'], None)\n                if error_class is None:\n                    error_class = getattr(\n                        pyroute2_exceptions, payload['exception'], None\n                    )\n                if error_class is None:\n                    error_class = Exception\n                if not issubclass(error_class, Exception):\n                    raise TypeError('error loading child error')\n                raise error_class(*payload['options'])\n        elif ret_type == 2:\n            # raw_data\n            ret_data = raw_data\n        return ret_data, fds",
+    "hash_value": "c968c6b2b4f0b7b81bd29ea8e662c2a2",
+    "detection_index": 1
+  }
+]

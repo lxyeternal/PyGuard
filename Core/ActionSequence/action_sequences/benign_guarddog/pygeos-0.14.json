@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\nimport logging\nimport sys\nfrom pkg_resources import parse_version\n\ndef get_geos_config(option):\n    \"\"\"Get configuration option from the `geos-config` development utility\n\n    The PATH environment variable should include the path where geos-config is\n    located, or the GEOS_CONFIG environment variable should point to the\n    executable.\n    \"\"\"\n    cmd = os.environ.get(\"GEOS_CONFIG\", \"geos-config\")\n    try:\n        stdout, stderr = subprocess.Popen(\n            [cmd, option], stdout=subprocess.PIPE, stderr=subprocess.PIPE\n        ).communicate()\n    except OSError:\n        return\n    if stderr and not stdout:\n        log.warning(\"geos-config %s returned '%s'\", option, stderr.decode().strip())\n        return\n    result = stdout.decode().strip()\n    log.debug(\"geos-config %s returned '%s'\", option, result)\n    return result\n\n# Data dependencies and relevant context:\n# - 'subprocess' is imported at the top\n# - 'os' is imported at the top\n# - 'log' is a logger defined as:\n#     log = logging.getLogger(__name__)\n#     ch = logging.StreamHandler()\n#     log.addHandler(ch)\n# - 'parse_version' is imported from pkg_resources\n# - 'get_geos_config' is called by 'get_geos_paths', which is used in the main block\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "log.warning",
+        "stderr.decode",
+        "stdout.decode",
+        "log.debug"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"GEOS_CONFIG\", \"geos-config\")",
+        "subprocess.Popen([cmd, option], stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "subprocess.Popen.communicate()",
+        "log.warning(\"geos-config %s returned '%s'\", option, stderr.decode().strip())",
+        "stderr.decode().strip()",
+        "stdout.decode().strip()",
+        "log.debug(\"geos-config %s returned '%s'\", option, result)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "log.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "stderr.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "stdout.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nimport logging\n\n# log is defined as:\nlog = logging.getLogger(__name__)\nch = logging.StreamHandler()\nlog.addHandler(ch)\n\ndef get_geos_config(option):\n    cmd = os.environ.get(\"GEOS_CONFIG\", \"geos-config\")\n    try:\n        stdout, stderr = subprocess.Popen(\n            [cmd, option], stdout=subprocess.PIPE, stderr=subprocess.PIPE\n        ).communicate()\n    except OSError:\n        return\n    if stderr and not stdout:\n        log.warning(\"geos-config %s returned '%s'\", option, stderr.decode().strip())\n        return\n    result = stdout.decode().strip()\n    log.debug(\"geos-config %s returned '%s'\", option, result)\n    return result"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pygeos-0.14",
+      "total_matches": 1
+    }
+  }
+]

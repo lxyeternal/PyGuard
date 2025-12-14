@@ -1,0 +1,48 @@
+[
+  {
+    "metadata": {
+      "package_name": "fiftyone-1.4.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "cvat.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/fiftyone-1.4.1/fiftyone-1.4.1/fiftyone/utils/cvat.py",
+    "line_number": "5184",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5183\t            label_type = label_info.get(\"type\", None)\n5184\t            is_existing_field = label_info.get(\"existing_field\", False)\n5185\t            classes = label_info[\"classes\"]",
+    "code_snippet": "def _build_cvat_schema(\n    self, label_schema, occluded_attr=None, group_id_attr=None\n):\n    cvat_schema = {}\n    assign_scalar_attrs = {}\n    occluded_attrs = defaultdict(dict)\n    group_id_attrs = defaultdict(dict)\n    label_field_classes = defaultdict(dict)\n\n    _class_label_fields = {}\n    _duplicate_classes = set()\n    _prev_field_classes = set()\n\n    for label_field, label_info in label_schema.items():\n        _field_classes = set()\n        label_type = label_info.get(\"type\", None)\n        is_existing_field = label_info.get(\"existing_field\", False)\n        classes = label_info[\"classes\"]\n        (\n            attributes,\n            occluded_attr_name,\n            group_id_attr_name,\n        ) = self._to_cvat_attributes(label_info[\"attributes\"])\n        if occluded_attr_name is None and occluded_attr is not None:\n            occluded_attr_name = occluded_attr\n            label_schema[label_field][\"attributes\"][occluded_attr] = {}\n\n        if group_id_attr_name is None and group_id_attr is not None:\n            group_id_attr_name = group_id_attr\n            label_schema[label_field][\"attributes\"][group_id_attr] = {}\n\n        # Must track label IDs for existing label fields\n        if is_existing_field and label_type != \"scalar\":\n            if \"label_id\" in attributes:\n                raise ValueError(\n                    \"Label field '%s' attribute schema cannot use \"\n                    \"reserved name 'label_id'\" % label_field\n                )\n\n            attributes[\"label_id\"] = {\n                \"name\": \"label_id\",\n                \"input_type\": \"text\",\n                \"mutable\": True,\n                \"values\": [],\n            }\n\n        if label_type == \"scalar\":\n            # True: scalars are annotated as tag attributes\n            # False: scalars are annotated as tag labels\n            assign_scalar_attrs[label_field] = not bool(classes)\n        else:\n            assign_scalar_attrs[label_field] = None\n\n        if not classes:\n            classes = [label_field]\n\n            if not attributes:\n                attributes[\"value\"] = {\n                    \"name\": \"value\",\n                    \"input_type\": \"text\",\n                    \"mutable\": True,\n                    \"values\": [],\n                }\n\n        # Handle class name clashes and global attributes\n        for _class in classes:\n            if etau.is_str(_class):\n                _classes = [_class]\n            else:\n                _classes = _class[\"classes\"]\n\n            for name in _classes:\n                # If two label fields share a class name, we must append\n                # `label_field` to all instances of `name` to disambiguate\n                if (\n                    name in _prev_field_classes\n                    and name not in _duplicate_classes\n                ):\n                    _duplicate_classes.add(name)\n\n                    prev_field = _class_label_fields[name]\n\n                    new_name = \"%s_%s\" % (name, prev_field)\n                    cvat_schema[new_name] = cvat_schema.pop(name)\n\n                    label_field_classes[prev_field][name] = new_name\n\n                    if name in occluded_attrs[label_field]:\n                        attr_name = occluded_attrs[label_field].pop(name)\n                        occluded_attrs[label_field][new_name] = attr_name\n\n                    if name in group_id_attrs[label_field]:\n                        attr_name = group_id_attrs[label_field].pop(name)\n                        group_id_attrs[label_field][new_name] = attr_name\n\n                _field_classes.add(name)\n\n                if name in _duplicate_classes:\n                    new_name = \"%s_%s\" % (name, label_field)\n                    label_field_classes[label_field][name] = new_name\n                    name = new_name\n                else:\n                    _class_label_fields[name] = label_field\n                    label_field_classes[label_field][name] = name\n\n                if len(name) > 64:\n                    raise ValueError(\n                        \"Class name '%s' exceeds 64 character limit\" % name\n                    )\n\n                cvat_schema[name] = deepcopy(attributes)\n                if occluded_attr_name is not None:\n                    occluded_attrs[label_field][name] = occluded_attr_name\n\n                if group_id_attr_name is not None:\n                    group_id_attrs[label_field][name] = group_id_attr_name\n\n        _prev_field_classes |= _field_classes\n\n        # Class-specific attributes\n        for _class in classes:\n            if etau.is_str(_class):\n                continue\n\n            _classes = _class[\"classes\"]\n            (\n                _attrs,\n                _occluded_attr_name,\n                _group_id_attr_name,\n            ) = self._to_cvat_attributes(_class[\"attributes\"])\n            if _occluded_attr_name is None and occluded_attr is not None:\n                _occluded_attr_name = occluded_attr\n\n            if _group_id_attr_name is None and group_id_attr is not None:\n                _group_id_attr_name = group_id_attr\n\n            if \"label_id\" in _attrs:\n                raise ValueError(\n                    \"Label field '%s' attribute schema cannot use \"\n                    \"reserved name 'label_id'\" % label_field\n                )\n\n            for name in _classes:\n                if name in _duplicate_classes:\n                    name = \"%s_%s\" % (name, label_field)\n\n                if len(name) > 64:\n                    raise ValueError(\n                        \"Class name '%s' exceeds 64 character limit\" % name\n                    )\n\n                cvat_schema[name].update(_attrs)\n                if _occluded_attr_name is not None:\n                    occluded_attrs[label_field][name] = _occluded_attr_name\n\n                if _group_id_attr_name is not None:\n                    group_id_attrs[label_field][name] = _group_id_attr_name\n\n    return (\n        cvat_schema,\n        assign_scalar_attrs,\n        dict(occluded_attrs),\n        dict(group_id_attrs),\n        dict(label_field_classes),\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "etau.is_str",
+        "deepcopy"
+      ],
+      "api_sequence_with_args": [
+        "etau.is_str(_class)",
+        "deepcopy(attributes)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "etau.is_str",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "deepcopy",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "for _class in classes:\n    if etau.is_str(_class):\n        _classes = [_class]\n    else:\n        _classes = _class[\"classes\"]\n    for name in _classes:\n        ...\n        cvat_schema[name] = deepcopy(attributes)\n        ..."
+    }
+  }
+]

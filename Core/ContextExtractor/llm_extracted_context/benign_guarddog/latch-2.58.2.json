@@ -1,0 +1,29 @@
+[
+  {
+    "metadata": {
+      "package_name": "latch-2.58.2",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/latch-2.58.2.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "messages.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/latch-2.58.2/latch-2.58.2/src/latch/functions/messages.py",
+    "line_number": "56",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.post(\nurl=ADD_MESSAGE_ENDPOINT,\njson={\n\"execution_token\": execution_token,\n\"task\": {\n\"project\": task_project,\n\"domain\": task_domain,\n... },\n)",
+    "context_snippet": "import os\nfrom typing import Any, Dict\n\nimport requests\n\nNUCLEUS_URL = os.environ.get(\"LATCH_CLI_NUCLEUS_URL\", \"https://nucleus.latch.bio\")\nADD_MESSAGE_ENDPOINT = f\"{NUCLEUS_URL}/sdk/add-task-execution-message\"\n\n\ndef message(typ: str, data: Dict[str, Any]) -> None:\n    \"\"\"Display a message prominently on the Latch console during and after a\n    task execution.\n\n    The Latch platform first processes this message internally, then displays it\n    under your task's execution page.\n\n    Args:\n        typ:\n            A message type that determines how your message is displayed.\n            Currently one of 'info', 'warning', or 'error'.\n        data:\n            The data displayed on the Latch console, formatted as follows:\n            ```{'title': ..., 'body': ...}```.\n\n    Raises:\n        RuntimeError: If an internal error occurs while processing the message.\n\n    Example usage: ::\n\n        @small_task\n        def task():\n\n            ...\n\n            try:\n                ...\n            catch ValueError:\n                title = 'Invalid sample ID column selected'\n                body = 'Your file indicates that sample columns a, b are valid'\n                message(type='error', data={'title': title, 'body': body})\n\n            ...\n    \"\"\"\n    task_project = os.environ.get(\"FLYTE_INTERNAL_TASK_PROJECT\")\n    task_domain = os.environ.get(\"FLYTE_INTERNAL_TASK_DOMAIN\")\n    task_name = os.environ.get(\"FLYTE_INTERNAL_TASK_NAME\")\n    task_version = os.environ.get(\"FLYTE_INTERNAL_TASK_VERSION\")\n    task_attempt_number = os.environ.get(\"FLYTE_ATTEMPT_NUMBER\")\n    execution_token = os.environ.get(\"FLYTE_INTERNAL_EXECUTION_ID\")\n    array_index = os.environ.get(\"FLYTE_K8S_ARRAY_INDEX\")\n\n    if task_project is None:\n        print(f\"Local execution message:\\n[{typ}]: {data}\")\n        return\n\n    response = requests.post(\n        url=ADD_MESSAGE_ENDPOINT,\n        json={\n            \"execution_token\": execution_token,\n            \"task\": {\n                \"project\": task_project,\n                \"domain\": task_domain,\n                \"name\": task_name,\n                \"version\": task_version,\n            },\n            \"task_attempt_number\": task_attempt_number,\n            \"task_array_index\": array_index,\n            \"type\": typ,\n            \"data\": data,\n        },\n    )\n\n    if response.status_code != 200:\n        raise RuntimeError(\"Could not add task execution message to Latch.\")",
+    "hash_value": "1f9beade20dae33b5a2d59f5fa3edda6",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/latch-2.58.2/latch-2.58.2/src/latch_cli/services/register/utils.py",
+    "line_number": "188",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.post(\nlatch_register_url, headers=headers, files=serialize_files\n)",
+    "context_snippet": "def register_serialized_pkg(\n    files: List[Path],\n    token: Optional[str],\n    version: str,\n    workspace_id: str,\n    latch_register_url: str = config.api.workflow.register,\n) -> object:\n    if token is None:\n        token = os.environ.get(\"FLYTE_INTERNAL_EXECUTION_ID\", \"\")\n        if token != \"\":\n            headers = {\"Authorization\": f\"Latch-Execution-Token {token}\"}\n        else:\n            raise OSError(\n                \"The environment variable FLYTE_INTERNAL_EXECUTION_ID does not exist\"\n            )\n    else:\n        headers = {\"Authorization\": f\"Bearer {token}\"}\n\n    serialize_files: Dict[str, Union[bytes, io.BufferedReader]] = {\n        \"version\": version.encode(\"utf-8\"),\n        \".latch_ws\": workspace_id.encode(\"utf-8\"),\n    }\n    with contextlib.ExitStack() as stack:\n        for file in files:\n            fh = open(file, \"rb\")\n            stack.enter_context(fh)\n\n            serialize_files[fh.name] = fh\n\n        response = requests.post(\n            latch_register_url, headers=headers, files=serialize_files\n        )\n        response.raise_for_status()\n        return response.json()",
+    "hash_value": "cc783f3ae1bd90e9ee987270f588431f",
+    "detection_index": 1
+  }
+]

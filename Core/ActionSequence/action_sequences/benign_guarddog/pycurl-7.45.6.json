@@ -1,0 +1,291 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import glob, os, re, shlex, sys, subprocess\nfrom setuptools import setup\nfrom setuptools.extension import Extension\n\nclass ConfigurationError(Exception):\n    pass\n\ndef scan_argv(argv, s, default=None):\n    p = default\n    i = 1\n    while i < len(argv):\n        arg = argv[i]\n        if s.endswith('='):\n            if str.find(arg, s) == 0:\n                # --option=value\n                p = arg[len(s):]\n                if s != '--openssl-lib-name=':\n                    assert p, arg\n                del argv[i]\n            else:\n                i += 1\n        else:\n            if s == arg:\n                # --option\n                # set value to True\n                p = True\n                del argv[i]\n            else:\n                i = i + 1\n    ##print argv\n    return p\n\nclass ExtensionConfiguration(object):\n    def __init__(self, argv=[]):\n        # we mutate argv, this is necessary because\n        # setuptools does not recognize pycurl-specific options\n        self.argv = argv\n        self.original_argv = argv[:]\n        self.include_dirs = []\n        self.define_macros = [(\"PYCURL_VERSION\", '\"%s\"' % VERSION)]\n        self.library_dirs = []\n        self.libraries = []\n        self.runtime_library_dirs = []\n        self.extra_objects = []\n        self.extra_compile_args = []\n        self.extra_link_args = []\n        self.ssl_lib_detected = None\n\n        self.configure()\n\n    def curl_config(self):\n        try:\n            return self._curl_config\n        except AttributeError:\n            curl_config = os.environ.get('PYCURL_CURL_CONFIG', \"curl-config\")\n            curl_config = scan_argv(self.argv, \"--curl-config=\", curl_config)\n            self._curl_config = curl_config\n            return curl_config\n\n    def detect_features(self):\n        p = subprocess.Popen((self.curl_config(), '--features'),\n            stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            msg = \"Problem running `%s' --features\" % self.curl_config()\n            if stderr:\n                msg += \":\\n\" + stderr.decode()\n            raise ConfigurationError(msg)\n        curl_has_ssl = False\n        for feature in shlex.split(stdout.decode()):\n            if feature == 'SSL':\n                # this means any ssl library, not just openssl.\n                # we set the ssl flag to check for ssl library mismatch\n                # at link time and run time\n                self.define_macros.append(('HAVE_CURL_SSL', 1))\n                curl_has_ssl = True\n        self.curl_has_ssl = curl_has_ssl\n\n    def configure_unix(self):\n        OPENSSL_DIR = os.environ.get('PYCURL_OPENSSL_DIR')\n        OPENSSL_DIR = scan_argv(self.argv, \"--openssl-dir=\", OPENSSL_DIR)\n        if OPENSSL_DIR is not None:\n            self.include_dirs.append(os.path.join(OPENSSL_DIR, \"include\"))\n            self.library_dirs.append(os.path.join(OPENSSL_DIR, \"lib\"))\n        try:\n            p = subprocess.Popen((self.curl_config(), '--version'),\n                stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        except OSError:\n            exc = sys.exc_info()[1]\n            msg = 'Could not run curl-config: %s' % str(exc)\n            raise ConfigurationError(msg)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            msg = \"`%s' not found -- please install the libcurl development files or specify --curl-config=/path/to/curl-config\" % self.curl_config()\n            if stderr:\n                msg += \":\\n\" + stderr.decode()\n            raise ConfigurationError(msg)\n        libcurl_version = stdout.decode().strip()\n        print(\"Using %s (%s)\" % (self.curl_config(), libcurl_version))\n        p = subprocess.Popen((self.curl_config(), '--cflags'),\n            stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            msg = \"Problem running `%s' --cflags\" % self.curl_config()\n            if stderr:\n                msg += \":\\n\" + stderr.decode()\n            raise ConfigurationError(msg)\n        for arg in shlex.split(stdout.decode()):\n            if arg[:2] == \"-I\":\n                # do not add /usr/include\n                if not re.search(r\"^\\/+usr\\/+include\\/*$\", arg[2:]):\n                    self.include_dirs.append(arg[2:])\n            else:\n                self.extra_compile_args.append(arg)\n\n        # Obtain linker flags/libraries to link against.\n        # In theory, all we should need is `curl-config --libs`.\n        # Apparently on some platforms --libs fails and --static-libs works,\n        # so try that.\n        # If --libs succeeds do not try --static-libs; see\n        # https://github.com/pycurl/pycurl/issues/52 for more details.\n        # If neither --libs nor --static-libs work, fail.\n        #\n        # --libs/--static-libs are also used for SSL detection.\n        # libcurl may be configured such that --libs only includes -lcurl\n        # without any of libcurl's dependent libraries, but the dependent\n        # libraries would be included in --static-libs (unless libcurl\n        # was built with static libraries disabled).\n        # Therefore we largely ignore (see below) --static-libs output for\n        # libraries and flags if --libs succeeded, but consult both outputs\n        # for hints as to which SSL library libcurl is linked against.\n        # More information: https://github.com/pycurl/pycurl/pull/147\n        #\n        # The final point is we should link against the SSL library in use\n        # even if libcurl does not tell us to, because *we* invoke functions\n        # in that SSL library. This means any SSL libraries found in\n        # --static-libs are forwarded to our libraries.\n        optbuf = ''\n        sslhintbuf = ''\n        errtext = ''\n        for option in [\"--libs\", \"--static-libs\"]:\n            p = subprocess.Popen((self.curl_config(), option),\n                stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n            stdout, stderr = p.communicate()\n            if p.wait() == 0:\n                if optbuf == '':\n                    # first successful call\n                    optbuf = stdout.decode()\n                    # optbuf only has output from this call\n                    sslhintbuf += optbuf\n                else:\n                    # second successful call\n                    sslhintbuf += stdout.decode()\n            else:\n                if optbuf == '':\n                    # no successful call yet\n                    errtext += stderr.decode()\n                else:\n                    # first call succeeded and second call failed\n                    # ignore stderr and the error exit\n                    pass\n        if optbuf == \"\":\n            msg = \"Neither curl-config --libs nor curl-config --static-libs\" +\\\n                \" succeeded and produced output\"\n            if errtext:\n                msg += \":\\n\" + errtext\n            raise ConfigurationError(msg)\n\n        # hack\n        self.sslhintbuf = sslhintbuf\n\n        self.detect_features()\n        self.ssl_lib_detected = None\n        if self.curl_has_ssl:\n            self.detect_ssl_backend()\n\n            if not self.ssl_lib_detected:\n                sys.stderr.write('''\\\nWarning: libcurl is configured to use SSL, but we have not been able to \\\ndetermine which SSL backend it is using. If your Curl is built against \\\nOpenSSL, LibreSSL, BoringSSL, GnuTLS, NSS, mbedTLS, or Secure Transport \\\nplease specify the SSL backend manually. For other SSL backends please \\\nignore this message.''')\n        else:\n            if self.detect_ssl_option():\n                sys.stderr.write(\"Warning: SSL backend specified manually but libcurl does not use SSL\\n\")\n\n        # libraries and options - all libraries and options are forwarded\n        # but if --libs succeeded, --static-libs output is ignored\n        for arg in shlex.split(optbuf):\n            if arg[:2] == \"-l\":\n                self.libraries.append(arg[2:])\n            elif arg[:2] == \"-L\":\n                self.library_dirs.append(arg[2:])\n            else:\n                self.extra_link_args.append(arg)\n\n        if not self.libraries:\n            self.libraries.append(\"curl\")\n\n        # Recognize --avoid-stdio on Unix so that it can be tested\n        self.check_avoid_stdio()\n\n        try:\n            for dir in os.environ['PYCURL_RUNTIME_LIBRARY_DIRS'].split(os.pathsep):\n                self.runtime_library_dirs.append(dir)\n        except KeyError:\n            pass\n\n        try:\n            for obj in os.environ['PYCURL_EXTRA_OBJECTS'].split(os.pathsep):\n                self.extra_objects.append(obj)\n        except KeyError:\n            pass\n\n        try:\n            for obj in os.environ['PYCURL_EXTRA_LIBRARIES'].split(os.pathsep):\n                self.libraries.append(obj)\n        except KeyError:\n            pass\n\n        if 'PYCURL_AUTODETECT_CA' in os.environ:\n            self.extra_compile_args.append(\"-DPYCURL_AUTODETECT_CA\")\n\n    def detect_ssl_lib_using_curl_config(self):\n        ssl_lib_detected = None\n        p = subprocess.Popen((self.curl_config(), '--ssl-backends'),\n            stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            # curl-config --ssl-backends is not supported on older curl versions\n            return None\n        ssl_version = stdout.decode()\n        if ssl_version.startswith('OpenSSL') or ssl_version.startswith('LibreSSL'):\n            self.using_openssl()\n            ssl_lib_detected = 'openssl'\n        elif ssl_version.startswith('GnuTLS'):\n            self.using_gnutls()\n            ssl_lib_detected = 'gnutls'\n        elif ssl_version.startswith('NSS'):\n            self.using_nss()\n            ssl_lib_detected = 'nss'\n        elif ssl_version.startswith('mbedTLS'):\n            self.using_mbedtls()\n            ssl_lib_detected = 'mbedtls'\n        return ssl_lib_detected\n\n    def configure_windows(self):\n        OPENSSL_DIR = os.environ.get('PYCURL_OPENSSL_DIR')\n        OPENSSL_DIR = scan_argv(self.argv, \"--openssl-dir=\", OPENSSL_DIR)\n        if OPENSSL_DIR is not None:\n            self.include_dirs.append(os.path.join(OPENSSL_DIR, \"include\"))\n            self.library_dirs.append(os.path.join(OPENSSL_DIR, \"lib\"))\n        # Windows users have to pass --curl-dir parameter to specify path\n        # to libcurl, because there is no curl-config on windows at all.\n        curl_dir = os.environ.get('PYCURL_CURL_DIR')\n        curl_dir = scan_argv(self.argv, \"--curl-dir=\", curl_dir)\n        if curl_dir is None:\n            fail(\"Please specify --curl-dir=/path/to/built/libcurl\")\n        if not os.path.exists(curl_dir):\n            fail(\"Curl directory does not exist: %s\" % curl_dir)\n        if not os.path.isdir(curl_dir):\n            fail(\"Curl directory is not a directory: %s\" % curl_dir)\n        print(\"Using curl directory: %s\" % curl_dir)\n        self.include_dirs.append(os.path.join(curl_dir, \"include\"))\n\n        # libcurl windows documentation states that for linking against libcurl\n        # dll, the import library name is libcurl_imp.lib.\n        # For libcurl 7.46.0, the library name is libcurl.lib.\n        # And static library name is libcurl_a.lib by default as of libcurl 7.46.0.\n        # override with: --libcurl-lib-name=libcurl_imp.lib\n        curl_lib_name = os.environ.get('PYCURL_LIBCURL_LIB_NAME', 'libcurl.lib')\n        curl_lib_name = scan_argv(self.argv, '--libcurl-lib-name=', curl_lib_name)\n\n        # openssl 1.1.0 changed its library names\n        # from libeay32.lib/ssleay32.lib to libcrypto.lib/libssl.lib.\n        # at the same time they dropped thread locking callback interface,\n        # meaning the correct usage of this option is --openssl-lib-name=\"\"\n        self.openssl_lib_name = os.environ.get('PYCURL_OPENSSL_LIB_NAME', 'libeay32.lib')\n        self.openssl_lib_name = scan_argv(self.argv, '--openssl-lib-name=', self.openssl_lib_name)\n\n        try:\n            for lib in os.environ['PYCURL_LINK_ARG'].split(os.pathsep):\n                self.extra_link_args.append(lib)\n        except KeyError:\n            pass\n        for lib in scan_argvs(self.argv, '--link-arg='):\n            self.extra_link_args.append(lib)\n\n        if scan_argv(self.argv, \"--use-libcurl-dll\") is not None or os.environ.get('PYCURL_USE_LIBCURL_DLL') is not None:\n            libcurl_lib_path = os.path.join(curl_dir, \"lib\", curl_lib_name)\n            self.extra_link_args.extend([\"ws2_32.lib\"])\n            if str.find(sys.version, \"MSC\") >= 0:\n                # build a dll\n                self.extra_compile_args.append(\"-MD\")\n        else:\n            self.extra_compile_args.append(\"-DCURL_STATICLIB\")\n            libcurl_lib_path = os.path.join(curl_dir, \"lib\", curl_lib_name)\n            self.extra_link_args.extend([\"gdi32.lib\", \"wldap32.lib\", \"winmm.lib\", \"ws2_32.lib\",])\n\n        if not os.path.exists(libcurl_lib_path):\n            fail(\"libcurl.lib does not exist at %s.\\nCurl directory must point to compiled libcurl (bin/include/lib subdirectories): %s\" %(libcurl_lib_path, curl_dir))\n        self.extra_objects.append(libcurl_lib_path)\n\n        if scan_argv(self.argv, '--with-openssl') is not None or scan_argv(self.argv, '--with-ssl') is not None:\n            self.using_openssl()\n        elif scan_argv(self.argv, '--with-schannel') is not None:\n            self.using_schannel()\n        elif 'PYCURL_SSL_LIBRARY' in os.environ:\n            ssl_lib = os.environ['PYCURL_SSL_LIBRARY']\n            if ssl_lib in ['openssl', 'schannel']:\n                getattr(self, 'using_%s' % ssl_lib)()\n            else:\n                raise ConfigurationError('Invalid value \"%s\" for PYCURL_SSL_LIBRARY' % ssl_lib)\n\n        self.check_avoid_stdio()\n\n        # make pycurl binary work on windows xp.\n        # we use inet_ntop which was added in vista and implement a fallback.\n        # our implementation will not be compiled with _WIN32_WINNT targeting\n        # vista or above, thus said binary won't work on xp.\n        # https://curl.haxx.se/mail/curlpython-2013-12/0007.html\n        self.extra_compile_args.append(\"-D_WIN32_WINNT=0x0501\")\n\n        if str.find(sys.version, \"MSC\") >= 0:\n            self.extra_compile_args.append(\"-O2\")\n            self.extra_compile_args.append(\"-GF\")        # enable read-only string pooling\n            self.extra_compile_args.append(\"-WX\")        # treat warnings as errors\n            p = subprocess.Popen(['cl.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n            out, err = p.communicate()\n            match = re.search(r'Version (\\d+)', err.decode().split(\"\\n\")[0])\n            if match and int(match.group(1)) < 16:\n                # option removed in vs 2010:\n                # connect.microsoft.com/VisualStudio/feedback/details/475896/link-fatal-error-lnk1117-syntax-error-in-option-opt-nowin98/\n                self.extra_link_args.append(\"/opt:nowin98\")  # use small section alignment\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "scan_argv",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.wait",
+        "shlex.split",
+        "os.path.join",
+        "os.environ.get",
+        "scan_argv",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.wait",
+        "re.search",
+        "os.environ.get",
+        "scan_argv",
+        "os.path.exists",
+        "os.path.isdir",
+        "os.path.join",
+        "os.environ.get",
+        "scan_argv",
+        "os.path.join",
+        "os.environ.get",
+        "scan_argv",
+        "os.path.join",
+        "os.path.exists",
+        "os.environ.get",
+        "os.environ.get"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('PYCURL_CURL_CONFIG', 'curl-config')",
+        "scan_argv(self.argv, '--curl-config=', curl_config)",
+        "subprocess.Popen((self.curl_config(), '--features'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "subprocess.Popen.communicate()",
+        "subprocess.Popen.wait()",
+        "shlex.split(stdout.decode())",
+        "os.path.join(OPENSSL_DIR, 'include')",
+        "os.environ.get('PYCURL_OPENSSL_DIR')",
+        "scan_argv(self.argv, '--openssl-dir=', OPENSSL_DIR)",
+        "subprocess.Popen((self.curl_config(), '--version'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "subprocess.Popen.communicate()",
+        "subprocess.Popen.wait()",
+        "re.search(r'Version (\\d+)', err.decode().split(\"\\n\")[0])",
+        "os.environ.get('PYCURL_CURL_DIR')",
+        "scan_argv(self.argv, '--curl-dir=', curl_dir)",
+        "os.path.exists(curl_dir)",
+        "os.path.isdir(curl_dir)",
+        "os.path.join(curl_dir, 'include')",
+        "os.environ.get('PYCURL_LIBCURL_LIB_NAME', 'libcurl.lib')",
+        "scan_argv(self.argv, '--libcurl-lib-name=', curl_lib_name)",
+        "os.path.join(curl_dir, 'lib', curl_lib_name)",
+        "os.environ.get('PYCURL_OPENSSL_LIB_NAME', 'libeay32.lib')",
+        "scan_argv(self.argv, '--openssl-lib-name=', self.openssl_lib_name)",
+        "os.path.join(curl_dir, 'lib', curl_lib_name)",
+        "os.path.exists(libcurl_lib_path)",
+        "os.environ.get('PYCURL_USE_LIBCURL_DLL')",
+        "os.environ.get('PYCURL_SSL_LIBRARY')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "scan_argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "shlex.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "scan_argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "scan_argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "scan_argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "scan_argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "def scan_argv(argv, s, default=None):\n    p = default\n    i = 1\n    while i < len(argv):\n        arg = argv[i]\n        if s.endswith('='):\n            if str.find(arg, s) == 0:\n                p = arg[len(s):]\n                if s != '--openssl-lib-name=':\n                    assert p, arg\n                del argv[i]\n            else:\n                i += 1\n        else:\n            if s == arg:\n                p = True\n                del argv[i]\n            else:\n                i = i + 1\n    return p\n\nclass ExtensionConfiguration(object):\n    def curl_config(self):\n        try:\n            return self._curl_config\n        except AttributeError:\n            curl_config = os.environ.get('PYCURL_CURL_CONFIG', \"curl-config\")\n            curl_config = scan_argv(self.argv, \"--curl-config=\", curl_config)\n            self._curl_config = curl_config\n            return curl_config\n\n    def detect_features(self):\n        p = subprocess.Popen((self.curl_config(), '--features'),\n            stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            msg = \"Problem running `%s' --features\" % self.curl_config()\n            if stderr:\n                msg += \":\\n\" + stderr.decode()\n            raise ConfigurationError(msg)\n        curl_has_ssl = False\n        for feature in shlex.split(stdout.decode()):\n            if feature == 'SSL':\n                self.define_macros.append(('HAVE_CURL_SSL', 1))\n                curl_has_ssl = True\n        self.curl_has_ssl = curl_has_ssl\n\n    def configure_unix(self):\n        OPENSSL_DIR = os.environ.get('PYCURL_OPENSSL_DIR')\n        OPENSSL_DIR = scan_argv(self.argv, \"--openssl-dir=\", OPENSSL_DIR)\n        if OPENSSL_DIR is not None:\n            self.include_dirs.append(os.path.join(OPENSSL_DIR, \"include\"))\n            self.library_dirs.append(os.path.join(OPENSSL_DIR, \"lib\"))\n        try:\n            p = subprocess.Popen((self.curl_config(), '--version'),\n                stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        except OSError:\n            exc = sys.exc_info()[1]\n            msg = 'Could not run curl-config: %s' % str(exc)\n            raise ConfigurationError(msg)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            msg = \"`%s' not found -- please install the libcurl development files or specify --curl-config=/path/to/curl-config\" % self.curl_config()\n            if stderr:\n                msg += \":\\n\" + stderr.decode()\n            raise ConfigurationError(msg)\n        libcurl_version = stdout.decode().strip()\n        print(\"Using %s (%s)\" % (self.curl_config(), libcurl_version))\n        p = subprocess.Popen((self.curl_config(), '--cflags'),\n            stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        stdout, stderr = p.communicate()\n        if p.wait() != 0:\n            msg = \"Problem running `%s' --cflags\" % self.curl_config()\n            if stderr:\n                msg += \":\\n\" + stderr.decode()\n            raise ConfigurationError(msg)\n        for arg in shlex.split(stdout.decode()):\n            if arg[:2] == \"-I\":\n                if not re.search(r\"^\\/+usr\\/+include\\/*$\", arg[2:]):\n                    self.include_dirs.append(arg[2:])\n            else:\n                self.extra_compile_args.append(arg)\n\n    def configure_windows(self):\n        OPENSSL_DIR = os.environ.get('PYCURL_OPENSSL_DIR')\n        OPENSSL_DIR = scan_argv(self.argv, \"--openssl-dir=\", OPENSSL_DIR)\n        if OPENSSL_DIR is not None:\n            self.include_dirs.append(os.path.join(OPENSSL_DIR, \"include\"))\n            self.library_dirs.append(os.path.join(OPENSSL_DIR, \"lib\"))\n        curl_dir = os.environ.get('PYCURL_CURL_DIR')\n        curl_dir = scan_argv(self.argv, \"--curl-dir=\", curl_dir)\n        if curl_dir is None:\n            fail(\"Please specify --curl-dir=/path/to/built/libcurl\")\n        if not os.path.exists(curl_dir):\n            fail(\"Curl directory does not exist: %s\" % curl_dir)\n        if not os.path.isdir(curl_dir):\n            fail(\"Curl directory is not a directory: %s\" % curl_dir)\n        print(\"Using curl directory: %s\" % curl_dir)\n        self.include_dirs.append(os.path.join(curl_dir, \"include\"))\n        curl_lib_name = os.environ.get('PYCURL_LIBCURL_LIB_NAME', 'libcurl.lib')\n        curl_lib_name = scan_argv(self.argv, '--libcurl-lib-name=', curl_lib_name)\n        self.openssl_lib_name = os.environ.get('PYCURL_OPENSSL_LIB_NAME', 'libeay32.lib')\n        self.openssl_lib_name = scan_argv(self.argv, '--openssl-lib-name=', self.openssl_lib_name)\n        libcurl_lib_path = os.path.join(curl_dir, \"lib\", curl_lib_name)\n        if not os.path.exists(libcurl_lib_path):\n            fail(\"libcurl.lib does not exist at %s.\\nCurl directory must point to compiled libcurl (bin/include/lib subdirectories): %s\" %(libcurl_lib_path, curl_dir))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pycurl-7.45.6",
+      "total_matches": 6
+    }
+  }
+]

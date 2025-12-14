@@ -1,0 +1,195 @@
+{
+  "metadata": {
+    "package_name": "pymongo-4",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/pymongo-4.12.0.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "setup_tests.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pymongo-4.12.0/pymongo-4.12.0/.evergreen/scripts/setup_tests.py",
+      "line_number": "110",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "def setup_libmongocrypt():\n    target = \"\"\n    if PLATFORM == \"windows\":\n        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.\n        if is_set(\"TEST_FLE_GCP_AUTO\"):\n            run_command('powershell.exe \"Invoke-WebRequest -URI https://oauth2.googleapis.com/\"')\n        target = \"windows-test\"\n\n    elif PLATFORM == \"darwin\":\n        target = \"macos\"\n\n    else:\n        distro = get_distro()\n        if distro.name.startswith(\"Debian\"):\n            target = f\"debian{distro.version_id}\"\n        elif distro.name.startswith(\"Red Hat\"):\n            if distro.version_id.startswith(\"7\"):\n                target = \"rhel-70-64-bit\"\n            elif distro.version_id.startswith(\"8\"):\n                if distro.arch == \"aarch64\":\n                    target = \"rhel-82-arm64\"\n                else:\n                    target = \"rhel-80-64-bit\"\n\n    if not is_set(\"LIBMONGOCRYPT_URL\"):\n        if not target:\n            raise ValueError(\"Cannot find libmongocrypt target for current platform!\")\n        url = f\"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz\"\n    else:\n        url = os.environ[\"LIBMONGOCRYPT_URL\"]\n\n    shutil.rmtree(HERE / \"libmongocrypt\", ignore_errors=True)\n\n    LOGGER.info(f\"Fetching {url}...\")\n    with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310\n        if response.status == 200:\n            fileobj = io.BytesIO(response.read())\n        with tarfile.open(\"libmongocrypt.tar.gz\", fileobj=fileobj) as fid:\n            fid.extractall(Path.cwd() / \"libmongocrypt\")\n    LOGGER.info(f\"Fetching {url}... done.\")\n\n    run_command(\"ls -la libmongocrypt\")\n    run_command(\"ls -la libmongocrypt/nocrypto\")\n\n    if PLATFORM == \"windows\":\n        # libmongocrypt's windows dll is not marked executable.\n        run_command(\"chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll\")",
+      "hash_value": "015c463945dd65deb58740eff9597f63",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def setup_libmongocrypt():\n    target = \"\"\n    if PLATFORM == \"windows\":\n        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.\n        if is_set(\"TEST_FLE_GCP_AUTO\"):\n            run_command('powershell.exe \"Invoke-WebRequest -URI https://oauth2.googleapis.com/\"')\n        target = \"windows-test\"\n\n    elif PLATFORM == \"darwin\":\n        target = \"macos\"\n\n    else:\n        distro = get_distro()\n        if distro.name.startswith(\"Debian\"):\n            target = f\"debian{distro.version_id}\"\n        elif distro.name.startswith(\"Red Hat\"):\n            if distro.version_id.startswith(\"7\"):\n                target = \"rhel-70-64-bit\"\n            elif distro.version_id.startswith(\"8\"):\n                if distro.arch == \"aarch64\":\n                    target = \"rhel-82-arm64\"\n                else:\n                    target = \"rhel-80-64-bit\"\n\n    if not is_set(\"LIBMONGOCRYPT_URL\"):\n        if not target:\n            raise ValueError(\"Cannot find libmongocrypt target for current platform!\")\n        url = f\"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz\"\n    else:\n        url = os.environ[\"LIBMONGOCRYPT_URL\"]\n\n    shutil.rmtree(HERE / \"libmongocrypt\", ignore_errors=True)\n\n    LOGGER.info(f\"Fetching {url}...\")\n    with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310\n        if response.status == 200:\n            fileobj = io.BytesIO(response.read())\n        with tarfile.open(\"libmongocrypt.tar.gz\", fileobj=fileobj) as fid:\n            fid.extractall(Path.cwd() / \"libmongocrypt\")\n    LOGGER.info(f\"Fetching {url}... done.\")\n\n    run_command(\"ls -la libmongocrypt\")\n    run_command(\"ls -la libmongocrypt/nocrypto\")\n\n    if PLATFORM == \"windows\":\n        # libmongocrypt's windows dll is not marked executable.\n        run_command(\"chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll\")",
+          "triple_sequences": [
+            {
+              "action_api": "is_set()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "TEST_FLE_GCP_AUTO",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "run_command()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "powershell.exe \"Invoke-WebRequest -URI https://oauth2.googleapis.com/\"",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "get_distro()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get operating system name",
+              "intention_id": "get_operating_system_name"
+            },
+            {
+              "action_api": "is_set()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "LIBMONGOCRYPT_URL",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ[]",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "LIBMONGOCRYPT_URL",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "shutil.rmtree()",
+              "action_description": "Recursively deletes directory and its contents",
+              "action_id": "delete_directory",
+              "object": "HERE / \"libmongocrypt\"",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Delete directory content",
+              "intention_id": "delete_directory_content"
+            },
+            {
+              "action_api": "LOGGER.info()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "Fetching {url}...",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "request.Request()",
+              "action_description": "Creates HTTP request object with specified URL, data, and headers",
+              "action_id": "create_http_request",
+              "object": "url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "request.urlopen()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "request.Request(url), timeout=15.0",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "response.read()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode downloaded content",
+              "intention_id": "decode_downloaded_content"
+            },
+            {
+              "action_api": "io.BytesIO()",
+              "action_description": "Creates in-memory bytes buffer from encoded string",
+              "action_id": "create_memory_bytes",
+              "object": "response.read()",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "tarfile.open()",
+              "action_description": "Opens ZIP archive for reading",
+              "action_id": "open_zip_read",
+              "object": "\"libmongocrypt.tar.gz\", fileobj=fileobj",
+              "object_description": "ZIP archive file",
+              "object_id": "zip_archive",
+              "intention_description": "Decompress downloaded archive",
+              "intention_id": "decompress_downloaded_archive"
+            },
+            {
+              "action_api": "fid.extractall()",
+              "action_description": "Extracts all files from ZIP archive to specified directory",
+              "action_id": "extract_zip_files",
+              "object": "Path.cwd() / \"libmongocrypt\"",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Extract structured file data",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "LOGGER.info()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "Fetching {url}... done.",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "run_command()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "ls -la libmongocrypt",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "run_command()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "ls -la libmongocrypt/nocrypto",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "run_command()",
+              "action_description": "Executes shell command",
+              "action_id": "execute_shell_command",
+              "object": "chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

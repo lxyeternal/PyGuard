@@ -1,0 +1,255 @@
+{
+  "metadata": {
+    "package_name": "dcicutils-8",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/dcicutils-8.18.3.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "view_portal_object.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dcicutils-8.18.3/dcicutils-8.18.3/dcicutils/scripts/view_portal_object.py",
+      "line_number": "195",
+      "type_description": "clipboard-access",
+      "context_snippet": "def main():\n\n    global _output_file\n\n    parser = argparse.ArgumentParser(description=\"View Portal object.\")\n    parser.add_argument(\"uuid\", nargs=\"?\", type=str,\n                        help=f\"The uuid (or path) of the object to fetch and view. \")\n    parser.add_argument(\"--ini\", type=str, required=False, default=None,\n                        help=f\"Name of the application .ini file.\")\n    parser.add_argument(\"--env\", \"-e\", type=str, required=False, default=None,\n                        help=f\"Environment name (key from ~/.smaht-keys.json).\")\n    parser.add_argument(\"--server\", \"-s\", type=str, required=False, default=None,\n                        help=f\"Environment server name (server from key in ~/.smaht-keys.json).\")\n    parser.add_argument(\"--app\", type=str, required=False, default=None,\n                        help=f\"Application name (one of: smaht, cgap, fourfront).\")\n    parser.add_argument(\"--schema\", action=\"store_true\", required=False, default=False,\n                        help=\"View named schema rather than object.\")\n    parser.add_argument(\"--all\", action=\"store_true\", required=False, default=False,\n                        help=\"Include all properties for schema usage.\")\n    parser.add_argument(\"--raw\", action=\"store_true\", required=False, default=False, help=\"Raw output.\")\n    parser.add_argument(\"--inserts\", action=\"store_true\", required=False, default=False,\n                        help=\"Format output for subsequent inserts.\")\n    parser.add_argument(\"--insert-files\", action=\"store_true\", required=False, default=False,\n                        help=\"Output for to insert files.\")\n    parser.add_argument(\"--ignore\", nargs=\"+\", help=\"Ignore these fields for --inserts.\")\n    parser.add_argument(\"--tree\", action=\"store_true\", required=False, default=False, help=\"Tree output for schemas.\")\n    parser.add_argument(\"--database\", action=\"store_true\", required=False, default=False,\n                        help=\"Read from database output.\")\n    parser.add_argument(\"--bool\", action=\"store_true\", required=False,\n                        default=False, help=\"Only return whether found or not.\")\n    parser.add_argument(\"--yaml\", action=\"store_true\", required=False, default=False, help=\"YAML output.\")\n    parser.add_argument(\"--copy\", \"-c\", action=\"store_true\", required=False, default=False,\n                        help=\"Copy object data to clipboard.\")\n    parser.add_argument(\"--output\", required=False, help=\"Output file.\", type=str)\n    parser.add_argument(\"--indent\", required=False, default=False, help=\"Indent output.\", type=int)\n    parser.add_argument(\"--summary\", action=\"store_true\", required=False, default=False,\n                        help=\"Summary output (for schema only).\")\n    parser.add_argument(\"--force\", action=\"store_true\", required=False, default=False, help=\"Debugging output.\")\n    parser.add_argument(\"--terse\", action=\"store_true\", required=False, default=False, help=\"Terse output.\")\n    parser.add_argument(\"--verbose\", action=\"store_true\", required=False, default=False, help=\"Verbose output.\")\n    parser.add_argument(\"--noheader\", action=\"store_true\", required=False, default=False, help=\"Supress header output.\")\n    parser.add_argument(\"--debug\", action=\"store_true\", required=False, default=False, help=\"Debugging output.\")\n    args = parser.parse_args()\n\n    portal = _create_portal(ini=args.ini, env=args.env or os.environ.get(\"SMAHT_ENV\"),\n                            server=args.server, app=args.app,\n                            verbose=args.verbose and not args.noheader, debug=args.debug)\n\n    if not args.uuid:\n        _print(\"UUID or schema or path required.\")\n        _exit(1)\n\n    if args.insert_files:\n        args.inserts = True\n        if args.output:\n            if not os.path.isdir(args.output):\n                _print(f\"Specified output directory for insert files does not exist: {args.output}\")\n                exit(1)\n            args.insert_files = args.output\n            args.output = None\n\n    if args.output:\n        if os.path.exists(args.output):\n            if os.path.isdir(args.output):\n                _print(f\"Specified output file already exists as a directory: {args.output}\")\n                _exit(1)\n            elif os.path.isfile(args.output):\n                _print(f\"Specified output file already exists: {args.output}\")\n                if (not args.force) and not yes_or_no(f\"Do you want to overwrite this file?\"):\n                    _exit(0)\n        _output_file = io.open(args.output, \"w\")\n\n    if args.uuid and ((args.uuid.lower() == \"schemas\") or (args.uuid.lower() == \"schema\")):\n        _print_all_schema_names(portal=portal, terse=args.terse, all=args.all,\n                                tree=args.tree, summary=args.summary, yaml=args.yaml)\n        return\n    elif args.uuid and (args.uuid.lower() == \"info\"):\n        if consortia := portal.get_metadata(\"/consortia?limit=1000\"):\n            _print_output(\"Known Consortia:\")\n            consortia = sorted(consortia.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n            for consortium in consortia:\n                if ((consortium_name := consortium.get(\"identifier\")) and\n                    (consortium_uuid := consortium.get(\"uuid\"))):  # noqa\n                    _print_output(f\"- {consortium_name}: {consortium_uuid}\")\n        if submission_centers := portal.get_metadata(\"/submission-centers?limit=1000\"):\n            _print_output(\"Known Submission Centers:\")\n            submission_centers = sorted(submission_centers.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n            for submission_center in submission_centers:\n                if ((submission_center_name := submission_center.get(\"identifier\")) and\n                    (submission_center_uuid := submission_center.get(\"uuid\"))):  # noqa\n                    _print_output(f\"- {submission_center_name}: {submission_center_uuid}\")\n        try:\n            if file_formats := portal.get_metadata(\"/file-formats?limit=1000\"):\n                _print_output(\"Known File Formats:\")\n                file_formats = sorted(file_formats.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n                for file_format in file_formats:\n                    if ((file_format_name := file_format.get(\"identifier\")) and\n                        (file_format_uuid := file_format.get(\"uuid\"))):  # noqa\n                        _print_output(f\"- {file_format_name}: {file_format_uuid}\")\n        except Exception:\n            _print_output(\"Known File Formats: None\")\n        return\n\n    if _is_maybe_schema_name(args.uuid):\n        args.schema = True\n\n    if args.schema:\n        schema, schema_name = _get_schema(portal, args.uuid)\n        if schema:\n            if args.copy:\n                pyperclip.copy(json.dumps(schema, indent=4))\n            if args.summary:\n                if parent_schema_name := _get_parent_schema_name(schema):\n                    if schema.get(\"isAbstract\") is True:\n                        _print_output(f\"{schema_name} | parent: {parent_schema_name} | abstract\")\n                    else:\n                        _print_output(f\"{schema_name} | parent: {parent_schema_name}\")\n                else:\n                    _print_output(schema_name)\n            _print_schema(schema, terse=args.terse,\n                          all=args.all, summary=args.summary, yaml=args.yaml)\n            return\n\n    data = _get_portal_object(portal=portal, uuid=args.uuid, raw=args.raw, database=args.database,\n                              inserts=args.inserts, insert_files=args.insert_files,\n                              ignore=args.ignore, check=args.bool,\n                              force=args.force, verbose=args.verbose, debug=args.debug)\n    if args.insert_files:\n        return\n\n    if args.bool:\n        if data:\n            _print(f\"{args.uuid}: found\")\n            _exit(0)\n        else:\n            _print(f\"{args.uuid}: not found\")\n            _exit(1)\n    if args.copy:\n        pyperclip.copy(json.dumps(data, indent=4))\n    if args.yaml:\n        _print_output(yaml.dump(data))\n    else:\n        if args.indent > 0:\n            _print_output(_format_json_with_indent(data, indent=args.indent))\n        else:\n            _print_output(json.dumps(data, default=str, indent=4))",
+      "hash_value": "bc7476376c90fb673cc2fa98c39359b2",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def main():\n\n    global _output_file\n\n    parser = argparse.ArgumentParser(description=\"View Portal object.\")\n    parser.add_argument(\"uuid\", nargs=\"?\", type=str,\n                        help=f\"The uuid (or path) of the object to fetch and view. \")\n    parser.add_argument(\"--ini\", type=str, required=False, default=None,\n                        help=f\"Name of the application .ini file.\")\n    parser.add_argument(\"--env\", \"-e\", type=str, required=False, default=None,\n                        help=f\"Environment name (key from ~/.smaht-keys.json).\")\n    parser.add_argument(\"--server\", \"-s\", type=str, required=False, default=None,\n                        help=f\"Environment server name (server from key in ~/.smaht-keys.json).\")\n    parser.add_argument(\"--app\", type=str, required=False, default=None,\n                        help=f\"Application name (one of: smaht, cgap, fourfront).\")\n    parser.add_argument(\"--schema\", action=\"store_true\", required=False, default=False,\n                        help=\"View named schema rather than object.\")\n    parser.add_argument(\"--all\", action=\"store_true\", required=False, default=False,\n                        help=\"Include all properties for schema usage.\")\n    parser.add_argument(\"--raw\", action=\"store_true\", required=False, default=False, help=\"Raw output.\")\n    parser.add_argument(\"--inserts\", action=\"store_true\", required=False, default=False,\n                        help=\"Format output for subsequent inserts.\")\n    parser.add_argument(\"--insert-files\", action=\"store_true\", required=False, default=False,\n                        help=\"Output for to insert files.\")\n    parser.add_argument(\"--ignore\", nargs=\"+\", help=\"Ignore these fields for --inserts.\")\n    parser.add_argument(\"--tree\", action=\"store_true\", required=False, default=False, help=\"Tree output for schemas.\")\n    parser.add_argument(\"--database\", action=\"store_true\", required=False, default=False,\n                        help=\"Read from database output.\")\n    parser.add_argument(\"--bool\", action=\"store_true\", required=False,\n                        default=False, help=\"Only return whether found or not.\")\n    parser.add_argument(\"--yaml\", action=\"store_true\", required=False, default=False, help=\"YAML output.\")\n    parser.add_argument(\"--copy\", \"-c\", action=\"store_true\", required=False, default=False,\n                        help=\"Copy object data to clipboard.\")\n    parser.add_argument(\"--output\", required=False, help=\"Output file.\", type=str)\n    parser.add_argument(\"--indent\", required=False, default=False, help=\"Indent output.\", type=int)\n    parser.add_argument(\"--summary\", action=\"store_true\", required=False, default=False,\n                        help=\"Summary output (for schema only).\")\n    parser.add_argument(\"--force\", action=\"store_true\", required=False, default=False, help=\"Debugging output.\")\n    parser.add_argument(\"--terse\", action=\"store_true\", required=False, default=False, help=\"Terse output.\")\n    parser.add_argument(\"--verbose\", action=\"store_true\", required=False, default=False, help=\"Verbose output.\")\n    parser.add_argument(\"--noheader\", action=\"store_true\", required=False, default=False, help=\"Supress header output.\")\n    parser.add_argument(\"--debug\", action=\"store_true\", required=False, default=False, help=\"Debugging output.\")\n    args = parser.parse_args()\n\n    portal = _create_portal(ini=args.ini, env=args.env or os.environ.get(\"SMAHT_ENV\"),\n                            server=args.server, app=args.app,\n                            verbose=args.verbose and not args.noheader, debug=args.debug)\n\n    if not args.uuid:\n        _print(\"UUID or schema or path required.\")\n        _exit(1)\n\n    if args.insert_files:\n        args.inserts = True\n        if args.output:\n            if not os.path.isdir(args.output):\n                _print(f\"Specified output directory for insert files does not exist: {args.output}\")\n                exit(1)\n            args.insert_files = args.output\n            args.output = None\n\n    if args.output:\n        if os.path.exists(args.output):\n            if os.path.isdir(args.output):\n                _print(f\"Specified output file already exists as a directory: {args.output}\")\n                _exit(1)\n            elif os.path.isfile(args.output):\n                _print(f\"Specified output file already exists: {args.output}\")\n                if (not args.force) and not yes_or_no(f\"Do you want to overwrite this file?\"):\n                    _exit(0)\n        _output_file = io.open(args.output, \"w\")\n\n    if args.uuid and ((args.uuid.lower() == \"schemas\") or (args.uuid.lower() == \"schema\")):\n        _print_all_schema_names(portal=portal, terse=args.terse, all=args.all,\n                                tree=args.tree, summary=args.summary, yaml=args.yaml)\n        return\n    elif args.uuid and (args.uuid.lower() == \"info\"):\n        if consortia := portal.get_metadata(\"/consortia?limit=1000\"):\n            _print_output(\"Known Consortia:\")\n            consortia = sorted(consortia.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n            for consortium in consortia:\n                if ((consortium_name := consortium.get(\"identifier\")) and\n                    (consortium_uuid := consortium.get(\"uuid\"))):  # noqa\n                    _print_output(f\"- {consortium_name}: {consortium_uuid}\")\n        if submission_centers := portal.get_metadata(\"/submission-centers?limit=1000\"):\n            _print_output(\"Known Submission Centers:\")\n            submission_centers = sorted(submission_centers.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n            for submission_center in submission_centers:\n                if ((submission_center_name := submission_center.get(\"identifier\")) and\n                    (submission_center_uuid := submission_center.get(\"uuid\"))):  # noqa\n                    _print_output(f\"- {submission_center_name}: {submission_center_uuid}\")\n        try:\n            if file_formats := portal.get_metadata(\"/file-formats?limit=1000\"):\n                _print_output(\"Known File Formats:\")\n                file_formats = sorted(file_formats.get(\"@graph\", []), key=lambda key: key.get(\"identifier\"))\n                for file_format in file_formats:\n                    if ((file_format_name := file_format.get(\"identifier\")) and\n                        (file_format_uuid := file_format.get(\"uuid\"))):  # noqa\n                        _print_output(f\"- {file_format_name}: {file_format_uuid}\")\n        except Exception:\n            _print_output(\"Known File Formats: None\")\n        return\n\n    if _is_maybe_schema_name(args.uuid):\n        args.schema = True\n\n    if args.schema:\n        schema, schema_name = _get_schema(portal, args.uuid)\n        if schema:\n            if args.copy:\n                pyperclip.copy(json.dumps(schema, indent=4))\n            if args.summary:\n                if parent_schema_name := _get_parent_schema_name(schema):\n                    if schema.get(\"isAbstract\") is True:\n                        _print_output(f\"{schema_name} | parent: {parent_schema_name} | abstract\")\n                    else:\n                        _print_output(f\"{schema_name} | parent: {parent_schema_name}\")\n                else:\n                    _print_output(schema_name)\n            _print_schema(schema, terse=args.terse,\n                          all=args.all, summary=args.summary, yaml=args.yaml)\n            return\n\n    data = _get_portal_object(portal=portal, uuid=args.uuid, raw=args.raw, database=args.database,\n                              inserts=args.inserts, insert_files=args.insert_files,\n                              ignore=args.ignore, check=args.bool,\n                              force=args.force, verbose=args.verbose, debug=args.debug)\n    if args.insert_files:\n        return\n\n    if args.bool:\n        if data:\n            _print(f\"{args.uuid}: found\")\n            _exit(0)\n        else:\n            _print(f\"{args.uuid}: not found\")\n            _exit(1)\n    if args.copy:\n        pyperclip.copy(json.dumps(data, indent=4))\n    if args.yaml:\n        _print_output(yaml.dump(data))\n    else:\n        if args.indent > 0:\n            _print_output(_format_json_with_indent(data, indent=args.indent))\n        else:\n            _print_output(json.dumps(data, default=str, indent=4))",
+          "triple_sequences": [
+            {
+              "action_api": "argparse.ArgumentParser()",
+              "action_description": "Creates HTTP request object with specified URL, data, and headers",
+              "action_id": "create_http_request",
+              "object": "description=\"View Portal object.\"",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect user input",
+              "intention_id": "collect_user_input"
+            },
+            {
+              "action_api": "parser.add_argument()",
+              "action_description": "Creates HTTP request object with specified URL, data, and headers",
+              "action_id": "create_http_request",
+              "object": "\"uuid\", nargs=\"?\", type=str, help=f\"The uuid (or path) of the object to fetch and view. \"",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect user input",
+              "intention_id": "collect_user_input"
+            },
+            {
+              "action_api": "parser.parse_args()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect user input",
+              "intention_id": "collect_user_input"
+            },
+            {
+              "action_api": "_create_portal()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "ini=args.ini, env=args.env or os.environ.get(\"SMAHT_ENV\"), server=args.server, app=args.app, verbose=args.verbose and not args.noheader, debug=args.debug",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"SMAHT_ENV\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.path.isdir()",
+              "action_description": "Checks if specified path exists and is a directory",
+              "action_id": "check_directory_exists",
+              "object": "args.output",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "args.output",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.isdir()",
+              "action_description": "Checks if specified path exists and is a directory",
+              "action_id": "check_directory_exists",
+              "object": "args.output",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "args.output",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "io.open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "args.output, \"w\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "portal.get_metadata()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "\"/consortia?limit=1000\"",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "portal.get_metadata()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "\"/submission-centers?limit=1000\"",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "portal.get_metadata()",
+              "action_description": "Retrieves operating system information",
+              "action_id": "get_os_info",
+              "object": "\"/file-formats?limit=1000\"",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "_get_schema()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "portal, args.uuid",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "pyperclip.copy()",
+              "action_description": "Copies specified text to system clipboard",
+              "action_id": "copy_to_clipboard",
+              "object": "json.dumps(schema, indent=4)",
+              "object_description": "Clipboard content data",
+              "object_id": "clipboard_data",
+              "intention_description": "Access clipboard data",
+              "intention_id": "access_clipboard_data"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "schema, indent=4",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "_get_parent_schema_name()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "schema",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "_print_schema()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "schema, terse=args.terse, all=args.all, summary=args.summary, yaml=args.yaml",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "_get_portal_object()",
+              "action_description": "Instantiates Setup class",
+              "action_id": "init_setup_class",
+              "object": "portal=portal, uuid=args.uuid, raw=args.raw, database=args.database, inserts=args.inserts, insert_files=args.insert_files, ignore=args.ignore, check=args.bool, force=args.force, verbose=args.verbose, debug=args.debug",
+              "object_description": "Function and arguments",
+              "object_id": "function_with_arguments",
+              "intention_description": "Gather system information",
+              "intention_id": "gather_system_information"
+            },
+            {
+              "action_api": "pyperclip.copy()",
+              "action_description": "Copies specified text to system clipboard",
+              "action_id": "copy_to_clipboard",
+              "object": "json.dumps(data, indent=4)",
+              "object_description": "Clipboard content data",
+              "object_id": "clipboard_data",
+              "intention_description": "Access clipboard data",
+              "intention_id": "access_clipboard_data"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "data, indent=4",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "yaml.dump()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "data",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            },
+            {
+              "action_api": "_format_json_with_indent()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "data, indent=args.indent",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

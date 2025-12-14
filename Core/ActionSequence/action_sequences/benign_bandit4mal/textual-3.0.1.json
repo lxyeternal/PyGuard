@@ -1,0 +1,407 @@
+[
+  {
+    "metadata": {
+      "package_name": "textual-3.0.1",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "linux_inline_driver.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/textual-3.0.1/textual-3.0.1/src/textual/drivers/linux_inline_driver.py",
+    "line_number": "112",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "111\t        try:\n112\t            self.run_input_thread()\n113\t        except BaseException:",
+    "code_snippet": "def _run_input_thread(self) -> None:\n    \"\"\"\n    Key thread target that wraps run_input_thread() to die gracefully if it raises\n    an exception\n    \"\"\"\n    try:\n        self.run_input_thread()\n    except BaseException:\n        import rich.traceback\n\n        self._app.call_later(\n            self._app.panic,\n            rich.traceback.Traceback(),\n        )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "rich.traceback.Traceback",
+        "self._app.call_later"
+      ],
+      "api_sequence_with_args": [
+        "rich.traceback.Traceback()",
+        "self._app.call_later(self._app.panic, rich.traceback.Traceback())"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "rich.traceback.Traceback",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "self._app.call_later",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        }
+      ],
+      "contextual_code": "try:\n    self.run_input_thread()\nexcept BaseException:\n    import rich.traceback\n    self._app.call_later(\n        self._app.panic,\n        rich.traceback.Traceback(),\n    )"
+    }
+  },
+  {
+    "pyfile": "linux_driver.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/textual-3.0.1/textual-3.0.1/src/textual/drivers/linux_driver.py",
+    "line_number": "202",
+    "type_description": "B828:signal",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "201\t            signal.signal(signal.SIGTTOU, _stop_again)\n202\t            signal.signal(signal.SIGTTIN, _stop_again)\n203\t            try:",
+    "code_snippet": "def start_application_mode(self):\n    \"\"\"Start application mode.\"\"\"\n\n    def _stop_again(*_) -> None:\n        \"\"\"Signal handler that will put the application back to sleep.\"\"\"\n        os.kill(os.getpid(), signal.SIGSTOP)\n\n    # If we're working with an actual tty...\n    # https://github.com/Textualize/textual/issues/4104\n    if os.isatty(self.fileno):\n        # Set up handlers to ensure that, if there's a SIGTTOU or a SIGTTIN,\n        # we go back to sleep.\n        signal.signal(signal.SIGTTOU, _stop_again)\n        signal.signal(signal.SIGTTIN, _stop_again)\n        try:\n            # Here we perform a NOP tcsetattr. The reason for this is\n            # that, if we're suspended and the user has performed a `bg`\n            # in the shell, we'll SIGCONT *but* we won't be allowed to\n            # do terminal output; so rather than get into the business\n            # of spinning up application mode again and then finding\n            # out, we perform a no-consequence change and detect the\n            # problem right away.\n            termios.tcsetattr(\n                self.fileno, termios.TCSANOW, termios.tcgetattr(self.fileno)\n            )\n        except termios.error:\n            # There was an error doing the tcsetattr; there is no sense\n            # in carrying on because we'll be doing a SIGSTOP (see\n            # above).\n            return\n        finally:\n            # We don't need to be hooking SIGTTOU or SIGTTIN any more.\n            signal.signal(signal.SIGTTOU, signal.SIG_DFL)\n            signal.signal(signal.SIGTTIN, signal.SIG_DFL)\n\n    loop = asyncio.get_running_loop()\n\n    def send_size_event() -> None:\n        terminal_size = self._get_terminal_size()\n        width, height = terminal_size\n        textual_size = Size(width, height)\n        event = events.Resize(textual_size, textual_size)\n        asyncio.run_coroutine_threadsafe(\n            self._app._post_message(event),\n            loop=loop,\n        )\n\n    self._writer_thread = WriterThread(self._file)\n    self._writer_thread.start()\n\n    def on_terminal_resize(signum, stack) -> None:\n        if not self._in_band_window_resize:\n            send_size_event()\n\n    signal.signal(signal.SIGWINCH, on_terminal_resize)\n\n    self.write(\"\\x1b[?1049h\")  # Alt screen\n\n    self._enable_mouse_support()\n    try:\n        self.attrs_before = termios.tcgetattr(self.fileno)\n    except termios.error:\n        # Ignore attribute errors.\n        self.attrs_before = None\n\n    try:\n        newattr = termios.tcgetattr(self.fileno)\n    except termios.error:\n        pass\n    else:\n        newattr[tty.LFLAG] = self._patch_lflag(newattr[tty.LFLAG])\n        newattr[tty.IFLAG] = self._patch_iflag(newattr[tty.IFLAG])\n\n        # VMIN defines the number of characters read at a time in\n        # non-canonical mode. It seems to default to 1 on Linux, but on\n        # Solaris and derived operating systems it defaults to 4. (This is\n        # because the VMIN slot is the same as the VEOF slot, which\n        # defaults to ASCII EOT = Ctrl-D = 4.)\n        newattr[tty.CC][termios.VMIN] = 1\n\n        try:\n            termios.tcsetattr(self.fileno, termios.TCSANOW, newattr)\n        except termios.error:\n            pass\n\n    self.write(\"\\x1b[?25l\")  # Hide cursor\n    self.write(\"\\x1b[?1004h\")  # Enable FocusIn/FocusOut.\n    self.write(\"\\x1b[>1u\")  # https://sw.kovidgoyal.net/kitty/keyboard-protocol/\n\n    self.flush()\n    self._key_thread = Thread(target=self._run_input_thread, name=\"textual-input\")\n    send_size_event()\n    self._key_thread.start()\n    self._request_terminal_sync_mode_support()\n    self._query_in_band_window_resize()\n    self._enable_bracketed_paste()\n    self._disable_line_wrap()\n\n    # Appears to fix an issue enabling mouse support in iTerm 3.5.0\n    self._enable_mouse_support()\n\n    # If we need to ask the app to signal that we've come back from a\n    # SIGTSTP...\n    if self._must_signal_resume:\n        self._must_signal_resume = False\n        asyncio.run_coroutine_threadsafe(\n            self._app._post_message(self.SignalResume()),\n            loop=loop,\n        )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getpid",
+        "os.kill",
+        "os.isatty",
+        "signal.signal",
+        "signal.signal",
+        "termios.tcgetattr",
+        "termios.tcsetattr",
+        "signal.signal",
+        "signal.signal",
+        "asyncio.get_running_loop",
+        "WriterThread.start",
+        "signal.signal",
+        "self.write",
+        "self._enable_mouse_support",
+        "termios.tcgetattr",
+        "termios.tcgetattr",
+        "self._patch_lflag",
+        "self._patch_iflag",
+        "termios.tcsetattr",
+        "self.write",
+        "self.write",
+        "self.write",
+        "self.flush",
+        "Thread.start",
+        "self._app._post_message",
+        "asyncio.run_coroutine_threadsafe",
+        "Thread.start",
+        "self._request_terminal_sync_mode_support",
+        "self._query_in_band_window_resize",
+        "self._enable_bracketed_paste",
+        "self._disable_line_wrap",
+        "self._enable_mouse_support",
+        "self._app._post_message",
+        "asyncio.run_coroutine_threadsafe"
+      ],
+      "api_sequence_with_args": [
+        "os.getpid()",
+        "os.kill(os.getpid(), signal.SIGSTOP)",
+        "os.isatty(self.fileno)",
+        "signal.signal(signal.SIGTTOU, _stop_again)",
+        "signal.signal(signal.SIGTTIN, _stop_again)",
+        "termios.tcgetattr(self.fileno)",
+        "termios.tcsetattr(self.fileno, termios.TCSANOW, termios.tcgetattr(self.fileno))",
+        "signal.signal(signal.SIGTTOU, signal.SIG_DFL)",
+        "signal.signal(signal.SIGTTIN, signal.SIG_DFL)",
+        "asyncio.get_running_loop()",
+        "WriterThread(self._file).start()",
+        "signal.signal(signal.SIGWINCH, on_terminal_resize)",
+        "self.write(\"\\x1b[?1049h\")",
+        "self._enable_mouse_support()",
+        "termios.tcgetattr(self.fileno)",
+        "termios.tcgetattr(self.fileno)",
+        "self._patch_lflag(newattr[tty.LFLAG])",
+        "self._patch_iflag(newattr[tty.IFLAG])",
+        "termios.tcsetattr(self.fileno, termios.TCSANOW, newattr)",
+        "self.write(\"\\x1b[?25l\")",
+        "self.write(\"\\x1b[?1004h\")",
+        "self.write(\"\\x1b[>1u\")",
+        "self.flush()",
+        "Thread(target=self._run_input_thread, name=\"textual-input\").start()",
+        "self._app._post_message(event)",
+        "asyncio.run_coroutine_threadsafe(self._app._post_message(event), loop=loop)",
+        "self._key_thread.start()",
+        "self._request_terminal_sync_mode_support()",
+        "self._query_in_band_window_resize()",
+        "self._enable_bracketed_paste()",
+        "self._disable_line_wrap()",
+        "self._enable_mouse_support()",
+        "self._app._post_message(self.SignalResume())",
+        "asyncio.run_coroutine_threadsafe(self._app._post_message(self.SignalResume()), loop=loop)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getpid",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.kill",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.isatty",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "termios.tcgetattr",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "termios.tcsetattr",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "asyncio.get_running_loop",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "WriterThread.start",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "self.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self._enable_mouse_support",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "termios.tcgetattr",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "termios.tcgetattr",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self._patch_lflag",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self._patch_iflag",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "termios.tcsetattr",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "self.flush",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "Thread.start",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "self._app._post_message",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "asyncio.run_coroutine_threadsafe",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "Thread.start",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "self._request_terminal_sync_mode_support",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self._query_in_band_window_resize",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self._enable_bracketed_paste",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self._disable_line_wrap",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self._enable_mouse_support",
+          "id": "set_file_attributes",
+          "description": "Sets file attributes for specified file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "self._app._post_message",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "asyncio.run_coroutine_threadsafe",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "def start_application_mode(self):\n    def _stop_again(*_) -> None:\n        os.kill(os.getpid(), signal.SIGSTOP)\n\n    if os.isatty(self.fileno):\n        signal.signal(signal.SIGTTOU, _stop_again)\n        signal.signal(signal.SIGTTIN, _stop_again)\n        try:\n            termios.tcsetattr(\n                self.fileno, termios.TCSANOW, termios.tcgetattr(self.fileno)\n            )\n        except termios.error:\n            return\n        finally:\n            signal.signal(signal.SIGTTOU, signal.SIG_DFL)\n            signal.signal(signal.SIGTTIN, signal.SIG_DFL)\n\n    loop = asyncio.get_running_loop()\n\n    def send_size_event() -> None:\n        terminal_size = self._get_terminal_size()\n        width, height = terminal_size\n        textual_size = Size(width, height)\n        event = events.Resize(textual_size, textual_size)\n        asyncio.run_coroutine_threadsafe(\n            self._app._post_message(event),\n            loop=loop,\n        )\n\n    self._writer_thread = WriterThread(self._file)\n    self._writer_thread.start()\n\n    def on_terminal_resize(signum, stack) -> None:\n        if not self._in_band_window_resize:\n            send_size_event()\n\n    signal.signal(signal.SIGWINCH, on_terminal_resize)\n\n    self.write(\"\\x1b[?1049h\")\n    self._enable_mouse_support()\n    try:\n        self.attrs_before = termios.tcgetattr(self.fileno)\n    except termios.error:\n        self.attrs_before = None\n\n    try:\n        newattr = termios.tcgetattr(self.fileno)\n    except termios.error:\n        pass\n    else:\n        newattr[tty.LFLAG] = self._patch_lflag(newattr[tty.LFLAG])\n        newattr[tty.IFLAG] = self._patch_iflag(newattr[tty.IFLAG])\n        newattr[tty.CC][termios.VMIN] = 1\n        try:\n            termios.tcsetattr(self.fileno, termios.TCSANOW, newattr)\n        except termios.error:\n            pass\n\n    self.write(\"\\x1b[?25l\")\n    self.write(\"\\x1b[?1004h\")\n    self.write(\"\\x1b[>1u\")\n    self.flush()\n    self._key_thread = Thread(target=self._run_input_thread, name=\"textual-input\")\n    send_size_event()\n    self._key_thread.start()\n    self._request_terminal_sync_mode_support()\n    self._query_in_band_window_resize()\n    self._enable_bracketed_paste()\n    self._disable_line_wrap()\n    self._enable_mouse_support()\n    if self._must_signal_resume:\n        self._must_signal_resume = False\n        asyncio.run_coroutine_threadsafe(\n            self._app._post_message(self.SignalResume()),\n            loop=loop,\n        )"
+    }
+  }
+]

@@ -1,0 +1,114 @@
+Run started:2025-04-12 10:30:43.266965
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/codeowners-0.7.0/codeowners-0.7.0/codeowners/test_codeowners.py:12
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+11	# via https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners#codeowners-syntax
+12	EXAMPLE = """# This is a comment.
+13	# Each line is a file pattern followed by one or more owners.
+14	
+15	# These owners will be the default owners for everything in
+16	# the repo. Unless a later match takes precedence,
+17	# @global-owner1 and @global-owner2 will be requested for
+18	# review when someone opens a pull request.
+19	*       @global-owner1 @global-owner2
+20	
+21	# Order is important; the last matching pattern takes the most
+22	# precedence. When someone opens a pull request that only
+23	# modifies JS files, only @js-owner and not the global
+24	# owner(s) will be requested for a review.
+25	*.js    @js-owner
+26	
+27	# You can also use email addresses if you prefer. They'll be
+28	# used to look up users just like we do for commit author
+29	# emails.
+30	*.go docs@example.com
+31	
+32	# In this example, @doctocat owns any files in the build/logs
+33	# directory at the root of the repository and any of its
+34	# subdirectories.
+35	[Logs]
+36	/build/logs/ @doctocat
+37	
+38	# The `docs/*` pattern will match files like
+39	# `docs/getting-started.md` but not further nested files like
+40	# `docs/build-app/troubleshooting.md`.
+41	[Docs]
+42	docs/*  docs@example.com
+43	
+44	# Let's test GitLab's premium feature of sections
+45	# see https://docs.gitlab.com/ee/user/project/code_owners.html#code-owners-sections
+46	[First team]
+47	
+48	[Another team trailing whitespace] 
+49	
+50	# In this example, @octocat owns any file in an apps directory
+51	# anywhere in your repository.
+52	apps/ @octocat
+53	
+54	# Now, optional approval rule for GitLab's sections
+55	^[Second team]
+56	
+57	^[Second team trailing whitespace]   
+58	
+59	# In this example, @doctocat owns any file in the `/docs`
+60	# directory in the root of your repository.
+61	/docs/ @doctocat
+62	"""
+63	
+64	
+65	@pytest.mark.parametrize(
+66	    "path,expected",
+67	    [
+68	        (
+69	            "buzz/docs/gettingstarted.md",
+70	            [("USERNAME", "@global-owner1"), ("USERNAME", "@global-owner2")],
+71	        ),
+72	        ("docs/build-app/troubleshooting.md", [("USERNAME", "@doctocat")]),
+73	        (
+74	            "buzz/docs/build-app/troubleshooting.md",
+75	            [("USERNAME", "@global-owner1"), ("USERNAME", "@global-owner2")],
+76	        ),
+77	        ("docs/", [("USERNAME", "@doctocat")]),
+78	        ("foo.txt", [("USERNAME", "@global-owner1"), ("USERNAME", "@global-owner2")]),
+79	        (
+80	            "foo/bar.txt",
+81	            [("USERNAME", "@global-owner1"), ("USERNAME", "@global-owner2")],
+82	        ),
+83	        ("foo.js", [("USERNAME", "@js-owner")]),
+84	        ("foo/bar.js", [("USERNAME", "@js-owner")]),
+85	        ("foo.go", [("EMAIL", "docs@example.com")]),
+86	        ("foo/bar.go", [("EMAIL", "docs@example.com")]),
+87	        ("build/logs/foo.go", [("USERNAME", "@doctocat")]),
+88	        ("build/logs/foo/bar.go", [("USERNAME", "@doctocat")]),
+89	        ("foo/build/logs/foo.go", [("EMAIL", "docs@example.com")]),
+90	        ("foo/docs/foo.js", [("USERNAME", "@js-owner")]),
+91	        ("foo/bar/docs/foo.js", [("USERNAME", "@js-owner")]),
+92	        ("foo/bar/docs/foo/foo.js", [("USERNAME", "@js-owner")]),
+93	        ("foo/apps/foo.js", [("USERNAME", "@octocat")]),
+94	        ("foo/apps/bar/buzz/foo.js", [("USERNAME", "@octocat")]),
+95	        ("docs/foo.js", [("USERNAME", "@doctocat")]),
+96	    ],
+97	)
+98	def test_github_example_matches(
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 665
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 1.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 1.0
+		High: 0.0
+Files skipped (0):

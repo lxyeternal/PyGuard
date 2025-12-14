@@ -1,0 +1,88 @@
+[
+  {
+    "metadata": {
+      "package_name": "sh-2.2.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "sh.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/sh-2.2.2/sh-2.2.2/sh.py",
+    "line_number": "2851",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2850\n2851\t        chunk = stdin.read(bufsize)\n2852\t        if not chunk:",
+    "code_snippet": "def get_file_chunk_reader(stdin):\n    bufsize = 1024\n\n    def fn():\n        # python 3.* includes a fileno on stringios, but accessing it throws an\n        # exception.  that exception is how we'll know we can't do a poll on\n        # stdin\n        is_real_file = True\n        try:\n            stdin.fileno()\n        except UnsupportedOperation:\n            is_real_file = False\n\n        # this poll is for files that may not yet be ready to read.  we test\n        # for fileno because StringIO/BytesIO cannot be used in a poll\n        if is_real_file and hasattr(stdin, \"fileno\"):\n            poller = Poller()\n            poller.register_read(stdin)\n            changed = poller.poll(0.1)\n            ready = False\n            for fd, events in changed:\n                if events & (POLLER_EVENT_READ | POLLER_EVENT_HUP):\n                    ready = True\n            if not ready:\n                raise NotYetReadyToRead\n\n        chunk = stdin.read(bufsize)\n        if not chunk:\n            raise DoneReadingForever\n        else:\n            return chunk\n\n    return fn",
+    "pattern_analysis": {
+      "api_sequence": [
+        "stdin.fileno",
+        "hasattr",
+        "Poller",
+        "Poller.register_read",
+        "Poller.poll",
+        "stdin.read"
+      ],
+      "api_sequence_with_args": [
+        "stdin.fileno()",
+        "hasattr(stdin, \"fileno\")",
+        "Poller()",
+        "Poller.register_read(stdin)",
+        "Poller.poll(0.1)",
+        "stdin.read(bufsize)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "stdin.fileno",
+          "id": "get_socket_fd",
+          "description": "Retrieves file descriptor for socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "Poller",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "Poller.register_read",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "Poller.poll",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "stdin.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "def get_file_chunk_reader(stdin):\n    bufsize = 1024\n\n    def fn():\n        is_real_file = True\n        try:\n            stdin.fileno()\n        except UnsupportedOperation:\n            is_real_file = False\n\n        if is_real_file and hasattr(stdin, \"fileno\"):\n            poller = Poller()\n            poller.register_read(stdin)\n            changed = poller.poll(0.1)\n            ready = False\n            for fd, events in changed:\n                if events & (POLLER_EVENT_READ | POLLER_EVENT_HUP):\n                    ready = True\n            if not ready:\n                raise NotYetReadyToRead\n\n        chunk = stdin.read(bufsize)\n        if not chunk:\n            raise DoneReadingForever\n        else:\n            return chunk\n\n    return fn"
+    }
+  }
+]

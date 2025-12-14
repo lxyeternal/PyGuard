@@ -1,0 +1,471 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os.path\nimport platform\nimport sys\nimport os\nfrom pkg_resources import (\n    normalize_path,\n    working_set,\n    add_activation_listener,\n    require,\n)\nfrom setuptools import setup, find_packages\nfrom setuptools.command.build_py import build_py\nfrom setuptools.command.develop import develop\nfrom setuptools.command.test import test as test_command\nfrom typing import List\n\nPLATFORM = 'unix'\nif platform.platform().startswith('Win'):\n    PLATFORM = 'win'\n\nMODEL_DIR = os.path.join('stan', PLATFORM)\nMODEL_TARGET_DIR = os.path.join('fbprophet', 'stan_model')\n\n\ndef get_backends_from_env() -> List[str]:\n    from fbprophet.models import StanBackendEnum\n    return os.environ.get(\"STAN_BACKEND\", StanBackendEnum.PYSTAN.name).split(\",\")\n\n\ndef build_models(target_dir):\n    from fbprophet.models import StanBackendEnum\n    for backend in get_backends_from_env():\n        StanBackendEnum.get_backend_class(backend).build_model(target_dir, MODEL_DIR)\n\n\nclass BuildPyCommand(build_py):\n    \"\"\"Custom build command to pre-compile Stan models.\"\"\"\n\n    def run(self):\n        if not self.dry_run:\n            target_dir = os.path.join(self.build_lib, MODEL_TARGET_DIR)\n            self.mkpath(target_dir)\n            build_models(target_dir)\n\n        build_py.run(self)\n\n\nclass DevelopCommand(develop):\n    \"\"\"Custom develop command to pre-compile Stan models in-place.\"\"\"\n\n    def run(self):\n        if not self.dry_run:\n            target_dir = os.path.join(self.setup_path, MODEL_TARGET_DIR)\n            self.mkpath(target_dir)\n            build_models(target_dir)\n\n        develop.run(self)\n\n\nclass TestCommand(test_command):\n    user_options = [\n        ('test-module=', 'm', \"Run 'test_suite' in specified module\"),\n        ('test-suite=', 's',\n         \"Run single test, case or suite (e.g. 'module.test_suite')\"),\n        ('test-runner=', 'r', \"Test runner to use\"),\n        ('test-slow', 'w', \"Test slow suites (default off)\"),\n    ]\n\n    def initialize_options(self):\n        super(TestCommand, self).initialize_options()\n        self.test_slow = False\n\n    def finalize_options(self):\n        super(TestCommand, self).finalize_options()\n        if self.test_slow is None:\n            self.test_slow = getattr(self.distribution, 'test_slow', False)\n\n    \"\"\"We must run tests on the build directory, not source.\"\"\"\n\n    def with_project_on_sys_path(self, func):\n        # Ensure metadata is up-to-date\n        self.reinitialize_command('build_py', inplace=0)\n        self.run_command('build_py')\n        bpy_cmd = self.get_finalized_command(\"build_py\")\n        build_path = normalize_path(bpy_cmd.build_lib)\n\n        # Build extensions\n        self.reinitialize_command('egg_info', egg_base=build_path)\n        self.run_command('egg_info')\n\n        self.reinitialize_command('build_ext', inplace=0)\n        self.run_command('build_ext')\n\n        ei_cmd = self.get_finalized_command(\"egg_info\")\n\n        old_path = sys.path[:]\n        old_modules = sys.modules.copy()\n\n        try:\n            sys.path.insert(0, normalize_path(ei_cmd.egg_base))\n            working_set.__init__()\n            add_activation_listener(lambda dist: dist.activate())\n            require('%s==%s' % (ei_cmd.egg_name, ei_cmd.egg_version))\n            func()\n        finally:\n            sys.path[:] = old_path\n            sys.modules.clear()\n            sys.modules.update(old_modules)\n            working_set.__init__()\n\nwith open('README.md', 'r', encoding='utf-8') as f:\n    long_description = f.read()\n\nwith open('requirements.txt', 'r') as f:\n    install_requires = f.read().splitlines()\n\nsetup(\n    name='fbprophet',\n    version='0.7.1',\n    description='Automatic Forecasting Procedure',\n    url='https://facebook.github.io/prophet/',\n    author='Sean J. Taylor <sjtz@pm.me>, Ben Letham <bletham@fb.com>',\n    author_email='sjtz@pm.me',\n    license='MIT',\n    packages=find_packages(),\n    setup_requires=[\n    ],\n    install_requires=install_requires,\n    python_requires='>=3',\n    zip_safe=False,\n    include_package_data=True,\n    cmdclass={\n        'build_py': BuildPyCommand,\n        'develop': DevelopCommand,\n        'test': TestCommand,\n    },\n    test_suite='fbprophet.tests',\n    classifiers=[\n        'Programming Language :: Python',\n        'Programming Language :: Python :: 3',\n        'Programming Language :: Python :: 3.7',\n    ],\n    long_description=long_description,\n    long_description_content_type='text/markdown',\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.platform",
+        "os.path.join",
+        "os.path.join",
+        "os.environ.get",
+        "os.path.join",
+        "os.path.join",
+        "StanBackendEnum.get_backend_class",
+        "StanBackendEnum.get_backend_class.build_model",
+        "os.path.join",
+        "BuildPyCommand.mkpath",
+        "build_models",
+        "build_py.run",
+        "os.path.join",
+        "DevelopCommand.mkpath",
+        "build_models",
+        "develop.run",
+        "normalize_path",
+        "normalize_path",
+        "working_set.__init__",
+        "add_activation_listener",
+        "require",
+        "self.reinitialize_command",
+        "self.run_command",
+        "self.get_finalized_command",
+        "normalize_path",
+        "self.reinitialize_command",
+        "self.run_command",
+        "self.reinitialize_command",
+        "self.run_command",
+        "self.get_finalized_command",
+        "sys.path.insert",
+        "working_set.__init__",
+        "add_activation_listener",
+        "require",
+        "func",
+        "sys.path.__setitem__",
+        "sys.modules.clear",
+        "sys.modules.update",
+        "working_set.__init__",
+        "open",
+        "open",
+        "f.read",
+        "f.read",
+        "find_packages",
+        "setup"
+      ],
+      "api_sequence_with_args": [
+        "platform.platform()",
+        "os.path.join('stan', PLATFORM)",
+        "os.path.join('fbprophet', 'stan_model')",
+        "os.environ.get(\"STAN_BACKEND\", StanBackendEnum.PYSTAN.name)",
+        "os.path.join(self.build_lib, MODEL_TARGET_DIR)",
+        "os.path.join(self.setup_path, MODEL_TARGET_DIR)",
+        "StanBackendEnum.get_backend_class(backend)",
+        "StanBackendEnum.get_backend_class(backend).build_model(target_dir, MODEL_DIR)",
+        "os.path.join(self.build_lib, MODEL_TARGET_DIR)",
+        "BuildPyCommand.mkpath(target_dir)",
+        "build_models(target_dir)",
+        "build_py.run(self)",
+        "os.path.join(self.setup_path, MODEL_TARGET_DIR)",
+        "DevelopCommand.mkpath(target_dir)",
+        "build_models(target_dir)",
+        "develop.run(self)",
+        "normalize_path(bpy_cmd.build_lib)",
+        "normalize_path(ei_cmd.egg_base)",
+        "working_set.__init__()",
+        "add_activation_listener(lambda dist: dist.activate())",
+        "require('%s==%s' % (ei_cmd.egg_name, ei_cmd.egg_version))",
+        "self.reinitialize_command('build_py', inplace=0)",
+        "self.run_command('build_py')",
+        "self.get_finalized_command(\"build_py\")",
+        "normalize_path(bpy_cmd.build_lib)",
+        "self.reinitialize_command('egg_info', egg_base=build_path)",
+        "self.run_command('egg_info')",
+        "self.reinitialize_command('build_ext', inplace=0)",
+        "self.run_command('build_ext')",
+        "self.get_finalized_command(\"egg_info\")",
+        "sys.path.insert(0, normalize_path(ei_cmd.egg_base))",
+        "working_set.__init__()",
+        "add_activation_listener(lambda dist: dist.activate())",
+        "require('%s==%s' % (ei_cmd.egg_name, ei_cmd.egg_version))",
+        "func()",
+        "sys.path[:] = old_path",
+        "sys.modules.clear()",
+        "sys.modules.update(old_modules)",
+        "working_set.__init__()",
+        "open('README.md', 'r', encoding='utf-8')",
+        "open('requirements.txt', 'r')",
+        "f.read()",
+        "f.read()",
+        "find_packages()",
+        "setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.platform",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "StanBackendEnum.get_backend_class",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "StanBackendEnum.get_backend_class.build_model",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "BuildPyCommand.mkpath",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "build_models",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "build_py.run",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "DevelopCommand.mkpath",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "build_models",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "develop.run",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "normalize_path",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "normalize_path",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "working_set.__init__",
+          "id": "init_setup_class",
+          "description": "Instantiates Setup class",
+          "first_id": "data_exfiltration",
+          "second_id": "data_transmission_channels",
+          "third_id": "exfiltration_channel_establishment"
+        },
+        {
+          "api_name": "add_activation_listener",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "require",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "self.reinitialize_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.run_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.get_finalized_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "normalize_path",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.reinitialize_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.run_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.reinitialize_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.run_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.get_finalized_command",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "sys.path.insert",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "working_set.__init__",
+          "id": "init_setup_class",
+          "description": "Instantiates Setup class",
+          "first_id": "data_exfiltration",
+          "second_id": "data_transmission_channels",
+          "third_id": "exfiltration_channel_establishment"
+        },
+        {
+          "api_name": "add_activation_listener",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "require",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "func",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.path.__setitem__",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules.clear",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules.update",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "working_set.__init__",
+          "id": "init_setup_class",
+          "description": "Instantiates Setup class",
+          "first_id": "data_exfiltration",
+          "second_id": "data_transmission_channels",
+          "third_id": "exfiltration_channel_establishment"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "f.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "f.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "find_packages",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "import os.path\nimport platform\nimport sys\nimport os\nfrom pkg_resources import (\n    normalize_path,\n    working_set,\n    add_activation_listener,\n    require,\n)\nfrom setuptools import setup, find_packages\nfrom setuptools.command.build_py import build_py\nfrom setuptools.command.develop import develop\nfrom setuptools.command.test import test as test_command\n\nPLATFORM = 'unix'\nif platform.platform().startswith('Win'):\n    PLATFORM = 'win'\n\nMODEL_DIR = os.path.join('stan', PLATFORM)\nMODEL_TARGET_DIR = os.path.join('fbprophet', 'stan_model')\n\ndef get_backends_from_env():\n    from fbprophet.models import StanBackendEnum\n    return os.environ.get(\"STAN_BACKEND\", StanBackendEnum.PYSTAN.name).split(\",\")\n\ndef build_models(target_dir):\n    from fbprophet.models import StanBackendEnum\n    for backend in get_backends_from_env():\n        StanBackendEnum.get_backend_class(backend).build_model(target_dir, MODEL_DIR)\n\nclass BuildPyCommand(build_py):\n    def run(self):\n        if not self.dry_run:\n            target_dir = os.path.join(self.build_lib, MODEL_TARGET_DIR)\n            self.mkpath(target_dir)\n            build_models(target_dir)\n        build_py.run(self)\n\nclass DevelopCommand(develop):\n    def run(self):\n        if not self.dry_run:\n            target_dir = os.path.join(self.setup_path, MODEL_TARGET_DIR)\n            self.mkpath(target_dir)\n            build_models(target_dir)\n        develop.run(self)\n\nclass TestCommand(test_command):\n    def with_project_on_sys_path(self, func):\n        self.reinitialize_command('build_py', inplace=0)\n        self.run_command('build_py')\n        bpy_cmd = self.get_finalized_command(\"build_py\")\n        build_path = normalize_path(bpy_cmd.build_lib)\n        self.reinitialize_command('egg_info', egg_base=build_path)\n        self.run_command('egg_info')\n        self.reinitialize_command('build_ext', inplace=0)\n        self.run_command('build_ext')\n        ei_cmd = self.get_finalized_command(\"egg_info\")\n        old_path = sys.path[:]\n        old_modules = sys.modules.copy()\n        try:\n            sys.path.insert(0, normalize_path(ei_cmd.egg_base))\n            working_set.__init__()\n            add_activation_listener(lambda dist: dist.activate())\n            require('%s==%s' % (ei_cmd.egg_name, ei_cmd.egg_version))\n            func()\n        finally:\n            sys.path[:] = old_path\n            sys.modules.clear()\n            sys.modules.update(old_modules)\n            working_set.__init__()\n\nwith open('README.md', 'r', encoding='utf-8') as f:\n    long_description = f.read()\n\nwith open('requirements.txt', 'r') as f:\n    install_requires = f.read().splitlines()\n\nsetup(\n    name='fbprophet',\n    version='0.7.1',\n    ...\n    packages=find_packages(),\n    install_requires=install_requires,\n    ...\n    long_description=long_description,\n    ...\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "fbprophet-0.7.1",
+      "total_matches": 1
+    }
+  }
+]

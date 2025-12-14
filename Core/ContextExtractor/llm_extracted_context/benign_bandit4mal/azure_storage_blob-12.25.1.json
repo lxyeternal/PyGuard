@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "azure_storage_blob-12.25.1",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_container.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_storage_blob-12.25.1/azure_storage_blob-12.25.1/tests/test_container.py",
+    "line_number": "765",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "764\t        assert 'testid' == acl.get('signed_identifiers')[0].id\n765\t        assert acl.get('public_access') is None\n766",
+    "context_snippet": "@BlobPreparer()\n@recorded_by_proxy\ndef test_set_container_acl_with_signed_identifiers(self, **kwargs):\n    storage_account_name = kwargs.pop(\"storage_account_name\")\n    storage_account_key = kwargs.pop(\"storage_account_key\")\n    variables = kwargs.pop(\"variables\", {})\n\n    bsc = BlobServiceClient(self.account_url(storage_account_name, \"blob\"), storage_account_key)\n    container = self._create_container(bsc)\n\n    # Act\n    expiry_time = self.get_datetime_variable(variables, 'expiry_time', datetime.utcnow() + timedelta(hours=1))\n    start_time = self.get_datetime_variable(variables, 'start_time', datetime.utcnow() - timedelta(minutes=1))\n    access_policy = AccessPolicy(permission=ContainerSasPermissions(read=True),\n                                 expiry=expiry_time,\n                                 start=start_time)\n    identifiers = {'testid': access_policy}\n    container.set_container_access_policy(identifiers)\n\n    # Assert\n    acl = container.get_container_access_policy()\n    assert acl is not None\n    assert 'testid' == acl.get('signed_identifiers')[0].id\n    assert acl.get('public_access') is None\n\n    return variables",
+    "hash_value": "11dcd5ff541b508e7da8a7516ff544d5"
+  },
+  {
+    "pyfile": "test_container_async.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_storage_blob-12.25.1/azure_storage_blob-12.25.1/tests/test_container_async.py",
+    "line_number": "723",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "722\t        assert response.get('etag') is not None\n723\t        assert response.get('last_modified') is not None\n724",
+    "context_snippet": "@BlobPreparer()\n@recorded_by_proxy_async\nasync def test_set_container_acl(self, **kwargs):\n    storage_account_name = kwargs.pop(\"storage_account_name\")\n    storage_account_key = kwargs.pop(\"storage_account_key\")\n    variables = kwargs.pop('variables', {})\n\n    bsc = BlobServiceClient(self.account_url(storage_account_name, \"blob\"), storage_account_key)\n    container = await self._create_container(bsc)\n\n    # Act\n    expiry_time = self.get_datetime_variable(variables, 'expiry_time', datetime.utcnow() + timedelta(hours=1))\n    start_time = self.get_datetime_variable(variables, 'start_time', datetime.utcnow())\n    access_policy = AccessPolicy(permission=ContainerSasPermissions(read=True),\n                                 expiry=expiry_time,\n                                 start=start_time)\n    signed_identifier = {'testid': access_policy}\n    response = await container.set_container_access_policy(signed_identifier)\n\n    assert response.get('etag') is not None\n    assert response.get('last_modified') is not None\n\n    # Assert\n    acl = await container.get_container_access_policy()\n    assert acl is not None\n    assert len(acl.get('signed_identifiers')) == 1\n    assert acl.get('public_access') is None\n\n    return variables",
+    "hash_value": "e93d460174cd5eac58327c33244c94a9"
+  },
+  {
+    "pyfile": "test_blob_encryption.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_storage_blob-12.25.1/azure_storage_blob-12.25.1/tests/test_blob_encryption.py",
+    "line_number": "607",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "606\t            with tempfile.TemporaryFile() as temp_file:\n607\t                temp_file.write(content)\n608\t                temp_file.seek(0)",
+    "context_snippet": "@BlobPreparer()\n@recorded_by_proxy\ndef test_put_blob_strict_mode(self, **kwargs):\n    storage_account_name = kwargs.pop(\"storage_account_name\")\n    storage_account_key = kwargs.pop(\"storage_account_key\")\n\n    self._setup(storage_account_name, storage_account_key)\n    self.bsc.require_encryption = True\n    content = b'Hello world'\n\n    # Assert\n    for service in self.blob_types:\n        blob_name = self._get_blob_reference(service)\n        blob = self.bsc.get_blob_client(self.container_name, blob_name)\n\n        with pytest.raises(ValueError):\n            blob.upload_blob(content, blob_type=service)\n\n        stream = BytesIO(content)\n        with pytest.raises(ValueError):\n            blob.upload_blob(stream, length=512, blob_type=service)\n\n        with tempfile.TemporaryFile() as temp_file:\n            temp_file.write(content)\n            temp_file.seek(0)\n            with pytest.raises(ValueError):\n                blob.upload_blob(temp_file, blob_type=service)\n\n            with pytest.raises(ValueError):\n                blob.upload_blob('To encrypt', blob_type=service)\n",
+    "hash_value": "52579d872638e39c3ae0ab7752936879"
+  }
+]

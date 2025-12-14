@@ -1,0 +1,131 @@
+[
+  {
+    "pyfile": "cli.py",
+    "code_snippet": "import os\nfrom typing import Any\n\nimport click\n\nimport elementary.cli.upgrade\nfrom elementary.config.config import Config\nfrom elementary.monitor.cli import monitor, report, send_report\nfrom elementary.operations.cli import run_operation\nfrom elementary.tracking.anonymous_tracking import AnonymousCommandLineTracking\nfrom elementary.utils import package\nfrom elementary.utils.log import get_logger, set_root_logger_handlers\n\nELEMENTARY_LOGO = r\"\"\"\n    ________                          __\n   / ____/ /__  ____ ___  ___  ____  / /_____ ________  __\n  / __/ / / _ \\/ __ `__ \\/ _ \\/ __ \\/ __/ __ `/ ___/ / / /\n / /___/ /  __/ / / / / /  __/ / / / /_/ /_/ / /  / /_/ /\n/_____/_/\\___/_/ /_/ /_/\\___/_/ /_/\\__/\\__,_/_/   \\__, /\n                                                 /____/\n\"\"\"\nclick.echo(f\"{ELEMENTARY_LOGO}\\n\")\nelementary.cli.upgrade.recommend_version_upgrade()\n\nlogger = get_logger(__name__)\n\n\ndef get_log_path(ctx):\n    target_path = Config.DEFAULT_TARGET_PATH\n    try:\n        ctx_args = ctx.args\n        target_path_flag = \"--target-path\"\n        target_path = ctx_args[ctx_args.index(target_path_flag) + 1]\n    finally:\n        os.makedirs(os.path.abspath(target_path), exist_ok=True)\n        return os.path.join(target_path, \"edr.log\")\n\n\nclass ElementaryCLI(click.MultiCommand):\n    _CMD_MAP = {\n        \"monitor\": monitor,\n        \"report\": report,\n        \"send-report\": send_report,\n        \"run-operation\": run_operation,\n    }\n\n    def list_commands(self, ctx):\n        return self._CMD_MAP.keys()\n\n    def get_command(self, ctx, name):\n        ctx.auto_envvar_prefix = \"EDR\"\n        return self._CMD_MAP.get(name)\n\n    def format_help(self, ctx, formatter):\n        try:\n            click.echo(\"Loading dependencies (this might take a few seconds)\")\n            AnonymousCommandLineTracking(config=Config()).track_cli_help()\n        except Exception:\n            pass\n        self.format_usage(ctx, formatter)\n        self.format_help_text(ctx, formatter)\n        self.format_options(ctx, formatter)\n        self.format_epilog(ctx, formatter)\n\n    def invoke(self, ctx: click.Context) -> Any:\n        files_target_path = get_log_path(ctx)\n        set_root_logger_handlers(\"elementary\", files_target_path)\n        click.echo(\n            \"Any feedback and suggestions are welcomed! join our community here - \"\n            \"https://bit.ly/slack-elementary\\n\"\n        )\n        logger.info(f\"Running with edr={package.get_package_version()}\")\n        return super().invoke(ctx)\n\n\n@click.command(\n    cls=ElementaryCLI,\n    help=\"Open source data reliability solution (https://docs.elementary-data.com/)\",\n)\n@click.version_option(\n    version=package.get_package_version(),\n    message=\"Elementary version %(version)s.\",\n)\ndef cli():\n    pass\n\n\nif __name__ == \"__main__\":\n    cli()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "click.echo",
+        "elementary.cli.upgrade.recommend_version_upgrade",
+        "get_logger",
+        "os.path.abspath",
+        "os.makedirs",
+        "os.path.join",
+        "set_root_logger_handlers",
+        "click.echo",
+        "package.get_package_version",
+        "logger.info",
+        "package.get_package_version"
+      ],
+      "api_sequence_with_args": [
+        "click.echo(f\"{ELEMENTARY_LOGO}\\n\")",
+        "elementary.cli.upgrade.recommend_version_upgrade()",
+        "get_logger(__name__)",
+        "os.path.abspath(target_path)",
+        "os.makedirs(os.path.abspath(target_path), exist_ok=True)",
+        "os.path.join(target_path, \"edr.log\")",
+        "set_root_logger_handlers(\"elementary\", files_target_path)",
+        "click.echo(\"Any feedback and suggestions are welcomed! join our community here - https://bit.ly/slack-elementary\\n\")",
+        "package.get_package_version()",
+        "logger.info(f\"Running with edr={package.get_package_version()}\")",
+        "package.get_package_version()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "elementary.cli.upgrade.recommend_version_upgrade",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "get_logger",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "set_root_logger_handlers",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "package.get_package_version",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "package.get_package_version",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "import os\nimport click\nimport elementary.cli.upgrade\nfrom elementary.config.config import Config\nfrom elementary.monitor.cli import monitor, report, send_report\nfrom elementary.operations.cli import run_operation\nfrom elementary.tracking.anonymous_tracking import AnonymousCommandLineTracking\nfrom elementary.utils import package\nfrom elementary.utils.log import get_logger, set_root_logger_handlers\n\nclick.echo(f\"{ELEMENTARY_LOGO}\\n\")\nelementary.cli.upgrade.recommend_version_upgrade()\n\nlogger = get_logger(__name__)\n\ndef get_log_path(ctx):\n    target_path = Config.DEFAULT_TARGET_PATH\n    try:\n        ctx_args = ctx.args\n        target_path_flag = \"--target-path\"\n        target_path = ctx_args[ctx_args.index(target_path_flag) + 1]\n    finally:\n        os.makedirs(os.path.abspath(target_path), exist_ok=True)\n        return os.path.join(target_path, \"edr.log\")\n\nclass ElementaryCLI(click.MultiCommand):\n    def invoke(self, ctx: click.Context) -> Any:\n        files_target_path = get_log_path(ctx)\n        set_root_logger_handlers(\"elementary\", files_target_path)\n        click.echo(\n            \"Any feedback and suggestions are welcomed! join our community here - \"\n            \"https://bit.ly/slack-elementary\\n\"\n        )\n        logger.info(f\"Running with edr={package.get_package_version()}\")\n        return super().invoke(ctx)\n\n@click.command(\n    cls=ElementaryCLI,\n    help=\"Open source data reliability solution (https://docs.elementary-data.com/)\",\n)\n@click.version_option(\n    version=package.get_package_version(),\n    message=\"Elementary version %(version)s.\",\n)\ndef cli():\n    pass\n\nif __name__ == \"__main__\":\n    cli()\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "elementary_data-0.18.1",
+      "total_matches": 1
+    }
+  }
+]

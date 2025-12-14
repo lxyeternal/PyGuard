@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import distutils.sysconfig\nimport fnmatch\nimport os\nimport posixpath\nimport re\nimport shutil\nimport sys\nimport sysconfig\n\nimport setuptools\nfrom setuptools.command import build_ext\n\n__version__ = '1.0.6'\n\nPROJECT_NAME = 'labmaze'\n\nREQUIRED_PACKAGES = [\n    'absl-py',\n    'numpy>=1.8.0',\n    'setuptools!=50.0.0',  # https://github.com/pypa/setuptools/issues/2350\n]\n\nWORKSPACE_PYTHON_HEADERS_PATTERN = re.compile(\n    r'(?<=path = \").*(?=\",  # May be overwritten by setup\\.py\\.)')\n\nIS_WINDOWS = sys.platform.startswith('win')\n\nclass BazelExtension(setuptools.Extension):\n  \"\"\"A C/C++ extension that is defined as a Bazel BUILD target.\"\"\"\n\n  def __init__(self, bazel_target):\n    self.bazel_target = bazel_target\n    self.relpath, self.target_name = (\n        posixpath.relpath(bazel_target, '//').split(':'))\n    ext_name = os.path.join(\n        self.relpath.replace(posixpath.sep, os.path.sep), self.target_name)\n    setuptools.Extension.__init__(self, ext_name, sources=[])\n\nclass BuildBazelExtension(build_ext.build_ext):\n  \"\"\"A command that runs Bazel to build a C/C++ extension.\"\"\"\n\n  def run(self):\n    for ext in self.extensions:\n      self.bazel_build(ext)\n    build_ext.build_ext.run(self)\n\n  def bazel_build(self, ext):\n    with open('WORKSPACE', 'r') as f:\n      workspace_contents = f.read()\n\n    with open('WORKSPACE', 'w') as f:\n      f.write(WORKSPACE_PYTHON_HEADERS_PATTERN.sub(\n          distutils.sysconfig.get_python_inc().replace(os.path.sep,\n                                                       posixpath.sep),\n          workspace_contents))\n\n    if not os.path.exists(self.build_temp):\n      os.makedirs(self.build_temp)\n\n    bazel_argv = [\n        'bazel',\n        'build',\n        ext.bazel_target,\n        '--symlink_prefix=' + os.path.join(self.build_temp, 'bazel-'),\n        '--compilation_mode=' + ('dbg' if self.debug else 'opt'),\n    ]\n\n    if IS_WINDOWS:\n      for library_dir in self.library_dirs:\n        bazel_argv.append('--linkopt=/LIBPATH:' + library_dir)\n      # TODO(stunya): Figure out why we need this.\n      if sysconfig.get_python_version() == '3.7':\n        bazel_argv.append('--linkopt=/LIBPATH:C:\\\\Python37\\\\Libs')\n\n    self.spawn(bazel_argv)\n\n    shared_lib_suffix = '.dll' if IS_WINDOWS else '.so'\n\n    ext_bazel_bin_path = os.path.join(\n        self.build_temp, 'bazel-bin',\n        ext.relpath, ext.target_name + shared_lib_suffix)\n    ext_dest_path = self.get_ext_fullpath(ext.name)\n    ext_dest_dir = os.path.dirname(ext_dest_path)\n    if not os.path.exists(ext_dest_dir):\n      os.makedirs(ext_dest_dir)\n    shutil.copyfile(ext_bazel_bin_path, ext_dest_path)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "open",
+        "os.path.exists",
+        "os.makedirs",
+        "os.makedirs",
+        "shutil.copyfile"
+      ],
+      "api_sequence_with_args": [
+        "open('WORKSPACE', 'r')",
+        "open('WORKSPACE', 'w')",
+        "os.path.exists(self.build_temp)",
+        "os.makedirs(self.build_temp)",
+        "os.makedirs(ext_dest_dir)",
+        "shutil.copyfile(ext_bazel_bin_path, ext_dest_path)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "def bazel_build(self, ext):\n    with open('WORKSPACE', 'r') as f:\n        workspace_contents = f.read()\n\n    with open('WORKSPACE', 'w') as f:\n        f.write(WORKSPACE_PYTHON_HEADERS_PATTERN.sub(\n            distutils.sysconfig.get_python_inc().replace(os.path.sep,\n                                                         posixpath.sep),\n            workspace_contents))\n\n    if not os.path.exists(self.build_temp):\n        os.makedirs(self.build_temp)\n\n    ext_bazel_bin_path = os.path.join(\n        self.build_temp, 'bazel-bin',\n        ext.relpath, ext.target_name + shared_lib_suffix)\n    ext_dest_path = self.get_ext_fullpath(ext.name)\n    ext_dest_dir = os.path.dirname(ext_dest_path)\n    if not os.path.exists(ext_dest_dir):\n        os.makedirs(ext_dest_dir)\n    shutil.copyfile(ext_bazel_bin_path, ext_dest_path)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "labmaze-1.0.6",
+      "total_matches": 1
+    }
+  }
+]

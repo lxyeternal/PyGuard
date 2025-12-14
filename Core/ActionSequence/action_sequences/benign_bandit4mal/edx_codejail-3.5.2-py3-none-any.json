@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "edx_codejail-3.5.2-py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "safe_exec.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/edx_codejail-3.5.2-py3-none-any/codejail/safe_exec.py",
+    "line_number": "272",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "271\t                with open(dest, \"wb\") as f:\n272\t                    f.write(contents)\n273",
+    "code_snippet": "def not_safe_exec(\n        code,\n        globals_dict,\n        files=None,\n        python_path=None,\n        limit_overrides_context=None,  # pylint: disable=unused-argument\n        slug=None,  # pylint: disable=unused-argument\n        extra_files=None,\n):\n    \"\"\"\n    Another implementation of `safe_exec`, but not safe.\n\n    This can be swapped in for debugging problems in sandboxed Python code.\n\n    This is not thread-safe, due to temporarily changing the current directory\n    and modifying sys.path.\n\n    Note that `limit_overrides_context` is ignored here, because resource limits\n    are not applied.\n    \"\"\"\n    g_dict = json_safe(globals_dict)\n\n    with temp_directory() as tmpdir:\n        with change_directory(tmpdir):\n            # pylint: disable=invalid-name\n            # Copy the files here.\n            for filename in files or ():\n                dest = os.path.join(tmpdir, os.path.basename(filename))\n                shutil.copyfile(filename, dest)\n            for filename, contents in extra_files or ():\n                dest = os.path.join(tmpdir, filename)\n                with open(dest, \"wb\") as f:\n                    f.write(contents)\n\n            original_path = sys.path\n            if python_path:\n                sys.path.extend(python_path)\n            try:\n                exec(code, g_dict)  # pylint: disable=exec-used\n            except Exception as e:\n                # Wrap the exception in a SafeExecException, but we don't\n                # try here to include the traceback, since this is just a\n                # substitute implementation.\n                msg = \"{0.__class__.__name__}: {0!s}\".format(e)\n                raise SafeExecException(msg)  # pylint: disable=raise-missing-from\n            finally:\n                sys.path = original_path\n\n    globals_dict.update(json_safe(g_dict))",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.path.basename",
+        "shutil.copyfile",
+        "os.path.join",
+        "open",
+        "builtins.open.write",
+        "sys.path",
+        "sys.path.extend",
+        "exec",
+        "sys.path"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(tmpdir, os.path.basename(filename))",
+        "os.path.basename(filename)",
+        "shutil.copyfile(filename, dest)",
+        "os.path.join(tmpdir, filename)",
+        "open(dest, \"wb\")",
+        "builtins.open.write(contents)",
+        "sys.path",
+        "sys.path.extend(python_path)",
+        "exec(code, g_dict)",
+        "sys.path = original_path"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "builtins.open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "sys.path",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.path.extend",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "sys.path",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        }
+      ],
+      "contextual_code": "for filename in files or ():\n    dest = os.path.join(tmpdir, os.path.basename(filename))\n    shutil.copyfile(filename, dest)\nfor filename, contents in extra_files or ():\n    dest = os.path.join(tmpdir, filename)\n    with open(dest, \"wb\") as f:\n        f.write(contents)\noriginal_path = sys.path\nif python_path:\n    sys.path.extend(python_path)\ntry:\n    exec(code, g_dict)\nfinally:\n    sys.path = original_path"
+    }
+  }
+]

@@ -1,0 +1,248 @@
+[
+  {
+    "metadata": {
+      "package_name": "kivy-2.3.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "loader.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/kivy-2.3.1/Kivy-2.3.1/kivy/loader.py",
+    "line_number": "363",
+    "type_description": "B830:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "362\n363\t            idata = fd.read()\n364\t            fd.close()",
+    "code_snippet": "def _load_urllib(self, filename, kwargs):\n    '''(internal) Loading a network file. First download it, save it to a\n    temporary file, and pass it to _load_local().'''\n    import urllib.request\n    import tempfile\n\n    proto = filename.split(':', 1)[0]\n    if proto == 'smb':\n        try:\n            # note: it's important to load SMBHandler every time\n            # otherwise the data is occasionally not loaded\n            from smb.SMBHandler import SMBHandler\n        except ImportError:\n            Logger.warning(\n                'Loader: can not load PySMB: make sure it is installed')\n            return\n\n    data = fd = _out_osfd = None\n    try:\n        _out_filename = ''\n\n        if proto == 'smb':\n            # read from samba shares\n            fd = urllib.request.build_opener(SMBHandler).open(filename)\n        else:\n            # read from internet\n            request = urllib.request.Request(filename)\n            if Config.has_option('network', 'useragent'):\n                useragent = Config.get('network', 'useragent')\n                if useragent:\n                    request.add_header('User-Agent', useragent)\n\n            # A custom context is only needed on Android and iOS\n            # as we need to use the certs provided via certifi.\n            ssl_ctx = None\n            if platform in ['android', 'ios']:\n                import certifi\n                import ssl\n                ssl_ctx = ssl.create_default_context(cafile=certifi.where())\n                ssl_ctx.verify_mode = ssl.CERT_REQUIRED\n\n            fd = urllib.request.urlopen(request, context=ssl_ctx)\n\n        if '#.' in filename:\n            # allow extension override from URL fragment\n            suffix = '.' + filename.split('#.')[-1]\n        else:\n            ctype = fd.info().get_content_type()\n            suffix = mimetypes.guess_extension(ctype)\n            suffix = LoaderBase.EXT_ALIAS.get(suffix, suffix)\n            if not suffix:\n                # strip query string and split on path\n                parts = filename.split('?')[0].split('/')[1:]\n                while len(parts) > 1 and not parts[0]:\n                    # strip out blanks from '//'\n                    parts = parts[1:]\n                if len(parts) > 1 and '.' in parts[-1]:\n                    # we don't want '.com', '.net', etc. as the extension\n                    suffix = '.' + parts[-1].split('.')[-1]\n        _out_osfd, _out_filename = tempfile.mkstemp(\n            prefix='kivyloader', suffix=suffix)\n\n        idata = fd.read()\n        fd.close()\n        fd = None\n\n        # write to local filename\n        write(_out_osfd, idata)\n        close(_out_osfd)\n        _out_osfd = None\n\n        # load data\n        data = self._load_local(_out_filename, kwargs)\n\n        # FIXME create a clean API for that\n        for imdata in data._data:\n            imdata.source = filename\n    except Exception as ex:\n        Logger.exception('Loader: Failed to load image <%s>' % filename)\n        # close file when remote file not found or download error\n        try:\n            if _out_osfd:\n                close(_out_osfd)\n        except OSError:\n            pass\n\n        # update client\n        for c_filename, client in self._client[:]:\n            if filename != c_filename:\n                continue\n            # got one client to update\n            client.image = self.error_image\n            client.dispatch('on_error', error=ex)\n            self._client.remove((c_filename, client))\n\n        return self.error_image\n    finally:\n        if fd:\n            fd.close()\n        if _out_osfd:\n            close(_out_osfd)\n        if _out_filename != '':\n            unlink(_out_filename)\n\n    return data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "urllib.request.build_opener",
+        "urllib.request.build_opener.open",
+        "urllib.request.Request",
+        "Config.has_option",
+        "Config.get",
+        "urllib.request.Request.add_header",
+        "ssl.create_default_context",
+        "certifi.where",
+        "urllib.request.urlopen",
+        "fd.info.get_content_type",
+        "mimetypes.guess_extension",
+        "LoaderBase.EXT_ALIAS.get",
+        "tempfile.mkstemp",
+        "fd.read",
+        "fd.close",
+        "write",
+        "close",
+        "self._load_local",
+        "Logger.exception",
+        "close",
+        "close",
+        "unlink"
+      ],
+      "api_sequence_with_args": [
+        "urllib.request.build_opener(SMBHandler)",
+        "urllib.request.build_opener(SMBHandler).open(filename)",
+        "urllib.request.Request(filename)",
+        "Config.has_option('network', 'useragent')",
+        "Config.get('network', 'useragent')",
+        "urllib.request.Request.add_header('User-Agent', useragent)",
+        "ssl.create_default_context(cafile=certifi.where())",
+        "certifi.where()",
+        "urllib.request.urlopen(request, context=ssl_ctx)",
+        "fd.info().get_content_type()",
+        "mimetypes.guess_extension(ctype)",
+        "LoaderBase.EXT_ALIAS.get(suffix, suffix)",
+        "tempfile.mkstemp(prefix='kivyloader', suffix=suffix)",
+        "fd.read()",
+        "fd.close()",
+        "write(_out_osfd, idata)",
+        "close(_out_osfd)",
+        "self._load_local(_out_filename, kwargs)",
+        "Logger.exception('Loader: Failed to load image <%s>' % filename)",
+        "close(_out_osfd)",
+        "close(_out_osfd)",
+        "unlink(_out_filename)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "urllib.request.build_opener",
+          "id": "build_opener",
+          "description": "Builds opener object with specified handler",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "urllib.request.build_opener.open",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "urllib.request.Request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Config.has_option",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "Config.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "urllib.request.Request.add_header",
+          "id": "add_http_header",
+          "description": "Adds HTTP header to request object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "ssl.create_default_context",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "certifi.where",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "urllib.request.urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "fd.info.get_content_type",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "mimetypes.guess_extension",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "LoaderBase.EXT_ALIAS.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "tempfile.mkstemp",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "fd.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "fd.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "self._load_local",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "Logger.exception",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "import urllib.request\nimport tempfile\n\nproto = filename.split(':', 1)[0]\nif proto == 'smb':\n    from smb.SMBHandler import SMBHandler\n    fd = urllib.request.build_opener(SMBHandler).open(filename)\nelse:\n    request = urllib.request.Request(filename)\n    if Config.has_option('network', 'useragent'):\n        useragent = Config.get('network', 'useragent')\n        if useragent:\n            request.add_header('User-Agent', useragent)\n    ssl_ctx = None\n    if platform in ['android', 'ios']:\n        import certifi\n        import ssl\n        ssl_ctx = ssl.create_default_context(cafile=certifi.where())\n        ssl_ctx.verify_mode = ssl.CERT_REQUIRED\n    fd = urllib.request.urlopen(request, context=ssl_ctx)\n\nif '#.' in filename:\n    suffix = '.' + filename.split('#.')[-1]\nelse:\n    ctype = fd.info().get_content_type()\n    suffix = mimetypes.guess_extension(ctype)\n    suffix = LoaderBase.EXT_ALIAS.get(suffix, suffix)\n    if not suffix:\n        parts = filename.split('?')[0].split('/')[1:]\n        while len(parts) > 1 and not parts[0]:\n            parts = parts[1:]\n        if len(parts) > 1 and '.' in parts[-1]:\n            suffix = '.' + parts[-1].split('.')[-1]\n_out_osfd, _out_filename = tempfile.mkstemp(prefix='kivyloader', suffix=suffix)\n\nidata = fd.read()\nfd.close()\nwrite(_out_osfd, idata)\nclose(_out_osfd)\ndata = self._load_local(_out_filename, kwargs)\n\n# Error handling\nLogger.exception('Loader: Failed to load image <%s>' % filename)\nclose(_out_osfd)\nunlink(_out_filename)"
+    }
+  }
+]

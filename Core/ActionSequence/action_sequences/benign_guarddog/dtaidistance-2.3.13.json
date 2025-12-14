@@ -1,0 +1,47 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import subprocess as sp\nimport os\nimport platform\nfrom pathlib import Path\n\ndef check_clang(cc_bin, printfn=print):\n    \"\"\"Check if gcc is really an xcrun to clang\"\"\"\n    printfn(\"Checking if {} redirects to clang\".format(cc_bin))\n    args = [[str(cc_bin), \"--version\"]]\n    kwargs = {\"stdout\": sp.PIPE, \"stderr\": sp.PIPE, \"input\": '', \"encoding\": 'ascii'}\n    printfn(\" \".join(args[0]) + \" # with \" + \", \".join(str(k) + \"=\" + str(v) for k, v in kwargs.items()))\n    try:\n        p = sp.run(*args, **kwargs)\n        printfn(p.stderr)\n        defs = p.stdout.splitlines()\n        for curdef in defs:\n            if \"clang\" in curdef:\n                printfn(curdef)\n                printfn(\"... found clang\")\n                return True\n    except Exception:\n        printfn(\"... no clang\")\n        return False\n    return False\n\ndef check_openmp(cc_bin, noxpreprocessor, printfn=print):\n    \"\"\"Check if OpenMP is available\"\"\"\n    printfn(\"Checking for OpenMP availability for {}\".format(cc_bin))\n    cc_binname = os.path.basename(cc_bin)\n    args = None\n    kwargs = None\n    if \"clang\" in cc_binname or \"cc\" in cc_binname:\n        if noxpreprocessor == 0:\n            args = [[str(cc_bin), \"-dM\", \"-E\", \"-Xpreprocessor\", \"-fopenmp\", \"-\"]]\n        else:\n            args = [[str(cc_bin), \"-dM\", \"-E\", \"-fopenmp\", \"-\"]]\n        kwargs = {\"stdout\": sp.PIPE, \"stderr\": sp.PIPE, \"input\": '', \"encoding\": 'ascii'}\n        printfn(\" \".join(args[0]) + \" # with \" + \", \".join(str(k) + \"=\" + str(v) for k, v in kwargs.items()))\n    if args is not None:\n        try:\n            p = sp.run(*args, **kwargs)\n            printfn(p.stderr)\n            defs = p.stdout.splitlines()\n            for curdef in defs:\n                if \"_OPENMP\" in curdef:\n                    printfn(curdef)\n                    printfn(\"... found OpenMP\")\n                    return True\n        except Exception:\n            printfn(\"... no OpenMP\")\n            return False\n    else:\n        printfn(\"... do not know how to check for OpenMP (unknown CC), assume to be available\")\n        return True\n    return False\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "print",
+        "os.path.basename",
+        "subprocess.run",
+        "print",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "print(\"Checking if {} redirects to clang\".format(cc_bin))",
+        "os.path.basename(cc_bin)",
+        "subprocess.run(*args, **kwargs)",
+        "print(\"Checking for OpenMP availability for {}\".format(cc_bin))",
+        "subprocess.run(*args, **kwargs)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import subprocess as sp\nimport os\n\ndef check_clang(cc_bin, printfn=print):\n    printfn(\"Checking if {} redirects to clang\".format(cc_bin))\n    args = [[str(cc_bin), \"--version\"]]\n    kwargs = {\"stdout\": sp.PIPE, \"stderr\": sp.PIPE, \"input\": '', \"encoding\": 'ascii'}\n    printfn(\" \".join(args[0]) + \" # with \" + \", \".join(str(k) + \"=\" + str(v) for k, v in kwargs.items()))\n    try:\n        p = sp.run(*args, **kwargs)\n        printfn(p.stderr)\n        defs = p.stdout.splitlines()\n        for curdef in defs:\n            if \"clang\" in curdef:\n                printfn(curdef)\n                printfn(\"... found clang\")\n                return True\n    except Exception:\n        printfn(\"... no clang\")\n        return False\n    return False\n\ndef check_openmp(cc_bin, noxpreprocessor, printfn=print):\n    printfn(\"Checking for OpenMP availability for {}\".format(cc_bin))\n    cc_binname = os.path.basename(cc_bin)\n    args = None\n    kwargs = None\n    if \"clang\" in cc_binname or \"cc\" in cc_binname:\n        if noxpreprocessor == 0:\n            args = [[str(cc_bin), \"-dM\", \"-E\", \"-Xpreprocessor\", \"-fopenmp\", \"-\"]]\n        else:\n            args = [[str(cc_bin), \"-dM\", \"-E\", \"-fopenmp\", \"-\"]]\n        kwargs = {\"stdout\": sp.PIPE, \"stderr\": sp.PIPE, \"input\": '', \"encoding\": 'ascii'}\n        printfn(\" \".join(args[0]) + \" # with \" + \", \".join(str(k) + \"=\" + str(v) for k, v in kwargs.items()))\n    if args is not None:\n        try:\n            p = sp.run(*args, **kwargs)\n            printfn(p.stderr)\n            defs = p.stdout.splitlines()\n            for curdef in defs:\n                if \"_OPENMP\" in curdef:\n                    printfn(curdef)\n                    printfn(\"... found OpenMP\")\n                    return True\n        except Exception:\n            printfn(\"... no OpenMP\")\n            return False\n    else:\n        printfn(\"... do not know how to check for OpenMP (unknown CC), assume to be available\")\n        return True\n    return False"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "dtaidistance-2.3.13",
+      "total_matches": 2
+    }
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "discord.py",
+    "code_snippet": "from flask import g\nfrom werkzeug.local import LocalProxy\n\nfrom flask_dance.consumer import OAuth2ConsumerBlueprint\n\n__maintainer__ = \"Michael Delpech <michaeldel@protonmail.com>\"\n\n\ndef make_discord_blueprint(\n    client_id=None,\n    client_secret=None,\n    *,\n    scope=None,\n    redirect_url=None,\n    redirect_to=None,\n    login_url=None,\n    authorized_url=None,\n    session_class=None,\n    storage=None,\n    prompt=\"consent\",\n    rule_kwargs=None,\n):\n    \"\"\"\n    Make a blueprint for authenticating with Discord using OAuth 2. This requires\n    a client ID and client secret from Discord. You should either pass them to\n    this constructor, or make sure that your Flask application config defines\n    them, using the variables :envvar:`DISCORD_OAUTH_CLIENT_ID` and\n    :envvar:`DISCORD_OAUTH_CLIENT_SECRET`.\n\n    Args:\n        client_id (str): The client ID for your application on Discord.\n        client_secret (str): The client secret for your application on Discord\n        scope (list, optional): list of scopes (str) for the OAuth token\n        redirect_url (str): the URL to redirect to after the authentication\n            dance is complete\n        redirect_to (str): if ``redirect_url`` is not defined, the name of the\n            view to redirect to after the authentication dance is complete.\n            The actual URL will be determined by :func:`flask.url_for`\n        login_url (str, optional): the URL path for the ``login`` view.\n            Defaults to ``/discord``\n        authorized_url (str, optional): the URL path for the ``authorized`` view.\n            Defaults to ``/discord/authorized``.\n        session_class (class, optional): The class to use for creating a\n            Requests session. Defaults to\n            :class:`~flask_dance.consumer.requests.OAuth2Session`.\n        storage: A token storage class, or an instance of a token storage\n                class, to use for this blueprint. Defaults to\n                :class:`~flask_dance.consumer.storage.session.SessionStorage`.\n        prompt (str, optional): Define authorization flow.\n            Defaults to ``consent``, setting it to ``None`` will skip user\n            interaction if the application was previously approved.\n        rule_kwargs (dict, optional): Additional arguments that should be passed when adding\n            the login and authorized routes. Defaults to ``None``.\n\n    :rtype: :class:`~flask_dance.consumer.OAuth2ConsumerBlueprint`\n    :returns: A :doc:`blueprint <flask:blueprints>` to attach to your Flask app.\n    \"\"\"\n    scope = scope or [\"identify\"]\n    authorization_url_params = {\"prompt\": \"consent\"}\n    if prompt is None:\n        authorization_url_params[\"prompt\"] = None\n    discord_bp = OAuth2ConsumerBlueprint(\n        \"discord\",\n        __name__,\n        client_id=client_id,\n        client_secret=client_secret,\n        scope=scope,\n        base_url=\"https://discord.com/\",\n        token_url=\"https://discord.com/api/oauth2/token\",\n        authorization_url=\"https://discord.com/api/oauth2/authorize\",\n        redirect_url=redirect_url,\n        redirect_to=redirect_to,\n        login_url=login_url,\n        authorized_url=authorized_url,\n        session_class=session_class,\n        storage=storage,\n        authorization_url_params=authorization_url_params,\n        rule_kwargs=rule_kwargs,\n    )\n    discord_bp.from_config[\"client_id\"] = \"DISCORD_OAUTH_CLIENT_ID\"\n    discord_bp.from_config[\"client_secret\"] = \"DISCORD_OAUTH_CLIENT_SECRET\"\n\n    @discord_bp.before_app_request\n    def set_applocal_session():\n        g.flask_dance_discord = discord_bp.session\n\n    return discord_bp\n\n\ndiscord = LocalProxy(lambda: g.flask_dance_discord)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "flask_dance.consumer.OAuth2ConsumerBlueprint",
+        "flask.g.flask_dance_discord = flask_dance.consumer.OAuth2ConsumerBlueprint.session",
+        "werkzeug.local.LocalProxy"
+      ],
+      "api_sequence_with_args": [
+        "flask_dance.consumer.OAuth2ConsumerBlueprint('discord', __name__, client_id=client_id, client_secret=client_secret, scope=scope, base_url='https://discord.com/', token_url='https://discord.com/api/oauth2/token', authorization_url='https://discord.com/api/oauth2/authorize', redirect_url=redirect_url, redirect_to=redirect_to, login_url=login_url, authorized_url=authorized_url, session_class=session_class, storage=storage, authorization_url_params=authorization_url_params, rule_kwargs=rule_kwargs)",
+        "flask.g.flask_dance_discord = flask_dance.consumer.OAuth2ConsumerBlueprint.session",
+        "werkzeug.local.LocalProxy(lambda: flask.g.flask_dance_discord)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "flask_dance.consumer.OAuth2ConsumerBlueprint",
+          "id": "create_discord_bot",
+          "description": "Creates Discord bot instance with specified prefix and intents",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_object_creation"
+        },
+        {
+          "api_name": "flask.g.flask_dance_discord = flask_dance.consumer.OAuth2ConsumerBlueprint.session",
+          "id": "create_http_session",
+          "description": "Creates HTTP session for making asynchronous requests",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "werkzeug.local.LocalProxy",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        }
+      ],
+      "contextual_code": "from flask import g\nfrom werkzeug.local import LocalProxy\nfrom flask_dance.consumer import OAuth2ConsumerBlueprint\n\ndef make_discord_blueprint(...):\n    ...\n    discord_bp = OAuth2ConsumerBlueprint(\n        'discord',\n        __name__,\n        client_id=client_id,\n        client_secret=client_secret,\n        scope=scope,\n        base_url='https://discord.com/',\n        token_url='https://discord.com/api/oauth2/token',\n        authorization_url='https://discord.com/api/oauth2/authorize',\n        redirect_url=redirect_url,\n        redirect_to=redirect_to,\n        login_url=login_url,\n        authorized_url=authorized_url,\n        session_class=session_class,\n        storage=storage,\n        authorization_url_params=authorization_url_params,\n        rule_kwargs=rule_kwargs,\n    )\n    ...\n    @discord_bp.before_app_request\n    def set_applocal_session():\n        g.flask_dance_discord = discord_bp.session\n    ...\ndiscord = LocalProxy(lambda: g.flask_dance_discord)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "flask_dance-7.1.0",
+      "total_matches": 3
+    }
+  }
+]

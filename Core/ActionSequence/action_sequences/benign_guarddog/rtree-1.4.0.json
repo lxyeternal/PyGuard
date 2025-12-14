@@ -1,0 +1,161 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "#!/usr/bin/env python3\nfrom pathlib import Path\n\nfrom setuptools import setup\nfrom setuptools.command.install import install\nfrom setuptools.dist import Distribution\nfrom wheel.bdist_wheel import bdist_wheel as _bdist_wheel\n\n# current working directory of this setup.py file\n_cwd = Path(__file__).resolve().parent\n\n\nclass bdist_wheel(_bdist_wheel):  # type: ignore[misc]\n    def finalize_options(self) -> None:\n        _bdist_wheel.finalize_options(self)\n        self.root_is_pure = False\n\n\nclass BinaryDistribution(Distribution):  # type: ignore[misc]\n    \"\"\"Distribution which always forces a binary package with platform name\"\"\"\n\n    def has_ext_modules(foo) -> bool:\n        return True\n\n\nclass InstallPlatlib(install):  # type: ignore[misc]\n    def finalize_options(self) -> None:\n        \"\"\"\n        Copy the shared libraries and header files into the wheel. Note that\n        this will *only* check in `rtree/lib` and `include` rather than\n        anywhere on the system so if you are building a wheel you *must* copy\n        or symlink the `.so`/`.dll`/`.dylib` files into `rtree/lib` and\n        `.h` into `rtree/include`.\n        \"\"\"\n        install.finalize_options(self)\n        if self.distribution.has_ext_modules():\n            self.install_lib = self.install_platlib\n\n        # source files to copy\n        source_dir = _cwd / \"rtree\"\n\n        # destination for the files in the build directory\n        target_dir = Path(self.build_lib) / \"rtree\"\n\n        # copy lib tree\n        source_lib = source_dir / \"lib\"\n        if source_lib.is_dir():\n            target_lib = target_dir / \"lib\"\n            self.copy_tree(str(source_lib), str(target_lib))\n\n        # copy include tree\n        source_include = source_dir / \"include\"\n        if source_include.is_dir():\n            target_include = target_dir / \"include\"\n            self.copy_tree(str(source_include), str(target_include))\n\n\n# See pyproject.toml for other project metadata\nsetup(\n    name=\"rtree\",\n    distclass=BinaryDistribution,\n    cmdclass={\"bdist_wheel\": bdist_wheel, \"install\": InstallPlatlib},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "Path.__file__",
+        "Path.resolve",
+        "Path.parent",
+        "Path.__truediv__",
+        "Path.__truediv__",
+        "Path.is_dir",
+        "Path.__truediv__",
+        "Path.__truediv__",
+        "Path.is_dir",
+        "install.finalize_options",
+        "self.distribution.has_ext_modules",
+        "self.copy_tree",
+        "self.copy_tree",
+        "setup"
+      ],
+      "api_sequence_with_args": [
+        "Path(__file__)",
+        "Path(__file__).resolve()",
+        "Path(__file__).resolve().parent",
+        "source_dir / \"lib\"",
+        "source_dir / \"include\"",
+        "source_lib.is_dir()",
+        "target_dir / \"lib\"",
+        "target_dir / \"include\"",
+        "source_include.is_dir()",
+        "install.finalize_options(self)",
+        "self.distribution.has_ext_modules()",
+        "self.copy_tree(str(source_lib), str(target_lib))",
+        "self.copy_tree(str(source_include), str(target_include))",
+        "setup(name=\"rtree\", distclass=BinaryDistribution, cmdclass={...})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "Path(__file__)",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.resolve",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.parent",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.is_dir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.__truediv__",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.is_dir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "install.finalize_options",
+          "id": "exec_setuptools_install",
+          "description": "Executes setuptools installation procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.distribution.has_ext_modules",
+          "id": "exec_setuptools_install",
+          "description": "Executes setuptools installation procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "self.copy_tree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.copy_tree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "from pathlib import Path\nfrom setuptools import setup\nfrom setuptools.command.install import install\n\n_cwd = Path(__file__).resolve().parent\n\nclass InstallPlatlib(install):\n    def finalize_options(self) -> None:\n        install.finalize_options(self)\n        if self.distribution.has_ext_modules():\n            self.install_lib = self.install_platlib\n        source_dir = _cwd / \"rtree\"\n        target_dir = Path(self.build_lib) / \"rtree\"\n        source_lib = source_dir / \"lib\"\n        if source_lib.is_dir():\n            target_lib = target_dir / \"lib\"\n            self.copy_tree(str(source_lib), str(target_lib))\n        source_include = source_dir / \"include\"\n        if source_include.is_dir():\n            target_include = target_dir / \"include\"\n            self.copy_tree(str(source_include), str(target_include))\n\nsetup(\n    name=\"rtree\",\n    distclass=BinaryDistribution,\n    cmdclass={\"bdist_wheel\": bdist_wheel, \"install\": InstallPlatlib},\n)\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "rtree-1.4.0",
+      "total_matches": 1
+    }
+  }
+]

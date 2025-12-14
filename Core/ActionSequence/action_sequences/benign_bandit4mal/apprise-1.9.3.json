@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "apprise-1.9.3",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "office365.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/apprise-1.9.3/apprise-1.9.3/apprise/plugins/office365.py",
+    "line_number": "630",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "629\n630\t        upload_url = response.get('uploadUrl')\n631\t        if not upload_url:",
+    "code_snippet": "def upload_attachment(self, attachment, message_id, name=None):\n    \"\"\"\n    Uploads an attachment to a session\n    \"\"\"\n\n    # Perform some simple error checking\n    if not attachment:\n        # We could not access the attachment\n        self.logger.error(\n            'Could not access Office 365 attachment {}.'.format(\n                attachment.url(privacy=True)))\n        return False\n\n    # Our Session URL\n    url = \\\n        '{graph_url}/v1.0/users/{userid}/message/{message_id}' \\\n        .format(\n            graph_url=self.graph_url,\n            userid=self.source,\n            message_id=message_id,\n        ) + '/attachments/createUploadSession'\n\n    file_size = len(attachment)\n\n    payload = {\n        \"AttachmentItem\": {\n            \"attachmentType\": \"file\",\n            \"name\": name if name else (\n                attachment.name\n                if attachment.name else '{}.dat'.format(str(uuid4()))),\n            # MIME type of the attachment\n            \"contentType\": attachment.mimetype,\n            \"size\": file_size,\n        }\n    }\n\n    if not self.authenticate():\n        # We could not authenticate ourselves; we're done\n        return False\n\n    # Get our Upload URL\n    postokay, response = self._fetch(url, payload)\n    if not postokay:\n        return False\n\n    upload_url = response.get('uploadUrl')\n    if not upload_url:\n        return False\n\n    start_byte = 0\n    postokay = False\n    response = None\n\n    for chunk in attachment.chunk():\n        end_byte = start_byte + len(chunk) - 1\n\n        # Define headers for this chunk\n        headers = {\n            'User-Agent': self.app_id,\n            'Content-Length': str(len(chunk)),\n            'Content-Range':\n            f'bytes {start_byte}-{end_byte}/{file_size}'\n        }\n\n        # Upload the chunk\n        postokay, response = self._fetch(\n            upload_url, chunk, headers=headers, content_type=None,\n            method='PUT')\n        if not postokay:\n            return False\n\n    # Return our Upload URL\n    return postokay",
+    "pattern_analysis": {
+      "api_sequence": [
+        "attachment.url",
+        "self.logger.error",
+        "len",
+        "uuid4",
+        "self.authenticate",
+        "self._fetch",
+        "response.get",
+        "attachment.chunk",
+        "len",
+        "self._fetch"
+      ],
+      "api_sequence_with_args": [
+        "attachment.url(privacy=True)",
+        "self.logger.error('Could not access Office 365 attachment {}.'.format(attachment.url(privacy=True)))",
+        "len(attachment)",
+        "uuid4()",
+        "self.authenticate()",
+        "self._fetch(url, payload)",
+        "response.get('uploadUrl')",
+        "attachment.chunk()",
+        "len(chunk)",
+        "self._fetch(upload_url, chunk, headers=headers, content_type=None, method='PUT')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "attachment.url",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "len",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "uuid4",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.authenticate",
+          "id": "check_admin_privileges",
+          "description": "Checks if process is running with administrator privileges",
+          "first_id": "system_operations",
+          "second_id": "system_privilege_operations",
+          "third_id": "privilege_management"
+        },
+        {
+          "api_name": "self._fetch",
+          "id": "send_http_put",
+          "description": "Sends HTTP PUT request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "attachment.chunk",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "len",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "self._fetch",
+          "id": "send_http_put",
+          "description": "Sends HTTP PUT request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "def upload_attachment(self, attachment, message_id, name=None):\n    if not attachment:\n        self.logger.error(\n            'Could not access Office 365 attachment {}.'.format(\n                attachment.url(privacy=True)))\n        return False\n\n    url = (\n        '{graph_url}/v1.0/users/{userid}/message/{message_id}'\n        .format(\n            graph_url=self.graph_url,\n            userid=self.source,\n            message_id=message_id,\n        ) + '/attachments/createUploadSession'\n    )\n\n    file_size = len(attachment)\n\n    payload = {\n        \"AttachmentItem\": {\n            \"attachmentType\": \"file\",\n            \"name\": name if name else (\n                attachment.name\n                if attachment.name else '{}.dat'.format(str(uuid4()))),\n            \"contentType\": attachment.mimetype,\n            \"size\": file_size,\n        }\n    }\n\n    if not self.authenticate():\n        return False\n\n    postokay, response = self._fetch(url, payload)\n    if not postokay:\n        return False\n\n    upload_url = response.get('uploadUrl')\n    if not upload_url:\n        return False\n\n    start_byte = 0\n    postokay = False\n    response = None\n\n    for chunk in attachment.chunk():\n        end_byte = start_byte + len(chunk) - 1\n        headers = {\n            'User-Agent': self.app_id,\n            'Content-Length': str(len(chunk)),\n            'Content-Range': f'bytes {start_byte}-{end_byte}/{file_size}'\n        }\n        postokay, response = self._fetch(\n            upload_url, chunk, headers=headers, content_type=None,\n            method='PUT')\n        if not postokay:\n            return False\n\n    return postokay"
+    }
+  }
+]

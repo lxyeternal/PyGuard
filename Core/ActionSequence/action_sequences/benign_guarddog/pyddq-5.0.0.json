@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import sys\nimport os\nimport glob\nimport subprocess\nfrom setuptools import setup, Command\n\nclass IntegrationTestCommand(Command):\n    description = \"A command to run integration tests\"\n    user_options = [(\"jar=\", None, \"Path to Drunken Data Quality jar\")]\n    jar = None\n    addopts = None\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        if self.addopts is None:\n            exit(\"error: option addopts should be specified in setup.cfg\")\n        elif self.jar is None:\n            exit(\"error: path to Drunken Data Quality jar should be specified\")\n\n    def run(self):\n        log4j_path = os.path.abspath(\"../src/test/resources/log4j.properties\")\n        result = 0\n        try:\n            for filename in glob.glob(os.path.join(self.addopts, \"test_*.py\")):\n                result = result or subprocess.call([\n                    \"spark-submit\",\n                    \"--driver-java-options\",\n                    '\"-Dlog4j.configuration=file://{path}\"'.format(path=log4j_path),\n                    \"--driver-class-path\",\n                    self.jar,\n                    filename\n                ])\n        except OSError as e:\n            if e.errno == os.errno.ENOENT:\n                exit(\"spark-submit is not found!\")\n            else:\n                exit(str(e))\n        exit(result)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "glob.glob",
+        "os.path.join",
+        "subprocess.call",
+        "os.errno.ENOENT",
+        "exit"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(\"../src/test/resources/log4j.properties\")",
+        "glob.glob(os.path.join(self.addopts, \"test_*.py\"))",
+        "os.path.join(self.addopts, \"test_*.py\")",
+        "subprocess.call([\"spark-submit\", \"--driver-java-options\", '\"-Dlog4j.configuration=file://{path}\"'.format(path=log4j_path), \"--driver-class-path\", self.jar, filename])",
+        "os.errno.ENOENT",
+        "exit(result)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.errno.ENOENT",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "import os\nimport glob\nimport subprocess\n\nclass IntegrationTestCommand(Command):\n    def finalize_options(self):\n        if self.addopts is None:\n            exit(\"error: option addopts should be specified in setup.cfg\")\n        elif self.jar is None:\n            exit(\"error: path to Drunken Data Quality jar should be specified\")\n\n    def run(self):\n        log4j_path = os.path.abspath(\"../src/test/resources/log4j.properties\")\n        result = 0\n        try:\n            for filename in glob.glob(os.path.join(self.addopts, \"test_*.py\")):\n                result = result or subprocess.call([\n                    \"spark-submit\",\n                    \"--driver-java-options\",\n                    '\"-Dlog4j.configuration=file://{path}\"'.format(path=log4j_path),\n                    \"--driver-class-path\",\n                    self.jar,\n                    filename\n                ])\n        except OSError as e:\n            if e.errno == os.errno.ENOENT:\n                exit(\"spark-submit is not found!\")\n            else:\n                exit(str(e))\n        exit(result)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyddq-5.0.0",
+      "total_matches": 1
+    }
+  }
+]

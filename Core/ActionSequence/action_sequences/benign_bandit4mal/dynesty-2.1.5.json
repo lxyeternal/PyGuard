@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "package_name": "dynesty-2.1.5",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_resume.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dynesty-2.1.5/dynesty-2.1.5/tests/test_resume.py",
+    "line_number": "163",
+    "type_description": "B838:process",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "162\t    try:\n163\t        fit_proc = mp.Process(target=fit_main,\n164\t                              args=(fname, dynamic, save_every, npool,\n165\t                                    dyn_pool))\n166\t        fit_proc.start()",
+    "code_snippet": "@pytest.mark.parametrize(\"dynamic,delay_frac,with_pool,dyn_pool\",\n                         itertools.chain(\n                             itertools.product([False, True],\n                                               [.2, .5, .75, .9], [False],\n                                               [False]),\n                             itertools.product([False, True], [.5], [True],\n                                               [False]),\n                             [[True, .5, True, True]]))\n@pytest.mark.xdist_group(name=\"resume_group\")\ndef test_resume(dynamic, delay_frac, with_pool, dyn_pool):\n    \"\"\"\n    Test we can interrupt and resume nested runs\n    Note that I used xdist_group here in order to guarantee that if all the\n    tests are run in parallel, this one is executed in one thread because\n    I want to only use one getlogz() call.\n    \"\"\"\n    fname = get_fname(inspect.currentframe().f_code.co_name)\n\n    save_every = 1\n    cache_dt, cache_logz = getlogz(fname, save_every)\n    if with_pool:\n        npool = 2\n    else:\n        npool = None\n    curdt, curlogz = [_[dynamic, with_pool] for _ in [cache_dt, cache_logz]]\n    save_every = min(save_every, curdt / 10)\n    curdt *= delay_frac\n    try:\n        fit_proc = mp.Process(target=fit_main,\n                              args=(fname, dynamic, save_every, npool,\n                                    dyn_pool))\n        fit_proc.start()\n        res = fit_proc.join(curdt)\n        # proceed to terminate after curdt seconds\n        if res is None:\n            print('terminating', file=sys.stderr)\n            fit_proc.terminate()\n            if np.allclose(delay_frac, .2) and not os.path.exists(fname):\n                warnings.warn(\n                    \"The checkpoint file was not created I'm skipping the test\"\n                )\n                return\n\n            with (NullContextManager() if npool is None else\n                  (dynesty.pool.Pool(npool, like, ptform)\n                   if dyn_pool else mp.Pool(npool))) as pool:\n                blob = fit_resume(fname, dynamic, curlogz, pool=pool)\n                if with_pool:\n                    # the expectation is we ran in 2 pids before\n                    # and 2 pids after\n                    nexpected = 4\n                else:\n                    nexpected = 2\n                assert (len(np.unique(blob)) in [1, nexpected])\n                # I allow 1 in order to allow cases where the\n                # sampling is done before interruption\n        else:\n            assert res == 0\n    finally:\n        try:\n            os.unlink(fname)\n        except:  # noqa\n            pass\n        try:\n            os.unlink(fname + '.tmp')\n        except:  # noqa\n            pass",
+    "pattern_analysis": {
+      "api_sequence": [
+        "inspect.currentframe",
+        "inspect.currentframe.f_code.co_name",
+        "get_fname",
+        "getlogz",
+        "mp.Process",
+        "mp.Process.start",
+        "mp.Process.join",
+        "mp.Process.terminate",
+        "os.path.exists",
+        "os.unlink",
+        "os.unlink"
+      ],
+      "api_sequence_with_args": [
+        "inspect.currentframe()",
+        "inspect.currentframe().f_code.co_name",
+        "get_fname(inspect.currentframe().f_code.co_name)",
+        "getlogz(fname, save_every)",
+        "mp.Process(target=fit_main, args=(fname, dynamic, save_every, npool, dyn_pool))",
+        "mp.Process.start()",
+        "mp.Process.join(curdt)",
+        "mp.Process.terminate()",
+        "os.path.exists(fname)",
+        "os.unlink(fname)",
+        "os.unlink(fname + '.tmp')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "inspect.currentframe",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "inspect.currentframe.f_code.co_name",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "get_fname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "getlogz",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "mp.Process",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "mp.Process.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "mp.Process.join",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "mp.Process.terminate",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "@pytest.mark.parametrize(\"dynamic,delay_frac,with_pool,dyn_pool\",\n                         itertools.chain(\n                             itertools.product([False, True],\n                                               [.2, .5, .75, .9], [False],\n                                               [False]),\n                             itertools.product([False, True], [.5], [True],\n                                               [False]),\n                             [[True, .5, True, True]]))\n@pytest.mark.xdist_group(name=\"resume_group\")\ndef test_resume(dynamic, delay_frac, with_pool, dyn_pool):\n    fname = get_fname(inspect.currentframe().f_code.co_name)\n    save_every = 1\n    cache_dt, cache_logz = getlogz(fname, save_every)\n    if with_pool:\n        npool = 2\n    else:\n        npool = None\n    curdt, curlogz = [_[dynamic, with_pool] for _ in [cache_dt, cache_logz]]\n    save_every = min(save_every, curdt / 10)\n    curdt *= delay_frac\n    try:\n        fit_proc = mp.Process(target=fit_main,\n                              args=(fname, dynamic, save_every, npool,\n                                    dyn_pool))\n        fit_proc.start()\n        res = fit_proc.join(curdt)\n        if res is None:\n            fit_proc.terminate()\n            if np.allclose(delay_frac, .2) and not os.path.exists(fname):\n                return\n    finally:\n        try:\n            os.unlink(fname)\n        except:\n            pass\n        try:\n            os.unlink(fname + '.tmp')\n        except:\n            pass"
+    }
+  }
+]

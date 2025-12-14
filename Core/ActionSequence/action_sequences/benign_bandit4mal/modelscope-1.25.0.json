@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "modelscope-1.25.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "video_stabilization_pipeline.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/modelscope-1.25.0/modelscope-1.25.0/modelscope/pipelines/cv/video_stabilization_pipeline.py",
+    "line_number": "114",
+    "type_description": "B812:system",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "113\t        if is_cvt_h264:\n114\t            assert os.system(\n115\t                'ffmpeg -version'\n116\t            ) == 0, 'ffmpeg is not installed correctly, please refer to https://trac.ffmpeg.org/wiki/CompilationGuide.'",
+    "code_snippet": "import os\nimport subprocess\nimport tempfile\nimport cv2\nimport numpy as np\nfrom modelscope.outputs import OutputKeys\n\ndef postprocess(self, inputs: dict, **kwargs) -> dict:\n    output_video_path = kwargs.get('output_video', None)\n    is_cvt_h264 = kwargs.get('is_cvt_h264', False)\n\n    if output_video_path is None:\n        output_video_path = tempfile.NamedTemporaryFile(suffix='.mp4').name\n    h, w = inputs['output'][0].shape[-3:-1]\n    fourcc = cv2.VideoWriter_fourcc(*'mp4v')\n    video_writer = cv2.VideoWriter(output_video_path, fourcc,\n                                   inputs['fps'], (w, h))\n    for idx, frame in enumerate(inputs['output']):\n        horizontal_border = int(inputs['base_crop_width'] * w / 1280)\n        vertical_border = int(horizontal_border * h / w)\n        new_frame = frame[vertical_border:-vertical_border,\n                          horizontal_border:-horizontal_border]\n        new_frame = cv2.resize(new_frame, (w, h))\n        video_writer.write(new_frame)\n    video_writer.release()\n\n    if is_cvt_h264:\n        assert os.system(\n            'ffmpeg -version'\n        ) == 0, 'ffmpeg is not installed correctly, please refer to https://trac.ffmpeg.org/wiki/CompilationGuide.'\n        output_video_path_for_web = output_video_path[:-4] + '_web.mp4'\n        convert_cmd = f'ffmpeg -i {output_video_path} -vcodec h264 -crf 5 {output_video_path_for_web}'\n        subprocess.call(convert_cmd, shell=True)\n        return {OutputKeys.OUTPUT_VIDEO: output_video_path_for_web}\n    else:\n        return {OutputKeys.OUTPUT_VIDEO: output_video_path}\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "tempfile.NamedTemporaryFile",
+        "cv2.VideoWriter_fourcc",
+        "cv2.VideoWriter",
+        "cv2.resize",
+        "cv2.VideoWriter.write",
+        "cv2.VideoWriter.release",
+        "os.system",
+        "subprocess.call"
+      ],
+      "api_sequence_with_args": [
+        "tempfile.NamedTemporaryFile(suffix='.mp4')",
+        "cv2.VideoWriter_fourcc(*'mp4v')",
+        "cv2.VideoWriter(output_video_path, fourcc, inputs['fps'], (w, h))",
+        "cv2.resize(new_frame, (w, h))",
+        "cv2.VideoWriter.write(new_frame)",
+        "cv2.VideoWriter.release()",
+        "os.system('ffmpeg -version')",
+        "subprocess.call(convert_cmd, shell=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "tempfile.NamedTemporaryFile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "cv2.VideoWriter_fourcc",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "cv2.VideoWriter",
+          "id": "create_video_capture",
+          "description": "Creates video capture object for default camera",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "camera_operations"
+        },
+        {
+          "api_name": "cv2.resize",
+          "id": "open_image_buffer",
+          "description": "Opens image from in-memory bytes buffer",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "cv2.VideoWriter.write",
+          "id": "save_image_file",
+          "description": "Saves image to file in PNG format",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "image_processing"
+        },
+        {
+          "api_name": "cv2.VideoWriter.release",
+          "id": "release_video_device",
+          "description": "Releases video capture device",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "camera_operations"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nimport tempfile\nimport cv2\n\ndef postprocess(self, inputs: dict, **kwargs) -> dict:\n    output_video_path = kwargs.get('output_video', None)\n    is_cvt_h264 = kwargs.get('is_cvt_h264', False)\n\n    if output_video_path is None:\n        output_video_path = tempfile.NamedTemporaryFile(suffix='.mp4').name\n    h, w = inputs['output'][0].shape[-3:-1]\n    fourcc = cv2.VideoWriter_fourcc(*'mp4v')\n    video_writer = cv2.VideoWriter(output_video_path, fourcc,\n                                   inputs['fps'], (w, h))\n    for idx, frame in enumerate(inputs['output']):\n        horizontal_border = int(inputs['base_crop_width'] * w / 1280)\n        vertical_border = int(horizontal_border * h / w)\n        new_frame = frame[vertical_border:-vertical_border,\n                          horizontal_border:-horizontal_border]\n        new_frame = cv2.resize(new_frame, (w, h))\n        video_writer.write(new_frame)\n    video_writer.release()\n\n    if is_cvt_h264:\n        assert os.system(\n            'ffmpeg -version'\n        ) == 0, 'ffmpeg is not installed correctly, please refer to https://trac.ffmpeg.org/wiki/CompilationGuide.'\n        output_video_path_for_web = output_video_path[:-4] + '_web.mp4'\n        convert_cmd = f'ffmpeg -i {output_video_path} -vcodec h264 -crf 5 {output_video_path_for_web}'\n        subprocess.call(convert_cmd, shell=True)\n        return {OutputKeys.OUTPUT_VIDEO: output_video_path_for_web}\n    else:\n        return {OutputKeys.OUTPUT_VIDEO: output_video_path}\n"
+    }
+  }
+]

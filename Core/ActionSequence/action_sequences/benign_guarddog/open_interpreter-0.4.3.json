@@ -1,0 +1,384 @@
+[
+  {
+    "pyfile": "clipboard.py",
+    "code_snippet": "import platform\nfrom ...utils.lazy_import import lazy_import\n\n# Lazy import of optional packages\npyperclip = lazy_import('pyperclip')\n\nclass Clipboard:\n    def __init__(self, computer):\n        self.computer = computer\n\n        if platform.system() == \"Windows\" or platform.system() == \"Linux\":\n            self.modifier_key = \"ctrl\"\n        else:\n            self.modifier_key = \"command\"\n\n    def view(self):\n        \"\"\"\n        Returns the current content of on the clipboard.\n        \"\"\"\n        return pyperclip.paste()\n\n    def copy(self, text=None):\n        \"\"\"\n        Copies the given text to the clipboard.\n        \"\"\"\n        if text is not None:\n            pyperclip.copy(text)\n        else:\n            self.computer.keyboard.hotkey(self.modifier_key, \"c\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.system",
+        "platform.system",
+        "pyperclip.paste",
+        "pyperclip.copy",
+        "self.computer.keyboard.hotkey"
+      ],
+      "api_sequence_with_args": [
+        "platform.system()",
+        "platform.system()",
+        "pyperclip.paste()",
+        "pyperclip.copy(text)",
+        "self.computer.keyboard.hotkey(self.modifier_key, \"c\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "self.computer.keyboard.hotkey",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import platform\nfrom ...utils.lazy_import import lazy_import\n\npyperclip = lazy_import('pyperclip')\n\nclass Clipboard:\n    def __init__(self, computer):\n        self.computer = computer\n\n        if platform.system() == \"Windows\" or platform.system() == \"Linux\":\n            self.modifier_key = \"ctrl\"\n        else:\n            self.modifier_key = \"command\"\n\n    def view(self):\n        return pyperclip.paste()\n\n    def copy(self, text=None):\n        if text is not None:\n            pyperclip.copy(text)\n        else:\n            self.computer.keyboard.hotkey(self.modifier_key, \"c\")"
+    }
+  },
+  {
+    "pyfile": "wtf.py",
+    "code_snippet": "import platform\nimport sys\nimport time\nimport os\nimport re\nimport subprocess\nimport platformdirs\nimport pyperclip\nyaml\nfrom pynput.keyboard import Controller, Key\nfrom yaspin import yaspin\n\ndef main():\n    ### GET OPTIONAL CUSTOM MESSAGE\n\n    custom_message = None\n    if len(sys.argv) > 1:\n        custom_message = \"wtf \" + \" \".join(sys.argv[1:])\n\n    ### GET TERMINAL HISTORY\n\n    keyboard = Controller()\n    history = None\n\n    ## SELECT ALL AND COPY METHOD\n\n    if True:\n        # Save clipboard\n        clipboard = pyperclip.paste()\n\n        # Select all text\n        shortcut_key = Key.cmd if platform.system() == \"Darwin\" else Key.ctrl\n        with keyboard.pressed(shortcut_key):\n            keyboard.press(\"a\")\n            keyboard.release(\"a\")\n\n        # Copy selected text\n        with keyboard.pressed(shortcut_key):\n            keyboard.press(\"c\")\n            keyboard.release(\"c\")\n\n        # Deselect\n        keyboard.press(Key.backspace)\n        keyboard.release(Key.backspace)\n\n        # Wait for the clipboard to update\n        time.sleep(0.1)\n\n        # Get terminal history from clipboard\n        history = pyperclip.paste()\n\n        # Reset clipboard to stored one\n        pyperclip.copy(clipboard)\n\n    ## OCR SCREENSHOT METHOD\n\n    if not history:\n        try:\n            import pytesseract\n            from PIL import ImageGrab\n\n            # Get active window coordinates using platform-specific methods\n            platform_name = platform.system()\n            if platform_name == \"Windows\":\n                import win32gui\n\n                window = win32gui.GetForegroundWindow()\n                left, top, right, bottom = win32gui.GetWindowRect(window)\n            elif platform_name == \"Darwin\":\n                from Quartz import (\n                    CGWindowListCopyWindowInfo,\n                    kCGNullWindowID,\n                    kCGWindowListOptionOnScreenOnly,\n                )\n\n                window_info = CGWindowListCopyWindowInfo(\n                    kCGWindowListOptionOnScreenOnly, kCGNullWindowID\n                )\n                for window in window_info:\n                    if window[\"kCGWindowLayer\"] == 0:\n                        window_geometry = window[\"kCGWindowBounds\"]\n                        left = window_geometry[\"X\"]\n                        top = window_geometry[\"Y\"]\n                        right = int(left + window_geometry[\"Width\"])\n                        bottom = int(top + window_geometry[\"Height\"])\n                        break\n            else:  # Assume it's a Linux-based system\n                root = subprocess.Popen(\n                    [\"xprop\", \"-root\", \"_NET_ACTIVE_WINDOW\"], stdout=subprocess.PIPE\n                )\n                stdout, stderr = root.communicate()\n                m = re.search(b\"^_NET_ACTIVE_WINDOW.* ([\\\\w]+)$\", stdout)\n                if m is not None:\n                    window_id = m.group(1)\n                    window = subprocess.Popen(\n                        [\"xwininfo\", \"-id\", window_id], stdout=subprocess.PIPE\n                    )\n                    stdout, stderr = window.communicate()\n                    match = re.search(\n                        rb\"Absolute upper-left X:\\s*(\\d+).*Absolute upper-left Y:\\s*(\\d+).*Width:\\s*(\\d+).*Height:\\s*(\\d+)\",\n                        stdout,\n                        re.DOTALL,\n                    )\n                    if match is not None:\n                        left, top, width, height = map(int, match.groups())\n                        right = left + width\n                        bottom = top + height\n\n            # spinner.stop()\n            # print(\"\\nPermission to capture terminal commands via screenshot -> OCR?\")\n            # permission = input(\"(y/n) > \")\n            # print(\"\")\n            # if permission.lower() != 'y':\n            #     print(\"Exiting...\")\n            #     exit()\n            # spinner.start()\n\n            # Take screenshot of the active window\n            screenshot = ImageGrab.grab(\n                bbox=(int(left), int(top), int(right), int(bottom))\n            )\n\n            # OCR the screenshot to get the text\n            text = pytesseract.image_to_string(screenshot)\n\n            history = text\n\n            if \"wtf\" in history:\n                last_wtf_index = history.rindex(\"wtf\")\n                history = history[:last_wtf_index]\n        except ImportError:\n            spinner.stop()\n            print(\n                \"To use OCR to capture terminal output (recommended) run `pip install pytesseract` or `pip3 install pytesseract`.\"\n            )\n            spinner.start()\n\n    ## TERMINAL HISTORY METHOD\n\n    if not history:\n        try:\n            shell = os.environ.get(\"SHELL\", \"/bin/bash\")\n            command = [shell, \"-ic\", \"fc -ln -10\"]  # Get just the last command\n\n            output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode(\n                \"utf-8\"\n            )\n\n            # Split the output into lines\n            lines = output.strip().split(\"\\n\")\n\n            # Filter out lines that look like the \"saving session\" message\n            history = [\n                line\n                for line in lines\n                if not line.startswith(\"...\")\n                and \"saving\" not in line\n                and \"Saving session...\" not in line\n            ]\n            history = [l.strip() for l in history if l.strip()][-10:]\n\n            # Split the history into individual commands\n\n            # Get the last command\n            last_command = history[-1]\n            spinner.start()\n            print(\n                f\"\\nRunning the last command again to collect its output: {last_command}\\n\"\n            )\n            spinner.stop()\n            # Run the last command and collect its output\n            try:\n                last_command_output = subprocess.check_output(\n                    last_command, shell=True, stderr=subprocess.STDOUT\n                ).decode(\"utf-8\")\n            except subprocess.CalledProcessError as e:\n                last_command_output = e.output.decode(\"utf-8\")\n            except Exception as e:\n                last_command_output = str(e)\n\n            # Format the history\n            history = \"The user tried to run the following commands:\\n\" + \"\\n\".join(\n                history\n            )\n            history += f\"\\nThe last command, {last_command}, resulted in this output:\\n{last_command_output}\"\n\n        except Exception as e:\n            raise\n            print(\n                \"Failed to retrieve and run the last command from terminal history. Exiting.\"\n            )\n            return\n\n    # Trim history\n    history = history[-9000:].strip()\n\n    # Remove any trailing spinner commands\n    spinner_commands = [\n        \"⠴\",\n        \"⠦\",\n        \"⠇\",\n        \"⠉\",\n        \"⠙\",\n        \"⠸\",\n        \"⠼\",\n        \"⠤\",\n        \"⠴\",\n        \"⠂\",\n        \"⠄\",\n        \"⠈\",\n        \"⠐\",\n        \"⠠\",\n    ]\n    for command in spinner_commands:\n        if history.endswith(command):\n            history = history[: -len(command)].strip()\n            break\n\n    if \"wtf\" in history:\n        last_wtf_index = history.rindex(\"wtf\")\n        history = history[:last_wtf_index]\n\n    ### GET ERROR CONTEXT\n\n    # Regex pattern to extract filename and line number\n    pattern = r'File \"([^\"]+)\", line (\\d+)'\n    matches = re.findall(pattern, history)\n\n    # Only keep the last X matches\n    matches = matches[-1:]  # Just the last match, change -1 to get more\n\n    # Function to get specified lines from a file\n    def get_lines_from_file(filename, line_number):\n        lines = []\n        try:\n            with open(filename, \"r\") as file:\n                all_lines = file.readlines()\n                start_line = max(0, line_number - 3)  # Preceding lines\n                end_line = min(len(all_lines), line_number + 2)  # Following lines\n                for i in range(start_line, end_line + 1):\n                    lines.append(f\"Line {i+1}: \" + all_lines[i].rstrip())\n        except Exception as e:\n            lines.append(f\"Error reading file: {e}\")\n        return lines\n\n    # Create the dictionary with filename, line number, and text\n    result = []\n    for match in matches:\n        filename, line_number = match\n        line_number = int(line_number)\n        lines = get_lines_from_file(filename, line_number)\n        result.append({\"filename\": filename, \"text\": \"\\n\".join(lines)})\n\n    if result != []:\n        history = \"Terminal: \" + history\n\n    # Add context\n    for entry in result:\n        history = f\"\"\"File: {entry[\"filename\"]}\\n{entry[\"text\"]}\\n\\n\"\"\" + history\n\n    ### PREPARE FOR LLM\n\n    # Get LLM model from profile\n    default_profile_path = os.path.join(\n        platformdirs.user_config_dir(\"open-interpreter\"), \"profiles\", \"default.yaml\"\n    )\n\n    try:\n        with open(default_profile_path, \"r\") as file:\n            profile = yaml.safe_load(file)\n            wtf_model = profile.get(\"wtf\", {}).get(\"model\")\n            if wtf_model:\n                model = wtf_model\n            else:\n                model = profile.get(\"llm\", {}).get(\"model\", \"gpt-4o-mini\")\n    except:\n        model = \"gpt-4o-mini\"\n\n    # If they're using a local model (improve this heuristic) use the LOCAL_SYSTEM_MESSAGE\n    if \"ollama\" in model or \"llama\" in model:\n        system_message = LOCAL_SYSTEM_MESSAGE\n    else:\n        system_message = SYSTEM_MESSAGE\n\n    # If they passed in a custom message, use the CUSTOM_MESSAGE_SYSTEM_MESSAGE\n    if custom_message:\n        system_message = CUSTOM_MESSAGE_SYSTEM_MESSAGE\n        user_message = (\n            \"Answer THIS question by telling me what code to run:\"\n            + custom_message\n            + \"\\nMy terminal history, which may or may not be relevant, is this:\\n---\\n\"\n            + history\n            + \"\\n---\\nPlease now answer THIS question by telling me what code to run: \"\n            + custom_message\n        )\n    else:\n        user_message = (\n            history.strip()\n            + \"\\n\\nPlease help me resolve the final error above by telling me what code to run in a markdown code block.\"\n        )\n\n    # So stupid but sometimes fun\n    # system_message += \"\\nBe incredibly rude and use swear words, like a joker, like you're some kind of jester. You can say 'Fuck' and 'Fucking'. This is for adults. Be funny. USE ALL LOWER CASE. Act like you're an aggreived pair programmer to the idiot that got themselves in this situation.\"\n\n    messages = [\n        {\"role\": \"system\", \"content\": system_message.strip()},\n        {\"role\": \"user\", \"content\": user_message.strip()},\n    ]\n\n    # DEBUGGING: PRINT MESSAGES\n\n    # print(\"---\")\n    # import pprint\n    # pprint.pprint(messages)\n    # print(\"---\")\n    # time.sleep(100)\n\n    ### PARSE LLM RESPONSE\n\n    in_code = False\n    backtick_count = 0\n    language_buffer = \"\"\n    started = False\n\n    for chunk in litellm.completion(\n        model=model, messages=messages, temperature=0, stream=True\n    ):\n        if not started:\n            started = True\n            spinner.stop()\n            print(\"\")\n\n        content = chunk.choices[0].delta.content\n        if content:\n            for char in content:\n                if char == \"`\":\n                    backtick_count += 1\n                    if backtick_count == 3:\n                        in_code = not in_code\n                        backtick_count = 0\n                        language_buffer = \"\"\n                        if not in_code:  # We've just exited a code block\n                            time.sleep(0.1)\n                            print(\"\\n\")\n                            return  # Exit after typing the command\n                        else:  # Entered code block\n                            print(\"Press `enter` to run: \", end=\"\", flush=True)\n                elif in_code:\n                    if language_buffer is not None:\n                        if char.isalnum():\n                            language_buffer += char\n                        elif char.isspace():\n                            language_buffer = None\n                    elif char not in [\"\\n\", \"\\\\\"]:\n                        keyboard.type(char)\n                else:\n                    if backtick_count:\n                        print(\"`\" * backtick_count, end=\"\", flush=True)\n                        backtick_count = 0\n\n                    # if \"\\n\" in char:\n                    #     char.replace(\"\\n\", \"\\n    \")\n\n                    print(char, end=\"\", flush=True)\n\n                    backtick_count = 0\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.argv",
+        "platform.system",
+        "pyperclip.paste",
+        "pynput.keyboard.Controller.pressed",
+        "pynput.keyboard.Controller.press",
+        "pynput.keyboard.Controller.release",
+        "pynput.keyboard.Controller.pressed",
+        "pynput.keyboard.Controller.press",
+        "pynput.keyboard.Controller.release",
+        "pynput.keyboard.Controller.press",
+        "pynput.keyboard.Controller.release",
+        "time.sleep",
+        "pyperclip.paste",
+        "pyperclip.copy",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "re.search",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "re.search",
+        "os.environ.get",
+        "subprocess.check_output",
+        "subprocess.check_output",
+        "subprocess.CalledProcessError.output.decode",
+        "open",
+        "open",
+        "platformdirs.user_config_dir",
+        "os.path.join",
+        "open",
+        "yaml.safe_load"
+      ],
+      "api_sequence_with_args": [
+        "sys.argv",
+        "platform.system()",
+        "pyperclip.paste()",
+        "keyboard.pressed(shortcut_key)",
+        "keyboard.press(\"a\")",
+        "keyboard.release(\"a\")",
+        "keyboard.pressed(shortcut_key)",
+        "keyboard.press(\"c\")",
+        "keyboard.release(\"c\")",
+        "keyboard.press(Key.backspace)",
+        "keyboard.release(Key.backspace)",
+        "time.sleep(0.1)",
+        "pyperclip.paste()",
+        "pyperclip.copy(clipboard)",
+        "subprocess.Popen([\"xprop\", \"-root\", \"_NET_ACTIVE_WINDOW\"], stdout=subprocess.PIPE)",
+        "root.communicate()",
+        "re.search(b\"^_NET_ACTIVE_WINDOW.* ([\\w]+)$\", stdout)",
+        "subprocess.Popen([\"xwininfo\", \"-id\", window_id], stdout=subprocess.PIPE)",
+        "window.communicate()",
+        "re.search(rb\"Absolute upper-left X:\\s*(\\d+).*Absolute upper-left Y:\\s*(\\d+).*Width:\\s*(\\d+).*Height:\\s*(\\d+)\", stdout, re.DOTALL)",
+        "os.environ.get(\"SHELL\", \"/bin/bash\")",
+        "subprocess.check_output(command, stderr=subprocess.STDOUT).decode(\"utf-8\")",
+        "subprocess.check_output(last_command, shell=True, stderr=subprocess.STDOUT).decode(\"utf-8\")",
+        "e.output.decode(\"utf-8\")",
+        "open(filename, \"r\")",
+        "open(default_profile_path, \"r\")",
+        "platformdirs.user_config_dir(\"open-interpreter\")",
+        "os.path.join(platformdirs.user_config_dir(\"open-interpreter\"), \"profiles\", \"default.yaml\")",
+        "open(default_profile_path, \"r\")",
+        "yaml.safe_load(file)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.pressed",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.press",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.release",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.pressed",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.press",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.release",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.press",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "pynput.keyboard.Controller.release",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "pyperclip.paste",
+          "id": "get_clipboard_text",
+          "description": "Retrieves text from system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.CalledProcessError.output.decode",
+          "id": "read_process_stderr",
+          "description": "Reads all bytes from process standard error",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "platformdirs.user_config_dir",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "yaml.safe_load",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import sys\nimport platform\nimport time\nimport os\nimport re\nimport subprocess\nimport platformdirs\nimport pyperclip\nfrom pynput.keyboard import Controller, Key\n\ndef main():\n    custom_message = None\n    if len(sys.argv) > 1:\n        custom_message = \"wtf \" + \" \".join(sys.argv[1:])\n\n    keyboard = Controller()\n    history = None\n\n    # Save clipboard\n    clipboard = pyperclip.paste()\n\n    # Select all text\n    shortcut_key = Key.cmd if platform.system() == \"Darwin\" else Key.ctrl\n    with keyboard.pressed(shortcut_key):\n        keyboard.press(\"a\")\n        keyboard.release(\"a\")\n\n    # Copy selected text\n    with keyboard.pressed(shortcut_key):\n        keyboard.press(\"c\")\n        keyboard.release(\"c\")\n\n    # Deselect\n    keyboard.press(Key.backspace)\n    keyboard.release(Key.backspace)\n\n    # Wait for the clipboard to update\n    time.sleep(0.1)\n\n    # Get terminal history from clipboard\n    history = pyperclip.paste()\n\n    # Reset clipboard to stored one\n    pyperclip.copy(clipboard)\n\n    # Linux active window geometry\n    root = subprocess.Popen([\"xprop\", \"-root\", \"_NET_ACTIVE_WINDOW\"], stdout=subprocess.PIPE)\n    stdout, stderr = root.communicate()\n    m = re.search(b\"^_NET_ACTIVE_WINDOW.* ([\\w]+)$\", stdout)\n    if m is not None:\n        window_id = m.group(1)\n        window = subprocess.Popen([\"xwininfo\", \"-id\", window_id], stdout=subprocess.PIPE)\n        stdout, stderr = window.communicate()\n        match = re.search(rb\"Absolute upper-left X:\\s*(\\d+).*Absolute upper-left Y:\\s*(\\d+).*Width:\\s*(\\d+).*Height:\\s*(\\d+)\", stdout, re.DOTALL)\n        if match is not None:\n            left, top, width, height = map(int, match.groups())\n            right = left + width\n            bottom = top + height\n\n    # Terminal history method\n    shell = os.environ.get(\"SHELL\", \"/bin/bash\")\n    command = [shell, \"-ic\", \"fc -ln -10\"]\n    output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode(\"utf-8\")\n    lines = output.strip().split(\"\\n\")\n    history = [line for line in lines if not line.startswith(\"...\") and \"saving\" not in line and \"Saving session...\" not in line]\n    history = [l.strip() for l in history if l.strip()][-10:]\n    last_command = history[-1]\n    try:\n        last_command_output = subprocess.check_output(last_command, shell=True, stderr=subprocess.STDOUT).decode(\"utf-8\")\n    except subprocess.CalledProcessError as e:\n        last_command_output = e.output.decode(\"utf-8\")\n    except Exception as e:\n        last_command_output = str(e)\n\n    # Get lines from file\n    def get_lines_from_file(filename, line_number):\n        lines = []\n        try:\n            with open(filename, \"r\") as file:\n                all_lines = file.readlines()\n                start_line = max(0, line_number - 3)\n                end_line = min(len(all_lines), line_number + 2)\n                for i in range(start_line, end_line + 1):\n                    lines.append(f\"Line {i+1}: \" + all_lines[i].rstrip())\n        except Exception as e:\n            lines.append(f\"Error reading file: {e}\")\n        return lines\n\n    # Get LLM model from profile\n    default_profile_path = os.path.join(platformdirs.user_config_dir(\"open-interpreter\"), \"profiles\", \"default.yaml\")\n    try:\n        with open(default_profile_path, \"r\") as file:\n            profile = yaml.safe_load(file)\n            wtf_model = profile.get(\"wtf\", {}).get(\"model\")\n            if wtf_model:\n                model = wtf_model\n            else:\n                model = profile.get(\"llm\", {}).get(\"model\", \"gpt-4o-mini\")\n    except:\n        model = \"gpt-4o-mini\""
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "open_interpreter-0.4.3",
+      "total_matches": 5
+    }
+  }
+]

@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\nfrom subprocess import PIPE\nimport sys\n\n# ... (other imports and code omitted for brevity)\n\ndef _env_bool_value(env_name, default):\n    \"\"\"Parses a bool option from an environment variable\"\"\"\n    return os.environ.get(env_name, default).upper() not in [\"FALSE\", \"0\", \"\"]\n\n# ... (other global variables and code omitted for brevity)\n\ndef check_linker_need_libatomic():\n    \"\"\"Test if linker on system needs libatomic.\"\"\"\n    code_test = (\n        b\"#include <atomic>\\n\"\n        + b\"int main() { return std::atomic<int64_t>{}; }\"\n    )\n    cxx = os.environ.get(\"CXX\", \"c++\")\n    cpp_test = subprocess.Popen(\n        [cxx, \"-x\", \"c++\", \"-std=c++17\", \"-\"],\n        stdin=PIPE,\n        stdout=PIPE,\n        stderr=PIPE,\n    )\n    cpp_test.communicate(input=code_test)\n    if cpp_test.returncode == 0:\n        return False\n    # Double-check to see if -latomic actually can solve the problem.\n    # https://github.com/grpc/grpc/issues/22491\n    cpp_test = subprocess.Popen(\n        [cxx, \"-x\", \"c++\", \"-std=c++17\", \"-\", \"-latomic\"],\n        stdin=PIPE,\n        stdout=PIPE,\n        stderr=PIPE,\n    )\n    cpp_test.communicate(input=code_test)\n    return cpp_test.returncode == 0\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.returncode",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.returncode"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(env_name, default)",
+        "subprocess.Popen([cxx, \"-x\", \"c++\", \"-std=c++17\", \"-\"], stdin=PIPE, stdout=PIPE, stderr=PIPE)",
+        "subprocess.Popen.communicate(input=code_test)",
+        "subprocess.Popen.returncode",
+        "subprocess.Popen([cxx, \"-x\", \"c++\", \"-std=c++17\", \"-\", \"-latomic\"], stdin=PIPE, stdout=PIPE, stderr=PIPE)",
+        "subprocess.Popen.communicate(input=code_test)",
+        "subprocess.Popen.returncode"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.returncode",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.returncode",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\nfrom subprocess import PIPE\n\ndef _env_bool_value(env_name, default):\n    \"\"\"Parses a bool option from an environment variable\"\"\"\n    return os.environ.get(env_name, default).upper() not in [\"FALSE\", \"0\", \"\"]\n\ndef check_linker_need_libatomic():\n    \"\"\"Test if linker on system needs libatomic.\"\"\"\n    code_test = (\n        b\"#include <atomic>\\n\"\n        + b\"int main() { return std::atomic<int64_t>{}; }\"\n    )\n    cxx = os.environ.get(\"CXX\", \"c++\")\n    cpp_test = subprocess.Popen(\n        [cxx, \"-x\", \"c++\", \"-std=c++17\", \"-\"],\n        stdin=PIPE,\n        stdout=PIPE,\n        stderr=PIPE,\n    )\n    cpp_test.communicate(input=code_test)\n    if cpp_test.returncode == 0:\n        return False\n    # Double-check to see if -latomic actually can solve the problem.\n    cpp_test = subprocess.Popen(\n        [cxx, \"-x\", \"c++\", \"-std=c++17\", \"-\", \"-latomic\"],\n        stdin=PIPE,\n        stdout=PIPE,\n        stderr=PIPE,\n    )\n    cpp_test.communicate(input=code_test)\n    return cpp_test.returncode == 0"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "grpcio_tools-1.72.0rc1",
+      "total_matches": 2
+    }
+  }
+]

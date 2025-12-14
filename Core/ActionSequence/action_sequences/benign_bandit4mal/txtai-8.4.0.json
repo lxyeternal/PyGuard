@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "txtai-8.4.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "microphone.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/txtai-8.4.0/txtai-8.4.0/src/python/txtai/pipeline/audio/microphone.py",
+    "line_number": "116",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "115\t            # Read chunk\n116\t            chunk, _ = stream.read(chunksize)\n117",
+    "code_snippet": "def listen(self, device):\n    \"\"\"\n    Listens for speech. Detected speech is converted to 32-bit floats for compatibility with\n    automatic speech recognition (ASR) pipelines.\n\n    This method blocks until speech is detected.\n\n    Args:\n        device: input device\n\n    Returns:\n        audio\n    \"\"\"\n\n    # Record in 100ms chunks\n    chunksize = self.rate // 10\n\n    # Open input stream\n    stream = sd.RawInputStream(device=device, samplerate=self.rate, channels=1, blocksize=chunksize, dtype=np.int16)\n\n    # Start the input stream\n    stream.start()\n\n    record, speech, nospeech, chunks = True, 0, 0, []\n    while record:\n        # Read chunk\n        chunk, _ = stream.read(chunksize)\n\n        # Detect speech using WebRTC VAD for audio chunk\n        detect = self.detect(chunk)\n        speech = speech + 1 if detect else speech\n        nospeech = 0 if detect else nospeech + 1\n\n        # Save chunk, if this is an active stream\n        if speech:\n            chunks.append(chunk)\n\n            # Pause limit has been reached, check if this audio should be accepted\n            if nospeech >= self.pause:\n                logger.debug(\"Audio detected and being analyzed\")\n                if speech >= self.active and self.isspeech(chunks[:-nospeech]):\n                    # Disable recording\n                    record = False\n                else:\n                    # Reset parameters and keep recording\n                    logger.debug(\"Speech not detected\")\n                    speech, nospeech, chunks = 0, 0, []\n\n    # Stop the input stream\n    stream.stop()\n\n    # Convert to float32 and return\n    audio = np.frombuffer(b\"\".join(chunks), np.int16)\n    return Signal.float32(audio)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sd.RawInputStream",
+        "sd.RawInputStream.start",
+        "sd.RawInputStream.read",
+        "logger.debug",
+        "logger.debug",
+        "sd.RawInputStream.stop",
+        "np.frombuffer",
+        "Signal.float32"
+      ],
+      "api_sequence_with_args": [
+        "sd.RawInputStream(device=device, samplerate=self.rate, channels=1, blocksize=chunksize, dtype=np.int16)",
+        "sd.RawInputStream.start()",
+        "sd.RawInputStream.read(chunksize)",
+        "logger.debug(\"Audio detected and being analyzed\")",
+        "logger.debug(\"Speech not detected\")",
+        "sd.RawInputStream.stop()",
+        "np.frombuffer(b\"\".join(chunks), np.int16)",
+        "Signal.float32(audio)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sd.RawInputStream",
+          "id": "create_video_capture",
+          "description": "Creates video capture object for default camera",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "camera_operations"
+        },
+        {
+          "api_name": "sd.RawInputStream.start",
+          "id": "create_video_capture",
+          "description": "Creates video capture object for default camera",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "camera_operations"
+        },
+        {
+          "api_name": "sd.RawInputStream.read",
+          "id": "read_video_frame",
+          "description": "Reads frame from video capture device",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "camera_operations"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "sd.RawInputStream.stop",
+          "id": "release_video_device",
+          "description": "Releases video capture device",
+          "first_id": "information_gathering",
+          "second_id": "multimedia_capture",
+          "third_id": "camera_operations"
+        },
+        {
+          "api_name": "np.frombuffer",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "Signal.float32",
+          "id": "create_memory_bytes",
+          "description": "Creates in-memory bytes buffer from encoded string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        }
+      ],
+      "contextual_code": "def listen(self, device):\n    chunksize = self.rate // 10\n    stream = sd.RawInputStream(device=device, samplerate=self.rate, channels=1, blocksize=chunksize, dtype=np.int16)\n    stream.start()\n    record, speech, nospeech, chunks = True, 0, 0, []\n    while record:\n        chunk, _ = stream.read(chunksize)\n        detect = self.detect(chunk)\n        speech = speech + 1 if detect else speech\n        nospeech = 0 if detect else nospeech + 1\n        if speech:\n            chunks.append(chunk)\n            if nospeech >= self.pause:\n                logger.debug(\"Audio detected and being analyzed\")\n                if speech >= self.active and self.isspeech(chunks[:-nospeech]):\n                    record = False\n                else:\n                    logger.debug(\"Speech not detected\")\n                    speech, nospeech, chunks = 0, 0, []\n    stream.stop()\n    audio = np.frombuffer(b\"\".join(chunks), np.int16)\n    return Signal.float32(audio)"
+    }
+  }
+]

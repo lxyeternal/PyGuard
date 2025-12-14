@@ -1,0 +1,356 @@
+{
+  "metadata": {
+    "package_name": "torchtext-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/torchtext-0.18.0-cp39-cp39-win_amd64.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "vectors.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/torchtext-0.18.0-cp39-cp39-win_amd64/torchtext/vocab/vectors.py",
+      "line_number": "98",
+      "type_description": "B819:urlretrieve",
+      "context_snippet": "def cache(self, name, cache, url=None, max_vectors=None):\n    import ssl\n\n    ssl._create_default_https_context = ssl._create_unverified_context\n    if os.path.isfile(name):\n        path = name\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = os.path.join(cache, os.path.basename(name)) + file_suffix\n    else:\n        path = os.path.join(cache, name)\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = path + file_suffix\n\n    if not os.path.isfile(path_pt):\n        if not os.path.isfile(path) and url:\n            logger.info(\"Downloading vectors from {}\".format(url))\n            if not os.path.exists(cache):\n                os.makedirs(cache)\n            dest = os.path.join(cache, os.path.basename(url))\n            if not os.path.isfile(dest):\n                with tqdm(unit=\"B\", unit_scale=True, miniters=1, desc=dest) as t:\n                    try:\n                        urlretrieve(url, dest, reporthook=reporthook(t))\n                    except KeyboardInterrupt as e:  # remove the partial zip file\n                        os.remove(dest)\n                        raise e\n            logger.info(\"Extracting vectors into {}\".format(cache))\n            ext = os.path.splitext(dest)[1][1:]\n            if ext == \"zip\":\n                with zipfile.ZipFile(dest, \"r\") as zf:\n                    zf.extractall(cache)\n            elif ext == \"gz\":\n                if dest.endswith(\".tar.gz\"):\n                    with tarfile.open(dest, \"r:gz\") as tar:\n                        tar.extractall(path=cache)\n        if not os.path.isfile(path):\n            raise RuntimeError(\"no vectors found at {}\".format(path))\n\n        logger.info(\"Loading vectors from {}\".format(path))\n        ext = os.path.splitext(path)[1][1:]\n        if ext == \"gz\":\n            open_file = gzip.open\n        else:\n            open_file = open\n\n        vectors_loaded = 0\n        with open_file(path, \"rb\") as f:\n            num_lines, dim = _infer_shape(f)\n            if not max_vectors or max_vectors > num_lines:\n                max_vectors = num_lines\n\n            itos, vectors, dim = [], torch.zeros((max_vectors, dim)), None\n\n            for line in tqdm(f, total=max_vectors):\n                # Explicitly splitting on \" \" is important, so we don't\n                # get rid of Unicode non-breaking spaces in the vectors.\n                entries = line.rstrip().split(b\" \")\n\n                word, entries = entries[0], entries[1:]\n                if dim is None and len(entries) > 1:\n                    dim = len(entries)\n                elif len(entries) == 1:\n                    logger.warning(\n                        \"Skipping token {} with 1-dimensional \" \"vector {}; likely a header\".format(word, entries)\n                    )\n                    continue\n                elif dim != len(entries):\n                    raise RuntimeError(\n                        \"Vector for token {} has {} dimensions, but previously \"\n                        \"read vectors have {} dimensions. All vectors must have \"\n                        \"the same number of dimensions.\".format(word, len(entries), dim)\n                    )\n\n                try:\n                    if isinstance(word, bytes):\n                        word = word.decode(\"utf-8\")\n                except UnicodeDecodeError:\n                    logger.info(\"Skipping non-UTF8 token {}\".format(repr(word)))\n                    continue\n\n                vectors[vectors_loaded] = torch.tensor([float(x) for x in entries])\n                vectors_loaded += 1\n                itos.append(word)\n\n                if vectors_loaded == max_vectors:\n                    break\n\n        self.itos = itos\n        self.stoi = {word: i for i, word in enumerate(itos)}\n        self.vectors = torch.Tensor(vectors).view(-1, dim)\n        self.dim = dim\n        logger.info(\"Saving vectors to {}\".format(path_pt))\n        if not os.path.exists(cache):\n            os.makedirs(cache)\n        torch.save((self.itos, self.stoi, self.vectors, self.dim), path_pt)\n    else:\n        logger.info(\"Loading vectors from {}\".format(path_pt))\n        self.itos, self.stoi, self.vectors, self.dim = torch.load(path_pt)",
+      "hash_value": "cfc988d19997303c46067a15ddf79127",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def cache(self, name, cache, url=None, max_vectors=None):\n    import ssl\n\n    ssl._create_default_https_context = ssl._create_unverified_context\n    if os.path.isfile(name):\n        path = name\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = os.path.join(cache, os.path.basename(name)) + file_suffix\n    else:\n        path = os.path.join(cache, name)\n        if max_vectors:\n            file_suffix = \"_{}.pt\".format(max_vectors)\n        else:\n            file_suffix = \".pt\"\n        path_pt = path + file_suffix\n\n    if not os.path.isfile(path_pt):\n        if not os.path.isfile(path) and url:\n            logger.info(\"Downloading vectors from {}\".format(url))\n            if not os.path.exists(cache):\n                os.makedirs(cache)\n            dest = os.path.join(cache, os.path.basename(url))\n            if not os.path.isfile(dest):\n                with tqdm(unit=\"B\", unit_scale=True, miniters=1, desc=dest) as t:\n                    try:\n                        urlretrieve(url, dest, reporthook=reporthook(t))\n                    except KeyboardInterrupt as e:  # remove the partial zip file\n                        os.remove(dest)\n                        raise e\n            logger.info(\"Extracting vectors into {}\".format(cache))\n            ext = os.path.splitext(dest)[1][1:]\n            if ext == \"zip\":\n                with zipfile.ZipFile(dest, \"r\") as zf:\n                    zf.extractall(cache)\n            elif ext == \"gz\":\n                if dest.endswith(\".tar.gz\"):\n                    with tarfile.open(dest, \"r:gz\") as tar:\n                        tar.extractall(path=cache)\n        if not os.path.isfile(path):\n            raise RuntimeError(\"no vectors found at {}\".format(path))\n\n        logger.info(\"Loading vectors from {}\".format(path))\n        ext = os.path.splitext(path)[1][1:]\n        if ext == \"gz\":\n            open_file = gzip.open\n        else:\n            open_file = open\n\n        vectors_loaded = 0\n        with open_file(path, \"rb\") as f:\n            num_lines, dim = _infer_shape(f)\n            if not max_vectors or max_vectors > num_lines:\n                max_vectors = num_lines\n\n            itos, vectors, dim = [], torch.zeros((max_vectors, dim)), None\n\n            for line in tqdm(f, total=max_vectors):\n                # Explicitly splitting on \" \" is important, so we don't\n                # get rid of Unicode non-breaking spaces in the vectors.\n                entries = line.rstrip().split(b\" \")\n\n                word, entries = entries[0], entries[1:]\n                if dim is None and len(entries) > 1:\n                    dim = len(entries)\n                elif len(entries) == 1:\n                    logger.warning(\n                        \"Skipping token {} with 1-dimensional \" \"vector {}; likely a header\".format(word, entries)\n                    )\n                    continue\n                elif dim != len(entries):\n                    raise RuntimeError(\n                        \"Vector for token {} has {} dimensions, but previously \"\n                        \"read vectors have {} dimensions. All vectors must have \"\n                        \"the same number of dimensions.\".format(word, len(entries), dim)\n                    )\n\n                try:\n                    if isinstance(word, bytes):\n                        word = word.decode(\"utf-8\")\n                except UnicodeDecodeError:\n                    logger.info(\"Skipping non-UTF8 token {}\".format(repr(word)))\n                    continue\n\n                vectors[vectors_loaded] = torch.tensor([float(x) for x in entries])\n                vectors_loaded += 1\n                itos.append(word)\n\n                if vectors_loaded == max_vectors:\n                    break\n\n        self.itos = itos\n        self.stoi = {word: i for i, word in enumerate(itos)}\n        self.vectors = torch.Tensor(vectors).view(-1, dim)\n        self.dim = dim\n        logger.info(\"Saving vectors to {}\".format(path_pt))\n        if not os.path.exists(cache):\n            os.makedirs(cache)\n        torch.save((self.itos, self.stoi, self.vectors, self.dim), path_pt)\n    else:\n        logger.info(\"Loading vectors from {}\".format(path_pt))\n        self.itos, self.stoi, self.vectors, self.dim = torch.load(path_pt)",
+          "triple_sequences": [
+            {
+              "action_api": "ssl._create_default_https_context = ssl._create_unverified_context",
+              "action_description": "Disables SSL certificate warnings",
+              "action_id": "disable_ssl_warnings",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Suppress SSL warning messages",
+              "intention_id": "suppress_ssl_warnings"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "name",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Determine_local_file_presence",
+              "intention_id": "determine_local_file_presence"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "cache, os.path.basename(name)",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "path_pt",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Determine_local_file_presence",
+              "intention_id": "determine_local_file_presence"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "path",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Determine_local_file_presence",
+              "intention_id": "determine_local_file_presence"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "cache",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Determine_directory_presence",
+              "intention_id": "determine_directory_presence"
+            },
+            {
+              "action_api": "os.makedirs()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "cache",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "cache, os.path.basename(url)",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "dest",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Determine_local_file_presence",
+              "intention_id": "determine_local_file_presence"
+            },
+            {
+              "action_api": "tqdm()",
+              "action_description": "Creates asynchronous task",
+              "action_id": "create_async_task",
+              "object": "unit=\"B\", unit_scale=True, miniters=1, desc=dest",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "urlretrieve()",
+              "action_description": "Downloads file from URL to local path",
+              "action_id": "download_file_url",
+              "object": "url, dest, reporthook=reporthook(t)",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "os.remove()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "dest",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "os.path.splitext()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "dest",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "zipfile.ZipFile()",
+              "action_description": "Opens ZIP archive for reading",
+              "action_id": "open_zip_read",
+              "object": "dest, \"r\"",
+              "object_description": "ZIP archive file",
+              "object_id": "zip_archive",
+              "intention_description": "Open file",
+              "intention_id": "open_file"
+            },
+            {
+              "action_api": "zf.extractall()",
+              "action_description": "Extracts all files from ZIP archive to specified directory",
+              "action_id": "extract_zip_files",
+              "object": "cache",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Decompress downloaded archive",
+              "intention_id": "decompress_downloaded_archive"
+            },
+            {
+              "action_api": "tarfile.open()",
+              "action_description": "Opens ZIP archive for reading",
+              "action_id": "open_zip_read",
+              "object": "dest, \"r:gz\"",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Open file",
+              "intention_id": "open_file"
+            },
+            {
+              "action_api": "tar.extractall()",
+              "action_description": "Extracts all files from ZIP archive to specified directory",
+              "action_id": "extract_zip_files",
+              "object": "path=cache",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Decompress downloaded archive",
+              "intention_id": "decompress_downloaded_archive"
+            },
+            {
+              "action_api": "os.path.isfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "path",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Determine_local_file_presence",
+              "intention_id": "determine_local_file_presence"
+            },
+            {
+              "action_api": "os.path.splitext()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "path",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Prepare path for file operations",
+              "intention_id": "prepare_path_file_operations"
+            },
+            {
+              "action_api": "gzip.open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "path, \"rb\"",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "path, \"rb\"",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "f.readline() / f.__iter__()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "f",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "line.rstrip()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "line",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "line.split()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "b\" \"",
+              "object_description": "Space delimiter",
+              "object_id": "space_delimiter",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "word, bytes",
+              "object_description": "Character_from_obfuscated_bytes",
+              "object_id": "character_from_obfuscated_bytes",
+              "intention_description": "Prepare character for further processing",
+              "intention_id": "prepare_character_processing"
+            },
+            {
+              "action_api": "word.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "\"utf-8\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "torch.tensor()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "[float(x) for x in entries]",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "torch.zeros()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "(max_vectors, dim)",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "torch.Tensor()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "vectors",
+              "object_description": "Character code array",
+              "object_id": "character_code_array",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "cache",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Determine_directory_presence",
+              "intention_id": "determine_directory_presence"
+            },
+            {
+              "action_api": "os.makedirs()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "cache",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "torch.save()",
+              "action_description": "Saves image to file",
+              "action_id": "save_image_file",
+              "object": "(self.itos, self.stoi, self.vectors, self.dim), path_pt",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "torch.load()",
+              "action_description": "Opens SQLite database file",
+              "action_id": "open_sqlite_db",
+              "object": "path_pt",
+              "object_description": "Local file",
+              "object_id": "local_file",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

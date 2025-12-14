@@ -1,0 +1,161 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# --- Match 1 (Line 36): code-execution: found 3 source code matches\n# VERSION = check_output(['meta', 'get', 'package.version']).decode(errors='ignore')\n\nimport subprocess\nfrom subprocess import check_output\n\nREDIS_VERSION = os.environ.get('REDIS_VERSION', '6.2.14')\ntry:\n    VERSION = check_output(['meta', 'get', 'package.version']).decode(errors='ignore')\nexcept (subprocess.CalledProcessError, FileNotFoundError):\n    VERSION = REDIS_VERSION\n\n# Data dependencies:\n# - VERSION is used in Git(version=VERSION) and possibly elsewhere\n# - check_output is imported from subprocess\n# - REDIS_VERSION is set above\n\n# --- Match 2 (Line 89): code-execution: found 3 source code matches\n# call(cmd, cwd=REDIS_PATH)\n\nfrom subprocess import call\nimport os\nimport logging\n\nREDIS_PATH = os.path.join(BASEPATH, 'redis.submodule')\n\nclass BuildRedis(build):\n    global REDIS_SERVER_METADATA\n\n    def run(self):\n        # run original build code\n        build.run(self)\n\n        # build Redis\n        logger.debug('Running build_redis')\n\n        os.environ['CC'] = 'gcc'\n        os.environ['PREFIX'] = REDIS_PATH\n        cmd = [\n            'make',\n            'MALLOC=libc',\n            'V=' + str(self.verbose),\n        ]\n\n        targets = ['install']\n        cmd.extend(targets)\n\n        target_files = [\n            os.path.join(REDIS_PATH, 'bin/redis-server'),\n            os.path.join(REDIS_PATH, 'bin/redis-cli'),\n        ]\n\n        def _compile():\n            print('*' * 80)\n            print(os.getcwd())\n            call(cmd, cwd=REDIS_PATH)\n            print('*' * 80)\n\n        self.execute(_compile, [], 'compiling redis')\n\n        # copy resulting tool to script folder\n        self.mkpath(self.build_scripts)\n\n        if not self.dry_run:\n            for target in target_files:\n                logger.debug('copy: %s -> %s', target, self.build_scripts)\n                self.copy_file(target, self.build_scripts)\n\n# Data dependencies:\n# - call is from subprocess\n# - cmd is constructed in run()\n# - REDIS_PATH is set at module level\n\n# --- Match 3 (Line 148): code-execution: found 3 source code matches\n# for line in os.popen('%s --version' % md['redis_bin']).readlines():\n\nimport os\nimport json\n\nREDIS_SERVER_METADATA = {}\n\nclass InstallRedis(install):\n    build_scripts = None\n\n    def initialize_options(self):\n        install.initialize_options(self)\n\n    def finalize_options(self):\n        install.finalize_options(self)\n        self.set_undefined_options('build', ('build_scripts', 'build_scripts'))\n\n    def run(self):\n        global install_scripts\n        # run original install code\n        install.run(self)\n\n        # install Redis executables\n        logger.debug(\n            'running InstallRedis %s -> %s', self.build_lib, self.install_lib\n        )\n        self.copy_tree(self.build_lib, self.install_lib)\n        module_bin = os.path.join(self.install_lib, 'redislite/bin')\n        if not os.path.exists(module_bin):\n            os.makedirs(module_bin, 0o0755)\n        self.copy_tree(self.build_scripts, module_bin)\n        logger.debug(\n            'running InstallRedis %s -> %s',\n            self.build_scripts, self.install_scripts\n        )\n        self.copy_tree(self.build_scripts, self.install_scripts)\n\n        install_scripts = self.install_scripts\n        print('install_scripts: %s' % install_scripts)\n        md_file = os.path.join(\n            self.install_lib, 'redislite/package_metadata.json'\n        )\n        if os.path.exists(md_file):\n            with open(md_file) as fh:\n                md = json.load(fh)\n                if os.path.exists(os.path.join(module_bin, 'redis-server')):\n                    md['redis_bin'] = os.path.join(module_bin, 'redis-server')\n                else:\n                    md['redis_bin'] = os.path.join(\n                        install_scripts, 'redis-server'\n                    )\n            # Store the redis-server --version output for later\n            for line in os.popen('%s --version' % md['redis_bin']).readlines():\n                line = line.strip()\n                for item in line.split():\n                    if '=' in item:\n                        key, value = item.split('=')\n                        REDIS_SERVER_METADATA[key] = value\n            md['redis_server'] = REDIS_SERVER_METADATA\n            print('new metadata: %s' % md)\n            with open(md_file, 'w') as fh:\n                json.dump(md, fh, indent=4)\n\n# Data dependencies:\n# - md['redis_bin'] is set above\n# - os.popen is used for command execution\n# - REDIS_SERVER_METADATA is a global dict\n\n# --- Match 4 (Line 46): exfiltrate-sensitive-data: found 1 source code matches\n# ftpstream = urllib.request.urlopen(REDIS_URL)\n\nimport urllib.request\nimport tarfile\nimport shutil\nimport pathlib\nimport tempfile\nimport os\n\nREDIS_PATH = os.path.join(BASEPATH, 'redis.submodule')\nREDIS_VERSION = os.environ.get('REDIS_VERSION', '6.2.14')\nREDIS_URL = f'http://download.redis.io/releases/redis-{REDIS_VERSION}.tar.gz'\n\ndef download_redis_submodule():\n    if pathlib.Path(REDIS_PATH).exists():\n        shutil.rmtree(REDIS_PATH)\n    with tempfile.TemporaryDirectory() as tempdir:\n        print(f'Downloading {REDIS_URL} to temp directory {tempdir}')\n        ftpstream = urllib.request.urlopen(REDIS_URL)\n        tf = tarfile.open(fileobj=ftpstream, mode=\"r|gz\")\n        directory = tf.next().name\n\n        print(f'Extracting archive {directory}')\n        tf.extractall(tempdir)\n\n        print(f'Moving {os.path.join(tempdir, directory)} -> redis.submodule')\n        shutil.move(os.path.join(tempdir, directory), 'redis.submodule')\n\n        # print('Updating jemalloc')\n        # os.system('(cd redis.submodule;./deps/update-jemalloc.sh 4.0.4)')\n\n# Data dependencies:\n# - REDIS_URL is constructed from REDIS_VERSION\n# - urllib.request is imported\n# - ftpstream is used as fileobj for tarfile.open\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "subprocess.check_output",
+        "subprocess.check_output.decode",
+        "subprocess.call",
+        "os.getcwd",
+        "os.path.join",
+        "os.popen",
+        "os.popen.readlines",
+        "urllib.request.urlopen",
+        "tarfile.open",
+        "tarfile.TarFile.next",
+        "tarfile.TarFile.extractall",
+        "os.path.join",
+        "shutil.move"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('REDIS_VERSION', '6.2.14')",
+        "subprocess.check_output(['meta', 'get', 'package.version'])",
+        "subprocess.check_output(['meta', 'get', 'package.version']).decode(errors='ignore')",
+        "subprocess.call(cmd, cwd=REDIS_PATH)",
+        "os.getcwd()",
+        "os.path.join(BASEPATH, 'redis.submodule')",
+        "os.popen('%s --version' % md['redis_bin'])",
+        "os.popen('%s --version' % md['redis_bin']).readlines()",
+        "urllib.request.urlopen(REDIS_URL)",
+        "tarfile.open(fileobj=ftpstream, mode=\"r|gz\")",
+        "tarfile.TarFile.next()",
+        "tarfile.TarFile.extractall(tempdir)",
+        "os.path.join(tempdir, directory)",
+        "shutil.move(os.path.join(tempdir, directory), 'redis.submodule')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.popen",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.popen.readlines",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "urllib.request.urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.next",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "tarfile.TarFile.extractall",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.move",
+          "id": "move_file",
+          "description": "Moves file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "# --- Sensitive API usage and dependencies ---\nimport subprocess\nfrom subprocess import check_output, call\nimport os\nimport urllib.request\nimport tarfile\nimport shutil\nimport pathlib\nimport tempfile\nimport json\n\n# 1. Get REDIS_VERSION from environment\nREDIS_VERSION = os.environ.get('REDIS_VERSION', '6.2.14')\n\n# 2. Try to get package version by executing a shell command\ntry:\n    VERSION = check_output(['meta', 'get', 'package.version']).decode(errors='ignore')\nexcept (subprocess.CalledProcessError, FileNotFoundError):\n    VERSION = REDIS_VERSION\n\n# 3. BuildRedis class: calls shell command via subprocess.call\nclass BuildRedis(build):\n    def run(self):\n        build.run(self)\n        os.environ['CC'] = 'gcc'\n        os.environ['PREFIX'] = REDIS_PATH\n        cmd = [\n            'make',\n            'MALLOC=libc',\n            'V=' + str(self.verbose),\n        ]\n        targets = ['install']\n        cmd.extend(targets)\n        def _compile():\n            print('*' * 80)\n            print(os.getcwd())\n            call(cmd, cwd=REDIS_PATH)\n            print('*' * 80)\n        self.execute(_compile, [], 'compiling redis')\n\n# 4. InstallRedis class: executes shell command via os.popen and reads output\nclass InstallRedis(install):\n    def run(self):\n        install.run(self)\n        self.copy_tree(self.build_lib, self.install_lib)\n        module_bin = os.path.join(self.install_lib, 'redislite/bin')\n        if not os.path.exists(module_bin):\n            os.makedirs(module_bin, 0o0755)\n        self.copy_tree(self.build_scripts, module_bin)\n        self.copy_tree(self.build_scripts, self.install_scripts)\n        md_file = os.path.join(self.install_lib, 'redislite/package_metadata.json')\n        if os.path.exists(md_file):\n            with open(md_file) as fh:\n                md = json.load(fh)\n                if os.path.exists(os.path.join(module_bin, 'redis-server')):\n                    md['redis_bin'] = os.path.join(module_bin, 'redis-server')\n                else:\n                    md['redis_bin'] = os.path.join(install_scripts, 'redis-server')\n            for line in os.popen('%s --version' % md['redis_bin']).readlines():\n                line = line.strip()\n                for item in line.split():\n                    if '=' in item:\n                        key, value = item.split('=')\n                        REDIS_SERVER_METADATA[key] = value\n            md['redis_server'] = REDIS_SERVER_METADATA\n            with open(md_file, 'w') as fh:\n                json.dump(md, fh, indent=4)\n\n# 5. Download Redis submodule: downloads and extracts remote archive\nREDIS_PATH = os.path.join(BASEPATH, 'redis.submodule')\nREDIS_VERSION = os.environ.get('REDIS_VERSION', '6.2.14')\nREDIS_URL = f'http://download.redis.io/releases/redis-{REDIS_VERSION}.tar.gz'\n\ndef download_redis_submodule():\n    if pathlib.Path(REDIS_PATH).exists():\n        shutil.rmtree(REDIS_PATH)\n    with tempfile.TemporaryDirectory() as tempdir:\n        print(f'Downloading {REDIS_URL} to temp directory {tempdir}')\n        ftpstream = urllib.request.urlopen(REDIS_URL)\n        tf = tarfile.open(fileobj=ftpstream, mode=\"r|gz\")\n        directory = tf.next().name\n        print(f'Extracting archive {directory}')\n        tf.extractall(tempdir)\n        print(f'Moving {os.path.join(tempdir, directory)} -> redis.submodule')\n        shutil.move(os.path.join(tempdir, directory), 'redis.submodule')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "redislite-6.2.912183",
+      "total_matches": 4
+    }
+  }
+]

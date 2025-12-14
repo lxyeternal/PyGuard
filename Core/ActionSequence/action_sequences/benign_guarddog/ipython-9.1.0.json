@@ -1,0 +1,144 @@
+[
+  {
+    "pyfile": "guarded_eval.py",
+    "code_snippet": "import builtins\n\n# ... (other imports and code omitted for brevity)\n\ndef _eval_node_name(node_id: str, context: EvaluationContext):\n    policy = EVALUATION_POLICIES[context.evaluation]\n    if policy.allow_locals_access and node_id in context.locals:\n        return context.locals[node_id]\n    if policy.allow_globals_access and node_id in context.globals:\n        return context.globals[node_id]\n    if policy.allow_builtins_access and hasattr(builtins, node_id):\n        # note: do not use __builtins__, it is implementation detail of cPython\n        return getattr(builtins, node_id)\n    if not policy.allow_globals_access and not policy.allow_locals_access:\n        raise GuardRejection(\n            f\"Namespace access not allowed in {context.evaluation} mode\"\n        )\n    else:\n        raise NameError(f\"{node_id} not found in locals, globals, nor builtins\")\n\n# Data dependencies and helpers:\n# - EVALUATION_POLICIES: defined at module level, maps policy names to policy objects\n# - GuardRejection: custom exception defined above\n# - EvaluationContext: NamedTuple defined above\n# - builtins: imported at top\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "hasattr",
+        "getattr"
+      ],
+      "api_sequence_with_args": [
+        "hasattr(builtins, node_id)",
+        "getattr(builtins, node_id)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "import builtins\n\ndef _eval_node_name(node_id: str, context: EvaluationContext):\n    policy = EVALUATION_POLICIES[context.evaluation]\n    if policy.allow_locals_access and node_id in context.locals:\n        return context.locals[node_id]\n    if policy.allow_globals_access and node_id in context.globals:\n        return context.globals[node_id]\n    if policy.allow_builtins_access and hasattr(builtins, node_id):\n        return getattr(builtins, node_id)\n    if not policy.allow_globals_access and not policy.allow_locals_access:\n        raise GuardRejection(\n            f\"Namespace access not allowed in {context.evaluation} mode\"\n        )\n    else:\n        raise NameError(f\"{node_id} not found in locals, globals, nor builtins\")"
+    }
+  },
+  {
+    "pyfile": "pytest_ipdoctest.py",
+    "code_snippet": "def runtest(self) -> None:\n    assert self.dtest is not None\n    assert self.runner is not None\n    _check_all_skipped(self.dtest)\n    self._disable_output_capturing_for_darwin()\n    failures: List[doctest.DocTestFailure] = []\n\n    # exec(compile(..., \"single\", ...), ...) puts result in builtins._\n    had_underscore_value = hasattr(builtins, \"_\")\n    underscore_original_value = getattr(builtins, \"_\", None)\n\n    # Save our current directory and switch out to the one where the\n    # test was originally created, in case another doctest did a\n    # directory change.  We'll restore this in the finally clause.\n    curdir = os.getcwd()\n    os.chdir(self.fspath.dirname)\n    try:\n        # Type ignored because we change the type of `out` from what\n        # ipdoctest expects.\n        self.runner.run(self.dtest, out=failures, clear_globs=False)  # type: ignore[arg-type]\n    finally:\n        os.chdir(curdir)\n        if had_underscore_value:\n            setattr(builtins, \"_\", underscore_original_value)\n        elif hasattr(builtins, \"_\"):\n            delattr(builtins, \"_\")\n\n    if failures:\n        raise MultipleDoctestFailures(failures)\n\n# Data dependencies and relevant imports:\nimport builtins\nimport os\n# The variable 'underscore_original_value' is set to getattr(builtins, \"_\", None)\n# It is used in the finally block to restore the original value of builtins._\n# The function is a method of the IPDoctestItem class, which is a subclass of pytest.Item\n# The function also uses MultipleDoctestFailures, which is defined earlier in the code\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "hasattr",
+        "getattr",
+        "os.getcwd",
+        "os.chdir",
+        "self.runner.run",
+        "os.chdir",
+        "setattr",
+        "hasattr",
+        "delattr"
+      ],
+      "api_sequence_with_args": [
+        "hasattr(builtins, \"_\")",
+        "getattr(builtins, \"_\", None)",
+        "os.getcwd()",
+        "os.chdir(self.fspath.dirname)",
+        "self.runner.run(self.dtest, out=failures, clear_globs=False)",
+        "os.chdir(curdir)",
+        "setattr(builtins, \"_\", underscore_original_value)",
+        "hasattr(builtins, \"_\")",
+        "delattr(builtins, \"_\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.runner.run",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "setattr",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "delattr",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        }
+      ],
+      "contextual_code": "import builtins\nimport os\n\ndef runtest(self) -> None:\n    had_underscore_value = hasattr(builtins, \"_\")\n    underscore_original_value = getattr(builtins, \"_\", None)\n    curdir = os.getcwd()\n    os.chdir(self.fspath.dirname)\n    try:\n        self.runner.run(self.dtest, out=failures, clear_globs=False)\n    finally:\n        os.chdir(curdir)\n        if had_underscore_value:\n            setattr(builtins, \"_\", underscore_original_value)\n        elif hasattr(builtins, \"_\"):\n            delattr(builtins, \"_\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "ipython-9.1.0",
+      "total_matches": 2
+    }
+  }
+]

@@ -1,0 +1,745 @@
+[
+  {
+    "pyfile": "protocol.py",
+    "code_snippet": "def onMessage(self, msg: IMessage):\n    \"\"\"\n    Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onMessage`\n    \"\"\"\n\n    ...\n\n    elif isinstance(msg, message.Invocation):\n\n        if msg.request in self._invocations:\n\n            raise ProtocolError(\"INVOCATION received for request ID {0} already invoked\".format(msg.request))\n\n        else:\n\n            if msg.registration not in self._registrations:\n\n                raise ProtocolError(\"INVOCATION received for non-registered registration ID {0}\".format(msg.registration))\n\n            else:\n                registration = self._registrations[msg.registration]\n                endpoint = registration.endpoint\n                proc = msg.procedure or registration.procedure\n                enc_err = None\n\n                if msg.enc_algo:\n                    if not self._payload_codec:\n                        log_msg = \"received encrypted INVOCATION payload, but no keyring active\"\n                        self.log.warn(log_msg)\n                        enc_err = ApplicationError(ApplicationError.ENC_NO_PAYLOAD_CODEC, log_msg)\n                    else:\n                        try:\n                            encoded_payload = EncodedPayload(msg.payload, msg.enc_algo, msg.enc_serializer, msg.enc_key)\n                            decrypted_proc, msg.args, msg.kwargs = self._payload_codec.decode(False, proc, encoded_payload)\n                        except Exception as e:\n                            self.log.warn(\n                                \"failed to decrypt INVOCATION payload: {err}\",\n                                err=e,\n                            )\n                            enc_err = ApplicationError(\n                                ApplicationError.ENC_DECRYPT_ERROR,\n                                \"failed to decrypt INVOCATION payload: {}\".format(e),\n                            )\n                        else:\n                            if proc != decrypted_proc:\n                                self.log.warn(\n                                    \"URI within encrypted INVOCATION payload ('{decrypted_proc}') \"\n                                    \"does not match the envelope ('{proc}')\",\n                                    decrypted_proc=decrypted_proc,\n                                    proc=proc,\n                                )\n                                enc_err = ApplicationError(\n                                    ApplicationError.ENC_TRUSTED_URI_MISMATCH,\n                                    \"URI within encrypted INVOCATION payload ('{}') does not match the envelope ('{}')\".format(decrypted_proc, proc),\n                                )\n\n                if enc_err:\n                    # when there was a problem decrypting the INVOCATION payload, we obviously can't invoke\n                    # the endpoint, but return and\n                    reply = self._message_from_exception(message.Invocation.MESSAGE_TYPE, msg.request, enc_err)\n                    self._transport.send(reply)\n\n                else:\n\n                    if endpoint.obj is not None:\n                        invoke_args = (endpoint.obj,)\n                    else:\n                        invoke_args = tuple()\n\n                    if msg.args:\n                        invoke_args = invoke_args + tuple(msg.args)\n\n                    invoke_kwargs = msg.kwargs if msg.kwargs else dict()\n\n                    if endpoint.details_arg:\n\n                        if msg.receive_progress:\n\n                            def progress(*args, **kwargs):\n                                assert(args is None or type(args) in (list, tuple))\n                                assert(kwargs is None or type(kwargs) == dict)\n\n                                encoded_payload = None\n                                if msg.enc_algo:\n                                    if not self._payload_codec:\n                                        raise Exception(\"trying to send encrypted payload, but no keyring active\")\n                                    encoded_payload = self._payload_codec.encode(False, proc, args, kwargs)\n\n                                if encoded_payload:\n                                    progress_msg = message.Yield(msg.request,\n                                                                 payload=encoded_payload.payload,\n                                                                 progress=True,\n                                                                 enc_algo=encoded_payload.enc_algo,\n                                                                 enc_key=encoded_payload.enc_key,\n                                                                 enc_serializer=encoded_payload.enc_serializer)\n                                else:\n                                    progress_msg = message.Yield(msg.request,\n                                                                 args=args,\n                                                                 kwargs=kwargs,\n                                                                 progress=True)\n\n                                self._transport.send(progress_msg)\n                        else:\n                            progress = None\n\n                        invoke_kwargs[endpoint.details_arg] = types.CallDetails(registration,\n                                                                                progress=progress,\n                                                                                caller=msg.caller,\n                                                                                caller_authid=msg.caller_authid,\n                                                                                caller_authrole=msg.caller_authrole,\n                                                                                procedure=proc,\n                                                                                transaction_hash=msg.transaction_hash,\n                                                                                enc_algo=msg.enc_algo)\n\n                    on_reply = txaio.as_future(endpoint.fn, *invoke_args, **invoke_kwargs)\n\n                    def success(res):\n                        del self._invocations[msg.request]\n\n                        encoded_payload = None\n                        if msg.enc_algo:\n                            if not self._payload_codec:\n                                log_msg = \"trying to send encrypted payload, but no keyring active\"\n                                self.log.warn(log_msg)\n                            else:\n                                try:\n                                    if isinstance(res, types.CallResult):\n                                        encoded_payload = self._payload_codec.encode(False, proc, res.results, res.kwresults)\n                                    else:\n                                        encoded_payload = self._payload_codec.encode(False, proc, [res])\n                                except Exception as e:\n                                    self.log.warn(\n                                        \"failed to encrypt application payload: {err}\",\n                                        err=e,\n                                    )\n\n                        if encoded_payload:\n                            if isinstance(res, types.CallResult):\n                                reply = message.Yield(msg.request,\n                                                      payload=encoded_payload.payload,\n                                                      enc_algo=encoded_payload.enc_algo,\n                                                      enc_key=encoded_payload.enc_key,\n                                                      enc_serializer=encoded_payload.enc_serializer,\n                                                      callee=res.callee,\n                                                      callee_authid=res.callee_authid,\n                                                      callee_authrole=res.callee_authrole,\n                                                      forward_for=res.forward_for)\n                            else:\n                                reply = message.Yield(msg.request,\n                                                      payload=encoded_payload.payload,\n                                                      enc_algo=encoded_payload.enc_algo,\n                                                      enc_key=encoded_payload.enc_key,\n                                                      enc_serializer=encoded_payload.enc_serializer)\n                        else:\n                            if isinstance(res, types.CallResult):\n                                reply = message.Yield(msg.request,\n                                                      args=res.results,\n                                                      kwargs=res.kwresults,\n                                                      callee=res.callee,\n                                                      callee_authid=res.callee_authid,\n                                                      callee_authrole=res.callee_authrole,\n                                                      forward_for=res.forward_for)\n                            else:\n                                reply = message.Yield(msg.request,\n                                                      args=[res])\n\n                        if self._transport is None:\n                            self.log.debug('Skipping result of \"{}\", request {} because transport disconnected.'.format(registration.procedure, msg.request))\n                            return\n\n                        try:\n                            self._transport.send(reply)\n                        except SerializationError as e:\n                            # the application-level payload returned from the invoked procedure can't be serialized\n                            error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD,\n                                                        args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" could not be serialized: {}'.format(reply.args,\n                                                                                                                                                                         reply.kwargs,\n                                                                                                                                                                         registration.procedure,\n                                                                                                                                                                         e)])\n                            self._transport.send(error_reply)\n                        except PayloadExceededError as e:\n                            # the application-level payload returned from the invoked procedure, when serialized and framed\n                            # for the transport, exceeds the transport message/frame size limit\n                            error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.PAYLOAD_SIZE_EXCEEDED,\n                                                        args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" exceeds transport size limit: {}'.format(reply.args,\n                                                                                                                                                                                  reply.kwargs,\n                                                                                                                                                                                  registration.procedure,\n                                                                                                                                                                                  e)])\n                            self._transport.send(error_reply)\n\n                    def error(err):\n                        del self._invocations[msg.request]\n\n                        errmsg = txaio.failure_message(err)\n\n                        try:\n                            self.onUserError(err, errmsg)\n                        except:\n                            pass\n\n                        formatted_tb = None\n                        if self.traceback_app:\n                            formatted_tb = txaio.failure_format_traceback(err)\n\n                        reply = self._message_from_exception(\n                            message.Invocation.MESSAGE_TYPE,\n                            msg.request,\n                            err.value,\n                            formatted_tb,\n                            msg.enc_algo\n                        )\n\n                        try:\n                            self._transport.send(reply)\n                        except SerializationError as e:\n                            # the application-level payload returned from the invoked procedure can't be serialized\n                            reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD,\n                                                  args=['error return value from invoked procedure \"{0}\" could not be serialized: {1}'.format(registration.procedure, e)])\n                            self._transport.send(reply)\n                        except PayloadExceededError as e:\n                            # the application-level payload returned from the invoked procedure, when serialized and framed\n                            # for the transport, exceeds the transport message/frame size limit\n                            reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.PAYLOAD_SIZE_EXCEEDED,\n                                                  args=['success return value from invoked procedure \"{0}\" exceeds transport size limit: {1}'.format(registration.procedure, e)])\n                            self._transport.send(reply)\n\n                        # we have handled the error, so we eat it\n                        return None\n\n                    self._invocations[msg.request] = InvocationRequest(msg.request, on_reply)\n\n                    txaio.add_callbacks(on_reply, success, error)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "self.log.warn",
+        "ApplicationError",
+        "self._payload_codec.decode",
+        "self.log.warn",
+        "ApplicationError",
+        "self.log.warn",
+        "ApplicationError",
+        "self._message_from_exception",
+        "self._transport.send",
+        "self._payload_codec.encode",
+        "message.Yield",
+        "self._transport.send",
+        "txaio.as_future",
+        "del self._invocations[msg.request]",
+        "self._payload_codec.encode",
+        "self.log.warn",
+        "self._transport.send",
+        "self._transport.send",
+        "self._transport.send",
+        "del self._invocations[msg.request]",
+        "txaio.failure_message",
+        "self.onUserError",
+        "txaio.failure_format_traceback",
+        "self._message_from_exception",
+        "self._transport.send",
+        "self._transport.send",
+        "self._transport.send",
+        "txaio.add_callbacks"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(msg, message.Invocation)",
+        "self.log.warn(log_msg)",
+        "ApplicationError(ApplicationError.ENC_NO_PAYLOAD_CODEC, log_msg)",
+        "self._payload_codec.decode(False, proc, encoded_payload)",
+        "self.log.warn(\"failed to decrypt INVOCATION payload: {err}\", err=e)",
+        "ApplicationError(ApplicationError.ENC_DECRYPT_ERROR, \"failed to decrypt INVOCATION payload: {}\".format(e))",
+        "self.log.warn(\"URI within encrypted INVOCATION payload ('{decrypted_proc}') does not match the envelope ('{proc}')\", decrypted_proc=decrypted_proc, proc=proc)",
+        "ApplicationError(ApplicationError.ENC_TRUSTED_URI_MISMATCH, \"URI within encrypted INVOCATION payload ('{}') does not match the envelope ('{}')\".format(decrypted_proc, proc))",
+        "self._message_from_exception(message.Invocation.MESSAGE_TYPE, msg.request, enc_err)",
+        "self._transport.send(reply)",
+        "self._payload_codec.encode(False, proc, args, kwargs)",
+        "message.Yield(msg.request, payload=encoded_payload.payload, progress=True, enc_algo=encoded_payload.enc_algo, enc_key=encoded_payload.enc_key, enc_serializer=encoded_payload.enc_serializer)",
+        "self._transport.send(progress_msg)",
+        "txaio.as_future(endpoint.fn, *invoke_args, **invoke_kwargs)",
+        "del self._invocations[msg.request]",
+        "self._payload_codec.encode(False, proc, res.results, res.kwresults)",
+        "self.log.warn(\"failed to encrypt application payload: {err}\", err=e)",
+        "self._transport.send(reply)",
+        "self._transport.send(error_reply)",
+        "self._transport.send(error_reply)",
+        "del self._invocations[msg.request]",
+        "txaio.failure_message(err)",
+        "self.onUserError(err, errmsg)",
+        "txaio.failure_format_traceback(err)",
+        "self._message_from_exception(message.Invocation.MESSAGE_TYPE, msg.request, err.value, formatted_tb, msg.enc_algo)",
+        "self._transport.send(reply)",
+        "self._transport.send(reply)",
+        "self._transport.send(reply)",
+        "txaio.add_callbacks(on_reply, success, error)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._payload_codec.decode",
+          "id": "decrypt_aes_data",
+          "description": "Decrypts data using initialized AES cipher",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "decryption_execution"
+        },
+        {
+          "api_name": "self.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._message_from_exception",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._payload_codec.encode",
+          "id": "encrypt_files",
+          "description": "Encrypts files using provided key",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_execution"
+        },
+        {
+          "api_name": "message.Yield",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "txaio.as_future",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "del self._invocations[msg.request]",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self._payload_codec.encode",
+          "id": "encrypt_files",
+          "description": "Encrypts files using provided key",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_execution"
+        },
+        {
+          "api_name": "self.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "del self._invocations[msg.request]",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "txaio.failure_message",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.onUserError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "txaio.failure_format_traceback",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._message_from_exception",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._transport.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "txaio.add_callbacks",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "elif isinstance(msg, message.Invocation):\n    if msg.request in self._invocations:\n        raise ProtocolError(\"INVOCATION received for request ID {0} already invoked\".format(msg.request))\n    else:\n        if msg.registration not in self._registrations:\n            raise ProtocolError(\"INVOCATION received for non-registered registration ID {0}\".format(msg.registration))\n        else:\n            registration = self._registrations[msg.registration]\n            endpoint = registration.endpoint\n            proc = msg.procedure or registration.procedure\n            enc_err = None\n            if msg.enc_algo:\n                if not self._payload_codec:\n                    log_msg = \"received encrypted INVOCATION payload, but no keyring active\"\n                    self.log.warn(log_msg)\n                    enc_err = ApplicationError(ApplicationError.ENC_NO_PAYLOAD_CODEC, log_msg)\n                else:\n                    try:\n                        encoded_payload = EncodedPayload(msg.payload, msg.enc_algo, msg.enc_serializer, msg.enc_key)\n                        decrypted_proc, msg.args, msg.kwargs = self._payload_codec.decode(False, proc, encoded_payload)\n                    except Exception as e:\n                        self.log.warn(\n                            \"failed to decrypt INVOCATION payload: {err}\",\n                            err=e,\n                        )\n                        enc_err = ApplicationError(\n                            ApplicationError.ENC_DECRYPT_ERROR,\n                            \"failed to decrypt INVOCATION payload: {}\".format(e),\n                        )\n                    else:\n                        if proc != decrypted_proc:\n                            self.log.warn(\n                                \"URI within encrypted INVOCATION payload ('{decrypted_proc}') \"\n                                \"does not match the envelope ('{proc}')\",\n                                decrypted_proc=decrypted_proc,\n                                proc=proc,\n                            )\n                            enc_err = ApplicationError(\n                                ApplicationError.ENC_TRUSTED_URI_MISMATCH,\n                                \"URI within encrypted INVOCATION payload ('{}') does not match the envelope ('{}')\".format(decrypted_proc, proc),\n                            )\n            if enc_err:\n                reply = self._message_from_exception(message.Invocation.MESSAGE_TYPE, msg.request, enc_err)\n                self._transport.send(reply)\n            else:\n                if endpoint.obj is not None:\n                    invoke_args = (endpoint.obj,)\n                else:\n                    invoke_args = tuple()\n                if msg.args:\n                    invoke_args = invoke_args + tuple(msg.args)\n                invoke_kwargs = msg.kwargs if msg.kwargs else dict()\n                if endpoint.details_arg:\n                    if msg.receive_progress:\n                        def progress(*args, **kwargs):\n                            assert(args is None or type(args) in (list, tuple))\n                            assert(kwargs is None or type(kwargs) == dict)\n                            encoded_payload = None\n                            if msg.enc_algo:\n                                if not self._payload_codec:\n                                    raise Exception(\"trying to send encrypted payload, but no keyring active\")\n                                encoded_payload = self._payload_codec.encode(False, proc, args, kwargs)\n                            if encoded_payload:\n                                progress_msg = message.Yield(msg.request,\n                                                             payload=encoded_payload.payload,\n                                                             progress=True,\n                                                             enc_algo=encoded_payload.enc_algo,\n                                                             enc_key=encoded_payload.enc_key,\n                                                             enc_serializer=encoded_payload.enc_serializer)\n                            else:\n                                progress_msg = message.Yield(msg.request,\n                                                             args=args,\n                                                             kwargs=kwargs,\n                                                             progress=True)\n                            self._transport.send(progress_msg)\n                    else:\n                        progress = None\n                    invoke_kwargs[endpoint.details_arg] = types.CallDetails(registration,\n                                                                            progress=progress,\n                                                                            caller=msg.caller,\n                                                                            caller_authid=msg.caller_authid,\n                                                                            caller_authrole=msg.caller_authrole,\n                                                                            procedure=proc,\n                                                                            transaction_hash=msg.transaction_hash,\n                                                                            enc_algo=msg.enc_algo)\n                on_reply = txaio.as_future(endpoint.fn, *invoke_args, **invoke_kwargs)\n                def success(res):\n                    del self._invocations[msg.request]\n                    encoded_payload = None\n                    if msg.enc_algo:\n                        if not self._payload_codec:\n                            log_msg = \"trying to send encrypted payload, but no keyring active\"\n                            self.log.warn(log_msg)\n                        else:\n                            try:\n                                if isinstance(res, types.CallResult):\n                                    encoded_payload = self._payload_codec.encode(False, proc, res.results, res.kwresults)\n                                else:\n                                    encoded_payload = self._payload_codec.encode(False, proc, [res])\n                            except Exception as e:\n                                self.log.warn(\n                                    \"failed to encrypt application payload: {err}\",\n                                    err=e,\n                                )\n                    if encoded_payload:\n                        if isinstance(res, types.CallResult):\n                            reply = message.Yield(msg.request,\n                                                  payload=encoded_payload.payload,\n                                                  enc_algo=encoded_payload.enc_algo,\n                                                  enc_key=encoded_payload.enc_key,\n                                                  enc_serializer=encoded_payload.enc_serializer,\n                                                  callee=res.callee,\n                                                  callee_authid=res.callee_authid,\n                                                  callee_authrole=res.callee_authrole,\n                                                  forward_for=res.forward_for)\n                        else:\n                            reply = message.Yield(msg.request,\n                                                  payload=encoded_payload.payload,\n                                                  enc_algo=encoded_payload.enc_algo,\n                                                  enc_key=encoded_payload.enc_key,\n                                                  enc_serializer=encoded_payload.enc_serializer)\n                    else:\n                        if isinstance(res, types.CallResult):\n                            reply = message.Yield(msg.request,\n                                                  args=res.results,\n                                                  kwargs=res.kwresults,\n                                                  callee=res.callee,\n                                                  callee_authid=res.callee_authid,\n                                                  callee_authrole=res.callee_authrole,\n                                                  forward_for=res.forward_for)\n                        else:\n                            reply = message.Yield(msg.request,\n                                                  args=[res])\n                    if self._transport is None:\n                        self.log.debug('Skipping result of \"{}\", request {} because transport disconnected.'.format(registration.procedure, msg.request))\n                        return\n                    try:\n                        self._transport.send(reply)\n                    except SerializationError as e:\n                        error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD,\n                                                    args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" could not be serialized: {}'.format(reply.args,\n                                                                                                                                                                     reply.kwargs,\n                                                                                                                                                                     registration.procedure,\n                                                                                                                                                                     e)])\n                        self._transport.send(error_reply)\n                    except PayloadExceededError as e:\n                        error_reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.PAYLOAD_SIZE_EXCEEDED,\n                                                    args=['success return value (args={}, kwargs={}) from invoked procedure \"{}\" exceeds transport size limit: {}'.format(reply.args,\n                                                                                                                                                                              reply.kwargs,\n                                                                                                                                                                              registration.procedure,\n                                                                                                                                                                              e)])\n                        self._transport.send(error_reply)\n                def error(err):\n                    del self._invocations[msg.request]\n                    errmsg = txaio.failure_message(err)\n                    try:\n                        self.onUserError(err, errmsg)\n                    except:\n                        pass\n                    formatted_tb = None\n                    if self.traceback_app:\n                        formatted_tb = txaio.failure_format_traceback(err)\n                    reply = self._message_from_exception(\n                        message.Invocation.MESSAGE_TYPE,\n                        msg.request,\n                        err.value,\n                        formatted_tb,\n                        msg.enc_algo\n                    )\n                    try:\n                        self._transport.send(reply)\n                    except SerializationError as e:\n                        reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.INVALID_PAYLOAD,\n                                              args=['error return value from invoked procedure \"{0}\" could not be serialized: {1}'.format(registration.procedure, e)])\n                        self._transport.send(reply)\n                    except PayloadExceededError as e:\n                        reply = message.Error(message.Invocation.MESSAGE_TYPE, msg.request, ApplicationError.PAYLOAD_SIZE_EXCEEDED,\n                                              args=['success return value from invoked procedure \"{0}\" exceeds transport size limit: {1}'.format(registration.procedure, e)])\n                        self._transport.send(reply)\n                    return None\n                self._invocations[msg.request] = InvocationRequest(msg.request, on_reply)\n                txaio.add_callbacks(on_reply, success, error)"
+    }
+  },
+  {
+    "pyfile": "_buyer.py",
+    "code_snippet": "import uuid\nimport binascii\nfrom pprint import pformat\n\nimport os\nimport cbor2\nimport nacl.secret\nimport nacl.utils\nimport nacl.exceptions\nimport nacl.public\n\nimport txaio\nfrom autobahn.wamp.exception import ApplicationError\nfrom autobahn.wamp.protocol import ApplicationSession\nfrom ._util import unpack_uint256, pack_uint256\n\nimport eth_keys\n\nfrom ..util import hl, hlval\nfrom ._eip712_channel_close import sign_eip712_channel_close, recover_eip712_channel_close\n\nclass SimpleBuyer(object):\n    ...\n    async def unwrap(self, key_id, serializer, ciphertext):\n        \"\"\"\n        Decrypt XBR data. This functions will potentially make the buyer call the\n        XBR market maker to buy data encryption keys from the XBR provider.\n\n        :param key_id: ID of the data encryption used for decryption\n            of application payload.\n        :type key_id: bytes\n\n        :param serializer: Application payload serializer.\n        :type serializer: str\n\n        :param ciphertext: Ciphertext of encrypted application payload to\n            decrypt.\n        :type ciphertext: bytes\n\n        :return: Decrypted application payload.\n        :rtype: object\n        \"\"\"\n        assert type(key_id) == bytes and len(key_id) == 16\n        # FIXME: support more app payload serializers\n        assert type(serializer) == str and serializer in ['cbor']\n        assert type(ciphertext) == bytes\n\n        market_oid = self._channel['market_oid']\n        channel_oid = self._channel['channel_oid']\n\n        # FIXME\n        current_block_number = 1\n        verifying_chain_id = self._xbrmm_config['verifying_chain_id']\n        verifying_contract_adr = binascii.a2b_hex(self._xbrmm_config['verifying_contract_adr'][2:])\n\n        # if we don't have the key, buy it!\n        if key_id in self._keys:\n            self.log.debug('Key {key_id} already in key store (or currently being bought).',\n                           key_id=hl(uuid.UUID(bytes=key_id)))\n        else:\n            self.log.debug('Key {key_id} not yet in key store - buying key ..', key_id=hl(uuid.UUID(bytes=key_id)))\n\n            # mark the key as currently being bought already (the location of code here is multi-entrant)\n            self._keys[key_id] = False\n\n            # get (current) price for key we want to buy\n            quote = await self._session.call('xbr.marketmaker.get_quote', key_id)\n\n            # set price we pay set to the (current) quoted price\n            amount = unpack_uint256(quote['price'])\n\n            self.log.debug('Key {key_id} has current price quote {amount}',\n                           key_id=hl(uuid.UUID(bytes=key_id)), amount=hl(int(amount / 10**18)))\n\n            if amount > self._max_price:\n                raise ApplicationError('xbr.error.max_price_exceeded',\n                                       '{}.unwrap() - key {} needed cannot be bought: price {} exceeds maximum price of {}'.format(self.__class__.__name__, uuid.UUID(bytes=key_id), int(amount / 10 ** 18), int(self._max_price / 10 ** 18)))\n\n            # check (locally) we have enough balance left in the payment channel to buy the key\n            balance = self._balance - amount\n            if balance < 0:\n                if self._auto_close_channel:\n                    # FIXME: sign last transaction (from persisted local history)\n                    last_tx = None\n                    txns = self.past_transactions()\n                    if txns:\n                        last_tx = txns[0]\n\n                    if last_tx:\n                        # tx1 is the delegate portion, and tx2 is the market maker portion:\n                        # tx1, tx2 = last_tx\n                        # close_adr = tx1.channel\n                        # close_seq = tx1.channel_seq\n                        # close_balance = tx1.balance\n                        # close_is_final = True\n\n                        close_seq = self._seq\n                        close_balance = self._balance\n                        close_is_final = True\n\n                        signature = sign_eip712_channel_close(self._pkey_raw,\n                                                              verifying_chain_id,\n                                                              verifying_contract_adr,\n                                                              current_block_number,\n                                                              market_oid,\n                                                              channel_oid,\n                                                              close_seq,\n                                                              close_balance,\n                                                              close_is_final)\n\n                        self.log.debug('auto-closing payment channel {channel_oid} [close_seq={close_seq}, close_balance={close_balance}, close_is_final={close_is_final}]',\n                                       channel_oid=uuid.UUID(bytes=channel_oid),\n                                       close_seq=close_seq,\n                                       close_balance=int(close_balance / 10**18),\n                                       close_is_final=close_is_final)\n\n                        # call market maker to initiate closing of payment channel\n                        await self._session.call('xbr.marketmaker.close_channel',\n                                                 channel_oid,\n                                                 verifying_chain_id,\n                                                 current_block_number,\n                                                 verifying_contract_adr,\n                                                 pack_uint256(close_balance),\n                                                 close_seq,\n                                                 close_is_final,\n                                                 signature)\n\n                        # FIXME: wait for and acquire new payment channel instead of bailing out ..\n\n                        raise ApplicationError('xbr.error.channel_closed',\n                                               '{}.unwrap() - key {} cannot be bought: payment channel {} ran empty and we initiated close at remaining balance of {}'.format(self.__class__.__name__,\n                                                                                                                                                                              uuid.UUID(bytes=key_id),\n                                                                                                                                                                              channel_oid,\n                                                                                                                                                                              int(close_balance / 10 ** 18)))\n                raise ApplicationError('xbr.error.insufficient_balance',\n                                       '{}.unwrap() - key {} cannot be bought: insufficient balance {} in payment channel for amount {}'.format(self.__class__.__name__,\n                                                                                                                                                uuid.UUID(bytes=key_id),\n                                                                                                                                                int(self._balance / 10 ** 18),\n                                                                                                                                                int(amount / 10 ** 18)))\n\n            buyer_pubkey = self._receive_key.public_key.encode(encoder=nacl.encoding.RawEncoder)\n            channel_seq = self._seq + 1\n            is_final = False\n\n            # XBRSIG[1/8]: compute EIP712 typed data signature\n            signature = sign_eip712_channel_close(self._pkey_raw, verifying_chain_id, verifying_contract_adr,\n                                                  current_block_number, market_oid, channel_oid, channel_seq,\n                                                  balance, is_final)\n\n            # persist 1st phase of the transaction locally\n            self._save_transaction_phase1(channel_oid, self._addr, buyer_pubkey, key_id, channel_seq, amount, balance, signature)\n\n            # call the market maker to buy the key\n            try:\n                receipt = await self._session.call('xbr.marketmaker.buy_key',\n                                                   self._addr,\n                                                   buyer_pubkey,\n                                                   key_id,\n                                                   channel_oid,\n                                                   channel_seq,\n                                                   pack_uint256(amount),\n                                                   pack_uint256(balance),\n                                                   signature)\n            except ApplicationError as e:\n                if e.error == 'xbr.error.channel_closed':\n                    self.stop()\n                raise e\n            except Exception as e:\n                self.log.error('Encountered error while calling market maker to buy key!')\n                self.log.failure()\n                self._keys[key_id] = e\n                raise e\n\n            # XBRSIG[8/8]: check market maker signature\n            marketmaker_signature = receipt['signature']\n            marketmaker_channel_seq = receipt['channel_seq']\n            marketmaker_amount_paid = unpack_uint256(receipt['amount_paid'])\n            marketmaker_remaining = unpack_uint256(receipt['remaining'])\n            marketmaker_inflight = unpack_uint256(receipt['inflight'])\n\n            signer_address = recover_eip712_channel_close(verifying_chain_id, verifying_contract_adr,\n                                                          current_block_number, market_oid, channel_oid,\n                                                          marketmaker_channel_seq, marketmaker_remaining,\n                                                          False, marketmaker_signature)\n            if signer_address != self._market_maker_adr:\n                self.log.warn('{klass}.unwrap()::XBRSIG[8/8] - EIP712 signature invalid: signer_address={signer_address}, delegate_adr={delegate_adr}',\n                              klass=self.__class__.__name__,\n                              signer_address=hl(binascii.b2a_hex(signer_address).decode()),\n                              delegate_adr=hl(binascii.b2a_hex(self._market_maker_adr).decode()))\n                raise ApplicationError('xbr.error.invalid_signature',\n                                       '{}.unwrap()::XBRSIG[8/8] - EIP712 signature invalid or not signed by market maker'.format(self.__class__.__name__))\n\n            if self._seq + 1 != marketmaker_channel_seq:\n                raise ApplicationError('xbr.error.invalid_transaction',\n                                       '{}.buy_key(): invalid transaction (channel sequence number mismatch - expected {}, but got {})'.format(self.__class__.__name__, self._seq, receipt['channel_seq']))\n\n            if self._balance - amount != marketmaker_remaining:\n                raise ApplicationError('xbr.error.invalid_transaction',\n                                       '{}.buy_key(): invalid transaction (channel remaining amount mismatch - expected {}, but got {})'.format(self.__class__.__name__, self._balance - amount, receipt['remaining']))\n\n            self._seq = marketmaker_channel_seq\n            self._balance = marketmaker_remaining\n\n            # persist 2nd phase of the transaction locally\n            self._save_transaction_phase2(channel_oid, self._market_maker_adr, buyer_pubkey, key_id, marketmaker_channel_seq,\n                                          marketmaker_amount_paid, marketmaker_remaining, marketmaker_signature)\n\n            # unseal the data encryption key\n            sealed_key = receipt['sealed_key']\n            unseal_box = nacl.public.SealedBox(self._receive_key)\n            try:\n                key = unseal_box.decrypt(sealed_key)\n            except nacl.exceptions.CryptoError as e:\n                self._keys[key_id] = e\n                raise ApplicationError('xbr.error.decryption_failed', '{}.unwrap() - could not unseal data encryption key: {}'.format(self.__class__.__name__, e))\n\n            # remember the key, so we can use it to actually decrypt application payload data\n            self._keys[key_id] = nacl.secret.SecretBox(key)\n\n            transactions_count = self.count_transactions()\n            self.log.info(\n                '{klass}.unwrap() - {tx_type} key {key_id} bought for {amount_paid} [payment_channel={payment_channel}, remaining={remaining}, inflight={inflight}, buyer_pubkey={buyer_pubkey}, transactions={transactions}]',\n                klass=self.__class__.__name__,\n                tx_type=hl('XBR BUY   ', color='magenta'),\n                key_id=hl(uuid.UUID(bytes=key_id)),\n                amount_paid=hl(str(int(marketmaker_amount_paid / 10 ** 18)) + ' XBR', color='magenta'),\n                payment_channel=hl(binascii.b2a_hex(receipt['payment_channel']).decode()),\n                remaining=hl(int(marketmaker_remaining / 10 ** 18)),\n                inflight=hl(int(marketmaker_inflight / 10 ** 18)),\n                buyer_pubkey=hl(binascii.b2a_hex(buyer_pubkey).decode()),\n                transactions=transactions_count)\n\n        # if the key is already being bought, wait until the one buying path of execution has succeeded and done\n        log_counter = 0\n        while self._keys[key_id] is False:\n            if log_counter % 100:\n                self.log.debug('{klass}.unwrap() - waiting for key \"{key_id}\" currently being bought ..',\n                               klass=self.__class__.__name__, key_id=hl(uuid.UUID(bytes=key_id)))\n                log_counter += 1\n            await txaio.sleep(.2)\n\n        # check if the key buying failed and fail the unwrapping in turn\n        if isinstance(self._keys[key_id], Exception):\n            e = self._keys[key_id]\n            raise e\n\n        # now that we have the data encryption key, decrypt the application payload\n        # the decryption key here is an instance of nacl.secret.SecretBox\n        try:\n            message = self._keys[key_id].decrypt(ciphertext)\n        except nacl.exceptions.CryptoError as e:\n            # Decryption failed. Ciphertext failed verification\n            raise ApplicationError('xbr.error.decryption_failed', '{}.unwrap() - failed to unwrap encrypted data: {}'.format(self.__class__.__name__, e))\n\n        # deserialize the application payload\n        # FIXME: support more app payload serializers\n        try:\n            payload = cbor2.loads(message)\n        except cbor2.decoder.CBORDecodeError as e:\n            # premature end of stream (expected to read 4187 bytes, got 27 instead)\n            raise ApplicationError('xbr.error.deserialization_failed', '{}.unwrap() - failed to deserialize application payload: {}'.format(self.__class__.__name__, e))\n\n        return payload\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "binascii.a2b_hex",
+        "self._session.call",
+        "unpack_uint256",
+        "self.log.debug",
+        "self.log.debug",
+        "self._session.call",
+        "unpack_uint256",
+        "self.log.debug",
+        "self.past_transactions",
+        "sign_eip712_channel_close",
+        "self.log.debug",
+        "self._session.call",
+        "ApplicationError",
+        "ApplicationError",
+        "self._receive_key.public_key.encode",
+        "sign_eip712_channel_close",
+        "self._save_transaction_phase1",
+        "self._session.call",
+        "self.log.error",
+        "self.log.failure",
+        "unpack_uint256",
+        "unpack_uint256",
+        "unpack_uint256",
+        "unpack_uint256",
+        "recover_eip712_channel_close",
+        "self.log.warn",
+        "ApplicationError",
+        "ApplicationError",
+        "ApplicationError",
+        "ApplicationError",
+        "self._save_transaction_phase2",
+        "nacl.public.SealedBox",
+        "nacl.public.SealedBox.decrypt",
+        "ApplicationError",
+        "nacl.secret.SecretBox",
+        "self.count_transactions",
+        "self.log.info",
+        "txaio.sleep",
+        "isinstance",
+        "self._keys[key_id].decrypt",
+        "ApplicationError",
+        "cbor2.loads",
+        "ApplicationError"
+      ],
+      "api_sequence_with_args": [
+        "binascii.a2b_hex(self._xbrmm_config['verifying_contract_adr'][2:])",
+        "self._session.call('xbr.marketmaker.get_quote', key_id)",
+        "unpack_uint256(quote['price'])",
+        "self.log.debug('Key {key_id} already in key store (or currently being bought).', key_id=hl(uuid.UUID(bytes=key_id)))",
+        "self.log.debug('Key {key_id} not yet in key store - buying key ..', key_id=hl(uuid.UUID(bytes=key_id)))",
+        "self._session.call('xbr.marketmaker.get_quote', key_id)",
+        "unpack_uint256(quote['price'])",
+        "self.log.debug('Key {key_id} has current price quote {amount}', key_id=hl(uuid.UUID(bytes=key_id)), amount=hl(int(amount / 10**18)))",
+        "self.past_transactions()",
+        "sign_eip712_channel_close(self._pkey_raw, verifying_chain_id, verifying_contract_adr, current_block_number, market_oid, channel_oid, close_seq, close_balance, close_is_final)",
+        "self.log.debug('auto-closing payment channel {channel_oid} [close_seq={close_seq}, close_balance={close_balance}, close_is_final={close_is_final}]', channel_oid=uuid.UUID(bytes=channel_oid), close_seq=close_seq, close_balance=int(close_balance / 10**18), close_is_final=close_is_final)",
+        "self._session.call('xbr.marketmaker.close_channel', channel_oid, verifying_chain_id, current_block_number, verifying_contract_adr, pack_uint256(close_balance), close_seq, close_is_final, signature)",
+        "ApplicationError('xbr.error.channel_closed', ...)",
+        "ApplicationError('xbr.error.insufficient_balance', ...)",
+        "self._receive_key.public_key.encode(encoder=nacl.encoding.RawEncoder)",
+        "sign_eip712_channel_close(self._pkey_raw, verifying_chain_id, verifying_contract_adr, current_block_number, market_oid, channel_oid, channel_seq, balance, is_final)",
+        "self._save_transaction_phase1(channel_oid, self._addr, buyer_pubkey, key_id, channel_seq, amount, balance, signature)",
+        "self._session.call('xbr.marketmaker.buy_key', self._addr, buyer_pubkey, key_id, channel_oid, channel_seq, pack_uint256(amount), pack_uint256(balance), signature)",
+        "self.log.error('Encountered error while calling market maker to buy key!')",
+        "self.log.failure()",
+        "unpack_uint256(receipt['amount_paid'])",
+        "unpack_uint256(receipt['remaining'])",
+        "unpack_uint256(receipt['inflight'])",
+        "unpack_uint256(receipt['amount_paid'])",
+        "recover_eip712_channel_close(verifying_chain_id, verifying_contract_adr, current_block_number, market_oid, channel_oid, marketmaker_channel_seq, marketmaker_remaining, False, marketmaker_signature)",
+        "self.log.warn('{klass}.unwrap()::XBRSIG[8/8] - EIP712 signature invalid: signer_address={signer_address}, delegate_adr={delegate_adr}', klass=self.__class__.__name__, signer_address=hl(binascii.b2a_hex(signer_address).decode()), delegate_adr=hl(binascii.b2a_hex(self._market_maker_adr).decode()))",
+        "ApplicationError('xbr.error.invalid_signature', ...)",
+        "ApplicationError('xbr.error.invalid_transaction', ...)",
+        "ApplicationError('xbr.error.invalid_transaction', ...)",
+        "self._save_transaction_phase2(channel_oid, self._market_maker_adr, buyer_pubkey, key_id, marketmaker_channel_seq, marketmaker_amount_paid, marketmaker_remaining, marketmaker_signature)",
+        "nacl.public.SealedBox(self._receive_key)",
+        "nacl.public.SealedBox.decrypt(sealed_key)",
+        "ApplicationError('xbr.error.decryption_failed', ...)",
+        "nacl.secret.SecretBox(key)",
+        "self.count_transactions()",
+        "self.log.info('{klass}.unwrap() - {tx_type} key {key_id} bought for {amount_paid} [payment_channel={payment_channel}, remaining={remaining}, inflight={inflight}, buyer_pubkey={buyer_pubkey}, transactions={transactions}]', ...)",
+        "txaio.sleep(.2)",
+        "isinstance(self._keys[key_id], Exception)",
+        "self._keys[key_id].decrypt(ciphertext)",
+        "ApplicationError('xbr.error.decryption_failed', ...)",
+        "cbor2.loads(message)",
+        "ApplicationError('xbr.error.deserialization_failed', ...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "binascii.a2b_hex",
+          "id": "create_bytes_hex",
+          "description": "Creates bytes object from hexadecimal string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self._session.call",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "unpack_uint256",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._session.call",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "unpack_uint256",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.past_transactions",
+          "id": "iterate_processes",
+          "description": "Iterates over all running processes",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "sign_eip712_channel_close",
+          "id": "init_encrypter_class",
+          "description": "Instantiates Encrypter class",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_initialization"
+        },
+        {
+          "api_name": "self.log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._session.call",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._receive_key.public_key.encode",
+          "id": "encode_string_to_bytes",
+          "description": "Encodes string to bytes using default encoding",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "sign_eip712_channel_close",
+          "id": "init_encrypter_class",
+          "description": "Instantiates Encrypter class",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_initialization"
+        },
+        {
+          "api_name": "self._save_transaction_phase1",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self._session.call",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "self.log.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.log.failure",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "unpack_uint256",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "unpack_uint256",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "unpack_uint256",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "unpack_uint256",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "recover_eip712_channel_close",
+          "id": "init_encrypter_class",
+          "description": "Instantiates Encrypter class",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_initialization"
+        },
+        {
+          "api_name": "self.log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self._save_transaction_phase2",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "nacl.public.SealedBox",
+          "id": "init_symmetric_encryption",
+          "description": "Initializes symmetric encryption with provided key",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_initialization"
+        },
+        {
+          "api_name": "nacl.public.SealedBox.decrypt",
+          "id": "decrypt_aes_data",
+          "description": "Decrypts data using initialized AES cipher",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "decryption_execution"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "nacl.secret.SecretBox",
+          "id": "init_symmetric_encryption",
+          "description": "Initializes symmetric encryption with provided key",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "encryption_initialization"
+        },
+        {
+          "api_name": "self.count_transactions",
+          "id": "iterate_processes",
+          "description": "Iterates over all running processes",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "self.log.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "txaio.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self._keys[key_id].decrypt",
+          "id": "decrypt_aes_data",
+          "description": "Decrypts data using initialized AES cipher",
+          "first_id": "encryption_hashing",
+          "second_id": "encryption_operations",
+          "third_id": "decryption_execution"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "cbor2.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "ApplicationError",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "import binascii\nimport nacl.secret\nimport nacl.public\nimport cbor2\nimport txaio\n\nclass SimpleBuyer(object):\n    async def unwrap(self, key_id, serializer, ciphertext):\n        ...\n        verifying_contract_adr = binascii.a2b_hex(self._xbrmm_config['verifying_contract_adr'][2:])\n        if key_id in self._keys:\n            self.log.debug('Key {key_id} already in key store (or currently being bought).', key_id=hl(uuid.UUID(bytes=key_id)))\n        else:\n            self.log.debug('Key {key_id} not yet in key store - buying key ..', key_id=hl(uuid.UUID(bytes=key_id)))\n            self._keys[key_id] = False\n            quote = await self._session.call('xbr.marketmaker.get_quote', key_id)\n            amount = unpack_uint256(quote['price'])\n            self.log.debug('Key {key_id} has current price quote {amount}', key_id=hl(uuid.UUID(bytes=key_id)), amount=hl(int(amount / 10**18)))\n            if amount > self._max_price:\n                raise ApplicationError('xbr.error.max_price_exceeded', ...)\n            balance = self._balance - amount\n            if balance < 0:\n                if self._auto_close_channel:\n                    last_tx = None\n                    txns = self.past_transactions()\n                    if txns:\n                        last_tx = txns[0]\n                    if last_tx:\n                        close_seq = self._seq\n                        close_balance = self._balance\n                        close_is_final = True\n                        signature = sign_eip712_channel_close(self._pkey_raw, verifying_chain_id, verifying_contract_adr, current_block_number, market_oid, channel_oid, close_seq, close_balance, close_is_final)\n                        self.log.debug('auto-closing payment channel {channel_oid} [close_seq={close_seq}, close_balance={close_balance}, close_is_final={close_is_final}]', channel_oid=uuid.UUID(bytes=channel_oid), close_seq=close_seq, close_balance=int(close_balance / 10**18), close_is_final=close_is_final)\n                        await self._session.call('xbr.marketmaker.close_channel', channel_oid, verifying_chain_id, current_block_number, verifying_contract_adr, pack_uint256(close_balance), close_seq, close_is_final, signature)\n                        raise ApplicationError('xbr.error.channel_closed', ...)\n                raise ApplicationError('xbr.error.insufficient_balance', ...)\n            buyer_pubkey = self._receive_key.public_key.encode(encoder=nacl.encoding.RawEncoder)\n            channel_seq = self._seq + 1\n            is_final = False\n            signature = sign_eip712_channel_close(self._pkey_raw, verifying_chain_id, verifying_contract_adr, current_block_number, market_oid, channel_oid, channel_seq, balance, is_final)\n            self._save_transaction_phase1(channel_oid, self._addr, buyer_pubkey, key_id, channel_seq, amount, balance, signature)\n            try:\n                receipt = await self._session.call('xbr.marketmaker.buy_key', self._addr, buyer_pubkey, key_id, channel_oid, channel_seq, pack_uint256(amount), pack_uint256(balance), signature)\n            except ApplicationError as e:\n                if e.error == 'xbr.error.channel_closed':\n                    self.stop()\n                raise e\n            except Exception as e:\n                self.log.error('Encountered error while calling market maker to buy key!')\n                self.log.failure()\n                self._keys[key_id] = e\n                raise e\n            marketmaker_signature = receipt['signature']\n            marketmaker_channel_seq = receipt['channel_seq']\n            marketmaker_amount_paid = unpack_uint256(receipt['amount_paid'])\n            marketmaker_remaining = unpack_uint256(receipt['remaining'])\n            marketmaker_inflight = unpack_uint256(receipt['inflight'])\n            signer_address = recover_eip712_channel_close(verifying_chain_id, verifying_contract_adr, current_block_number, market_oid, channel_oid, marketmaker_channel_seq, marketmaker_remaining, False, marketmaker_signature)\n            if signer_address != self._market_maker_adr:\n                self.log.warn('{klass}.unwrap()::XBRSIG[8/8] - EIP712 signature invalid: signer_address={signer_address}, delegate_adr={delegate_adr}', klass=self.__class__.__name__, signer_address=hl(binascii.b2a_hex(signer_address).decode()), delegate_adr=hl(binascii.b2a_hex(self._market_maker_adr).decode()))\n                raise ApplicationError('xbr.error.invalid_signature', ...)\n            if self._seq + 1 != marketmaker_channel_seq:\n                raise ApplicationError('xbr.error.invalid_transaction', ...)\n            if self._balance - amount != marketmaker_remaining:\n                raise ApplicationError('xbr.error.invalid_transaction', ...)\n            self._seq = marketmaker_channel_seq\n            self._balance = marketmaker_remaining\n            self._save_transaction_phase2(channel_oid, self._market_maker_adr, buyer_pubkey, key_id, marketmaker_channel_seq, marketmaker_amount_paid, marketmaker_remaining, marketmaker_signature)\n            sealed_key = receipt['sealed_key']\n            unseal_box = nacl.public.SealedBox(self._receive_key)\n            try:\n                key = unseal_box.decrypt(sealed_key)\n            except nacl.exceptions.CryptoError as e:\n                self._keys[key_id] = e\n                raise ApplicationError('xbr.error.decryption_failed', ...)\n            self._keys[key_id] = nacl.secret.SecretBox(key)\n            transactions_count = self.count_transactions()\n            self.log.info('{klass}.unwrap() - {tx_type} key {key_id} bought for {amount_paid} [payment_channel={payment_channel}, remaining={remaining}, inflight={inflight}, buyer_pubkey={buyer_pubkey}, transactions={transactions}]', ...)\n        log_counter = 0\n        while self._keys[key_id] is False:\n            if log_counter % 100:\n                self.log.debug('{klass}.unwrap() - waiting for key \"{key_id}\" currently being bought ..', klass=self.__class__.__name__, key_id=hl(uuid.UUID(bytes=key_id)))\n                log_counter += 1\n            await txaio.sleep(.2)\n        if isinstance(self._keys[key_id], Exception):\n            e = self._keys[key_id]\n            raise e\n        try:\n            message = self._keys[key_id].decrypt(ciphertext)\n        except nacl.exceptions.CryptoError as e:\n            raise ApplicationError('xbr.error.decryption_failed', ...)\n        try:\n            payload = cbor2.loads(message)\n        except cbor2.decoder.CBORDecodeError as e:\n            raise ApplicationError('xbr.error.deserialization_failed', ...)\n        return payload"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "autobahn-24.4.2",
+      "total_matches": 9
+    }
+  }
+]

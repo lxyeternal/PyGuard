@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "vessl-0.1.195",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "kernel_cluster.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/vessl-0.1.195/vessl-0.1.195/vessl/kernel_cluster.py",
+    "line_number": "127",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "126\t    output = stream.read()\n127\t    if stream.close() is not None:\n128\t        raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")",
+    "code_snippet": "def create_cluster(\n    param: CreateClusterParam,\n) -> ResponseKernelClusterInfo:\n    \"\"\"Create a VESSL cluster by installing VESSL agent to given Kubernetes\n    namespace. If you want to override the default organization, then pass\n    `organization_name` to `param`.\n\n    Args:\n        param(CreateClusterParam): Create cluster parameter.\n\n    Example:\n        ```python\n        vessl.install_cluster(\n            param=vessl.CreateClusterParam(\n                cluster_name=\"foo\",\n                ...\n            ),\n        )\n        ```\n    \"\"\"\n    agent_access_token = vessl_api.custom_cluster_key_api(\n        organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}),\n    ).access_token\n\n    logger.debug(f\"cluster name: '{param.cluster_name}'\")\n    logger.debug(f\"access token: '{agent_access_token}'\")\n\n    cluster_install_command = (\n        ClusterInstallCommandBuilder()\n        .with_kubeconfig(param.kubeconfig_path)\n        .with_cluster_name(param.cluster_name)\n        .with_provider_type(param.provider)\n        .with_namespace(param.kubernetes_namespace)\n        .with_access_token(agent_access_token)\n        .with_local_path_provisioner_enabled(param.enable_local_path_provisioner)\n        .with_longhorn_enabled(param.enable_longhorn)\n        .with_helm_values(param.extra_helm_values)\n        .with_pod_resource_path(param.pod_resource_path)\n        .build()\n    )\n\n    stream = os.popen(cluster_install_command)\n    output = stream.read()\n    if stream.close() is not None:\n        raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")\n    print(click.style(output, fg=\"blue\"))\n\n    logger.warn(\n        click.style(\n            \"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\",\n            fg=\"green\",\n        )\n    )\n    for attempts in range(18):\n        sleep(10)\n        try:\n            return vessl_api.custom_cluster_connectivity_api(\n                organization_name=_get_organization_name(\n                    **{\"organization_name\": param.organization_name}\n                ),\n                agent_access_token=agent_access_token,\n            )\n        except VesslApiException as e:\n            if e.code == \"NotFound\":\n                continue\n            raise e\n\n    raise ClusterNotFoundError(\n        \"Timeout for checking agent connection; Please check agent log for more information.\"\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "vessl_api.custom_cluster_key_api",
+        "_get_organization_name",
+        "os.popen",
+        "stream.read",
+        "stream.close",
+        "print",
+        "click.style",
+        "logger.warn",
+        "sleep",
+        "vessl_api.custom_cluster_connectivity_api"
+      ],
+      "api_sequence_with_args": [
+        "vessl_api.custom_cluster_key_api(organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}))",
+        "_get_organization_name(**{\"organization_name\": param.organization_name})",
+        "os.popen(cluster_install_command)",
+        "stream.read()",
+        "stream.close()",
+        "print(click.style(output, fg=\"blue\"))",
+        "click.style(\"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\", fg=\"green\")",
+        "logger.warn(click.style(...))",
+        "sleep(10)",
+        "vessl_api.custom_cluster_connectivity_api(organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}), agent_access_token=agent_access_token)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "vessl_api.custom_cluster_key_api",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "_get_organization_name",
+          "id": "deserialize_from_json",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.popen",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "stream.read",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "stream.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "print",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "click.style",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "logger.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "vessl_api.custom_cluster_connectivity_api",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        }
+      ],
+      "contextual_code": "agent_access_token = vessl_api.custom_cluster_key_api(\n    organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}),\n).access_token\n\ncluster_install_command = (\n    ClusterInstallCommandBuilder()\n    .with_kubeconfig(param.kubeconfig_path)\n    .with_cluster_name(param.cluster_name)\n    .with_provider_type(param.provider)\n    .with_namespace(param.kubernetes_namespace)\n    .with_access_token(agent_access_token)\n    .with_local_path_provisioner_enabled(param.enable_local_path_provisioner)\n    .with_longhorn_enabled(param.enable_longhorn)\n    .with_helm_values(param.extra_helm_values)\n    .with_pod_resource_path(param.pod_resource_path)\n    .build()\n)\n\nstream = os.popen(cluster_install_command)\noutput = stream.read()\nif stream.close() is not None:\n    raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")\nprint(click.style(output, fg=\"blue\"))\n\nlogger.warn(\n    click.style(\n        \"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\",\n        fg=\"green\",\n    )\n)\nfor attempts in range(18):\n    sleep(10)\n    try:\n        return vessl_api.custom_cluster_connectivity_api(\n            organization_name=_get_organization_name(\n                **{\"organization_name\": param.organization_name}\n            ),\n            agent_access_token=agent_access_token,\n        )\n    except VesslApiException as e:\n        if e.code == \"NotFound\":\n            continue\n        raise e"
+    }
+  }
+]

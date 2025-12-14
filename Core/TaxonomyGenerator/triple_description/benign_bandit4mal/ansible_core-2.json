@@ -1,0 +1,176 @@
+{
+  "metadata": {
+    "package_name": "ansible_core-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ansible_core-2.18.4.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "payload.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ansible_core-2.18.4/ansible_core-2.18.4/test/lib/ansible_test/_internal/payload.py",
+      "line_number": "178",
+      "type_description": "B834:open",
+      "context_snippet": "def create_payload(args: CommonConfig, dst_path: str) -> None:\n    \"\"\"Create a payload for delegation.\"\"\"\n    if args.explain:\n        return\n\n    files = list(data_context().ansible_source)\n    permissions: dict[str, int] = {}\n    filters: dict[str, t.Callable[[tarfile.TarInfo], t.Optional[tarfile.TarInfo]]] = {}\n\n    # Exclude vendored files from the payload.\n    # They may not be compatible with the delegated environment.\n    files = [\n        (abs_path, rel_path) for abs_path, rel_path in files\n        if not rel_path.startswith('lib/ansible/_vendor/')\n        or rel_path == 'lib/ansible/_vendor/__init__.py'\n    ]\n\n    def apply_permissions(tar_info: tarfile.TarInfo, mode: int) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Apply the specified permissions to the given file.\n        Existing file type bits are preserved.\n        \"\"\"\n        tar_info.mode &= ~(stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)\n        tar_info.mode |= mode\n\n        return tar_info\n\n    def make_executable(tar_info: tarfile.TarInfo) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Make the given file executable and readable by all, and writeable by the owner.\n        Existing file type bits are preserved.\n        This ensures consistency of test results when using unprivileged users.\n        \"\"\"\n        return apply_permissions(\n            tar_info,\n            stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH |\n            stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH |\n            stat.S_IWUSR\n        )  # fmt: skip\n\n    def make_non_executable(tar_info: tarfile.TarInfo) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Make the given file readable by all, and writeable by the owner.\n        Existing file type bits are preserved.\n        This ensures consistency of test results when using unprivileged users.\n        \"\"\"\n        return apply_permissions(\n            tar_info,\n            stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH |\n            stat.S_IWUSR\n        )  # fmt: skip\n\n    def detect_permissions(tar_info: tarfile.TarInfo) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Detect and apply the appropriate permissions for a file.\n        Existing file type bits are preserved.\n        This ensures consistency of test results when using unprivileged users.\n        \"\"\"\n        if tar_info.path.startswith('ansible/'):\n            mode = permissions.get(os.path.relpath(tar_info.path, 'ansible'))\n        elif data_context().content.collection and is_subdir(tar_info.path, data_context().content.collection.directory):\n            mode = permissions.get(os.path.relpath(tar_info.path, data_context().content.collection.directory))\n        else:\n            mode = None\n\n        if mode:\n            tar_info = apply_permissions(tar_info, mode)\n        elif tar_info.mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):\n            # If any execute bit is set, treat the file as executable.\n            # This ensures that sanity tests which check execute bits behave correctly.\n            tar_info = make_executable(tar_info)\n        else:\n            tar_info = make_non_executable(tar_info)\n\n        return tar_info\n\n    if not ANSIBLE_SOURCE_ROOT:\n        # reconstruct the bin directory which is not available when running from an ansible install\n        files.extend(create_temporary_bin_files(args))\n        filters.update(dict((os.path.join('ansible', path[3:]), make_executable) for path in ANSIBLE_BIN_SYMLINK_MAP.values() if path.startswith('../')))\n\n    if not data_context().content.is_ansible:\n        # exclude unnecessary files when not testing ansible itself\n        files = [f for f in files if\n                 is_subdir(f[1], 'bin/') or\n                 is_subdir(f[1], 'lib/ansible/') or\n                 is_subdir(f[1], 'test/lib/ansible_test/')]\n\n        if not isinstance(args, (ShellConfig, IntegrationConfig)):\n            # exclude built-in ansible modules when they are not needed\n            files = [f for f in files if not is_subdir(f[1], 'lib/ansible/modules/') or f[1] == 'lib/ansible/modules/__init__.py']\n\n        collection_layouts = data_context().create_collection_layouts()\n\n        content_files: list[tuple[str, str]] = []\n        extra_files: list[tuple[str, str]] = []\n\n        for layout in collection_layouts:\n            if layout == data_context().content:\n                # include files from the current collection (layout.collection.directory will be added later)\n                content_files.extend((os.path.join(layout.root, path), path) for path in data_context().content.all_files())\n            else:\n                # include files from each collection in the same collection root as the content being tested\n                extra_files.extend((os.path.join(layout.root, path), os.path.join(layout.collection.directory, path)) for path in layout.all_files())\n    else:\n        # when testing ansible itself the ansible source is the content\n        content_files = files\n        # there are no extra files when testing ansible itself\n        extra_files = []\n\n    payload_config = PayloadConfig(\n        files=content_files,\n        permissions=permissions,\n    )\n\n    for callback in data_context().payload_callbacks:\n        # execute callbacks only on the content paths\n        # this is done before placing them in the appropriate subdirectory (see below)\n        callback(payload_config)\n\n    # place ansible source files under the 'ansible' directory on the delegated host\n    files = [(src, os.path.join('ansible', dst)) for src, dst in files]\n\n    if data_context().content.collection:\n        # place collection files under the 'ansible_collections/{namespace}/{collection}' directory on the delegated host\n        files.extend((src, os.path.join(data_context().content.collection.directory, dst)) for src, dst in content_files)\n        # extra files already have the correct destination path\n        files.extend(extra_files)\n\n    # maintain predictable file order\n    files = sorted(set(files))\n\n    display.info('Creating a payload archive containing %d files...' % len(files), verbosity=1)\n\n    start = time.time()\n\n    with tarfile.open(dst_path, mode='w:gz', compresslevel=4, format=tarfile.GNU_FORMAT) as tar:\n        for src, dst in files:\n            display.info('%s -> %s' % (src, dst), verbosity=4)\n            tar.add(src, dst, filter=filters.get(dst, detect_permissions))\n\n    duration = time.time() - start\n    payload_size_bytes = os.path.getsize(dst_path)\n\n    display.info('Created a %d byte payload archive containing %d files in %d seconds.' % (payload_size_bytes, len(files), duration), verbosity=1)",
+      "hash_value": "8592e4d98b91be5735102edd25709d87",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def create_payload(args: CommonConfig, dst_path: str) -> None:\n    \"\"\"Create a payload for delegation.\"\"\"\n    if args.explain:\n        return\n\n    files = list(data_context().ansible_source)\n    permissions: dict[str, int] = {}\n    filters: dict[str, t.Callable[[tarfile.TarInfo], t.Optional[tarfile.TarInfo]]] = {}\n\n    # Exclude vendored files from the payload.\n    # They may not be compatible with the delegated environment.\n    files = [\n        (abs_path, rel_path) for abs_path, rel_path in files\n        if not rel_path.startswith('lib/ansible/_vendor/')\n        or rel_path == 'lib/ansible/_vendor/__init__.py'\n    ]\n\n    def apply_permissions(tar_info: tarfile.TarInfo, mode: int) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Apply the specified permissions to the given file.\n        Existing file type bits are preserved.\n        \"\"\"\n        tar_info.mode &= ~(stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)\n        tar_info.mode |= mode\n\n        return tar_info\n\n    def make_executable(tar_info: tarfile.TarInfo) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Make the given file executable and readable by all, and writeable by the owner.\n        Existing file type bits are preserved.\n        This ensures consistency of test results when using unprivileged users.\n        \"\"\"\n        return apply_permissions(\n            tar_info,\n            stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH |\n            stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH |\n            stat.S_IWUSR\n        )  # fmt: skip\n\n    def make_non_executable(tar_info: tarfile.TarInfo) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Make the given file readable by all, and writeable by the owner.\n        Existing file type bits are preserved.\n        This ensures consistency of test results when using unprivileged users.\n        \"\"\"\n        return apply_permissions(\n            tar_info,\n            stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH |\n            stat.S_IWUSR\n        )  # fmt: skip\n\n    def detect_permissions(tar_info: tarfile.TarInfo) -> t.Optional[tarfile.TarInfo]:\n        \"\"\"\n        Detect and apply the appropriate permissions for a file.\n        Existing file type bits are preserved.\n        This ensures consistency of test results when using unprivileged users.\n        \"\"\"\n        if tar_info.path.startswith('ansible/'):\n            mode = permissions.get(os.path.relpath(tar_info.path, 'ansible'))\n        elif data_context().content.collection and is_subdir(tar_info.path, data_context().content.collection.directory):\n            mode = permissions.get(os.path.relpath(tar_info.path, data_context().content.collection.directory))\n        else:\n            mode = None\n\n        if mode:\n            tar_info = apply_permissions(tar_info, mode)\n        elif tar_info.mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):\n            # If any execute bit is set, treat the file as executable.\n            # This ensures that sanity tests which check execute bits behave correctly.\n            tar_info = make_executable(tar_info)\n        else:\n            tar_info = make_non_executable(tar_info)\n\n        return tar_info\n\n    if not ANSIBLE_SOURCE_ROOT:\n        # reconstruct the bin directory which is not available when running from an ansible install\n        files.extend(create_temporary_bin_files(args))\n        filters.update(dict((os.path.join('ansible', path[3:]), make_executable) for path in ANSIBLE_BIN_SYMLINK_MAP.values() if path.startswith('../')))\n\n    if not data_context().content.is_ansible:\n        # exclude unnecessary files when not testing ansible itself\n        files = [f for f in files if\n                 is_subdir(f[1], 'bin/') or\n                 is_subdir(f[1], 'lib/ansible/') or\n                 is_subdir(f[1], 'test/lib/ansible_test/')]\n\n        if not isinstance(args, (ShellConfig, IntegrationConfig)):\n            # exclude built-in ansible modules when they are not needed\n            files = [f for f in files if not is_subdir(f[1], 'lib/ansible/modules/') or f[1] == 'lib/ansible/modules/__init__.py']\n\n        collection_layouts = data_context().create_collection_layouts()\n\n        content_files: list[tuple[str, str]] = []\n        extra_files: list[tuple[str, str]] = []\n\n        for layout in collection_layouts:\n            if layout == data_context().content:\n                # include files from the current collection (layout.collection.directory will be added later)\n                content_files.extend((os.path.join(layout.root, path), path) for path in data_context().content.all_files())\n            else:\n                # include files from each collection in the same collection root as the content being tested\n                extra_files.extend((os.path.join(layout.root, path), os.path.join(layout.collection.directory, path)) for path in layout.all_files())\n    else:\n        # when testing ansible itself the ansible source is the content\n        content_files = files\n        # there are no extra files when testing ansible itself\n        extra_files = []\n\n    payload_config = PayloadConfig(\n        files=content_files,\n        permissions=permissions,\n    )\n\n    for callback in data_context().payload_callbacks:\n        # execute callbacks only on the content paths\n        # this is done before placing them in the appropriate subdirectory (see below)\n        callback(payload_config)\n\n    # place ansible source files under the 'ansible' directory on the delegated host\n    files = [(src, os.path.join('ansible', dst)) for src, dst in files]\n\n    if data_context().content.collection:\n        # place collection files under the 'ansible_collections/{namespace}/{collection}' directory on the delegated host\n        files.extend((src, os.path.join(data_context().content.collection.directory, dst)) for src, dst in content_files)\n        # extra files already have the correct destination path\n        files.extend(extra_files)\n\n    # maintain predictable file order\n    files = sorted(set(files))\n\n    display.info('Creating a payload archive containing %d files...' % len(files), verbosity=1)\n\n    start = time.time()\n\n    with tarfile.open(dst_path, mode='w:gz', compresslevel=4, format=tarfile.GNU_FORMAT) as tar:\n        for src, dst in files:\n            display.info('%s -> %s' % (src, dst), verbosity=4)\n            tar.add(src, dst, filter=filters.get(dst, detect_permissions))\n\n    duration = time.time() - start\n    payload_size_bytes = os.path.getsize(dst_path)\n\n    display.info('Created a %d byte payload archive containing %d files in %d seconds.' % (payload_size_bytes, len(files), duration), verbosity=1)",
+          "triple_sequences": [
+            {
+              "action_api": "data_context()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access WMI interface",
+              "intention_id": "access_wmi_interface"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "layout.root, path",
+              "object_description": "Path segment",
+              "object_id": "path_segment",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.relpath()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "tar_info.path, 'ansible'",
+              "object_description": "Path segment",
+              "object_id": "path_segment",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "is_subdir()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "tar_info.path, data_context().content.collection.directory",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "Determine directory presence",
+              "intention_id": "determine_directory_presence"
+            },
+            {
+              "action_api": "apply_permissions()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "tar_info, mode",
+              "object_description": "File permission",
+              "object_id": "file_permission",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "make_executable()",
+              "action_description": "Changes file mode to add execute permission",
+              "action_id": "change_file_mode_execute",
+              "object": "tar_info",
+              "object_description": "File permission",
+              "object_id": "file_permission",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "make_non_executable()",
+              "action_description": "Sets file attributes for specified file",
+              "action_id": "set_file_attributes",
+              "object": "tar_info",
+              "object_description": "File permission",
+              "object_id": "file_permission",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "create_temporary_bin_files()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "args",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "data_context().create_collection_layouts()",
+              "action_description": "Instantiates WMI interface for system management",
+              "action_id": "instantiate_wmi",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access WMI interface",
+              "intention_id": "access_wmi_interface"
+            },
+            {
+              "action_api": "os.path.getsize()",
+              "action_description": "Retrieves disk usage statistics (total, used, free) for given path",
+              "action_id": "get_disk_usage",
+              "object": "dst_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Get file size",
+              "intention_id": "get_file_size"
+            },
+            {
+              "action_api": "sorted()",
+              "action_description": "List directory contents",
+              "action_id": "list_directory_contents",
+              "object": "set(files)",
+              "object_description": "Directory path",
+              "object_id": "directory_path",
+              "intention_description": "List files in directory",
+              "intention_id": "list_directory_files"
+            },
+            {
+              "action_api": "display.info()",
+              "action_description": "Reads user input from standard input",
+              "action_id": "read_user_input",
+              "object": "'Creating a payload archive containing %d files...' % len(files), verbosity=1",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Collect command output",
+              "intention_id": "collect_command_output"
+            },
+            {
+              "action_api": "tarfile.open()",
+              "action_description": "Creates new ZIP archive for writing",
+              "action_id": "create_zip_archive",
+              "object": "dst_path, mode='w:gz', compresslevel=4, format=tarfile.GNU_FORMAT",
+              "object_description": "ZIP archive",
+              "object_id": "zip_archive",
+              "intention_description": "Create zip archive",
+              "intention_id": "create_zip_archive"
+            },
+            {
+              "action_api": "tar.add()",
+              "action_description": "Adds file to ZIP archive with specified archive name",
+              "action_id": "add_file_zip",
+              "object": "src, dst, filter=filters.get(dst, detect_permissions)",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Add file to zip archive",
+              "intention_id": "add_file_to_archive"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

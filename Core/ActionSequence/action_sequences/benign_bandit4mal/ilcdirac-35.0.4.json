@@ -1,0 +1,282 @@
+[
+  {
+    "metadata": {
+      "package_name": "ilcdirac-35.0.4",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "dirac_fcc_make_productions.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ilcdirac-35.0.4/ilcdirac-35.0.4/src/ILCDIRAC/ILCTransformationSystem/scripts/dirac_fcc_make_productions.py",
+    "line_number": "556",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "555\t      config2.optionxform = str  # do not transform options to lowercase\n556\t      config2.read(parameter.prodConfigFilename)\n557\t      for appName in APPLICATION_LIST:",
+    "code_snippet": "def loadParameters(self, parameter):\n    \"\"\"Load parameters from config file.\"\"\"\n    if parameter.prodConfigFilename is not None:\n      defaultValueDict = vars(self)\n      defaultValueDict = {key: str(value) for key, value in defaultValueDict.items()}\n      self._flags.updateDictWithFlags(defaultValueDict)\n      # we are passing all instance attributes as the default dict so generally we do not have to check\n      # if an option exists, also options are case insensitive and stored in lowercase\n      config = six.moves.configparser.SafeConfigParser(defaults=defaultValueDict, dict_type=dict)\n      config.read(parameter.prodConfigFilename)\n      self._flags.loadFlags(config)\n\n      for attribute in LIST_ATTRIBUTES:\n        setattr(self, attribute, listify(config.get(PP, attribute)))\n\n      for attribute in STRING_ATTRIBUTES:\n        setattr(self, lowerFirst(attribute), config.get(PP, attribute))\n\n      # this parameter is deprecated and not part of the instance attributes so we need to check for existence\n      if config.has_option(PP, 'clicConfig'):\n        gLogger.warn('\"clicConfig\" parameter is deprected, please dump a new steering file!')\n        self.configVersion = config.get(PP, 'clicConfig')\n\n      # attribute and option names differ, special treatment\n      self.cliRecoOption = config.get(PP, 'cliReco')\n\n      if self.moveStatus not in ('Active', 'Stopped'):\n        raise AttributeError(\"MoveStatus can only be 'Active' or 'Stopped' not %r\" % self.moveStatus)\n\n      # self.overlayEvents = self.checkOverlayParameter(self.overlayEvents)\n      # self.overlayEventType = self.overlayEventType + self.overlayEvents.lower()\n\n      self.processes = [process.strip() for process in self.processes if process.strip()]\n      self.energies = [float(eng.strip()) for eng in self.energies if eng.strip()]\n      self.eventsPerJobs = [int(epj.strip()) for epj in self.eventsPerJobs if epj.strip()]\n      # these do not have to exist so we fill them to the same length if they are not set\n      self.prodIDs = [int(pID.strip()) for pID in self.prodIDs if pID.strip()]\n      self.prodIDs = self.prodIDs if self.prodIDs else [1 for _ in self.energies]\n\n      # if one of the lists only has size 1 and there is a longer list we extend\n      # the list to the maximum size assuming the values are re-used\n      maxLength = 0\n      parameterLists = [self.processes, self.energies, self.eventsPerJobs, self.generatorSteeringFile, self.secondaryGeneratorSteeringFile]\n      \n      for parList in parameterLists:\n        maxLength = len(parList) if len(parList) > maxLength else maxLength\n      for parList in parameterLists:\n        if len(parList) == 1 and maxLength > 1:\n          parList.extend([parList[0]] * (maxLength - 1))\n\n      if not (self.processes and self.energies and self.eventsPerJobs) and self.prodIDs:\n        eventsPerJobSave = list(self.eventsPerJobs) if self.eventsPerJobs else None\n        self._getProdInfoFromIDs()\n        self.eventsPerJobs = eventsPerJobSave if eventsPerJobSave else self.eventsPerJobs\n\n      self.numberOfTasks = [int(nbtask.strip()) for nbtask in self.numberOfTasks if nbtask.strip()]\n      self.numberOfTasks = self.numberOfTasks if self.numberOfTasks else [1] * len(self.energies)\n      self.taskNames = self.taskNames if self.taskNames else [''] * len(self.energies)\n\n      if len(self.processes) != len(self.energies) or \\\n         len(self.energies) != len(self.eventsPerJobs) or \\\n         len(self.prodIDs) != len(self.eventsPerJobs) or \\\n         len(self.eventsPerJobs) != len(self.taskNames) or \\\n         False:\n        raise AttributeError('Lengths of Processes, Energies, EventsPerJobs, AdditionalNames do not match')\n\n      if self._flags.gen:\n        if len(self.numberOfTasks) != len(self.energies) or \\\n           (self.generatorSteeringFile and (len(self.generatorSteeringFile) != len(self.energies))) or \\\n           (self.secondaryGeneratorSteeringFile and (len(self.secondaryGeneratorSteeringFile) != len(self.generatorSteeringFile))):\n          raise AttributeError(\"Lengths of numberOfTasks, generatorSteeringFile, secondaryGeneratorSteeringFile, and Energies do not match\")\n\n      self.eventsInSplitFiles = listify(self.eventsInSplitFiles, int)\n      self.eventsInSplitFiles = self.eventsInSplitFiles if self.eventsInSplitFiles else [-1] * len(self.energies)\n\n      if self._flags.spl and len(self.eventsInSplitFiles) != len(self.energies):\n        raise AttributeError(\"Length of eventsInSplitFiles does not match: %d vs %d\" % (\n            len(self.eventsInSplitFiles),\n            len(self.energies)))\n\n      # read options from application sections\n      config2 = six.moves.configparser.SafeConfigParser(dict_type=dict)\n      config2.optionxform = str  # do not transform options to lowercase\n      config2.read(parameter.prodConfigFilename)\n      for appName in APPLICATION_LIST:\n        try:\n          self.applicationOptions[appName] = dict(config2.items(appName))\n        except six.moves.configparser.NoSectionError:\n          pass\n\n    if parameter.dumpConfigFile:\n      print(self)\n      raise RuntimeError('')",
+    "pattern_analysis": {
+      "api_sequence": [
+        "vars",
+        "six.moves.configparser.SafeConfigParser",
+        "config.read",
+        "self._flags.loadFlags",
+        "config.get",
+        "setattr",
+        "config.get",
+        "setattr",
+        "config.has_option",
+        "gLogger.warn",
+        "config.get",
+        "config.get",
+        "listify",
+        "listify",
+        "listify",
+        "listify",
+        "listify",
+        "list",
+        "self._getProdInfoFromIDs",
+        "listify",
+        "listify",
+        "six.moves.configparser.SafeConfigParser",
+        "config2.read",
+        "config2.items",
+        "dict",
+        "print"
+      ],
+      "api_sequence_with_args": [
+        "vars(self)",
+        "six.moves.configparser.SafeConfigParser(defaults=defaultValueDict, dict_type=dict)",
+        "config.read(parameter.prodConfigFilename)",
+        "self._flags.loadFlags(config)",
+        "config.get(PP, attribute)",
+        "setattr(self, attribute, listify(config.get(PP, attribute)))",
+        "config.get(PP, attribute)",
+        "setattr(self, lowerFirst(attribute), config.get(PP, attribute))",
+        "config.has_option(PP, 'clicConfig')",
+        "gLogger.warn('\"clicConfig\" parameter is deprected, please dump a new steering file!')",
+        "config.get(PP, 'clicConfig')",
+        "config.get(PP, 'cliReco')",
+        "listify(self.eventsInSplitFiles, int)",
+        "list(self.eventsPerJobs)",
+        "self._getProdInfoFromIDs()",
+        "listify(self.eventsInSplitFiles, int)",
+        "six.moves.configparser.SafeConfigParser(dict_type=dict)",
+        "config2.read(parameter.prodConfigFilename)",
+        "config2.items(appName)",
+        "dict(config2.items(appName))",
+        "print(self)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "vars",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "six.moves.configparser.SafeConfigParser",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "config.read",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "self._flags.loadFlags",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "config.get",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "setattr",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "config.get",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "setattr",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "config.has_option",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "gLogger.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "config.get",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "config.get",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "listify",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "list",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self._getProdInfoFromIDs",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "listify",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "six.moves.configparser.SafeConfigParser",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "config2.read",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "config2.items",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "dict",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "print",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        }
+      ],
+      "contextual_code": "def loadParameters(self, parameter):\n    if parameter.prodConfigFilename is not None:\n        defaultValueDict = vars(self)\n        defaultValueDict = {key: str(value) for key, value in defaultValueDict.items()}\n        self._flags.updateDictWithFlags(defaultValueDict)\n        config = six.moves.configparser.SafeConfigParser(defaults=defaultValueDict, dict_type=dict)\n        config.read(parameter.prodConfigFilename)\n        self._flags.loadFlags(config)\n        for attribute in LIST_ATTRIBUTES:\n            setattr(self, attribute, listify(config.get(PP, attribute)))\n        for attribute in STRING_ATTRIBUTES:\n            setattr(self, lowerFirst(attribute), config.get(PP, attribute))\n        if config.has_option(PP, 'clicConfig'):\n            gLogger.warn('\"clicConfig\" parameter is deprected, please dump a new steering file!')\n            self.configVersion = config.get(PP, 'clicConfig')\n        self.cliRecoOption = config.get(PP, 'cliReco')\n        self.processes = [process.strip() for process in self.processes if process.strip()]\n        self.energies = [float(eng.strip()) for eng in self.energies if eng.strip()]\n        self.eventsPerJobs = [int(epj.strip()) for epj in self.eventsPerJobs if epj.strip()]\n        self.prodIDs = [int(pID.strip()) for pID in self.prodIDs if pID.strip()]\n        self.prodIDs = self.prodIDs if self.prodIDs else [1 for _ in self.energies]\n        maxLength = 0\n        parameterLists = [self.processes, self.energies, self.eventsPerJobs, self.generatorSteeringFile, self.secondaryGeneratorSteeringFile]\n        for parList in parameterLists:\n            maxLength = len(parList) if len(parList) > maxLength else maxLength\n        for parList in parameterLists:\n            if len(parList) == 1 and maxLength > 1:\n                parList.extend([parList[0]] * (maxLength - 1))\n        if not (self.processes and self.energies and self.eventsPerJobs) and self.prodIDs:\n            eventsPerJobSave = list(self.eventsPerJobs) if self.eventsPerJobs else None\n            self._getProdInfoFromIDs()\n            self.eventsPerJobs = eventsPerJobSave if eventsPerJobSave else self.eventsPerJobs\n        self.numberOfTasks = [int(nbtask.strip()) for nbtask in self.numberOfTasks if nbtask.strip()]\n        self.numberOfTasks = self.numberOfTasks if self.numberOfTasks else [1] * len(self.energies)\n        self.taskNames = self.taskNames if self.taskNames else [''] * len(self.energies)\n        if len(self.processes) != len(self.energies) or \\\n           len(self.energies) != len(self.eventsPerJobs) or \\\n           len(self.prodIDs) != len(self.eventsPerJobs) or \\\n           len(self.eventsPerJobs) != len(self.taskNames) or \\\n           False:\n            raise AttributeError('Lengths of Processes, Energies, EventsPerJobs, AdditionalNames do not match')\n        if self._flags.gen:\n            if len(self.numberOfTasks) != len(self.energies) or \\\n               (self.generatorSteeringFile and (len(self.generatorSteeringFile) != len(self.energies))) or \\\n               (self.secondaryGeneratorSteeringFile and (len(self.secondaryGeneratorSteeringFile) != len(self.generatorSteeringFile))):\n                raise AttributeError(\"Lengths of numberOfTasks, generatorSteeringFile, secondaryGeneratorSteeringFile, and Energies do not match\")\n        self.eventsInSplitFiles = listify(self.eventsInSplitFiles, int)\n        self.eventsInSplitFiles = self.eventsInSplitFiles if self.eventsInSplitFiles else [-1] * len(self.energies)\n        if self._flags.spl and len(self.eventsInSplitFiles) != len(self.energies):\n            raise AttributeError(\"Length of eventsInSplitFiles does not match: %d vs %d\" % (\n                len(self.eventsInSplitFiles),\n                len(self.energies)))\n        config2 = six.moves.configparser.SafeConfigParser(dict_type=dict)\n        config2.optionxform = str\n        config2.read(parameter.prodConfigFilename)\n        for appName in APPLICATION_LIST:\n            try:\n                self.applicationOptions[appName] = dict(config2.items(appName))\n            except six.moves.configparser.NoSectionError:\n                pass\n    if parameter.dumpConfigFile:\n        print(self)\n        raise RuntimeError('')"
+    }
+  },
+  {
+    "pyfile": "Test_DelphesAppModule.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ilcdirac-35.0.4/ilcdirac-35.0.4/src/ILCDIRAC/Workflow/Modules/Test/Test_DelphesAppModule.py",
+    "line_number": "370",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "369\t    with open(self.logFileName, \"w\") as scr:\n370\t      scr.write(\"content\")\n371\t    # side effect for the os.path.exists in DelphesAppModule:",
+    "code_snippet": "def setUp(self):\n    super(TestDelphesAppModuleRunit, self).setUp()\n    self.logFileName = \"localEnv.log\"\n    self.executableName = \"DelphesPythia8_EDM4HEP\"\n    self.detectorCard = \"delphes_card_IDEA.tcl\"\n    self.outputCard = \"edm4hep_output_config.tcl\"\n    self.pythia8CardContent = \"Random:setSeed = on\\nMain:numberOfEvents = 3000         ! number of events to generate\"\n    self.step_commons = {'STEP_NUMBER': 1}\n    with open(self.logFileName, \"w\") as logF:\n      logF.write(\"logged the logging logs\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "logF.write"
+      ],
+      "api_sequence_with_args": [
+        "open(self.logFileName, \"w\")",
+        "logF.write(\"logged the logging logs\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "logF.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "def setUp(self):\n    self.logFileName = \"localEnv.log\"\n    with open(self.logFileName, \"w\") as logF:\n        logF.write(\"logged the logging logs\")"
+    }
+  }
+]

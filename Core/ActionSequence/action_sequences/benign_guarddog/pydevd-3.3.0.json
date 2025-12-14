@@ -1,0 +1,134 @@
+[
+  {
+    "pyfile": "pydevconsole.py",
+    "code_snippet": "import builtins as __builtin__\n\ndef get_interpreter():\n    try:\n        interpreterInterface = getattr(__builtin__, \"interpreter\")\n    except AttributeError:\n        interpreterInterface = InterpreterInterface(None, None, threading.current_thread())\n        __builtin__.interpreter = interpreterInterface\n        sys.stderr.write(interpreterInterface.get_greeting_msg())\n        sys.stderr.flush()\n\n    return interpreterInterface\n\nclass InterpreterInterface(BaseInterpreterInterface):\n    \"\"\"\n    The methods in this class should be registered in the xml-rpc server.\n    \"\"\"\n\n    def __init__(self, host, client_port, mainThread, connect_status_queue=None):\n        BaseInterpreterInterface.__init__(self, mainThread, connect_status_queue)\n        self.client_port = client_port\n        self.host = host\n        self.namespace = {}\n        self.interpreter = InteractiveConsole(self.namespace)\n        self._input_error_printed = False\n\n    def do_add_exec(self, codeFragment):\n        command = Command(self.interpreter, codeFragment)\n        command.run()\n        return command.more\n\n    def get_namespace(self):\n        return self.namespace\n\n    def getCompletions(self, text, act_tok):\n        try:\n            from _pydev_bundle._pydev_completer import Completer\n\n            completer = Completer(self.namespace, None)\n            return completer.complete(act_tok)\n        except:\n            pydev_log.exception()\n            return []\n\n    def close(self):\n        sys.exit(0)\n\n    def get_greeting_msg(self):\n        return \"PyDev console: starting.\\n\"\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "getattr",
+        "threading.current_thread",
+        "sys.stderr.write",
+        "sys.stderr.flush",
+        "sys.exit"
+      ],
+      "api_sequence_with_args": [
+        "getattr(__builtin__, \"interpreter\")",
+        "threading.current_thread()",
+        "sys.stderr.write(interpreterInterface.get_greeting_msg())",
+        "sys.stderr.flush()",
+        "sys.exit(0)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "threading.current_thread",
+          "id": "list_threads",
+          "description": "Lists all currently alive threads",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "sys.stderr.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "sys.stderr.flush",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "def get_interpreter():\n    try:\n        interpreterInterface = getattr(__builtin__, \"interpreter\")\n    except AttributeError:\n        interpreterInterface = InterpreterInterface(None, None, threading.current_thread())\n        __builtin__.interpreter = interpreterInterface\n        sys.stderr.write(interpreterInterface.get_greeting_msg())\n        sys.stderr.flush()\n    return interpreterInterface\n\nclass InterpreterInterface(BaseInterpreterInterface):\n    def close(self):\n        sys.exit(0)\n    def get_greeting_msg(self):\n        return \"PyDev console: starting.\\n\""
+    }
+  },
+  {
+    "pyfile": "compat.py",
+    "code_snippet": "import sys\nimport types\n\n# Useful for very coarse version differentiation.\nPY2 = sys.version_info[0] == 2\nPY3 = sys.version_info[0] == 3\n\nif PY3:\n    import builtins\n\n    exec_ = getattr(builtins, \"exec\")\n\n    def reraise(tp, value, tb=None):\n        if value is None:\n            value = tp()\n        if value.__traceback__ is not tb:\n            raise value.with_traceback(tb)\n        raise value\n\nelse:\n\n    def exec_(_code_, _globs_=None, _locs_=None):\n        \"\"\"Execute code in a namespace.\"\"\"\n        if _globs_ is None:\n            frame = sys._getframe(1)\n            _globs_ = frame.f_globals\n            if _locs_ is None:\n                _locs_ = frame.f_locals\n            del frame\n        elif _locs_ is None:\n            _locs_ = _globs_\n        exec(\"\"\"exec _code_ in _globs_, _locs_\"\"\")\n\n    exec_(\n        \"\"\"def reraise(tp, value, tb=None):\n    raise tp, value, tb\n\"\"\"\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.version_info",
+        "getattr",
+        "builtins.exec",
+        "sys._getframe",
+        "exec"
+      ],
+      "api_sequence_with_args": [
+        "sys.version_info[0]",
+        "getattr(builtins, \"exec\")",
+        "builtins.exec(...)",
+        "sys._getframe(1)",
+        "exec(\"\"\"exec _code_ in _globs_, _locs_\"\"\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins.exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "sys._getframe",
+          "id": "extract_call_stack",
+          "description": "Extracts current call stack as FrameSummary objects",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "import sys\nimport types\n\nPY2 = sys.version_info[0] == 2\nPY3 = sys.version_info[0] == 3\n\nif PY3:\n    import builtins\n    exec_ = getattr(builtins, \"exec\")\n    def reraise(tp, value, tb=None):\n        if value is None:\n            value = tp()\n        if value.__traceback__ is not tb:\n            raise value.with_traceback(tb)\n        raise value\nelse:\n    def exec_(_code_, _globs_=None, _locs_=None):\n        if _globs_ is None:\n            frame = sys._getframe(1)\n            _globs_ = frame.f_globals\n            if _locs_ is None:\n                _locs_ = frame.f_locals\n            del frame\n        elif _locs_ is None:\n            _locs_ = _globs_\n        exec(\"\"\"exec _code_ in _globs_, _locs_\"\"\")\n    exec_(\"\"\"def reraise(tp, value, tb=None):\n    raise tp, value, tb\n\"\"\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pydevd-3.3.0",
+      "total_matches": 2
+    }
+  }
+]

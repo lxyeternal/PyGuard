@@ -1,0 +1,171 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport subprocess\nimport platform\n\n# ... (other imports and code omitted for brevity)\n\npkgconf = which(\"pkg-config\")\nif \"--libzstd-bundled\" in sys.argv:\n    # Do you want use external Zstd library?\n    SUP_EXTERNAL=False\n    sys.argv.remove(\"--libzstd-bundled\")\n    pkgconf = False\n    \n#if SUP_EXTERNAL:\nif platform.system() == \"Linux\" and \"build_ext\" in sys.argv or \"build\" in sys.argv or \"bdist_wheel\" in sys.argv:\n    # You should add external library by option: --libraries zstd\n    # And probably include paths by option: --include-dirs /usr/include/zstd\n    # And probably library paths by option: --library-dirs /usr/lib/i386-linux-gnu\n    # We need pkg-config here!\n    if pkgconf is not False:\n        #debug \n        #print(\"pkg-config exists\")\n        cmd = [pkgconf, \"libzstd\", \"--modversion\"]\n        if sys.hexversion >= 0x03000000:\n            VERSION_STR=b''\n        else:\n            VERSION_STR=\"\"\n        if sys.hexversion >= 0x02070000:\n            try:\n                VERSION_STR = subprocess.check_output(cmd).strip()\n            except Exception as e:\n                print(\"Error: %r\" % e) \n                pass\n        else:\n            # Pure Python 2.6\n            VERSION_STR = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0].strip()\n        if sys.hexversion >= 0x03000000:\n            # It's bytes in PY3\n            VERSION_STR = VERSION_STR.decode()\n        #debug\n        print(\"\\nFound libzstd version %r\" % VERSION_STR)\n        if VERSION_STR and SUP_EXTERNAL:\n            if VERSION_STR>=\"1.4.0\":\n                SUP_EXTERNAL=True\n                if \"--libraries\" not in sys.argv:\n                    # Add something default\n                    ext_libraries=[\"zstd\"]\n            else:\n                raise RuntimeError(\"Need zstd library verion >= 1.4.0\")\n            #VERSION = tuple(int(v) for v in VERSION_STR.split(\".\"))\n    else:\n        if SUP_EXTERNAL:\n            # Require pkg config\n            raise RuntimeError(\"Need pkg-config to find system libzstd.\")\n        print(\"\\n Need pkg-config to find system libzstd. Or we try bundled one.\")\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "which",
+        "sys.argv",
+        "sys.argv.remove",
+        "platform.system",
+        "sys.argv",
+        "sys.argv",
+        "sys.argv",
+        "subprocess.check_output",
+        "subprocess.Popen",
+        "subprocess.PIPE",
+        "subprocess.Popen.communicate",
+        "VERSION_STR.decode",
+        "print",
+        "raise",
+        "print"
+      ],
+      "api_sequence_with_args": [
+        "which(\"pkg-config\")",
+        "sys.argv",
+        "sys.argv.remove(\"--libzstd-bundled\")",
+        "platform.system()",
+        "\"build_ext\" in sys.argv",
+        "\"build\" in sys.argv",
+        "\"bdist_wheel\" in sys.argv",
+        "subprocess.check_output(cmd)",
+        "subprocess.Popen(cmd, stdout=subprocess.PIPE)",
+        "subprocess.PIPE",
+        "subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0]",
+        "VERSION_STR.decode()",
+        "print(\"\\nFound libzstd version %r\" % VERSION_STR)",
+        "raise RuntimeError(\"Need zstd library verion >= 1.4.0\")",
+        "print(\"\\n Need pkg-config to find system libzstd. Or we try bundled one.\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "which",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.argv.remove",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.PIPE",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "VERSION_STR.decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "raise",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "pkgconf = which(\"pkg-config\")\nif \"--libzstd-bundled\" in sys.argv:\n    SUP_EXTERNAL=False\n    sys.argv.remove(\"--libzstd-bundled\")\n    pkgconf = False\n\nif platform.system() == \"Linux\" and \"build_ext\" in sys.argv or \"build\" in sys.argv or \"bdist_wheel\" in sys.argv:\n    if pkgconf is not False:\n        cmd = [pkgconf, \"libzstd\", \"--modversion\"]\n        if sys.hexversion >= 0x03000000:\n            VERSION_STR=b''\n        else:\n            VERSION_STR=\"\"\n        if sys.hexversion >= 0x02070000:\n            try:\n                VERSION_STR = subprocess.check_output(cmd).strip()\n            except Exception as e:\n                print(\"Error: %r\" % e) \n                pass\n        else:\n            VERSION_STR = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0].strip()\n        if sys.hexversion >= 0x03000000:\n            VERSION_STR = VERSION_STR.decode()\n        print(\"\\nFound libzstd version %r\" % VERSION_STR)\n        if VERSION_STR and SUP_EXTERNAL:\n            if VERSION_STR>=\"1.4.0\":\n                SUP_EXTERNAL=True\n                if \"--libraries\" not in sys.argv:\n                    ext_libraries=[\"zstd\"]\n            else:\n                raise RuntimeError(\"Need zstd library verion >= 1.4.0\")\n    else:\n        if SUP_EXTERNAL:\n            raise RuntimeError(\"Need pkg-config to find system libzstd.\")\n        print(\"\\n Need pkg-config to find system libzstd. Or we try bundled one.\")"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "zstd-1.5.6.7",
+      "total_matches": 2
+    }
+  }
+]

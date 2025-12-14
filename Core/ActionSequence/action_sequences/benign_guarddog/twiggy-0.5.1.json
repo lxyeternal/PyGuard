@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "validators.py",
+    "code_snippet": "from six import integer_types, string_types\nfrom six.moves import builtins\n\ndef _string_to_attribute(value, type_='attribute'):\n    \"\"\"\n    Tests whether a string is an importable attribute and returns the attribute\n\n    :arg value: The string naming the attribute\n    :returns: The attribute\n    :raises ValueError: if the string is not an importable attribute\n    \"\"\"\n    # For exception messages\n    if type_[0] in ('a', 'e', 'i', 'o', 'u'):\n        article = 'an'\n    else:\n        article = 'a'\n\n    if not isinstance(value, string_types):\n        raise ValueError('This value must be a string naming {0} {1}, not {2} of'\n                         ' type {3}'.format(article, type_, value, type(value)))\n    parts = value.split('.')\n\n    # Test for an attribute in builtins named value\n    if len(parts) == 1:\n        try:\n            attribute = getattr(builtins, value)\n        except AttributeError:\n            raise ValueError('Could not find {0} {1} named {2}'.format(article, type_, value))\n\n        return attribute\n\n    # Find a module that we can import\n    module = None\n    for idx in range(len(parts) - 1, 0, -1):\n        try:\n            module = import_module('.'.join(parts[:idx]))\n        except Exception:\n            pass\n        else:\n            remainder = parts[idx:]\n            break\n    else:  # For-else\n        raise ValueError('Could not import a module with {0} {1} named'\n                         ' {2}'.format(article, type_, value))\n\n    # Handle both Staticmethod (ClassName.staticmethod) and module global\n    # attribute (attributename)\n    prev_part = module\n    for next_part in remainder:\n        try:\n            prev_part = getattr(prev_part, next_part)\n        except AttributeError:\n            raise ValueError('Could not find {0} {1} named {2} in module'\n                             ' {3}'.format(article, type_, '.'.join(remainder),\n                                           '.'.join(parts[:idx])))\n    attribute = prev_part\n    return attribute\n\n# Helper: import_module is used in _string_to_attribute\ntry:\n    # Python-2.7+\n    from importlib import import_module\nexcept ImportError:  # pragma: no cover\n    # Only needed on Python 2.6.x\n    def _import_module(module_name):\n        # Python 2.6 compatibility\n        fromlist = []\n        try:\n            fromlist.append(module_name[:module_name.rindex('.')])\n        except ValueError:\n            pass\n        return __import__(module_name, fromlist=fromlist)\n    import_module = _import_module",
+    "pattern_analysis": {
+      "api_sequence": [
+        "getattr",
+        "builtins",
+        "import_module",
+        "getattr"
+      ],
+      "api_sequence_with_args": [
+        "getattr(builtins, value)",
+        "builtins",
+        "import_module('.'.join(parts[:idx]))",
+        "getattr(prev_part, next_part)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "import_module",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "from six import integer_types, string_types\nfrom six.moves import builtins\n\ndef _string_to_attribute(value, type_='attribute'):\n    if not isinstance(value, string_types):\n        raise ValueError(...)\n    parts = value.split('.')\n    if len(parts) == 1:\n        try:\n            attribute = getattr(builtins, value)\n        except AttributeError:\n            raise ValueError(...)\n        return attribute\n    module = None\n    for idx in range(len(parts) - 1, 0, -1):\n        try:\n            module = import_module('.'.join(parts[:idx]))\n        except Exception:\n            pass\n        else:\n            remainder = parts[idx:]\n            break\n    else:\n        raise ValueError(...)\n    prev_part = module\n    for next_part in remainder:\n        try:\n            prev_part = getattr(prev_part, next_part)\n        except AttributeError:\n            raise ValueError(...)\n    attribute = prev_part\n    return attribute\n\ntry:\n    from importlib import import_module\nexcept ImportError:\n    def _import_module(module_name):\n        fromlist = []\n        try:\n            fromlist.append(module_name[:module_name.rindex('.')])\n        except ValueError:\n            pass\n        return __import__(module_name, fromlist=fromlist)\n    import_module = _import_module"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "twiggy-0.5.1",
+      "total_matches": 1
+    }
+  }
+]

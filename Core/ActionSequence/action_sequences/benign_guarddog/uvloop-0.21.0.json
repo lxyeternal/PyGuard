@@ -1,0 +1,171 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport os.path\nimport pathlib\nimport platform\nimport re\nimport shutil\nimport subprocess\nimport sys\n\nCYTHON_DEPENDENCY = 'Cython~=3.0'\nMACHINE = platform.machine()\nMODULES_CFLAGS = [os.getenv('UVLOOP_OPT_CFLAGS', '-O2')]\n_ROOT = pathlib.Path(__file__).parent\nLIBUV_DIR = str(_ROOT / 'vendor' / 'libuv')\nLIBUV_BUILD_DIR = str(_ROOT / 'build' / 'libuv-{}'.format(MACHINE))\n\ndef _libuv_build_env():\n    env = os.environ.copy()\n\n    cur_cflags = env.get('CFLAGS', '')\n    if not re.search(r'-O\\d', cur_cflags):\n        cur_cflags += ' -O2'\n\n    env['CFLAGS'] = (cur_cflags + ' -fPIC ' + env.get('ARCHFLAGS', ''))\n\n    return env\n\ndef _libuv_autogen(env):\n    if os.path.exists(os.path.join(LIBUV_DIR, 'configure')):\n        # No need to use autogen, the configure script is there.\n        return\n\n    if not os.path.exists(os.path.join(LIBUV_DIR, 'autogen.sh')):\n        raise RuntimeError(\n            'the libuv submodule has not been checked out; '\n            'try running \"git submodule init; git submodule update\"')\n\n    subprocess.run(\n        ['/bin/sh', 'autogen.sh'], cwd=LIBUV_DIR, env=env, check=True)\n\nclass uvloop_build_ext(build_ext):\n    user_options = build_ext.user_options + [\n        ('cython-always', None,\n            'run cythonize() even if .c files are present'),\n        ('cython-annotate', None,\n            'Produce a colorized HTML version of the Cython source.'),\n        ('cython-directives=', None,\n            'Cythion compiler directives'),\n        ('use-system-libuv', None,\n            'Use the system provided libuv, instead of the bundled one'),\n    ]\n\n    boolean_options = build_ext.boolean_options + [\n        'cython-always',\n        'cython-annotate',\n        'use-system-libuv',\n    ]\n\n    def initialize_options(self):\n        super().initialize_options()\n        self.use_system_libuv = False\n        self.cython_always = False\n        self.cython_annotate = None\n        self.cython_directives = None\n\n    def finalize_options(self):\n        need_cythonize = self.cython_always\n        cfiles = {}\n\n        for extension in self.distribution.ext_modules:\n            for i, sfile in enumerate(extension.sources):\n                if sfile.endswith('.pyx'):\n                    prefix, ext = os.path.splitext(sfile)\n                    cfile = prefix + '.c'\n\n                    if os.path.exists(cfile) and not self.cython_always:\n                        extension.sources[i] = cfile\n                    else:\n                        if os.path.exists(cfile):\n                            cfiles[cfile] = os.path.getmtime(cfile)\n                        else:\n                            cfiles[cfile] = 0\n                        need_cythonize = True\n\n        if need_cythonize:\n            import pkg_resources\n\n            # Double check Cython presence in case setup_requires\n            # didn't go into effect (most likely because someone\n            # imported Cython before setup_requires injected the\n            # correct egg into sys.path.\n            try:\n                import Cython\n            except ImportError:\n                raise RuntimeError(\n                    'please install {} to compile uvloop from source'.format(\n                        CYTHON_DEPENDENCY))\n\n            cython_dep = pkg_resources.Requirement.parse(CYTHON_DEPENDENCY)\n            if Cython.__version__ not in cython_dep:\n                raise RuntimeError(\n                    'uvloop requires {}, got Cython=={}'.format(\n                        CYTHON_DEPENDENCY, Cython.__version__\n                    ))\n\n            from Cython.Build import cythonize\n\n            directives = {}\n            if self.cython_directives:\n                for directive in self.cython_directives.split(','):\n                    k, _, v = directive.partition('=')\n                    if v.lower() == 'false':\n                        v = False\n                    if v.lower() == 'true':\n                        v = True\n\n                    directives[k] = v\n                self.cython_directives = directives\n\n            self.distribution.ext_modules[:] = cythonize(\n                self.distribution.ext_modules,\n                compiler_directives=directives,\n                annotate=self.cython_annotate,\n                compile_time_env=dict(DEFAULT_FREELIST_SIZE=250),\n                emit_linenums=self.debug)\n\n        super().finalize_options()\n\n    def build_libuv(self):\n        env = _libuv_build_env()\n\n        # Make sure configure and friends are present in case\n        # we are building from a git checkout.\n        _libuv_autogen(env)\n\n        # Copy the libuv tree to build/ so that its build\n        # products don't pollute sdist accidentally.\n        if os.path.exists(LIBUV_BUILD_DIR):\n            shutil.rmtree(LIBUV_BUILD_DIR)\n        shutil.copytree(LIBUV_DIR, LIBUV_BUILD_DIR)\n\n        # Sometimes pip fails to preserve the timestamps correctly,\n        # in which case, make will try to run autotools again.\n        subprocess.run(\n            ['touch', 'configure.ac', 'aclocal.m4', 'configure',\n             'Makefile.am', 'Makefile.in'],\n            cwd=LIBUV_BUILD_DIR, env=env, check=True)\n\n        if 'LIBUV_CONFIGURE_HOST' in env:\n            cmd = ['./configure', '--host=' + env['LIBUV_CONFIGURE_HOST']]\n        else:\n            cmd = ['./configure']\n        subprocess.run(\n            cmd,\n            cwd=LIBUV_BUILD_DIR, env=env, check=True)\n\n        try:\n            njobs = len(os.sched_getaffinity(0))\n        except AttributeError:\n            njobs = os.cpu_count()\n        j_flag = '-j{}'.format(njobs or 1)\n        c_flag = \"CFLAGS={}\".format(env['CFLAGS'])\n        subprocess.run(\n            ['make', j_flag, c_flag],\n            cwd=LIBUV_BUILD_DIR, env=env, check=True)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.copy",
+        "re.search",
+        "os.path.exists",
+        "os.path.join",
+        "os.path.exists",
+        "os.path.join",
+        "subprocess.run",
+        "os.path.exists",
+        "shutil.rmtree",
+        "shutil.copytree",
+        "subprocess.run",
+        "subprocess.run",
+        "os.sched_getaffinity",
+        "os.cpu_count",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.copy()",
+        "re.search(r'-O\\d', cur_cflags)",
+        "os.path.exists(os.path.join(LIBUV_DIR, 'configure'))",
+        "os.path.join(LIBUV_DIR, 'configure')",
+        "os.path.exists(os.path.join(LIBUV_DIR, 'autogen.sh'))",
+        "os.path.join(LIBUV_DIR, 'autogen.sh')",
+        "subprocess.run(['/bin/sh', 'autogen.sh'], cwd=LIBUV_DIR, env=env, check=True)",
+        "os.path.exists(LIBUV_BUILD_DIR)",
+        "shutil.rmtree(LIBUV_BUILD_DIR)",
+        "shutil.copytree(LIBUV_DIR, LIBUV_BUILD_DIR)",
+        "subprocess.run(['touch', 'configure.ac', 'aclocal.m4', 'configure', 'Makefile.am', 'Makefile.in'], cwd=LIBUV_BUILD_DIR, env=env, check=True)",
+        "subprocess.run(cmd, cwd=LIBUV_BUILD_DIR, env=env, check=True)",
+        "os.sched_getaffinity(0)",
+        "os.cpu_count()",
+        "subprocess.run(['make', j_flag, c_flag], cwd=LIBUV_BUILD_DIR, env=env, check=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.sched_getaffinity",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "def _libuv_build_env():\n    env = os.environ.copy()\n    cur_cflags = env.get('CFLAGS', '')\n    if not re.search(r'-O\\d', cur_cflags):\n        cur_cflags += ' -O2'\n    env['CFLAGS'] = (cur_cflags + ' -fPIC ' + env.get('ARCHFLAGS', ''))\n    return env\n\ndef _libuv_autogen(env):\n    if os.path.exists(os.path.join(LIBUV_DIR, 'configure')):\n        return\n    if not os.path.exists(os.path.join(LIBUV_DIR, 'autogen.sh')):\n        raise RuntimeError(...)\n    subprocess.run(['/bin/sh', 'autogen.sh'], cwd=LIBUV_DIR, env=env, check=True)\n\nclass uvloop_build_ext(build_ext):\n    def build_libuv(self):\n        env = _libuv_build_env()\n        _libuv_autogen(env)\n        if os.path.exists(LIBUV_BUILD_DIR):\n            shutil.rmtree(LIBUV_BUILD_DIR)\n        shutil.copytree(LIBUV_DIR, LIBUV_BUILD_DIR)\n        subprocess.run(['touch', 'configure.ac', 'aclocal.m4', 'configure',\n             'Makefile.am', 'Makefile.in'],\n            cwd=LIBUV_BUILD_DIR, env=env, check=True)\n        if 'LIBUV_CONFIGURE_HOST' in env:\n            cmd = ['./configure', '--host=' + env['LIBUV_CONFIGURE_HOST']]\n        else:\n            cmd = ['./configure']\n        subprocess.run(cmd, cwd=LIBUV_BUILD_DIR, env=env, check=True)\n        try:\n            njobs = len(os.sched_getaffinity(0))\n        except AttributeError:\n            njobs = os.cpu_count()\n        j_flag = '-j{}'.format(njobs or 1)\n        c_flag = \"CFLAGS={}\".format(env['CFLAGS'])\n        subprocess.run(['make', j_flag, c_flag], cwd=LIBUV_BUILD_DIR, env=env, check=True)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "uvloop-0.21.0",
+      "total_matches": 4
+    }
+  }
+]

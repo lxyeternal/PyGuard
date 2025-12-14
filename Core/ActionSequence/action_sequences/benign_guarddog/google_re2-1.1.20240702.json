@@ -1,0 +1,101 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport re\nimport setuptools\nimport setuptools.command.build_ext\nimport shutil\n\nclass BuildExt(setuptools.command.build_ext.build_ext):\n\n  def build_extension(self, ext):\n    if 'GITHUB_ACTIONS' not in os.environ:\n      return super().build_extension(ext)\n\n    cmd = ['bazel', 'build']\n    try:\n      cpu = os.environ['BAZEL_CPU']\n      cmd.append(f'--cpu={cpu}')\n      cmd.append(f'--platforms=//python:{cpu}')\n      if cpu == 'x64_x86_windows':\n        # Register the local 32-bit C++ toolchain with highest priority.\n        # (This is likely to break in some release of Bazel after 7.0.0,\n        # but this special case can hopefully be entirely removed then.)\n        cmd.append(f'--extra_toolchains=@local_config_cc//:cc-toolchain-{cpu}')\n    except KeyError:\n      pass\n    try:\n      ver = os.environ['MACOSX_DEPLOYMENT_TARGET']\n      cmd.append(f'--macos_minimum_os={ver}')\n    except KeyError:\n      pass\n    # Register the local Python toolchains with highest priority.\n    cmd.append('--extra_toolchains=//python/toolchains:all')\n    cmd += ['--compilation_mode=opt', '--', ':all']\n    self.spawn(cmd)\n\n    # This ensures that f'_re2.{importlib.machinery.EXTENSION_SUFFIXES[0]}'\n    # is the filename in the destination directory, which is what's needed.\n    shutil.copyfile('../bazel-bin/python/_re2.so',\n                    self.get_ext_fullpath(ext.name))\n\n    cmd = ['bazel', 'clean', '--expunge']\n    self.spawn(cmd)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "super().build_extension",
+        "os.environ.__getitem__",
+        "os.environ.__getitem__",
+        "self.spawn",
+        "shutil.copyfile",
+        "self.get_ext_fullpath",
+        "self.spawn"
+      ],
+      "api_sequence_with_args": [
+        "os.environ",
+        "super().build_extension(ext)",
+        "os.environ['BAZEL_CPU']",
+        "os.environ['MACOSX_DEPLOYMENT_TARGET']",
+        "self.spawn(cmd)",
+        "shutil.copyfile('../bazel-bin/python/_re2.so', self.get_ext_fullpath(ext.name))",
+        "self.get_ext_fullpath(ext.name)",
+        "self.spawn(cmd)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "super().build_extension",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.spawn",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "self.get_ext_fullpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.spawn",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nimport setuptools.command.build_ext\n\nclass BuildExt(setuptools.command.build_ext.build_ext):\n\n  def build_extension(self, ext):\n    if 'GITHUB_ACTIONS' not in os.environ:\n      return super().build_extension(ext)\n\n    cmd = ['bazel', 'build']\n    try:\n      cpu = os.environ['BAZEL_CPU']\n      cmd.append(f'--cpu={cpu}')\n      cmd.append(f'--platforms=//python:{cpu}')\n      if cpu == 'x64_x86_windows':\n        cmd.append(f'--extra_toolchains=@local_config_cc//:cc-toolchain-{cpu}')\n    except KeyError:\n      pass\n    try:\n      ver = os.environ['MACOSX_DEPLOYMENT_TARGET']\n      cmd.append(f'--macos_minimum_os={ver}')\n    except KeyError:\n      pass\n    cmd.append('--extra_toolchains=//python/toolchains:all')\n    cmd += ['--compilation_mode=opt', '--', ':all']\n    self.spawn(cmd)\n\n    shutil.copyfile('../bazel-bin/python/_re2.so',\n                    self.get_ext_fullpath(ext.name))\n\n    cmd = ['bazel', 'clean', '--expunge']\n    self.spawn(cmd)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "google_re2-1.1.20240702",
+      "total_matches": 2
+    }
+  }
+]

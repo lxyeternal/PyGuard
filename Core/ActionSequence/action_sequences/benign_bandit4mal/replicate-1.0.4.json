@@ -1,0 +1,228 @@
+[
+  {
+    "metadata": {
+      "package_name": "replicate-1.0.4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "helpers.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/replicate-1.0.4/replicate-1.0.4/replicate/helpers.py",
+    "line_number": "158",
+    "type_description": "B801:b64decode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "157\t            _, encoded = self.url.split(\",\", 1)\n158\t            return base64.b64decode(encoded)\n159",
+    "code_snippet": "class FileOutput(httpx.SyncByteStream, httpx.AsyncByteStream):\n    \"\"\"\n    An object that can be used to read the contents of an output file\n    created by running a Replicate model.\n    \"\"\"\n\n    url: str\n    \"\"\"\n    The file URL.\n    \"\"\"\n\n    _client: \"Client\"\n\n    def __init__(self, url: str, client: \"Client\") -> None:\n        self.url = url\n        self._client = client\n\n    def read(self) -> bytes:\n        if self.url.startswith(\"data:\"):\n            _, encoded = self.url.split(\",\", 1)\n            return base64.b64decode(encoded)\n\n        with self._client._client.stream(\"GET\", self.url) as response:\n            response.raise_for_status()\n            return response.read()\n\n    def __iter__(self) -> Iterator[bytes]:\n        if self.url.startswith(\"data:\"):\n            yield self.read()\n            return\n\n        with self._client._client.stream(\"GET\", self.url) as response:\n            response.raise_for_status()\n            yield from response.iter_bytes()\n\n    async def aread(self) -> bytes:\n        if self.url.startswith(\"data:\"):\n            _, encoded = self.url.split(\",\", 1)\n            return base64.b64decode(encoded)\n\n        async with self._client._async_client.stream(\"GET\", self.url) as response:\n            response.raise_for_status()\n            return await response.aread()\n\n    async def __aiter__(self) -> AsyncIterator[bytes]:\n        if self.url.startswith(\"data:\"):\n            yield await self.aread()\n            return\n\n        async with self._client._async_client.stream(\"GET\", self.url) as response:\n            response.raise_for_status()\n            async for chunk in response.aiter_bytes():\n                yield chunk\n\n    def __str__(self) -> str:\n        return self.url",
+    "pattern_analysis": {
+      "api_sequence": [
+        "str.startswith",
+        "base64.b64decode",
+        "self._client._client.stream",
+        "response.raise_for_status",
+        "response.read",
+        "str.startswith",
+        "self.read",
+        "self._client._client.stream",
+        "response.raise_for_status",
+        "response.iter_bytes",
+        "str.startswith",
+        "base64.b64decode",
+        "self._client._async_client.stream",
+        "response.raise_for_status",
+        "response.aread",
+        "str.startswith",
+        "self.aread",
+        "self._client._async_client.stream",
+        "response.raise_for_status",
+        "response.aiter_bytes"
+      ],
+      "api_sequence_with_args": [
+        "self.url.startswith(\"data:\")",
+        "base64.b64decode(encoded)",
+        "self._client._client.stream(\"GET\", self.url)",
+        "response.raise_for_status()",
+        "response.read()",
+        "self.url.startswith(\"data:\")",
+        "self.read()",
+        "self._client._client.stream(\"GET\", self.url)",
+        "response.raise_for_status()",
+        "response.iter_bytes()",
+        "self.url.startswith(\"data:\")",
+        "base64.b64decode(encoded)",
+        "self._client._async_client.stream(\"GET\", self.url)",
+        "response.raise_for_status()",
+        "response.aread()",
+        "self.url.startswith(\"data:\")",
+        "self.aread()",
+        "self._client._async_client.stream(\"GET\", self.url)",
+        "response.raise_for_status()",
+        "response.aiter_bytes()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "str.startswith",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "base64.b64decode",
+          "id": "decode_base64_to_bytes",
+          "description": "Decodes base64-encoded string to bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "httpx.Client.stream",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "httpx.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "httpx.Response.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "str.startswith",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "FileOutput.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "httpx.Client.stream",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "httpx.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "httpx.Response.iter_bytes",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "str.startswith",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "base64.b64decode",
+          "id": "decode_base64_to_bytes",
+          "description": "Decodes base64-encoded string to bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "httpx.AsyncClient.stream",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "httpx.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "httpx.Response.aread",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "str.startswith",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "FileOutput.aread",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "httpx.AsyncClient.stream",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "httpx.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "httpx.Response.aiter_bytes",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def read(self) -> bytes:\n    if self.url.startswith(\"data:\"):\n        _, encoded = self.url.split(\",\", 1)\n        return base64.b64decode(encoded)\n\n    with self._client._client.stream(\"GET\", self.url) as response:\n        response.raise_for_status()\n        return response.read()\n\ndef __iter__(self) -> Iterator[bytes]:\n    if self.url.startswith(\"data:\"):\n        yield self.read()\n        return\n\n    with self._client._client.stream(\"GET\", self.url) as response:\n        response.raise_for_status()\n        yield from response.iter_bytes()\n\nasync def aread(self) -> bytes:\n    if self.url.startswith(\"data:\"):\n        _, encoded = self.url.split(\",\", 1)\n        return base64.b64decode(encoded)\n\n    async with self._client._async_client.stream(\"GET\", self.url) as response:\n        response.raise_for_status()\n        return await response.aread()\n\nasync def __aiter__(self) -> AsyncIterator[bytes]:\n    if self.url.startswith(\"data:\"):\n        yield await self.aread()\n        return\n\n    async with self._client._async_client.stream(\"GET\", self.url) as response:\n        response.raise_for_status()\n        async for chunk in response.aiter_bytes():\n            yield chunk"
+    }
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyro_ppl-1.9.1",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/pyro_ppl-1.9.1.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "bart.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyro_ppl-1.9.1/pyro_ppl-1.9.1/pyro/contrib/examples/bart.py",
+    "line_number": "22",
+    "type_description": "shady-links",
+    "original_snippet": "SOURCE_DIR = \"http://64.111.127.166/origin-destination/\"",
+    "context_snippet": "# https://www.bart.gov/about/reports/ridership\nSOURCE_DIR = \"http://64.111.127.166/origin-destination/\"\nSOURCE_FILES = [\n    \"date-hour-soo-dest-2011.csv.gz\",\n    \"date-hour-soo-dest-2012.csv.gz\",\n    \"date-hour-soo-dest-2013.csv.gz\",\n    \"date-hour-soo-dest-2014.csv.gz\",\n    \"date-hour-soo-dest-2015.csv.gz\",\n    \"date-hour-soo-dest-2016.csv.gz\",\n    \"date-hour-soo-dest-2017.csv.gz\",\n    \"date-hour-soo-dest-2018.csv.gz\",\n    \"date-hour-soo-dest-2019.csv.gz\",\n]\nCACHE_URL = \"https://d2hg8soec8ck9v.cloudfront.net/datasets/bart_full.pkl.bz2\"\n\n\ndef _load_hourly_od(basename):\n    filename = os.path.join(DATA, basename.replace(\".csv.gz\", \".pkl\"))\n    if os.path.exists(filename):\n        return filename\n\n    # Download source files.\n    gz_filename = os.path.join(DATA, basename)\n    if not os.path.exists(gz_filename):\n        url = SOURCE_DIR + basename\n        logging.debug(\"downloading {}\".format(url))\n        urllib.request.urlretrieve(url, gz_filename)\n    csv_filename = gz_filename[:-3]\n    assert csv_filename.endswith(\".csv\")\n    if not os.path.exists(csv_filename):\n        logging.debug(\"unzipping {}\".format(gz_filename))\n        subprocess.check_call([\"gunzip\", \"-k\", gz_filename])\n    assert os.path.exists(csv_filename)\n\n    # Convert to PyTorch.\n    logging.debug(\"converting {}\".format(csv_filename))\n    start_date = datetime.datetime.strptime(\"2000-01-01\", \"%Y-%m-%d\")\n    stations = {}\n    num_rows = sum(1 for _ in open(csv_filename))\n    logging.info(\"Formatting {} rows\".format(num_rows))\n    rows = torch.empty((num_rows, 4), dtype=torch.long)\n    with open(csv_filename) as f:\n        for i, (date, hour, origin, destin, trip_count) in enumerate(csv.reader(f)):\n            date = datetime.datetime.strptime(date, \"%Y-%m-%d\")\n            date += datetime.timedelta(hours=int(hour))\n            rows[i, 0] = int((date - start_date).total_seconds() / 3600)\n            rows[i, 1] = stations.setdefault(origin, len(stations))\n            rows[i, 2] = stations.setdefault(destin, len(stations))\n            rows[i, 3] = int(trip_count)\n            if i % 10000 == 0:\n                sys.stderr.write(\".\")\n                sys.stderr.flush()\n\n    # Save data with metadata.\n    dataset = {\n        \"basename\": basename,\n        \"start_date\": start_date,\n        \"stations\": stations,\n        \"rows\": rows,\n        \"schema\": [\"time_hours\", \"origin\", \"destin\", \"trip_count\"],\n    }\n    dataset[\"rows\"]\n    logging.debug(\"saving {}\".format(filename))\n    torch.save(dataset, filename)\n    return filename",
+    "hash_value": "74fa02613e0f87aaae25602880284456",
+    "detection_index": 1
+  }
+]

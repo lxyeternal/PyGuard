@@ -1,0 +1,261 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import errno\nimport functools\nimport glob\nimport os\nimport os.path\nimport platform\nimport shutil\nimport subprocess\nimport sys\nfrom sysconfig import get_config_vars\n\nfrom setuptools import Distribution, setup\nfrom setuptools.command.build_clib import build_clib as _build_clib\nfrom setuptools.command.build_ext import build_ext as _build_ext\n\n\ndef here(*paths):\n    return os.path.relpath(os.path.join(*paths))\n\n\ndef abshere(*paths):\n    return os.path.abspath(here(*paths))\n\n\ndef use_system():\n    install_type = os.environ.get(\"SODIUM_INSTALL\")\n\n    if install_type == \"system\":\n        # If we are forcing system installs, don't compile the bundled one\n        return True\n    else:\n        # By default we just use the bundled copy\n        return False\n\n\nclass build_clib(_build_clib):\n    def get_source_files(self):\n        files = glob.glob(here(\"src/libsodium/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*/*/*/*\"))\n\n        return files\n\n    def build_libraries(self, libraries):\n        raise Exception(\"build_libraries\")\n\n    def check_library_list(self, libraries):\n        raise Exception(\"check_library_list\")\n\n    def get_library_names(self):\n        return [\"sodium\"]\n\n    def run(self):\n        if use_system():\n            return\n\n        # use Python's build environment variables\n        build_env = {\n            key: val\n            for key, val in get_config_vars().items()\n            if key in (\"LDFLAGS\", \"CFLAGS\", \"CC\", \"CCSHARED\", \"LDSHARED\")\n            and key not in os.environ\n        }\n        os.environ.update(build_env)\n\n        # Ensure our temporary build directory exists\n        build_temp = os.path.abspath(self.build_temp)\n        try:\n            os.makedirs(build_temp)\n        except OSError as e:\n            if e.errno != errno.EEXIST:\n                raise\n\n        # Ensure all of our executable files have their permission set\n        for filename in [\n            \"src/libsodium/autogen.sh\",\n            \"src/libsodium/compile\",\n            \"src/libsodium/configure\",\n            \"src/libsodium/depcomp\",\n            \"src/libsodium/install-sh\",\n            \"src/libsodium/missing\",\n            \"src/libsodium/msvc-scripts/process.bat\",\n            \"src/libsodium/test/default/wintest.bat\",\n        ]:\n            os.chmod(here(filename), 0o755)\n\n        if not shutil.which(\"make\"):\n            raise Exception(\"ERROR: The 'make' utility is missing from PATH\")\n\n        # Locate our configure script\n        configure = abshere(\"src/libsodium/configure\")\n\n        # Run ./configure\n        configure_flags = [\n            \"--disable-shared\",\n            \"--enable-static\",\n            \"--disable-debug\",\n            \"--disable-dependency-tracking\",\n            \"--with-pic\",\n        ]\n        if platform.system() == \"SunOS\":\n            # On Solaris, libssp doesn't link statically and causes linker\n            # errors during import\n            configure_flags.append(\"--disable-ssp\")\n        if os.environ.get(\"SODIUM_INSTALL_MINIMAL\"):\n            configure_flags.append(\"--enable-minimal\")\n        subprocess.check_call(\n            [configure]\n            + configure_flags\n            + [\"--prefix\", os.path.abspath(self.build_clib)],\n            cwd=build_temp,\n        )\n\n        make_args = os.environ.get(\"LIBSODIUM_MAKE_ARGS\", \"\").split()\n        # Build the library\n        subprocess.check_call([\"make\"] + make_args, cwd=build_temp)\n\n        # Check the build library\n        subprocess.check_call([\"make\", \"check\"] + make_args, cwd=build_temp)\n\n        # Install the built library\n        subprocess.check_call([\"make\", \"install\"] + make_args, cwd=build_temp)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.relpath",
+        "os.path.join",
+        "os.path.abspath",
+        "os.environ.get",
+        "os.environ.get",
+        "glob.glob",
+        "glob.glob",
+        "glob.glob",
+        "glob.glob",
+        "glob.glob",
+        "glob.glob",
+        "get_config_vars",
+        "os.environ.update",
+        "os.path.abspath",
+        "os.makedirs",
+        "os.chmod",
+        "shutil.which",
+        "platform.system",
+        "os.environ.get",
+        "subprocess.check_call",
+        "os.environ.get",
+        "subprocess.check_call",
+        "subprocess.check_call",
+        "subprocess.check_call"
+      ],
+      "api_sequence_with_args": [
+        "os.path.relpath(os.path.join(*paths))",
+        "os.path.join(*paths)",
+        "os.path.abspath(here(*paths))",
+        "os.environ.get(\"SODIUM_INSTALL\")",
+        "os.environ.get(\"SODIUM_INSTALL_MINIMAL\")",
+        "glob.glob(here(\"src/libsodium/*\"))",
+        "glob.glob(here(\"src/libsodium/*/*\"))",
+        "glob.glob(here(\"src/libsodium/*/*/*\"))",
+        "glob.glob(here(\"src/libsodium/*/*/*/*\"))",
+        "glob.glob(here(\"src/libsodium/*/*/*/*/*\"))",
+        "glob.glob(here(\"src/libsodium/*/*/*/*/*/*\"))",
+        "get_config_vars()",
+        "os.environ.update(build_env)",
+        "os.path.abspath(self.build_temp)",
+        "os.makedirs(build_temp)",
+        "os.chmod(here(filename), 0o755)",
+        "shutil.which(\"make\")",
+        "platform.system()",
+        "os.environ.get(\"SODIUM_INSTALL_MINIMAL\")",
+        "subprocess.check_call([configure] + configure_flags + [\"--prefix\", os.path.abspath(self.build_clib)], cwd=build_temp)",
+        "os.environ.get(\"LIBSODIUM_MAKE_ARGS\", \"\").split()",
+        "subprocess.check_call([\"make\"] + make_args, cwd=build_temp)",
+        "subprocess.check_call([\"make\", \"check\"] + make_args, cwd=build_temp)",
+        "subprocess.check_call([\"make\", \"install\"] + make_args, cwd=build_temp)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.relpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "get_config_vars",
+          "id": "get_site_packages",
+          "description": "Returns list of all global site-packages directories",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "os.environ.update",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.chmod",
+          "id": "change_file_mode_execute",
+          "description": "Changes file mode to add execute permission",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "def here(*paths):\n    return os.path.relpath(os.path.join(*paths))\n\ndef abshere(*paths):\n    return os.path.abspath(here(*paths))\n\ndef use_system():\n    install_type = os.environ.get(\"SODIUM_INSTALL\")\n    if install_type == \"system\":\n        return True\n    else:\n        return False\n\nclass build_clib(_build_clib):\n    def get_source_files(self):\n        files = glob.glob(here(\"src/libsodium/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*/*/*\"))\n        files += glob.glob(here(\"src/libsodium/*/*/*/*/*/*\"))\n        return files\n    def run(self):\n        if use_system():\n            return\n        build_env = {\n            key: val\n            for key, val in get_config_vars().items()\n            if key in (\"LDFLAGS\", \"CFLAGS\", \"CC\", \"CCSHARED\", \"LDSHARED\")\n            and key not in os.environ\n        }\n        os.environ.update(build_env)\n        build_temp = os.path.abspath(self.build_temp)\n        try:\n            os.makedirs(build_temp)\n        except OSError as e:\n            if e.errno != errno.EEXIST:\n                raise\n        for filename in [\n            \"src/libsodium/autogen.sh\",\n            \"src/libsodium/compile\",\n            \"src/libsodium/configure\",\n            \"src/libsodium/depcomp\",\n            \"src/libsodium/install-sh\",\n            \"src/libsodium/missing\",\n            \"src/libsodium/msvc-scripts/process.bat\",\n            \"src/libsodium/test/default/wintest.bat\",\n        ]:\n            os.chmod(here(filename), 0o755)\n        if not shutil.which(\"make\"):\n            raise Exception(\"ERROR: The 'make' utility is missing from PATH\")\n        configure = abshere(\"src/libsodium/configure\")\n        configure_flags = [\n            \"--disable-shared\",\n            \"--enable-static\",\n            \"--disable-debug\",\n            \"--disable-dependency-tracking\",\n            \"--with-pic\",\n        ]\n        if platform.system() == \"SunOS\":\n            configure_flags.append(\"--disable-ssp\")\n        if os.environ.get(\"SODIUM_INSTALL_MINIMAL\"):\n            configure_flags.append(\"--enable-minimal\")\n        subprocess.check_call(\n            [configure]\n            + configure_flags\n            + [\"--prefix\", os.path.abspath(self.build_clib)],\n            cwd=build_temp,\n        )\n        make_args = os.environ.get(\"LIBSODIUM_MAKE_ARGS\", \"\").split()\n        subprocess.check_call([\"make\"] + make_args, cwd=build_temp)\n        subprocess.check_call([\"make\", \"check\"] + make_args, cwd=build_temp)\n        subprocess.check_call([\"make\", \"install\"] + make_args, cwd=build_temp)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pynacl-1.5.0",
+      "total_matches": 4
+    }
+  }
+]

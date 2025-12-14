@@ -1,0 +1,115 @@
+{
+  "metadata": {
+    "package_name": "fschat-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/fschat-0.2.36.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "api_provider.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/fschat-0.2.36/fschat-0.2.36/fastchat/serve/api_provider.py",
+      "line_number": "260",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "def bard_api_stream_iter(model_name, conv, temperature, top_p, api_key=None):\n    del top_p  # not supported\n    del temperature  # not supported\n\n    if api_key is None:\n        api_key = os.environ[\"BARD_API_KEY\"]\n\n    # convert conv to conv_bard\n    conv_bard = []\n    for turn in conv:\n        if turn[\"role\"] == \"user\":\n            conv_bard.append({\"author\": \"0\", \"content\": turn[\"content\"]})\n        elif turn[\"role\"] == \"assistant\":\n            conv_bard.append({\"author\": \"1\", \"content\": turn[\"content\"]})\n        else:\n            raise ValueError(f\"Unsupported role: {turn['role']}\")\n\n    params = {\n        \"model\": model_name,\n        \"prompt\": conv_bard,\n    }\n    logger.info(f\"==== request ====\\n{params}\")\n\n    try:\n        res = requests.post(\n            f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\",\n            json={\n                \"prompt\": {\n                    \"messages\": conv_bard,\n                },\n            },\n            timeout=30,\n        )\n    except Exception as e:\n        logger.error(f\"==== error ====\\n{e}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {e}.\",\n            \"error_code\": 1,\n        }\n\n    if res.status_code != 200:\n        logger.error(f\"==== error ==== ({res.status_code}): {res.text}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: status code {res.status_code}.\",\n            \"error_code\": 1,\n        }\n\n    response_json = res.json()\n    if \"candidates\" not in response_json:\n        logger.error(f\"==== error ==== response blocked: {response_json}\")\n        reason = response_json[\"filters\"][0][\"reason\"]\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {reason}.\",\n            \"error_code\": 1,\n        }\n\n    response = response_json[\"candidates\"][0][\"content\"]\n    pos = 0\n    while pos < len(response):\n        # simulate token streaming\n        pos += random.randint(3, 6)\n        time.sleep(0.002)\n        data = {\n            \"text\": response[:pos],\n            \"error_code\": 0,\n        }\n        yield data",
+      "hash_value": "bbfd9c9b33fbfbfcc362f64609191b0d",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "def bard_api_stream_iter(model_name, conv, temperature, top_p, api_key=None):\n    del top_p  # not supported\n    del temperature  # not supported\n\n    if api_key is None:\n        api_key = os.environ[\"BARD_API_KEY\"]\n\n    # convert conv to conv_bard\n    conv_bard = []\n    for turn in conv:\n        if turn[\"role\"] == \"user\":\n            conv_bard.append({\"author\": \"0\", \"content\": turn[\"content\"]})\n        elif turn[\"role\"] == \"assistant\":\n            conv_bard.append({\"author\": \"1\", \"content\": turn[\"content\"]})\n        else:\n            raise ValueError(f\"Unsupported role: {turn['role']}\")\n\n    params = {\n        \"model\": model_name,\n        \"prompt\": conv_bard,\n    }\n    logger.info(f\"==== request ====\\n{params}\")\n\n    try:\n        res = requests.post(\n            f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\",\n            json={\n                \"prompt\": {\n                    \"messages\": conv_bard,\n                },\n            },\n            timeout=30,\n        )\n    except Exception as e:\n        logger.error(f\"==== error ====\\n{e}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {e}.\",\n            \"error_code\": 1,\n        }\n\n    if res.status_code != 200:\n        logger.error(f\"==== error ==== ({res.status_code}): {res.text}\")\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: status code {res.status_code}.\",\n            \"error_code\": 1,\n        }\n\n    response_json = res.json()\n    if \"candidates\" not in response_json:\n        logger.error(f\"==== error ==== response blocked: {response_json}\")\n        reason = response_json[\"filters\"][0][\"reason\"]\n        yield {\n            \"text\": f\"**API REQUEST ERROR** Reason: {reason}.\",\n            \"error_code\": 1,\n        }\n\n    response = response_json[\"candidates\"][0][\"content\"]\n    pos = 0\n    while pos < len(response):\n        # simulate token streaming\n        pos += random.randint(3, 6)\n        time.sleep(0.002)\n        data = {\n            \"text\": response[:pos],\n            \"error_code\": 0,\n        }\n        yield data",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.__getitem__()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"BARD_API_KEY\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"==== request ====\n{params}\"",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "f\"https://generativelanguage.googleapis.com/v1beta2/models/{model_name}:generateMessage?key={api_key}\"",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "logger.error()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"==== error ====\n{e}\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "logger.error()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"==== error ==== ({res.status_code}): {res.text}\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "res.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "HTTP response content from remote server",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "logger.error()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "f\"==== error ==== response blocked: {response_json}\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "random.randint()",
+              "action_description": "Generate random integer",
+              "action_id": "generate_random_integer",
+              "object": "3, 6",
+              "object_description": "Random string",
+              "object_id": "random_string",
+              "intention_description": "Generate random number",
+              "intention_id": "generate_random_number"
+            },
+            {
+              "action_api": "time.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "0.002",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

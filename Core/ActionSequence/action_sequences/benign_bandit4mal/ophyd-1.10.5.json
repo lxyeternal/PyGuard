@@ -1,0 +1,198 @@
+[
+  {
+    "metadata": {
+      "package_name": "ophyd-1.10.5",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "sim.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ophyd-1.10.5/ophyd-1.10.5/ophyd/sim.py",
+    "line_number": "706",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "705\t        x = self._motor0.read()[self._motor_field0][\"value\"]\n706\t        y = self._motor1.read()[self._motor_field1][\"value\"]\n707\t        m = np.array([x, y])",
+    "code_snippet": "class Syn2DGauss(Device):\n    \"\"\"\n    Evaluate a point on a Gaussian based on the value of a motor.\n\n    Parameters\n    ----------\n    name : str\n        The name of the detector\n    motor0 : SynAxis\n        The 'x' coordinate of the 2-D gaussian blob\n    motor_field0 : str\n        The name field of the motor. Should be the key in motor0.describe()\n    motor1 : SynAxis\n        The 'y' coordinate of the 2-D gaussian blob\n    motor_field1 : str\n        The name field of the motor. Should be the key in motor1.describe()\n    center : iterable, optional\n        The center of the gaussian blob\n        Defaults to (0,0)\n    Imax : float, optional\n        The intensity at `center`\n        Defaults to 1\n    sigma : float, optional\n        Standard deviation for gaussian blob\n        Defaults to 1\n    noise : {'poisson', 'uniform', None}, optional\n        Add noise to the gaussian peak..\n        Defaults to None\n    noise_multiplier : float, optional\n        Only relevant for 'uniform' noise. Multiply the random amount of\n        noise by 'noise_multiplier'\n        Defaults to 1\n    random_state : numpy random state object, optional\n        np.random.RandomState(0), to generate random number with given seed\n\n    Example\n    -------\n    motor = SynAxis(name='motor')\n    det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)\n    \"\"\"\n\n    val = Cpt(SynSignal, kind=\"hinted\")\n    Imax = Cpt(Signal, value=10, kind=\"config\")\n    center = Cpt(Signal, value=0, kind=\"config\")\n    sigma = Cpt(Signal, value=1, kind=\"config\")\n    noise = Cpt(\n        EnumSignal,\n        value=\"none\",\n        kind=\"config\",\n        enum_strings=(\"none\", \"poisson\", \"uniform\"),\n    )\n    noise_multiplier = Cpt(Signal, value=1, kind=\"config\")\n\n    def _compute(self):\n        x = self._motor0.read()[self._motor_field0][\"value\"]\n        y = self._motor1.read()[self._motor_field1][\"value\"]\n        m = np.array([x, y])\n        Imax = self.Imax.get()\n        center = self.center.get()\n        sigma = self.sigma.get()\n        noise = self.noise.get()\n        noise_multiplier = self.noise_multiplier.get()\n        v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma**2))\n        if noise == \"poisson\":\n            v = int(self.random_state.poisson(np.round(v), 1))\n        elif noise == \"uniform\":\n            v += self.random_state.uniform(-1, 1) * noise_multiplier\n        return v\n\n    def __init__(\n        self,\n        name,\n        motor0,\n        motor_field0,\n        motor1,\n        motor_field1,\n        center,\n        Imax,\n        sigma=1,\n        noise=\"none\",\n        noise_multiplier=1,\n        random_state=None,\n        **kwargs,\n    ):\n        super().__init__(name=name, **kwargs)\n        self._motor0 = motor0\n        self._motor1 = motor1\n        self._motor_field0 = motor_field0\n        self._motor_field1 = motor_field1\n        self.center.put(center)\n        self.Imax.put(Imax)\n        self.sigma.put(sigma)\n        self.noise.put(noise)\n        self.noise_multiplier.put(noise_multiplier)\n\n        if random_state is None:\n            random_state = np.random\n        self.random_state = random_state\n        self.val.name = self.name\n        self.val.sim_set_func(self._compute)\n\n        self.trigger()\n\n    def trigger(self, *args, **kwargs):\n        return self.val.trigger(*args, **kwargs)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._motor0.read",
+        "self._motor1.read",
+        "self.Imax.get",
+        "self.center.get",
+        "self.sigma.get",
+        "self.noise.get",
+        "self.noise_multiplier.get",
+        "self.random_state.poisson",
+        "self.random_state.uniform",
+        "self.center.put",
+        "self.Imax.put",
+        "self.sigma.put",
+        "self.noise.put",
+        "self.noise_multiplier.put",
+        "self.val.sim_set_func",
+        "self.trigger",
+        "self.val.trigger"
+      ],
+      "api_sequence_with_args": [
+        "self._motor0.read()",
+        "self._motor1.read()",
+        "self.Imax.get()",
+        "self.center.get()",
+        "self.sigma.get()",
+        "self.noise.get()",
+        "self.noise_multiplier.get()",
+        "self.random_state.poisson(np.round(v), 1)",
+        "self.random_state.uniform(-1, 1)",
+        "self.center.put(center)",
+        "self.Imax.put(Imax)",
+        "self.sigma.put(sigma)",
+        "self.noise.put(noise)",
+        "self.noise_multiplier.put(noise_multiplier)",
+        "self.val.sim_set_func(self._compute)",
+        "self.trigger()",
+        "self.val.trigger(*args, **kwargs)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._motor0.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "self._motor1.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "self.Imax.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.center.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.sigma.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.noise.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.noise_multiplier.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.random_state.poisson",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.random_state.uniform",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "self.center.put",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "self.Imax.put",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "self.sigma.put",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "self.noise.put",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "self.noise_multiplier.put",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "self.val.sim_set_func",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "self.trigger",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "self.val.trigger",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        }
+      ],
+      "contextual_code": "def _compute(self):\n    x = self._motor0.read()[self._motor_field0][\"value\"]\n    y = self._motor1.read()[self._motor_field1][\"value\"]\n    m = np.array([x, y])\n    Imax = self.Imax.get()\n    center = self.center.get()\n    sigma = self.sigma.get()\n    noise = self.noise.get()\n    noise_multiplier = self.noise_multiplier.get()\n    v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma**2))\n    if noise == \"poisson\":\n        v = int(self.random_state.poisson(np.round(v), 1))\n    elif noise == \"uniform\":\n        v += self.random_state.uniform(-1, 1) * noise_multiplier\n    return v\n\n    def __init__(\n        self,\n        name,\n        motor0,\n        motor_field0,\n        motor1,\n        motor_field1,\n        center,\n        Imax,\n        sigma=1,\n        noise=\"none\",\n        noise_multiplier=1,\n        random_state=None,\n        **kwargs,\n    ):\n        super().__init__(name=name, **kwargs)\n        self._motor0 = motor0\n        self._motor1 = motor1\n        self._motor_field0 = motor_field0\n        self._motor_field1 = motor_field1\n        self.center.put(center)\n        self.Imax.put(Imax)\n        self.sigma.put(sigma)\n        self.noise.put(noise)\n        self.noise_multiplier.put(noise_multiplier)\n\n        if random_state is None:\n            random_state = np.random\n        self.random_state = random_state\n        self.val.name = self.name\n        self.val.sim_set_func(self._compute)\n\n        self.trigger()\n\ndef trigger(self, *args, **kwargs):\n    return self.val.trigger(*args, **kwargs)"
+    }
+  }
+]

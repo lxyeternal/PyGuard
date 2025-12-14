@@ -1,0 +1,158 @@
+[
+  {
+    "metadata": {
+      "package_name": "azure_cosmos-4.10.0b4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_full_text_policy.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azure_cosmos-4.10.0b4/azure_cosmos-4.10.0b4/tests/test_full_text_policy.py",
+    "line_number": "81",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "80\t        )\n81\t        created_container_properties = created_container.read()\n82\t        full_text_policy = {",
+    "code_snippet": "@pytest.mark.cosmosSearchQuery\nclass TestFullTextPolicy(unittest.TestCase):\n    client: CosmosClient = None\n    host = test_config.TestConfig.host\n    masterKey = test_config.TestConfig.masterKey\n    connectionPolicy = test_config.TestConfig.connectionPolicy\n\n    @classmethod\n    def setUpClass(cls):\n        if (cls.masterKey == '[YOUR_KEY_HERE]' or\n                cls.host == '[YOUR_ENDPOINT_HERE]'):\n            raise Exception(\n                \"You must specify your Azure Cosmos account values for \"\n                \"'masterKey' and 'host' at the top of this class to run the \"\n                \"tests.\")\n\n        cls.client = CosmosClient(cls.host, cls.masterKey)\n        cls.created_database = cls.client.get_database_client(test_config.TestConfig.TEST_DATABASE_ID)\n        cls.test_db = cls.client.create_database(str(uuid.uuid4()))\n\n    def test_replace_full_text_container(self):\n        # Replace a container without a full text policy and full text indexing policy\n\n        created_container = self.test_db.create_container(\n            id='full_text_container' + str(uuid.uuid4()),\n            partition_key=PartitionKey(path=\"/id\")\n        )\n        created_container_properties = created_container.read()\n        full_text_policy = {\n            \"defaultLanguage\": \"en-US\",\n            \"fullTextPaths\": [\n                {\n                    \"path\": \"/abstract\",\n                    \"language\": \"en-US\"\n                }\n            ]\n        }\n        indexing_policy = {\n            \"fullTextIndexes\": [\n                {\"path\": \"/abstract\"}\n            ]\n        }\n\n        # Replace the container with new policies\n        replaced_container = self.test_db.replace_container(\n            container=created_container.id,\n            partition_key=PartitionKey(path=\"/id\"),\n            full_text_policy=full_text_policy,\n            indexing_policy=indexing_policy\n        )\n        properties = replaced_container.read()\n        assert properties[\"fullTextPolicy\"] == full_text_policy\n        assert properties[\"indexingPolicy\"]['fullTextIndexes'] == indexing_policy['fullTextIndexes']\n        assert created_container_properties['indexingPolicy'] != properties['indexingPolicy']\n        self.test_db.delete_container(created_container.id)\n\n        # Replace a container with a valid full text policy and full text indexing policy\n        created_container = self.test_db.create_container(\n            id='full_text_container' + str(uuid.uuid4()),\n            partition_key=PartitionKey(path=\"/id\"),\n            full_text_policy=full_text_policy,\n            indexing_policy=indexing_policy\n        )\n        created_container_properties = created_container.read()\n        assert properties[\"fullTextPolicy\"] == full_text_policy\n        assert properties[\"indexingPolicy\"]['fullTextIndexes'] == indexing_policy['fullTextIndexes']\n\n        # Replace the container with new policies\n        full_text_policy['fullTextPaths'][0]['path'] = \"/new_path\"\n        indexing_policy['fullTextIndexes'][0]['path'] = \"/new_path\"\n        replaced_container = self.test_db.replace_container(\n            container=created_container.id,\n            partition_key=PartitionKey(path=\"/id\"),\n            full_text_policy=full_text_policy,\n            indexing_policy=indexing_policy\n        )\n        properties = replaced_container.read()\n        assert properties[\"fullTextPolicy\"] == full_text_policy\n        assert properties[\"indexingPolicy\"]['fullTextIndexes'] == indexing_policy['fullTextIndexes']\n        assert created_container_properties['fullTextPolicy'] != properties['fullTextPolicy']\n        assert created_container_properties[\"indexingPolicy\"] != properties[\"indexingPolicy\"]\n        self.test_db.delete_container(created_container.id)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "CosmosClient",
+        "CosmosClient.get_database_client",
+        "CosmosClient.create_database",
+        "Database.create_container",
+        "Container.read",
+        "Database.replace_container",
+        "Container.read",
+        "Database.delete_container",
+        "Database.create_container",
+        "Container.read",
+        "Database.replace_container",
+        "Container.read",
+        "Database.delete_container"
+      ],
+      "api_sequence_with_args": [
+        "CosmosClient(cls.host, cls.masterKey)",
+        "CosmosClient.get_database_client(test_config.TestConfig.TEST_DATABASE_ID)",
+        "CosmosClient.create_database(str(uuid.uuid4()))",
+        "self.test_db.create_container(id='full_text_container' + str(uuid.uuid4()), partition_key=PartitionKey(path=\"/id\"))",
+        "created_container.read()",
+        "self.test_db.replace_container(container=created_container.id, partition_key=PartitionKey(path=\"/id\"), full_text_policy=full_text_policy, indexing_policy=indexing_policy)",
+        "replaced_container.read()",
+        "self.test_db.delete_container(created_container.id)",
+        "self.test_db.create_container(id='full_text_container' + str(uuid.uuid4()), partition_key=PartitionKey(path=\"/id\"), full_text_policy=full_text_policy, indexing_policy=indexing_policy)",
+        "created_container.read()",
+        "self.test_db.replace_container(container=created_container.id, partition_key=PartitionKey(path=\"/id\"), full_text_policy=full_text_policy, indexing_policy=indexing_policy)",
+        "replaced_container.read()",
+        "self.test_db.delete_container(created_container.id)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "CosmosClient",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "CosmosClient.get_database_client",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "CosmosClient.create_database",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Database.create_container",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Container.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "Database.replace_container",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Container.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "Database.delete_container",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Database.create_container",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Container.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "Database.replace_container",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "Container.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "Database.delete_container",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        }
+      ],
+      "contextual_code": "@pytest.mark.cosmosSearchQuery\nclass TestFullTextPolicy(unittest.TestCase):\n    client: CosmosClient = None\n    host = test_config.TestConfig.host\n    masterKey = test_config.TestConfig.masterKey\n    connectionPolicy = test_config.TestConfig.connectionPolicy\n\n    @classmethod\n    def setUpClass(cls):\n        if (cls.masterKey == '[YOUR_KEY_HERE]' or\n                cls.host == '[YOUR_ENDPOINT_HERE]'):\n            raise Exception(\n                \"You must specify your Azure Cosmos account values for \"\n                \"'masterKey' and 'host' at the top of this class to run the \"\n                \"tests.\")\n\n        cls.client = CosmosClient(cls.host, cls.masterKey)\n        cls.created_database = cls.client.get_database_client(test_config.TestConfig.TEST_DATABASE_ID)\n        cls.test_db = cls.client.create_database(str(uuid.uuid4()))\n\n    def test_replace_full_text_container(self):\n        created_container = self.test_db.create_container(\n            id='full_text_container' + str(uuid.uuid4()),\n            partition_key=PartitionKey(path=\"/id\")\n        )\n        created_container_properties = created_container.read()\n        full_text_policy = {\n            \"defaultLanguage\": \"en-US\",\n            \"fullTextPaths\": [\n                {\n                    \"path\": \"/abstract\",\n                    \"language\": \"en-US\"\n                }\n            ]\n        }\n        indexing_policy = {\n            \"fullTextIndexes\": [\n                {\"path\": \"/abstract\"}\n            ]\n        }\n\n        replaced_container = self.test_db.replace_container(\n            container=created_container.id,\n            partition_key=PartitionKey(path=\"/id\"),\n            full_text_policy=full_text_policy,\n            indexing_policy=indexing_policy\n        )\n        properties = replaced_container.read()\n        self.test_db.delete_container(created_container.id)\n\n        created_container = self.test_db.create_container(\n            id='full_text_container' + str(uuid.uuid4()),\n            partition_key=PartitionKey(path=\"/id\"),\n            full_text_policy=full_text_policy,\n            indexing_policy=indexing_policy\n        )\n        created_container_properties = created_container.read()\n\n        full_text_policy['fullTextPaths'][0]['path'] = \"/new_path\"\n        indexing_policy['fullTextIndexes'][0]['path'] = \"/new_path\"\n        replaced_container = self.test_db.replace_container(\n            container=created_container.id,\n            partition_key=PartitionKey(path=\"/id\"),\n            full_text_policy=full_text_policy,\n            indexing_policy=indexing_policy\n        )\n        properties = replaced_container.read()\n        self.test_db.delete_container(created_container.id)"
+    }
+  }
+]

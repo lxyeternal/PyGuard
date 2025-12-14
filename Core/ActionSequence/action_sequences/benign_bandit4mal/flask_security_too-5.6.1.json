@@ -1,0 +1,400 @@
+[
+  {
+    "metadata": {
+      "package_name": "flask_security_too-5.6.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_unified_signin.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/flask_security_too-5.6.1/flask_security_too-5.6.1/tests/test_unified_signin.py",
+    "line_number": "2019",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2018\t    data = dict(identity=\"matt@lp.com\", chosen_method=\"email\")\n2019\t    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n2020\t    assert get_message(\"GENERIC_US_SIGNIN\") in response.data",
+    "code_snippet": "def test_generic_response(app, client, get_message):\n    # test not-setup choice\n    data = dict(identity=\"matt@lp.com\", chosen_method=\"email\")\n    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n    assert get_message(\"GENERIC_US_SIGNIN\") in response.data\n\n    # for JSON still return 200 as if everything is fine and a code was sent.\n    response = client.post(\"/us-signin/send-code\", json=data)\n    assert response.status_code == 200\n    assert not any(e in response.json[\"response\"].keys() for e in [\"error\", \"errors\"])\n\n    # Correct method should return same thing\n    set_phone(app)\n    data = dict(identity=\"matt@lp.com\", chosen_method=\"sms\")\n    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n    assert get_message(\"GENERIC_US_SIGNIN\") in response.data\n\n    # for JSON still return 200 as if everything is fine and a code was sent.\n    response = client.post(\"/us-signin/send-code\", json=data)\n    assert response.status_code == 200\n    assert not any(\n        e in response.json[\"response\"].keys() for e in [\"field_errors\", \"errors\"]\n    )\n\n    # Unknown identity should return same thing\n    data = dict(identity=\"matt2@lp.com\", chosen_method=\"email\")\n    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n    assert get_message(\"GENERIC_US_SIGNIN\") in response.data\n\n    # for JSON still return 200 as if everything is fine and a code was sent.\n    response = client.post(\"/us-signin/send-code\", json=data)\n    assert response.status_code == 200\n    assert not any(\n        e in response.json[\"response\"].keys() for e in [\"field_errors\", \"errors\"]\n    )\n\n    #\n    # Now test us-signin itself\n    #\n    data = dict(identity=\"matt@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", data=data)\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    data = dict(identity=\"matt@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", json=data)\n    assert response.status_code == 400\n    assert list(response.json[\"response\"][\"field_errors\"].keys()) == [\"\"]\n    assert len(response.json[\"response\"][\"field_errors\"][\"\"]) == 1\n    assert response.json[\"response\"][\"field_errors\"][\"\"][0].encode(\n        \"utf-8\"\n    ) == get_message(\"GENERIC_AUTHN_FAILED\")\n    assert response.json[\"response\"][\"errors\"][0].encode(\"utf-8\") == get_message(\n        \"GENERIC_AUTHN_FAILED\"\n    )\n\n    # same with unknown user\n    data = dict(identity=\"matt2@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", data=data)\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    data = dict(identity=\"matt2@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", json=data)\n    assert response.status_code == 400\n    assert list(response.json[\"response\"][\"field_errors\"].keys()) == [\"\"]\n    assert len(response.json[\"response\"][\"field_errors\"][\"\"]) == 1\n    assert response.json[\"response\"][\"field_errors\"][\"\"][0].encode(\n        \"utf-8\"\n    ) == get_message(\"GENERIC_AUTHN_FAILED\")\n    assert response.json[\"response\"][\"errors\"][0].encode(\"utf-8\") == get_message(\n        \"GENERIC_AUTHN_FAILED\"\n    )\n\n    #\n    # Test /us-verify-link\n    #\n    set_email(app)\n    with capture_send_code_requests() as requests:\n        response = client.post(\n            \"/us-signin/send-code\",\n            data=dict(identity=\"matt@lp.com\", chosen_method=\"email\"),\n            follow_redirects=True,\n        )\n\n    uid = requests[0][\"user\"].fs_uniquifier\n    code = requests[0][\"login_token\"]\n\n    # Try bad/unknown id\n    response = client.get(\"us-verify-link?id=98765&code=12345\", follow_redirects=True)\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    # Try bad code\n    response = client.get(\n        f\"us-verify-link?id={uid}&code=12345\",\n        follow_redirects=True,\n    )\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    # Try deactivated user\n    with app.test_request_context(\"/\"):\n        user = app.security.datastore.find_user(email=\"matt@lp.com\")\n        app.security.datastore.deactivate_user(user)\n        app.security.datastore.commit()\n    response = client.get(\n        f\"us-verify-link?id={uid}&code={code}\",\n        follow_redirects=True,\n    )\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "client.post",
+        "get_message",
+        "client.post",
+        "response.json",
+        "client.post",
+        "get_message",
+        "client.post",
+        "response.json",
+        "client.post",
+        "get_message",
+        "client.post",
+        "response.json",
+        "client.post",
+        "get_message",
+        "client.post",
+        "response.json",
+        "client.post",
+        "get_message",
+        "client.post",
+        "response.json",
+        "client.post",
+        "get_message",
+        "client.post",
+        "response.json",
+        "set_phone",
+        "set_email",
+        "capture_send_code_requests",
+        "client.post",
+        "client.get",
+        "get_message",
+        "client.get",
+        "get_message",
+        "app.test_request_context",
+        "app.security.datastore.find_user",
+        "app.security.datastore.deactivate_user",
+        "app.security.datastore.commit",
+        "client.get",
+        "get_message"
+      ],
+      "api_sequence_with_args": [
+        "client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)",
+        "get_message(\"GENERIC_US_SIGNIN\")",
+        "client.post(\"/us-signin/send-code\", json=data)",
+        "response.json[\"response\"].keys()",
+        "client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)",
+        "get_message(\"GENERIC_US_SIGNIN\")",
+        "client.post(\"/us-signin/send-code\", json=data)",
+        "response.json[\"response\"].keys()",
+        "client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)",
+        "get_message(\"GENERIC_US_SIGNIN\")",
+        "client.post(\"/us-signin/send-code\", json=data)",
+        "response.json[\"response\"].keys()",
+        "client.post(\"/us-signin\", data=data)",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "client.post(\"/us-signin\", json=data)",
+        "response.status_code",
+        "response.json[\"response\"][\"field_errors\"].keys()",
+        "response.json[\"response\"][\"field_errors\"][\"\"]",
+        "response.json[\"response\"][\"field_errors\"][\"\"][0].encode(\"utf-8\")",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "response.json[\"response\"][\"errors\"][0].encode(\"utf-8\")",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "client.post(\"/us-signin\", data=data)",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "client.post(\"/us-signin\", json=data)",
+        "response.status_code",
+        "response.json[\"response\"][\"field_errors\"].keys()",
+        "response.json[\"response\"][\"field_errors\"][\"\"]",
+        "response.json[\"response\"][\"field_errors\"][\"\"][0].encode(\"utf-8\")",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "response.json[\"response\"][\"errors\"][0].encode(\"utf-8\")",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "set_phone(app)",
+        "set_email(app)",
+        "capture_send_code_requests()",
+        "client.post(\"/us-signin/send-code\", data=dict(identity=\"matt@lp.com\", chosen_method=\"email\"), follow_redirects=True)",
+        "client.get(\"us-verify-link?id=98765&code=12345\", follow_redirects=True)",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "client.get(f\"us-verify-link?id={uid}&code=12345\", follow_redirects=True)",
+        "get_message(\"GENERIC_AUTHN_FAILED\")",
+        "app.test_request_context(\"/\")",
+        "app.security.datastore.find_user(email=\"matt@lp.com\")",
+        "app.security.datastore.deactivate_user(user)",
+        "app.security.datastore.commit()",
+        "client.get(f\"us-verify-link?id={uid}&code={code}\", follow_redirects=True)",
+        "get_message(\"GENERIC_AUTHN_FAILED\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "response.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "set_phone",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "set_email",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "capture_send_code_requests",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "client.post",
+          "id": "open_url_post",
+          "description": "Opens URL with POST data",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "client.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "app.test_request_context",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "app.security.datastore.find_user",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "app.security.datastore.deactivate_user",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "app.security.datastore.commit",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "client.get",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "get_message",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "def test_generic_response(app, client, get_message):\n    data = dict(identity=\"matt@lp.com\", chosen_method=\"email\")\n    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n    assert get_message(\"GENERIC_US_SIGNIN\") in response.data\n\n    response = client.post(\"/us-signin/send-code\", json=data)\n    assert response.status_code == 200\n    assert not any(e in response.json[\"response\"].keys() for e in [\"error\", \"errors\"])\n\n    set_phone(app)\n    data = dict(identity=\"matt@lp.com\", chosen_method=\"sms\")\n    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n    assert get_message(\"GENERIC_US_SIGNIN\") in response.data\n\n    response = client.post(\"/us-signin/send-code\", json=data)\n    assert response.status_code == 200\n    assert not any(\n        e in response.json[\"response\"].keys() for e in [\"field_errors\", \"errors\"]\n    )\n\n    data = dict(identity=\"matt2@lp.com\", chosen_method=\"email\")\n    response = client.post(\"/us-signin/send-code\", data=data, follow_redirects=True)\n    assert get_message(\"GENERIC_US_SIGNIN\") in response.data\n\n    response = client.post(\"/us-signin/send-code\", json=data)\n    assert response.status_code == 200\n    assert not any(\n        e in response.json[\"response\"].keys() for e in [\"field_errors\", \"errors\"]\n    )\n\n    data = dict(identity=\"matt@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", data=data)\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    data = dict(identity=\"matt@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", json=data)\n    assert response.status_code == 400\n    assert list(response.json[\"response\"][\"field_errors\"].keys()) == [\"\"]\n    assert len(response.json[\"response\"][\"field_errors\"][\"\"]) == 1\n    assert response.json[\"response\"][\"field_errors\"][\"\"][0].encode(\n        \"utf-8\"\n    ) == get_message(\"GENERIC_AUTHN_FAILED\")\n    assert response.json[\"response\"][\"errors\"][0].encode(\"utf-8\") == get_message(\n        \"GENERIC_AUTHN_FAILED\"\n    )\n\n    data = dict(identity=\"matt2@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", data=data)\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    data = dict(identity=\"matt2@lp.com\", code=\"12345\")\n    response = client.post(\"/us-signin\", json=data)\n    assert response.status_code == 400\n    assert list(response.json[\"response\"][\"field_errors\"].keys()) == [\"\"]\n    assert len(response.json[\"response\"][\"field_errors\"][\"\"]) == 1\n    assert response.json[\"response\"][\"field_errors\"][\"\"][0].encode(\n        \"utf-8\"\n    ) == get_message(\"GENERIC_AUTHN_FAILED\")\n    assert response.json[\"response\"][\"errors\"][0].encode(\"utf-8\") == get_message(\n        \"GENERIC_AUTHN_FAILED\"\n    )\n\n    set_email(app)\n    with capture_send_code_requests() as requests:\n        response = client.post(\n            \"/us-signin/send-code\",\n            data=dict(identity=\"matt@lp.com\", chosen_method=\"email\"),\n            follow_redirects=True,\n        )\n\n    uid = requests[0][\"user\"].fs_uniquifier\n    code = requests[0][\"login_token\"]\n\n    response = client.get(\"us-verify-link?id=98765&code=12345\", follow_redirects=True)\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    response = client.get(\n        f\"us-verify-link?id={uid}&code=12345\",\n        follow_redirects=True,\n    )\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data\n\n    with app.test_request_context(\"/\"):\n        user = app.security.datastore.find_user(email=\"matt@lp.com\")\n        app.security.datastore.deactivate_user(user)\n        app.security.datastore.commit()\n    response = client.get(\n        f\"us-verify-link?id={uid}&code={code}\",\n        follow_redirects=True,\n    )\n    assert get_message(\"GENERIC_AUTHN_FAILED\") in response.data"
+    }
+  }
+]

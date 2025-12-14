@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "etils-1.12.2",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "tree_utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/etils-1.12.2/etils-1.12.2/etils/etree/tree_utils.py",
+    "line_number": "79",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "78\n79\t    with concurrent.futures.ThreadPoolExecutor(\n80\t        max_workers=num_threads\n81\t    ) as executor:",
+    "context_snippet": "def parallel_map(\n      self,\n      map_fn: Callable[..., _Tout],  # Callable[[_Tin0, _Tin1,...], Tout]\n      *trees: Tree[_Tin],  # _Tin0, _Tin1,...\n      num_threads: Optional[int] = None,\n      progress_bar: bool = False,\n      is_leaf: Optional[LeafFn] = None,\n  ) -> Tree[_Tout]:\n    \"\"\"Same as `tree.map_structure` but apply `map_fn` in parallel.\n\n    Args:\n      map_fn: Worker function\n      *trees: Nested input to pass to the `map_fn`\n      num_threads: Number of workers (default to CPU count * 5)\n      progress_bar: If True, display a progression bar.\n      is_leaf: Don't recurse into leaf if `is_leaf(node)` is `True`\n\n    Returns:\n      The nested structure after `map_fn` has been applied.\n    \"\"\"\n    # TODO(epot): Allow nesting `parallel_map` while keeping max num threads\n    # constant. How to avoid dead locks ?\n\n    with concurrent.futures.ThreadPoolExecutor(\n        max_workers=num_threads\n    ) as executor:\n      launch_worker = functools.partial(executor.submit, map_fn)\n      futures = self.backend.map(launch_worker, *trees, is_leaf=is_leaf)\n\n      leaves, _ = self.backend.flatten(futures, is_leaf=is_leaf)\n\n      itr = concurrent.futures.as_completed(leaves)\n      if progress_bar:\n        itr = etqdm.tqdm(itr, total=len(leaves))\n\n      for f in itr:  # Propagate exception to main thread.\n        if f.exception():\n          raise f.exception()\n\n    return self.backend.map(lambda f: f.result(), futures)",
+    "hash_value": "0eefdbb26307900255064198a31d9dd5"
+  }
+]

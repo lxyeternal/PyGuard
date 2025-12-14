@@ -1,0 +1,194 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport site\nimport sys\nimport textwrap\n\nimport setuptools\nfrom setuptools import setup\nfrom setuptools.command.develop import develop as develop_orig\n\n# Read the composer version\n# Cannot import from `composer.__version__` since that will not be available when building or installing the package\nwith open(os.path.join(os.path.dirname(__file__), 'composer', '_version.py')) as f:\n    version_globals = {}\n    version_locals = {}\n    exec(f.read(), version_globals, version_locals)\n    composer_version = version_locals['__version__']\n\n_IS_ROOT = os.getuid() == 0\n_IS_USER = '--user' in sys.argv[1:]\n_IS_VIRTUALENV = 'VIRTUAL_ENV' in os.environ\n\n# ... (other code omitted for brevity)\n\npackage_name = os.environ.get('COMPOSER_PACKAGE_NAME', 'mosaicml')\n\nif package_name != 'mosaicml':\n    print(f'`Building composer as `{package_name}`)', file=sys.stderr)\n\nsetup(\n    name=package_name,\n    version=composer_version,\n    author='MosaicML',\n    author_email='team@mosaicml.com',\n    description=(\n        'Composer is a PyTorch library that enables you to train ' +\n        'neural networks faster, at lower cost, and to higher accuracy.'\n    ),\n    long_description=long_description,\n    long_description_content_type='text/markdown',\n    url='https://github.com/mosaicml/composer',\n    include_package_data=True,\n    package_data={\n        'composer': composer_data_files,\n    },\n    packages=setuptools.find_packages(exclude=['docker*', 'examples*', 'scripts*', 'tests*']),\n    classifiers=[\n        'Programming Language :: Python :: 3',\n        'Programming Language :: Python :: 3.10',\n        'Programming Language :: Python :: 3.11',\n        'Programming Language :: Python :: 3.12',\n    ],\n    install_requires=install_requires,\n    entry_points={\n        'console_scripts': [\n            'composer = composer.cli.launcher:main',\n            'composer_collect_env = composer.utils.collect_env:main',\n            'composer_validate_remote_path = composer.utils.file_helpers:validate_remote_path',\n        ],\n    },\n    extras_require=extra_deps,\n    dependency_links=['https://developer.download.nvidia.com/compute/redist'],\n    python_requires='>=3.10',\n    ext_package='composer',\n    cmdclass={'develop': develop},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.join",
+        "open",
+        "exec",
+        "os.getuid",
+        "sys.argv",
+        "os.environ.get",
+        "os.environ"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(__file__)",
+        "os.path.join(os.path.dirname(__file__), 'composer', '_version.py')",
+        "open(os.path.join(os.path.dirname(__file__), 'composer', '_version.py'))",
+        "exec(f.read(), version_globals, version_locals)",
+        "os.getuid()",
+        "sys.argv[1:]",
+        "os.environ.get('COMPOSER_PACKAGE_NAME', 'mosaicml')",
+        "os.environ"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "exec",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "os.getuid",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\nimport sys\n\n# Read the composer version\nwith open(os.path.join(os.path.dirname(__file__), 'composer', '_version.py')) as f:\n    version_globals = {}\n    version_locals = {}\n    exec(f.read(), version_globals, version_locals)\n    composer_version = version_locals['__version__']\n\n_IS_ROOT = os.getuid() == 0\n_IS_USER = '--user' in sys.argv[1:]\n_IS_VIRTUALENV = 'VIRTUAL_ENV' in os.environ\n\npackage_name = os.environ.get('COMPOSER_PACKAGE_NAME', 'mosaicml')"
+    }
+  },
+  {
+    "pyfile": "lambda_eval_client.py",
+    "code_snippet": "import json\nimport logging\nimport os\n\nimport requests\n\nfrom composer.utils.eval_client.eval_client import EvalClient\n\n__all__ = ['LambdaEvalClient']\nlog = logging.getLogger(__name__)\n\nclass LambdaEvalClient(EvalClient):\n    \"\"\"Utility for creating a client for and invoking an AWS Lambda.\"\"\"\n\n    def __init__(self) -> None:\n        \"\"\"Checks that the requisite environment variables are in the EvalClient.\n\n        There must be CODE_EVAL_URL for the URL of the lambda API and CODE_EVAL_APIKEY\n        for the API key of the lambda API.\n        \"\"\"\n        if 'CODE_EVAL_URL' not in os.environ or 'CODE_EVAL_APIKEY' not in os.environ:\n            raise Exception(\n                'Please set environment variable CODE_EVAL_URL to the URL of the lambda API '\n                'and CODE_EVAL_APIKEY to the API key of the API gateway.',\n            )\n        log.debug('Running code eval on lambda.')\n\n    def invoke(self, payload: list[list[list[dict[str, str]]]]) -> list[list[list[bool]]]:\n        \"\"\"Invoke a batch of provided payloads for code evaluations.\"\"\"\n        ret = []\n        for prompt_group in payload:\n            ret_prompt_group = []\n            for generation_group in prompt_group:\n                ret_generation_group = []\n                for test_case in generation_group:\n                    ret_generation_group.append(self.invoke_helper(test_case))\n                ret_prompt_group.append(ret_generation_group)\n            ret.append(ret_prompt_group)\n        return ret\n\n    def invoke_helper(self, payload: dict[str, str]) -> bool:\n        \"\"\"Invoke a provided dictionary payload to the client.\"\"\"\n        response = requests.post(\n            os.environ['CODE_EVAL_URL'],\n            data=json.dumps(payload),\n            headers={'x-api-key': os.environ['CODE_EVAL_APIKEY']},\n        )\n        response = response.json()\n        return 'statusCode' in response and response['statusCode'] == 200\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.environ",
+        "requests.post",
+        "json.dumps",
+        "os.environ",
+        "os.environ",
+        "requests.post",
+        "requests.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ['CODE_EVAL_URL']",
+        "os.environ['CODE_EVAL_APIKEY']",
+        "requests.post(os.environ['CODE_EVAL_URL'], data=json.dumps(payload), headers={'x-api-key': os.environ['CODE_EVAL_APIKEY']})",
+        "json.dumps(payload)",
+        "os.environ['CODE_EVAL_URL']",
+        "os.environ['CODE_EVAL_APIKEY']",
+        "requests.post(...)",
+        "requests.Response.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import json\nimport os\nimport requests\n\nclass LambdaEvalClient(EvalClient):\n    def __init__(self) -> None:\n        if 'CODE_EVAL_URL' not in os.environ or 'CODE_EVAL_APIKEY' not in os.environ:\n            raise Exception(\n                'Please set environment variable CODE_EVAL_URL to the URL of the lambda API '\n                'and CODE_EVAL_APIKEY to the API key of the API gateway.',\n            )\n\n    def invoke_helper(self, payload: dict[str, str]) -> bool:\n        response = requests.post(\n            os.environ['CODE_EVAL_URL'],\n            data=json.dumps(payload),\n            headers={'x-api-key': os.environ['CODE_EVAL_APIKEY']},\n        )\n        response = response.json()\n        return 'statusCode' in response and response['statusCode'] == 200"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "mosaicml-0.30.0",
+      "total_matches": 2
+    }
+  }
+]

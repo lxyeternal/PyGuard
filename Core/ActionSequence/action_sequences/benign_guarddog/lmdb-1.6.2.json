@@ -1,0 +1,92 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport shutil\nimport platform\n\n# ... (other imports and code above)\n\npatch_lmdb_source = False\n\nif os.getenv('LMDB_FORCE_SYSTEM') is not None:\n    print('py-lmdb: Using system version of liblmdb.')\n    extra_sources = []\n    extra_include_dirs += []\n    libraries = ['lmdb']\nelif os.getenv('LMDB_PURE') is not None:\n    print('py-lmdb: Using bundled unmodified liblmdb; override with LMDB_FORCE_SYSTEM=1.')\n    extra_sources = ['lib/mdb.c', 'lib/midl.c']\n    extra_include_dirs += ['lib']\n    libraries = []\nelse:\n    print('py-lmdb: Using bundled liblmdb with py-lmdb patches; override with LMDB_FORCE_SYSTEM=1 or LMDB_PURE=1.')\n    extra_sources = ['build/lib/mdb.c', 'build/lib/midl.c']\n    extra_include_dirs += ['build/lib']\n    extra_compile_args += ['-DHAVE_PATCHED_LMDB=1']\n    libraries = []\n    patch_lmdb_source = True\n\nif patch_lmdb_source:\n    if sys.platform.startswith('win'):\n        try:\n            import patch_ng as patch\n        except ImportError:\n            raise Exception('Building py-lmdb from source on Windows requires the \"patch-ng\" python module.')\n\n    # Clean out any previously patched files\n    dest = 'build' + os.sep + 'lib'\n    try:\n        os.mkdir('build')\n    except Exception:\n        pass\n\n    try:\n        shutil.rmtree(dest)\n    except Exception:\n        pass\n    shutil.copytree('lib', dest)\n\n    # Copy away the lmdb source then patch it\n    if sys.platform.startswith('win'):\n        patchfile = 'lib' + os.sep + 'py-lmdb' + os.sep + 'env-copy-txn.patch'\n        patchset = patch.fromfile(patchfile)\n        rv = patchset.apply(2, root=dest)\n        if not rv:\n            raise Exception('Applying patch failed')\n    else:\n        rv = os.system('patch -N -p3 -d build/lib < lib/py-lmdb/env-copy-txn.patch')\n        if rv:\n            raise Exception('Applying patch failed')",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.getenv",
+        "os.getenv",
+        "os.getenv",
+        "os.mkdir",
+        "shutil.rmtree",
+        "shutil.copytree",
+        "os.system"
+      ],
+      "api_sequence_with_args": [
+        "os.getenv('LMDB_FORCE_SYSTEM')",
+        "os.getenv('LMDB_PURE')",
+        "os.mkdir('build')",
+        "shutil.rmtree(dest)",
+        "shutil.copytree('lib', dest)",
+        "os.system('patch -N -p3 -d build/lib < lib/py-lmdb/env-copy-txn.patch')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copytree",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.system",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\n\npatch_lmdb_source = False\n\nif os.getenv('LMDB_FORCE_SYSTEM') is not None:\n    ...\nelif os.getenv('LMDB_PURE') is not None:\n    ...\nelse:\n    ...\n    patch_lmdb_source = True\n\nif patch_lmdb_source:\n    dest = 'build' + os.sep + 'lib'\n    try:\n        os.mkdir('build')\n    except Exception:\n        pass\n\n    try:\n        shutil.rmtree(dest)\n    except Exception:\n        pass\n    shutil.copytree('lib', dest)\n\n    # Copy away the lmdb source then patch it\n    if sys.platform.startswith('win'):\n        ...\n    else:\n        rv = os.system('patch -N -p3 -d build/lib < lib/py-lmdb/env-copy-txn.patch')\n        if rv:\n            raise Exception('Applying patch failed')"
+    }
+  },
+  {
+    "pyfile": "cffi.py",
+    "code_snippet": "# Handle moronic Python 3 mess.\nUnicodeType = getattr(__builtin__, 'unicode', str)\nBytesType = getattr(__builtin__, 'bytes', str)\n\nO_0755 = int('0755', 8)\nO_0111 = int('0111', 8)\nEMPTY_BYTES = UnicodeType().encode()\n\n# Used to track context across CFFI callbacks.\n_callbacks = threading.local()\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "# Handle moronic Python 3 mess.\nUnicodeType = getattr(__builtin__, 'unicode', str)\nBytesType = getattr(__builtin__, 'bytes', str)\n\nO_0755 = int('0755', 8)\nO_0111 = int('0111', 8)\nEMPTY_BYTES = UnicodeType().encode()\n\n# Used to track context across CFFI callbacks.\n_callbacks = threading.local()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "lmdb-1.6.2",
+      "total_matches": 3
+    }
+  }
+]

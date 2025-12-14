@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "vessl-0.1.195",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "kernel_cluster.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/vessl-0.1.195/vessl-0.1.195/vessl/kernel_cluster.py",
+    "line_number": "127",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "126\t    output = stream.read()\n127\t    if stream.close() is not None:\n128\t        raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")",
+    "context_snippet": "def create_cluster(\n    param: CreateClusterParam,\n) -> ResponseKernelClusterInfo:\n    \"\"\"Create a VESSL cluster by installing VESSL agent to given Kubernetes\n    namespace. If you want to override the default organization, then pass\n    `organization_name` to `param`.\n\n    Args:\n        param(CreateClusterParam): Create cluster parameter.\n\n    Example:\n        ```python\n        vessl.install_cluster(\n            param=vessl.CreateClusterParam(\n                cluster_name=\"foo\",\n                ...\n            ),\n        )\n        ```\n    \"\"\"\n    agent_access_token = vessl_api.custom_cluster_key_api(\n        organization_name=_get_organization_name(**{\"organization_name\": param.organization_name}),\n    ).access_token\n\n    logger.debug(f\"cluster name: '{param.cluster_name}'\")\n    logger.debug(f\"access token: '{agent_access_token}'\")\n\n    cluster_install_command = (\n        ClusterInstallCommandBuilder()\n        .with_kubeconfig(param.kubeconfig_path)\n        .with_cluster_name(param.cluster_name)\n        .with_provider_type(param.provider)\n        .with_namespace(param.kubernetes_namespace)\n        .with_access_token(agent_access_token)\n        .with_local_path_provisioner_enabled(param.enable_local_path_provisioner)\n        .with_longhorn_enabled(param.enable_longhorn)\n        .with_helm_values(param.extra_helm_values)\n        .with_pod_resource_path(param.pod_resource_path)\n        .build()\n    )\n\n    stream = os.popen(cluster_install_command)\n    output = stream.read()\n    if stream.close() is not None:\n        raise VesslRuntimeException(f\"Failed to install VESSL agent: {output}\")\n    print(click.style(output, fg=\"blue\"))\n\n    logger.warn(\n        click.style(\n            \"VESSL cluster agent installed. Waiting for the agent to be connected with VESSL...\",\n            fg=\"green\",\n        )\n    )\n    for attempts in range(18):\n        sleep(10)\n        try:\n            return vessl_api.custom_cluster_connectivity_api(\n                organization_name=_get_organization_name(\n                    **{\"organization_name\": param.organization_name}\n                ),\n                agent_access_token=agent_access_token,\n            )\n        except VesslApiException as e:\n            if e.code == \"NotFound\":\n                continue\n            raise e\n\n    raise ClusterNotFoundError(\n        \"Timeout for checking agent connection; Please check agent log for more information.\"\n    )",
+    "hash_value": "350c08e931b036344b716e912ab05747"
+  }
+]

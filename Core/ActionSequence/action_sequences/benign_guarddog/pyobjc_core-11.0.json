@@ -1,0 +1,351 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# --- Context for Match 1 (Line 763): setup( ... ) ---\n# The flagged line is the setup() call, which is outside a function. Extract at least 10 lines before and after, and all variable/data dependencies.\n\n# Variable dependencies:\n# - sources: defined above as a sorted list of source files\n# - CFLAGS, EXT_CFLAGS, OBJC_LDFLAGS: defined above\n# - oc_build_ext, oc_install_lib, oc_build_py, oc_test, oc_egg_info: custom command classes defined above\n# - parse_package_metadata(): function defined above\n# - os, glob, Extension, setup: imported above\n\n# Extracted context:\n\n# Note: sorts source files with most recently modified\n# first, gives faster feedback when working on source code.\nsources = list(glob.glob(os.path.join(\"Modules\", \"objc\", \"*.m\")))\nsources.sort(key=lambda x: (-os.stat(x).st_mtime, x))\nsetup(\n    ext_modules=[\n        Extension(\n            \"objc._objc\",\n            sources,\n            extra_compile_args=CFLAGS,\n            extra_link_args=OBJC_LDFLAGS,\n            depends=sources,\n        ),\n        Extension(\n            \"objc._machsignals\",\n            [\"Modules/_machsignals.m\"],\n            extra_compile_args=EXT_CFLAGS,\n            extra_link_args=OBJC_LDFLAGS,\n        ),\n    ]\n    + [\n        Extension(\n            \"PyObjCTest.\" + os.path.splitext(os.path.basename(test_source))[0],\n            [test_source],\n            extra_compile_args=EXT_CFLAGS,\n            extra_link_args=OBJC_LDFLAGS,\n        )\n        for test_source in glob.glob(os.path.join(\"Modules\", \"objc\", \"test\", \"*.[mc]\"))\n    ],\n    cmdclass={\n        \"build_ext\": oc_build_ext,\n        \"install_lib\": oc_install_lib,\n        \"build_py\": oc_build_py,\n        \"test\": oc_test,\n        \"egg_info\": oc_egg_info,\n    },\n    package_dir={\"\": \"Lib\", \"PyObjCTest\": \"PyObjCTest\"},\n    options={\"egg_info\": {\"egg_base\": \"Lib\"}},\n    **parse_package_metadata(),\n)\n\n# --- Context for Match 2 (Line 383): macos_version = subprocess.check_output([\"sw_vers\", ...]) ---\n# This is inside oc_egg_info.write_build_info(self). Extract the full method, and all dependencies.\n\nclass oc_egg_info(egg_info.egg_info):\n    # ... (other methods omitted for brevity)\n    def write_build_info(self):\n        macos_version = subprocess.check_output(\n            [\"sw_vers\", \"-productversion\"], text=True\n        ).strip()\n        macos_build = subprocess.check_output(\n            [\"sw_vers\", \"-buildversion\"], text=True\n        ).strip()\n        clang_version = (\n            subprocess.check_output([\"clang\", \"--version\"], text=True)\n            .splitlines()[0]\n            .strip()\n        )\n\n        sdk_root = self.get_finalized_command(\"build_ext\").sdk_root\n        sdk_info = os.path.join(sdk_root, \"SDKSettings.plist\")\n        if os.path.exists(sdk_info):\n            pl = plistlib.load(open(sdk_info, \"rb\"))\n            sdk_version = pl[\"DisplayName\"]\n        else:\n            sdk_version = os.path.basename(sdk_root)\n\n        build_info = textwrap.dedent(\n            f\"\"\"\\\n            macOS {macos_version} ({macos_build})\n            {clang_version}\n            SDK: {sdk_version}\n            \"\"\"\n        )\n\n        self.write_file(\n            \"pyobjc-build-info.txt\",\n            os.path.join(self.egg_info, \"pyobjc-build-info.txt\"),\n            build_info,\n        )\n\n# --- Context for Match 3 (Line 386): macos_build = subprocess.check_output([\"sw_vers\", ...]) ---\n# Already included above in oc_egg_info.write_build_info(self)\n\n# --- Context for Match 4 (Line 390): subprocess.check_output([\"clang\", \"--version\"], ...) ---\n# Already included above in oc_egg_info.write_build_info(self)\n\n# --- Context for Match 5 (Line 467): p = subprocess.Popen([executable, ...]) ---\n# This is inside _working_compiler(executable). Extract the full function and dependencies.\n\ndef _working_compiler(executable):\n    if executable == \"xcrun\":\n        return True\n\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".c\") as fp:\n        fp.write(\"#include <stdarg.h>\\nint main(void) { return 0; }\\n\")\n        fp.flush()\n\n        cflags = get_config_var(\"CFLAGS\")\n        cflags = shlex.split(cflags)\n        cflags += CFLAGS\n\n        p = subprocess.Popen(\n            [executable, \"-c\", fp.name] + cflags,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n        )\n        stdout, stderr = p.communicate()\n        status = p.wait()\n        if status != 0:\n            if \"-flto=thin\" in CFLAGS:\n                cflags.remove(\"-flto=thin\")\n                CFLAGS.remove(\"-flto=thin\")\n                EXT_CFLAGS.remove(\"-flto=thin\")\n                OBJC_LDFLAGS.remove(\"-flto=thin\")\n                p = subprocess.Popen(\n                    [executable, \"-c\", fp.name] + cflags,\n                    stdout=subprocess.PIPE,\n                    stderr=subprocess.PIPE,\n                )\n                stdout, stderr = p.communicate()\n                status = p.wait()\n\n        if status != 0:\n            return False\n\n        binfile = fp.name[:-1] + \"o\"\n        if os.path.exists(binfile):\n            os.unlink(binfile)\n\n        binfile = os.path.basename(binfile)\n        if os.path.exists(binfile):\n            os.unlink(binfile)\n\n    return True\n\n# --- Context for Match 6 (Line 480): p = subprocess.Popen([executable, ...]) ---\n# Already included above in _working_compiler(executable)\n\n# --- Context for Match 7 (Line 522): with os.popen(\"'{}' --version ...\") as fp: ---\n# This is inside _fixup_compiler(use_ccache). Extract the full function and dependencies.\n\ndef _fixup_compiler(use_ccache):\n    if \"CC\" in os.environ:\n        # CC is in the environment, always use explicit\n        # overrides.\n        return\n\n    try:\n        # Newer version of python have support for dealing with\n        # the compiler mess w.r.t. various versions of Apple's SDKs\n        import _osx_support\n\n        _osx_support.customize_compiler(get_config_vars())\n    except (ImportError, AttributeError, KeyError):\n        pass\n\n    cc = oldcc = get_config_var(\"CC\").split()[0]\n    cc = _find_executable(cc)\n    if cc is not None and os.path.basename(cc).startswith(\"gcc\"):\n        # Check if compiler is LLVM-GCC, that's known to\n        # generate bad code.\n        with os.popen(\n            \"'{}' --version 2>/dev/null\".format(cc.replace(\"'\", \"'\\\"'\\\"'\"))\n        ) as fp:\n            data = fp.read()\n        if \"llvm-gcc\" in data:\n            cc = None\n\n    if cc is not None and not _working_compiler(cc):\n        cc = None\n\n    if cc is None:\n        # Default compiler is not usable, try finding 'clang'\n        cc = _find_executable(\"clang\")\n        if cc is None:\n            cc = os.popen(\"/usr/bin/xcrun -find clang\").read()\n\n    if not cc:\n        raise DistutilsPlatformError(\"Cannot locate compiler candidate\")\n\n    if not _working_compiler(cc):\n        raise DistutilsPlatformError(\"Cannot locate a working compiler\")\n\n    if use_ccache:\n        p = _find_executable(\"ccache\")\n        if p is not None:\n            log.info(\"Detected and using 'ccache'\")\n            cc = f\"{p} {cc}\"\n\n    if cc != oldcc:\n        log.info(f\"Use '{cc}' instead of '{oldcc}' as the compiler\")\n\n        config_vars = get_config_vars()\n        for env in (\"BLDSHARED\", \"LDSHARED\", \"CC\", \"CXX\"):\n            if env in config_vars and env not in os.environ:\n                split = config_vars[env].split()\n                split[0] = cc if env != \"CXX\" else cc + \"++\"\n                config_vars[env] = \" \".join(split)\n\n    cflags = get_config_var(\"CFLAGS\")\n    if re.search(r\"-arch\\s+i386\", cflags) is not None:\n        raise DistutilsPlatformError(\"i386 (32-bit) is not supported by PyObjC\")\n\n    if re.search(r\"-arch\\s+ppc\", cflags) is not None:\n        raise DistutilsPlatformError(\"PowerPC is not supported by PyObjC\")\n\n# --- Context for Match 8 (Line 536): cc = os.popen(\"/usr/bin/xcrun -find clang\").read() ---\n# Already included above in _fixup_compiler(use_ccache)\n\n# --- Context for Match 9 (Line 609): self.sdk_root = subprocess.check_output([\"/usr/bin/xcrun\", ...]) ---\n# This is inside oc_build_ext.finalize_options(self). Extract the full method and dependencies.\n\nclass oc_build_ext(build_ext.build_ext):\n    user_options = build_ext.build_ext.user_options + [\n        (\n            \"deployment-target=\",\n            None,\n            \"deployment target to use (can also be set using ${MACOSX_DEPLOYMENT_TARGET})\",\n        ),\n        (\n            \"sdk-root=\",\n            None,\n            \"Path to the SDK to use (can also be set using ${SDKROOT})\",\n        ),\n        (\"no-lto\", None, \"Disable LTO\"),\n        (\"no-warnings-as-errors\", None, \"Don't treat compiler errors as warnings\"),\n    ]\n\n    def initialize_options(self):\n        build_ext.build_ext.initialize_options(self)\n        self.deployment_target = None\n        self.sdk_root = None\n        self.no_lto = False\n        self.no_warnings_as_errors = False\n\n    def finalize_options(self):\n        build_ext.build_ext.finalize_options(self)\n        if self.no_lto:\n            for var in CFLAGS, EXT_CFLAGS, OBJC_LDFLAGS:\n                to_remove = []\n                for idx, val in enumerate(var):\n                    if val == \"-O3\" or val.startswith(\"-flto\"):\n                        to_remove.append(idx)\n                for idx in to_remove[::-1]:\n                    del var[idx]\n\n        if self.no_warnings_as_errors:\n            CFLAGS.remove(\"-Werror\")\n            EXT_CFLAGS.remove(\"-Werror\")\n\n        self.sdk_root = os.environ.get(\"SDKROOT\", None)\n        if self.sdk_root is None:\n            if os.path.exists(\"/usr/bin/xcrun\"):\n                self.sdk_root = subprocess.check_output(\n                    [\"/usr/bin/xcrun\", \"-sdk\", \"macosx\", \"--show-sdk-path\"],\n                    text=True,\n                ).strip()\n\n                if not self.sdk_root:\n                    # With command line tools the value can be empty\n                    self.sdk_root = \"/\"\n\n            else:\n                self.sdk_root = \"/\"\n\n        if not os.path.exists(self.sdk_root):\n            raise DistutilsSetupError(f\"SDK root {self.sdk_root!r} does not exist\")\n\n        if not os.path.exists(\n            os.path.join(self.sdk_root, \"usr/include/objc/runtime.h\")\n        ):\n            if \"-DNO_OBJC2_RUNTIME\" not in CFLAGS:\n                CFLAGS.append(\"-DNO_OBJC2_RUNTIME\")\n                EXT_CFLAGS.append(\"-DNO_OBJC2_RUNTIME\")\n\n    # ... (other methods omitted for brevity)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "glob.glob",
+        "os.path.join",
+        "os.stat",
+        "os.path.exists",
+        "os.path.splitext",
+        "os.path.basename",
+        "subprocess.check_output",
+        "subprocess.check_output",
+        "subprocess.check_output",
+        "os.path.join",
+        "os.path.exists",
+        "open",
+        "plistlib.load",
+        "os.path.basename",
+        "os.popen",
+        "os.popen",
+        "os.path.exists",
+        "os.unlink",
+        "os.path.basename",
+        "os.path.exists",
+        "os.unlink",
+        "tempfile.NamedTemporaryFile",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.wait",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.wait",
+        "os.environ.get",
+        "os.path.exists",
+        "subprocess.check_output",
+        "os.path.exists",
+        "os.path.exists"
+      ],
+      "api_sequence_with_args": [
+        "glob.glob(os.path.join(\"Modules\", \"objc\", \"*.m\"))",
+        "os.path.join(\"Modules\", \"objc\", \"*.m\")",
+        "os.stat(x)",
+        "os.path.exists(sdk_info)",
+        "os.path.splitext(os.path.basename(test_source))[0]",
+        "os.path.basename(test_source)",
+        "subprocess.check_output([\"sw_vers\", \"-productversion\"], text=True)",
+        "subprocess.check_output([\"sw_vers\", \"-buildversion\"], text=True)",
+        "subprocess.check_output([\"clang\", \"--version\"], text=True)",
+        "os.path.join(sdk_root, \"SDKSettings.plist\")",
+        "os.path.exists(sdk_info)",
+        "open(sdk_info, \"rb\")",
+        "plistlib.load(open(sdk_info, \"rb\"))",
+        "os.path.basename(sdk_root)",
+        "os.popen(\"'{}' --version 2>/dev/null\".format(cc.replace(\"'\", \"'\\\"'\\\"'\")))",
+        "os.popen(\"/usr/bin/xcrun -find clang\")",
+        "os.path.exists(binfile)",
+        "os.unlink(binfile)",
+        "os.path.basename(binfile)",
+        "os.path.exists(binfile)",
+        "os.unlink(binfile)",
+        "tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".c\")",
+        "subprocess.Popen([executable, \"-c\", fp.name] + cflags, stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "subprocess.Popen.communicate()",
+        "subprocess.Popen.wait()",
+        "subprocess.Popen([executable, \"-c\", fp.name] + cflags, stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "subprocess.Popen.communicate()",
+        "subprocess.Popen.wait()",
+        "os.environ.get(\"SDKROOT\", None)",
+        "os.path.exists(\"/usr/bin/xcrun\")",
+        "subprocess.check_output([\"/usr/bin/xcrun\", \"-sdk\", \"macosx\", \"--show-sdk-path\"], text=True)",
+        "os.path.exists(self.sdk_root)",
+        "os.path.exists(os.path.join(self.sdk_root, \"usr/include/objc/runtime.h\"))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "glob.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.splitext",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "plistlib.load",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.popen",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.popen",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "tempfile.NamedTemporaryFile",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "# --- Context for Match 1 (Line 763): setup( ... ) ---\n\nsources = list(glob.glob(os.path.join(\"Modules\", \"objc\", \"*.m\")))\nsources.sort(key=lambda x: (-os.stat(x).st_mtime, x))\nsetup(\n    ext_modules=[\n        Extension(\n            \"objc._objc\",\n            sources,\n            extra_compile_args=CFLAGS,\n            extra_link_args=OBJC_LDFLAGS,\n            depends=sources,\n        ),\n        Extension(\n            \"objc._machsignals\",\n            [\"Modules/_machsignals.m\"],\n            extra_compile_args=EXT_CFLAGS,\n            extra_link_args=OBJC_LDFLAGS,\n        ),\n    ]\n    + [\n        Extension(\n            \"PyObjCTest.\" + os.path.splitext(os.path.basename(test_source))[0],\n            [test_source],\n            extra_compile_args=EXT_CFLAGS,\n            extra_link_args=OBJC_LDFLAGS,\n        )\n        for test_source in glob.glob(os.path.join(\"Modules\", \"objc\", \"test\", \"*.[mc]\"))\n    ],\n    cmdclass={\n        \"build_ext\": oc_build_ext,\n        \"install_lib\": oc_install_lib,\n        \"build_py\": oc_build_py,\n        \"test\": oc_test,\n        \"egg_info\": oc_egg_info,\n    },\n    package_dir={\"\": \"Lib\", \"PyObjCTest\": \"PyObjCTest\"},\n    options={\"egg_info\": {\"egg_base\": \"Lib\"}},\n    **parse_package_metadata(),\n)\n\n# --- Context for Match 2/3/4 (Line 383/386/390): subprocess.check_output ... ---\n\nclass oc_egg_info(egg_info.egg_info):\n    def write_build_info(self):\n        macos_version = subprocess.check_output(\n            [\"sw_vers\", \"-productversion\"], text=True\n        ).strip()\n        macos_build = subprocess.check_output(\n            [\"sw_vers\", \"-buildversion\"], text=True\n        ).strip()\n        clang_version = (\n            subprocess.check_output([\"clang\", \"--version\"], text=True)\n            .splitlines()[0]\n            .strip()\n        )\n\n        sdk_root = self.get_finalized_command(\"build_ext\").sdk_root\n        sdk_info = os.path.join(sdk_root, \"SDKSettings.plist\")\n        if os.path.exists(sdk_info):\n            pl = plistlib.load(open(sdk_info, \"rb\"))\n            sdk_version = pl[\"DisplayName\"]\n        else:\n            sdk_version = os.path.basename(sdk_root)\n\n        build_info = textwrap.dedent(\n            f\"\"\"\\\n            macOS {macos_version} ({macos_build})\n            {clang_version}\n            SDK: {sdk_version}\n            \"\"\"\n        )\n\n        self.write_file(\n            \"pyobjc-build-info.txt\",\n            os.path.join(self.egg_info, \"pyobjc-build-info.txt\"),\n            build_info,\n        )\n\n# --- Context for Match 5/6 (Line 467/480): subprocess.Popen ... ---\n\ndef _working_compiler(executable):\n    if executable == \"xcrun\":\n        return True\n\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".c\") as fp:\n        fp.write(\"#include <stdarg.h>\\nint main(void) { return 0; }\\n\")\n        fp.flush()\n\n        cflags = get_config_var(\"CFLAGS\")\n        cflags = shlex.split(cflags)\n        cflags += CFLAGS\n\n        p = subprocess.Popen(\n            [executable, \"-c\", fp.name] + cflags,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n        )\n        stdout, stderr = p.communicate()\n        status = p.wait()\n        if status != 0:\n            if \"-flto=thin\" in CFLAGS:\n                cflags.remove(\"-flto=thin\")\n                CFLAGS.remove(\"-flto=thin\")\n                EXT_CFLAGS.remove(\"-flto=thin\")\n                OBJC_LDFLAGS.remove(\"-flto=thin\")\n                p = subprocess.Popen(\n                    [executable, \"-c\", fp.name] + cflags,\n                    stdout=subprocess.PIPE,\n                    stderr=subprocess.PIPE,\n                )\n                stdout, stderr = p.communicate()\n                status = p.wait()\n\n        if status != 0:\n            return False\n\n        binfile = fp.name[:-1] + \"o\"\n        if os.path.exists(binfile):\n            os.unlink(binfile)\n\n        binfile = os.path.basename(binfile)\n        if os.path.exists(binfile):\n            os.unlink(binfile)\n\n    return True\n\n# --- Context for Match 7/8 (Line 522/536): os.popen ... ---\n\ndef _fixup_compiler(use_ccache):\n    if \"CC\" in os.environ:\n        return\n\n    try:\n        import _osx_support\n        _osx_support.customize_compiler(get_config_vars())\n    except (ImportError, AttributeError, KeyError):\n        pass\n\n    cc = oldcc = get_config_var(\"CC\").split()[0]\n    cc = _find_executable(cc)\n    if cc is not None and os.path.basename(cc).startswith(\"gcc\"):\n        with os.popen(\n            \"'{}' --version 2>/dev/null\".format(cc.replace(\"'\", \"'\\\"'\\\"'\"))\n        ) as fp:\n            data = fp.read()\n        if \"llvm-gcc\" in data:\n            cc = None\n\n    if cc is not None and not _working_compiler(cc):\n        cc = None\n\n    if cc is None:\n        cc = _find_executable(\"clang\")\n        if cc is None:\n            cc = os.popen(\"/usr/bin/xcrun -find clang\").read()\n\n    if not cc:\n        raise DistutilsPlatformError(\"Cannot locate compiler candidate\")\n\n    if not _working_compiler(cc):\n        raise DistutilsPlatformError(\"Cannot locate a working compiler\")\n\n    if use_ccache:\n        p = _find_executable(\"ccache\")\n        if p is not None:\n            log.info(\"Detected and using 'ccache'\")\n            cc = f\"{p} {cc}\"\n\n    if cc != oldcc:\n        log.info(f\"Use '{cc}' instead of '{oldcc}' as the compiler\")\n        config_vars = get_config_vars()\n        for env in (\"BLDSHARED\", \"LDSHARED\", \"CC\", \"CXX\"):\n            if env in config_vars and env not in os.environ:\n                split = config_vars[env].split()\n                split[0] = cc if env != \"CXX\" else cc + \"++\"\n                config_vars[env] = \" \".join(split)\n\n    cflags = get_config_var(\"CFLAGS\")\n    if re.search(r\"-arch\\s+i386\", cflags) is not None:\n        raise DistutilsPlatformError(\"i386 (32-bit) is not supported by PyObjC\")\n\n    if re.search(r\"-arch\\s+ppc\", cflags) is not None:\n        raise DistutilsPlatformError(\"PowerPC is not supported by PyObjC\")\n\n# --- Context for Match 9 (Line 609): subprocess.check_output ... ---\n\nclass oc_build_ext(build_ext.build_ext):\n    user_options = build_ext.build_ext.user_options + [\n        (\n            \"deployment-target=\",\n            None,\n            \"deployment target to use (can also be set using ${MACOSX_DEPLOYMENT_TARGET})\",\n        ),\n        (\n            \"sdk-root=\",\n            None,\n            \"Path to the SDK to use (can also be set using ${SDKROOT})\",\n        ),\n        (\"no-lto\", None, \"Disable LTO\"),\n        (\"no-warnings-as-errors\", None, \"Don't treat compiler errors as warnings\"),\n    ]\n\n    def initialize_options(self):\n        build_ext.build_ext.initialize_options(self)\n        self.deployment_target = None\n        self.sdk_root = None\n        self.no_lto = False\n        self.no_warnings_as_errors = False\n\n    def finalize_options(self):\n        build_ext.build_ext.finalize_options(self)\n        if self.no_lto:\n            for var in CFLAGS, EXT_CFLAGS, OBJC_LDFLAGS:\n                to_remove = []\n                for idx, val in enumerate(var):\n                    if val == \"-O3\" or val.startswith(\"-flto\"):\n                        to_remove.append(idx)\n                for idx in to_remove[::-1]:\n                    del var[idx]\n\n        if self.no_warnings_as_errors:\n            CFLAGS.remove(\"-Werror\")\n            EXT_CFLAGS.remove(\"-Werror\")\n\n        self.sdk_root = os.environ.get(\"SDKROOT\", None)\n        if self.sdk_root is None:\n            if os.path.exists(\"/usr/bin/xcrun\"):\n                self.sdk_root = subprocess.check_output(\n                    [\"/usr/bin/xcrun\", \"-sdk\", \"macosx\", \"--show-sdk-path\"],\n                    text=True,\n                ).strip()\n\n                if not self.sdk_root:\n                    self.sdk_root = \"/\"\n\n            else:\n                self.sdk_root = \"/\"\n\n        if not os.path.exists(self.sdk_root):\n            raise DistutilsSetupError(f\"SDK root {self.sdk_root!r} does not exist\")\n\n        if not os.path.exists(\n            os.path.join(self.sdk_root, \"usr/include/objc/runtime.h\")\n        ):\n            if \"-DNO_OBJC2_RUNTIME\" not in CFLAGS:\n                CFLAGS.append(\"-DNO_OBJC2_RUNTIME\")\n                EXT_CFLAGS.append(\"-DNO_OBJC2_RUNTIME\")\n"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyobjc_core-11.0",
+      "total_matches": 9
+    }
+  }
+]

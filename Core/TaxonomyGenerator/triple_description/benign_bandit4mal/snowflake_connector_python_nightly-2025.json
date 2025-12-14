@@ -1,0 +1,196 @@
+{
+  "metadata": {
+    "package_name": "snowflake_connector_python_nightly-2025",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/snowflake_connector_python_nightly-2025.4.11.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "utils.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/snowflake_connector_python_nightly-2025.4.11/snowflake_connector_python_nightly-2025.4.11/src/snowflake/connector/vendored/requests/utils.py",
+      "line_number": "296",
+      "type_description": "B832:write",
+      "context_snippet": "def extract_zipped_paths(path):\n    \"\"\"Replace nonexistent paths that look like they refer to a member of a zip\n    archive with the location of an extracted copy of the target, or else\n    just return the provided path unchanged.\n    \"\"\"\n    if os.path.exists(path):\n        # this is already a valid path, no need to do anything further\n        return path\n\n    # find the first valid part of the provided path and treat that as a zip archive\n    # assume the rest of the path is the name of a member in the archive\n    archive, member = os.path.split(path)\n    while archive and not os.path.exists(archive):\n        archive, prefix = os.path.split(archive)\n        if not prefix:\n            # If we don't check for an empty prefix after the split (in other words, archive remains unchanged after the split),\n            # we _can_ end up in an infinite loop on a rare corner case affecting a small number of users\n            break\n        member = \"/\".join([prefix, member])\n\n    if not zipfile.is_zipfile(archive):\n        return path\n\n    zip_file = zipfile.ZipFile(archive)\n    if member not in zip_file.namelist():\n        return path\n\n    # we have a valid zip archive and a valid member of that archive\n    tmp = tempfile.gettempdir()\n    extracted_path = os.path.join(tmp, member.split(\"/\")[-1])\n    if not os.path.exists(extracted_path):\n        # use read + write to avoid the creating nested folders, we only want the file, avoids mkdir racing condition\n        with atomic_open(extracted_path) as file_handler:\n            file_handler.write(zip_file.read(member))\n    return extracted_path\n\n@contextlib.contextmanager\ndef atomic_open(filename):\n    \"\"\"Write a file to the disk in an atomic fashion\"\"\"\n    tmp_descriptor, tmp_name = tempfile.mkstemp(dir=os.path.dirname(filename))\n    try:\n        with os.fdopen(tmp_descriptor, \"wb\") as tmp_handler:\n            yield tmp_handler\n        os.replace(tmp_name, filename)\n    except BaseException:\n        os.remove(tmp_name)\n        raise",
+      "hash_value": "ef9dd9064d8ce4f9859510946b77c09d",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def extract_zipped_paths(path):\n    \"\"\"Replace nonexistent paths that look like they refer to a member of a zip\n    archive with the location of an extracted copy of the target, or else\n    just return the provided path unchanged.\n    \"\"\"\n    if os.path.exists(path):\n        # this is already a valid path, no need to do anything further\n        return path\n\n    # find the first valid part of the provided path and treat that as a zip archive\n    # assume the rest of the path is the name of a member in the archive\n    archive, member = os.path.split(path)\n    while archive and not os.path.exists(archive):\n        archive, prefix = os.path.split(archive)\n        if not prefix:\n            # If we don't check for an empty prefix after the split (in other words, archive remains unchanged after the split),\n            # we _can_ end up in an infinite loop on a rare corner case affecting a small number of users\n            break\n        member = \"/\".join([prefix, member])\n\n    if not zipfile.is_zipfile(archive):\n        return path\n\n    zip_file = zipfile.ZipFile(archive)\n    if member not in zip_file.namelist():\n        return path\n\n    # we have a valid zip archive and a valid member of that archive\n    tmp = tempfile.gettempdir()\n    extracted_path = os.path.join(tmp, member.split(\"/\")[-1])\n    if not os.path.exists(extracted_path):\n        # use read + write to avoid the creating nested folders, we only want the file, avoids mkdir racing condition\n        with atomic_open(extracted_path) as file_handler:\n            file_handler.write(zip_file.read(member))\n    return extracted_path\n\n@contextlib.contextmanager\ndef atomic_open(filename):\n    \"\"\"Write a file to the disk in an atomic fashion\"\"\"\n    tmp_descriptor, tmp_name = tempfile.mkstemp(dir=os.path.dirname(filename))\n    try:\n        with os.fdopen(tmp_descriptor, \"wb\") as tmp_handler:\n            yield tmp_handler\n        os.replace(tmp_name, filename)\n    except BaseException:\n        os.remove(tmp_name)\n        raise",
+          "triple_sequences": [
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "archive",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Check if file or directory exists",
+              "intention_id": "check_file_existence"
+            },
+            {
+              "action_api": "os.path.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "archive",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "zipfile.is_zipfile()",
+              "action_description": "Checks if specified path exists and is a file",
+              "action_id": "check_file_is_file",
+              "object": "archive",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine file presence",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "zipfile.ZipFile()",
+              "action_description": "Opens ZIP archive for reading",
+              "action_id": "open_zip_read",
+              "object": "archive",
+              "object_description": "ZIP archive file",
+              "object_id": "zip_archive",
+              "intention_description": "Open file",
+              "intention_id": "open_file"
+            },
+            {
+              "action_api": "zip_file.namelist()",
+              "action_description": "Extracts all files from ZIP archive to specified directory",
+              "action_id": "extract_zip_files",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "List files in directory",
+              "intention_id": "list_directory_files"
+            },
+            {
+              "action_api": "tempfile.gettempdir()",
+              "action_description": "Creates temporary directory and returns its path",
+              "action_id": "create_temp_dir",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Collect temporary directory path",
+              "intention_id": "collect_temp_directory_path"
+            },
+            {
+              "action_api": "os.path.join()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "tmp, member.split(\"/\")[-1]",
+              "object_description": "Directory path and file name",
+              "object_id": "directory_path_with_file",
+              "intention_description": "Construct file or directory path",
+              "intention_id": "construct_file_path"
+            },
+            {
+              "action_api": "os.path.exists()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "extracted_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Determine file presence",
+              "intention_id": "determine_file_presence"
+            },
+            {
+              "action_api": "atomic_open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "extracted_path",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "zip_file.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "member",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "file_handler.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "zip_file.read(member)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "tempfile.mkstemp()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "dir=os.path.dirname(filename)",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "os.fdopen()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "tmp_descriptor, \"wb\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "os.replace()",
+              "action_description": "Moves file to destination",
+              "action_id": "move_file",
+              "object": "tmp_name, filename",
+              "object_description": "Local file and temporary file path",
+              "object_id": "local_file_with_temp",
+              "intention_description": "Move file to destination",
+              "intention_id": "move_file_destination"
+            },
+            {
+              "action_api": "os.remove()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "tmp_name",
+              "object_description": "Temporary file path",
+              "object_id": "temporary_file_path",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

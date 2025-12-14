@@ -1,0 +1,136 @@
+{
+  "metadata": {
+    "package_name": "edx_enterprise-5",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/edx_enterprise-5.12.4-py3-none-any.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "enterprise_customer_sso_configuration.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/edx_enterprise-5.12.4-py3-none-any/enterprise/api/v1/views/enterprise_customer_sso_configuration.py",
+      "line_number": "236",
+      "type_description": "B820:get",
+      "context_snippet": "    @permission_required(\n        'enterprise.can_access_admin_dashboard',\n        fn=lambda request, *args, **kwargs: get_customer_from_request(request)\n    )\n    def create(self, request, *args, **kwargs):\n        # Force the enterprise customer to be the one associated with the user\n        request_data = fetch_request_data_from_request(request)\n        requesting_user_customer = request_data.get('enterprise_customer')\n        if requesting_user_customer:\n            try:\n                enterprise_customer = EnterpriseCustomer.objects.get(uuid=requesting_user_customer)\n            except EnterpriseCustomer.DoesNotExist:\n                return Response(status=HTTP_403_FORBIDDEN)\n            try:\n                if not check_user_part_of_customer(request.user, enterprise_customer):\n                    return Response(status=HTTP_403_FORBIDDEN)\n            except EnterpriseCustomerInactiveException:\n                return Response(status=HTTP_403_FORBIDDEN)\n            request_data['enterprise_customer'] = enterprise_customer\n        else:\n            return Response({'error': BAD_CUSTOMER_ERROR}, status=HTTP_400_BAD_REQUEST)\n\n        # Parse the request data to see if the metadata url or xml has changed and update the entity id if so\n        sso_config_metadata_xml = None\n        if request_metadata_url := request_data.get('metadata_url'):\n            # If the metadata url has changed, we need to update the metadata xml\n            try:\n                sso_config_metadata_xml = get_metadata_xml_from_url(request_metadata_url)\n            except (SsoConfigurationApiError, requests.exceptions.SSLError) as e:\n                LOGGER.error(f'{BAD_IDP_METADATA_URL}{e}')\n                return Response({'error': f'{BAD_IDP_METADATA_URL} {e}'}, status=HTTP_400_BAD_REQUEST)\n            request_data['metadata_xml'] = sso_config_metadata_xml\n        if sso_config_metadata_xml or (sso_config_metadata_xml := request_data.get('metadata_xml')):\n            try:\n                entity_id = fetch_entity_id_from_metadata_xml(sso_config_metadata_xml)\n            except (EntityIdNotFoundError) as e:\n                LOGGER.error(f'{CONFIG_UPDATE_ERROR}{e}')\n                return Response({'error': f'{CONFIG_UPDATE_ERROR} {e}'}, status=HTTP_400_BAD_REQUEST)\n\n            request_data['entity_id'] = entity_id\n\n        try:\n            with transaction.atomic():\n                new_record = EnterpriseCustomerSsoConfiguration.objects.create(**request_data)\n                sp_metadata_url = new_record.submit_for_configuration()\n        except (TypeError, SsoOrchestratorClientError) as e:\n            LOGGER.error(f'{CONFIG_CREATE_ERROR} {e}')\n            return Response({'error': f'{CONFIG_CREATE_ERROR} {e}'}, status=HTTP_400_BAD_REQUEST)\n\n        return Response({'record': new_record.pk, 'sp_metadata_url': sp_metadata_url}, status=HTTP_201_CREATED)",
+      "hash_value": "f2781ab1d792c139133fd8106c5f8dc0",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    @permission_required(\n        'enterprise.can_access_admin_dashboard',\n        fn=lambda request, *args, **kwargs: get_customer_from_request(request)\n    )\n    def create(self, request, *args, **kwargs):\n        # Force the enterprise customer to be the one associated with the user\n        request_data = fetch_request_data_from_request(request)\n        requesting_user_customer = request_data.get('enterprise_customer')\n        if requesting_user_customer:\n            try:\n                enterprise_customer = EnterpriseCustomer.objects.get(uuid=requesting_user_customer)\n            except EnterpriseCustomer.DoesNotExist:\n                return Response(status=HTTP_403_FORBIDDEN)\n            try:\n                if not check_user_part_of_customer(request.user, enterprise_customer):\n                    return Response(status=HTTP_403_FORBIDDEN)\n            except EnterpriseCustomerInactiveException:\n                return Response(status=HTTP_403_FORBIDDEN)\n            request_data['enterprise_customer'] = enterprise_customer\n        else:\n            return Response({'error': BAD_CUSTOMER_ERROR}, status=HTTP_400_BAD_REQUEST)\n\n        # Parse the request data to see if the metadata url or xml has changed and update the entity id if so\n        sso_config_metadata_xml = None\n        if request_metadata_url := request_data.get('metadata_url'):\n            # If the metadata url has changed, we need to update the metadata xml\n            try:\n                sso_config_metadata_xml = get_metadata_xml_from_url(request_metadata_url)\n            except (SsoConfigurationApiError, requests.exceptions.SSLError) as e:\n                LOGGER.error(f'{BAD_IDP_METADATA_URL}{e}')\n                return Response({'error': f'{BAD_IDP_METADATA_URL} {e}'}, status=HTTP_400_BAD_REQUEST)\n            request_data['metadata_xml'] = sso_config_metadata_xml\n        if sso_config_metadata_xml or (sso_config_metadata_xml := request_data.get('metadata_xml')):\n            try:\n                entity_id = fetch_entity_id_from_metadata_xml(sso_config_metadata_xml)\n            except (EntityIdNotFoundError) as e:\n                LOGGER.error(f'{CONFIG_UPDATE_ERROR}{e}')\n                return Response({'error': f'{CONFIG_UPDATE_ERROR} {e}'}, status=HTTP_400_BAD_REQUEST)\n\n            request_data['entity_id'] = entity_id\n\n        try:\n            with transaction.atomic():\n                new_record = EnterpriseCustomerSsoConfiguration.objects.create(**request_data)\n                sp_metadata_url = new_record.submit_for_configuration()\n        except (TypeError, SsoOrchestratorClientError) as e:\n            LOGGER.error(f'{CONFIG_CREATE_ERROR} {e}')\n            return Response({'error': f'{CONFIG_CREATE_ERROR} {e}'}, status=HTTP_400_BAD_REQUEST)\n\n        return Response({'record': new_record.pk, 'sp_metadata_url': sp_metadata_url}, status=HTTP_201_CREATED)",
+          "triple_sequences": [
+            {
+              "action_api": "fetch_request_data_from_request()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "request",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "request_data.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'enterprise_customer'",
+              "object_description": "Environment variable name",
+              "object_id": "environment_name",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "EnterpriseCustomer.objects.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "uuid=requesting_user_customer",
+              "object_description": "Environment variable name",
+              "object_id": "environment_name",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "check_user_part_of_customer()",
+              "action_description": "Checks if process is running with administrator privileges",
+              "action_id": "check_admin_privileges",
+              "object": "request.user, enterprise_customer",
+              "object_description": "Account name and token",
+              "object_id": "account_credentials",
+              "intention_description": "Determine administrator status",
+              "intention_id": "determine_administrator_status"
+            },
+            {
+              "action_api": "request_data.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'metadata_url'",
+              "object_description": "Environment variable name",
+              "object_id": "environment_name",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "get_metadata_xml_from_url()",
+              "action_description": "Sends HTTP GET request to URL",
+              "action_id": "open_url_get",
+              "object": "request_metadata_url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "request_data.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "'metadata_xml'",
+              "object_description": "Environment variable name",
+              "object_id": "environment_name",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "fetch_entity_id_from_metadata_xml()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "sso_config_metadata_xml",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "transaction.atomic()",
+              "action_description": "Creates temporary file that is not deleted on close",
+              "action_id": "create_temp_file",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Create temporary file",
+              "intention_id": "create_temporary_file"
+            },
+            {
+              "action_api": "EnterpriseCustomerSsoConfiguration.objects.create()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "**request_data",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "new_record.submit_for_configuration()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

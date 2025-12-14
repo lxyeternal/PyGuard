@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "package_name": "twiggy-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/twiggy-0.5.1.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "validators.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/twiggy-0.5.1/Twiggy-0.5.1/twiggy/lib/validators.py",
+      "line_number": "56",
+      "type_description": "obfuscation",
+      "context_snippet": "from six.moves import builtins\n\ndef _string_to_attribute(value, type_='attribute'):\n    \"\"\"\n    Tests whether a string is an importable attribute and returns the attribute\n\n    :arg value: The string naming the attribute\n    :returns: The attribute\n    :raises ValueError: if the string is not an importable attribute\n    \"\"\"\n    # For exception messages\n    if type_[0] in ('a', 'e', 'i', 'o', 'u'):\n        article = 'an'\n    else:\n        article = 'a'\n\n    if not isinstance(value, string_types):\n        raise ValueError('This value must be a string naming {0} {1}, not {2} of'\n                         ' type {3}'.format(article, type_, value, type(value)))\n    parts = value.split('.')\n\n    # Test for an attribute in builtins named value\n    if len(parts) == 1:\n        try:\n            attribute = getattr(builtins, value)\n        except AttributeError:\n            raise ValueError('Could not find {0} {1} named {2}'.format(article, type_, value))\n\n        return attribute\n\n    # Find a module that we can import\n    module = None\n    for idx in range(len(parts) - 1, 0, -1):\n        try:\n            module = import_module('.'.join(parts[:idx]))\n        except Exception:\n            pass\n        else:\n            remainder = parts[idx:]\n            break\n    else:  # For-else\n        raise ValueError('Could not import a module with {0} {1} named'\n                         ' {2}'.format(article, type_, value))\n\n    # Handle both Staticmethod (ClassName.staticmethod) and module global\n    # attribute (attributename)\n    prev_part = module\n    for next_part in remainder:\n        try:\n            prev_part = getattr(prev_part, next_part)\n        except AttributeError:\n            raise ValueError('Could not find {0} {1} named {2} in module'\n                             ' {3}'.format(article, type_, '.'.join(remainder),\n                                           '.'.join(parts[:idx])))\n    attribute = prev_part\n    return attribute\n\n# Data dependencies:\n# - 'builtins' is imported from 'six.moves'\n# - 'value' is a function argument\n# - 'getattr' is a Python built-in function\n# - 'string_types' is imported from 'six'\n",
+      "hash_value": "013070846494515638f810712e603ca7",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "from six.moves import builtins\n\ndef _string_to_attribute(value, type_='attribute'):\n    \"\"\"\n    Tests whether a string is an importable attribute and returns the attribute\n\n    :arg value: The string naming the attribute\n    :returns: The attribute\n    :raises ValueError: if the string is not an importable attribute\n    \"\"\"\n    # For exception messages\n    if type_[0] in ('a', 'e', 'i', 'o', 'u'):\n        article = 'an'\n    else:\n        article = 'a'\n\n    if not isinstance(value, string_types):\n        raise ValueError('This value must be a string naming {0} {1}, not {2} of'\n                         ' type {3}'.format(article, type_, value, type(value)))\n    parts = value.split('.')\n\n    # Test for an attribute in builtins named value\n    if len(parts) == 1:\n        try:\n            attribute = getattr(builtins, value)\n        except AttributeError:\n            raise ValueError('Could not find {0} {1} named {2}'.format(article, type_, value))\n\n        return attribute\n\n    # Find a module that we can import\n    module = None\n    for idx in range(len(parts) - 1, 0, -1):\n        try:\n            module = import_module('.'.join(parts[:idx]))\n        except Exception:\n            pass\n        else:\n            remainder = parts[idx:]\n            break\n    else:  # For-else\n        raise ValueError('Could not import a module with {0} {1} named'\n                         ' {2}'.format(article, type_, value))\n\n    # Handle both Staticmethod (ClassName.staticmethod) and module global\n    # attribute (attributename)\n    prev_part = module\n    for next_part in remainder:\n        try:\n            prev_part = getattr(prev_part, next_part)\n        except AttributeError:\n            raise ValueError('Could not find {0} {1} named {2} in module'\n                             ' {3}'.format(article, type_, '.'.join(remainder),\n                                           '.'.join(parts[:idx])))\n    attribute = prev_part\n    return attribute\n\n# Data dependencies:\n# - 'builtins' is imported from 'six.moves'\n# - 'value' is a function argument\n# - 'getattr' is a Python built-in function\n# - 'string_types' is imported from 'six'\n",
+          "triple_sequences": [
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "value, string_types",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "str.split()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "value, '.'",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "getattr()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "builtins, value",
+              "object_description": "Built-in module or package",
+              "object_id": "builtin_module",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "import_module()",
+              "action_description": "Dynamically imports specified module",
+              "action_id": "import_dynamic",
+              "object": "'.'.join(parts[:idx])",
+              "object_description": "Module name string",
+              "object_id": "module_name_string",
+              "intention_description": "Import module dynamically",
+              "intention_id": "import_module_dynamically"
+            },
+            {
+              "action_api": "getattr()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "prev_part, next_part",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

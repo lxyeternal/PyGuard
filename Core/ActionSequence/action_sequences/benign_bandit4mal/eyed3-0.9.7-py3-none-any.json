@@ -1,0 +1,238 @@
+[
+  {
+    "metadata": {
+      "package_name": "eyed3-0.9.7-py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "tag.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eyed3-0.9.7-py3-none-any/eyed3/id3/tag.py",
+    "line_number": "145",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "144\t        fp.seek(-128, 2)\n145\t        tag_data = fp.read(128)\n146",
+    "code_snippet": "    def _loadV1Tag(self, fp):\n        v1_enc = \"latin1\"\n\n        # Seek to the end of the file where all v1x tags are written.\n        # v1.x tags are 128 bytes min and max\n        fp.seek(0, 2)\n        if fp.tell() < 128:\n            return False, 0\n        fp.seek(-128, 2)\n        tag_data = fp.read(128)\n\n        if tag_data[0:3] != b\"TAG\":\n            return False, 0\n\n        log.debug(\"Located ID3 v1 tag\")\n        # v1.0 is implied until a v1.1 feature is recognized.\n        self.version = ID3_V1_0\n\n        title = tag_data[3:33].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Title: %s\" % title)\n        if title:\n            self.title = str(title, v1_enc)\n\n        artist = tag_data[33:63].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Artist: %s\" % artist)\n        if artist:\n            self.artist = str(artist, v1_enc)\n\n        album = tag_data[63:93].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Album: %s\" % album)\n        if album:\n            self.album = str(album, v1_enc)\n\n        year = tag_data[93:97].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Year: %s\" % year)\n        try:\n            if year and int(year):\n                # Values here typically mean the year of release\n                self.release_date = int(year)\n        except ValueError:\n            # Bogus year strings.\n            log.warn(\"ID3v1.x tag contains invalid year: %s\" % year)\n            pass\n\n        # Can't use ID3_V1_STRIP_CHARS here, since the final byte is numeric\n        comment = tag_data[97:127].rstrip(b\"\\x00\")\n        # Track numbers stuffed in the comment field is what makes v1.1\n        if comment:\n            if (len(comment) >= 2 and\n                    # Python the slices (the chars), so this is really\n                    # comment[2]       and        comment[-1]\n                    comment[-2:-1] == b\"\\x00\"):\n                log.debug(\"Track Num found, setting version to v1.1\")\n                self.version = ID3_V1_1\n\n                track = comment[-1]\n                self.track_num = (track, None)\n                log.debug(\"Track: \" + str(track))\n                comment = comment[:-2].strip(ID3_V1_STRIP_CHARS)\n\n            # There may only have been a track #\n            if comment:\n                log.debug(f\"Comment: {comment}\")\n                self.comments.set(str(comment, v1_enc), ID3_V1_COMMENT_DESC)\n\n        genre = ord(tag_data[127:128])\n        log.debug(f\"Genre ID: {genre}\")\n        try:\n            self.genre = genre\n        except ValueError as ex:\n            log.warning(ex)\n            self.genre = None\n\n        return True, 0",
+    "pattern_analysis": {
+      "api_sequence": [
+        "fp.seek",
+        "fp.tell",
+        "fp.seek",
+        "fp.read",
+        "log.debug",
+        "log.debug",
+        "str",
+        "log.debug",
+        "str",
+        "log.debug",
+        "str",
+        "log.debug",
+        "int",
+        "log.warn",
+        "log.debug",
+        "log.debug",
+        "str",
+        "self.comments.set",
+        "ord",
+        "log.debug",
+        "log.warning"
+      ],
+      "api_sequence_with_args": [
+        "fp.seek(0, 2)",
+        "fp.tell()",
+        "fp.seek(-128, 2)",
+        "fp.read(128)",
+        "log.debug(\"Located ID3 v1 tag\")",
+        "log.debug(\"Title: %s\" % title)",
+        "str(title, v1_enc)",
+        "log.debug(\"Artist: %s\" % artist)",
+        "str(artist, v1_enc)",
+        "log.debug(\"Album: %s\" % album)",
+        "str(album, v1_enc)",
+        "log.debug(\"Year: %s\" % year)",
+        "int(year)",
+        "log.warn(\"ID3v1.x tag contains invalid year: %s\" % year)",
+        "log.debug(\"Track Num found, setting version to v1.1\")",
+        "log.debug(\"Track: \" + str(track))",
+        "str(comment, v1_enc)",
+        "self.comments.set(str(comment, v1_enc), ID3_V1_COMMENT_DESC)",
+        "ord(tag_data[127:128])",
+        "log.debug(f\"Genre ID: {genre}\")",
+        "log.warning(ex)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "fp.seek",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "fp.tell",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "fp.seek",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "str",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "str",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "str",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "int",
+          "id": "eval_python_expr",
+          "description": "Evaluates string as Python expression",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "log.warn",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "str",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.comments.set",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "ord",
+          "id": "convert_int_to_char",
+          "description": "Converts integer to Unicode character",
+          "first_id": "data_transformation_processing",
+          "second_id": "type_conversion",
+          "third_id": "string_conversion"
+        },
+        {
+          "api_name": "log.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "log.warning",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "def _loadV1Tag(self, fp):\n    v1_enc = \"latin1\"\n    fp.seek(0, 2)\n    if fp.tell() < 128:\n        return False, 0\n    fp.seek(-128, 2)\n    tag_data = fp.read(128)\n    if tag_data[0:3] != b\"TAG\":\n        return False, 0\n    log.debug(\"Located ID3 v1 tag\")\n    self.version = ID3_V1_0\n    title = tag_data[3:33].strip(ID3_V1_STRIP_CHARS)\n    log.debug(\"Title: %s\" % title)\n    if title:\n        self.title = str(title, v1_enc)\n    artist = tag_data[33:63].strip(ID3_V1_STRIP_CHARS)\n    log.debug(\"Artist: %s\" % artist)\n    if artist:\n        self.artist = str(artist, v1_enc)\n    album = tag_data[63:93].strip(ID3_V1_STRIP_CHARS)\n    log.debug(\"Album: %s\" % album)\n    if album:\n        self.album = str(album, v1_enc)\n    year = tag_data[93:97].strip(ID3_V1_STRIP_CHARS)\n    log.debug(\"Year: %s\" % year)\n    try:\n        if year and int(year):\n            self.release_date = int(year)\n    except ValueError:\n        log.warn(\"ID3v1.x tag contains invalid year: %s\" % year)\n        pass\n    comment = tag_data[97:127].rstrip(b\"\\x00\")\n    if comment:\n        if (len(comment) >= 2 and comment[-2:-1] == b\"\\x00\"):\n            log.debug(\"Track Num found, setting version to v1.1\")\n            self.version = ID3_V1_1\n            track = comment[-1]\n            self.track_num = (track, None)\n            log.debug(\"Track: \" + str(track))\n            comment = comment[:-2].strip(ID3_V1_STRIP_CHARS)\n        if comment:\n            log.debug(f\"Comment: {comment}\")\n            self.comments.set(str(comment, v1_enc), ID3_V1_COMMENT_DESC)\n    genre = ord(tag_data[127:128])\n    log.debug(f\"Genre ID: {genre}\")\n    try:\n        self.genre = genre\n    except ValueError as ex:\n        log.warning(ex)\n        self.genre = None"
+    }
+  }
+]

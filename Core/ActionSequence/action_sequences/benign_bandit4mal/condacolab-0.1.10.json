@@ -1,0 +1,348 @@
+[
+  {
+    "metadata": {
+      "package_name": "condacolab-0.1.10",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "condacolab.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/condacolab-0.1.10/condacolab-0.1.10/condacolab.py",
+    "line_number": "130",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "129\t    with open(condameta / \"pinned\", \"a\") as f:\n130\t        f.write(f\"python {pymaj}.{pymin}.*\\n\")\n131\t        f.write(f\"python_abi {pymaj}.{pymin}.* *cp{pymaj}{pymin}*\\n\")",
+    "code_snippet": "def install_from_url(\n    installer_url: AnyStr,\n    prefix: os.PathLike = PREFIX,\n    env: Dict[AnyStr, AnyStr] = None,\n    run_checks: bool = True,\n    sha256: AnyStr = None,\n):\n    \"\"\"\n    Download and run a constructor-like installer, patching\n    the necessary bits so it works on Colab right away.\n\n    This will restart your kernel as a result!\n\n    Parameters\n    ----------\n    installer_url\n        URL pointing to a ``constructor``-like installer, such\n        as Miniconda or Mambaforge\n    prefix\n        Target location for the installation\n    env\n        Environment variables to inject in the kernel restart.\n        We *need* to inject ``LD_LIBRARY_PATH`` so ``{PREFIX}/lib``\n        is first, but you can also add more if you need it. Take\n        into account that no quote handling is done, so you need\n        to add those yourself in the raw string. They will\n        end up added to a line like ``exec env VAR=VALUE python3...``.\n        For example, a value with spaces should be passed as::\n\n            env={\"VAR\": '\"a value with spaces\"'}\n    run_checks\n        Run checks to see if installation was run previously.\n        Change to False to ignore checks and always attempt\n        to run the installation.\n    sha256\n        Expected SHA256 checksum of the installer. Optional.\n    \"\"\"\n    if run_checks:\n        try:  # run checks to see if it this was run already\n            return check(prefix)\n        except AssertionError:\n            pass  # just install\n\n    t0 = datetime.now()\n    print(f\"\u0001f817 Downloading {installer_url}...\")\n    installer_fn = \"__installer__.sh\"\n    with urlopen(installer_url) as response, open(installer_fn, \"wb\") as out:\n        shutil.copyfileobj(response, out)\n\n    if sha256 is not None:\n        digest = _chunked_sha256(installer_fn)\n        assert (\n            digest == sha256\n        ), f\"\u0001f4a5\u0001f494\u0001f4a5 Checksum failed! Expected {sha256}, got {digest}\"\n\n    print(\"\u0001f4e6 Installing...\")\n    task = run(\n        [\"bash\", installer_fn, \"-bfp\", str(prefix)],\n        check=False,\n        stdout=PIPE,\n        stderr=STDOUT,\n        text=True,\n    )\n    os.unlink(installer_fn)\n    with open(\"condacolab_install.log\", \"w\") as f:\n        f.write(task.stdout)\n    assert (\n        task.returncode == 0\n    ), \"\u0001f4a5\u0001f494\u0001f4a5 The installation failed! Logs are available at `/content/condacolab_install.log`.\"\n\n    print(\"\u0001f4cc Adjusting configuration...\")\n    cuda_version = \".\".join(os.environ.get(\"CUDA_VERSION\", \"*.*.*\").split(\".\")[:2])\n    prefix = Path(prefix)\n    condameta = prefix / \"conda-meta\"\n    condameta.mkdir(parents=True, exist_ok=True)\n    pymaj, pymin = sys.version_info[:2]\n\n    if cuda_version.startswith(\"12\"):\n        cudatoolkit = \"cuda-version 12.*\"\n    else:\n        cudatoolkit = f\"cudatoolkit {cuda_version}.*\"\n\n    with open(condameta / \"pinned\", \"a\") as f:\n        f.write(f\"python {pymaj}.{pymin}.*\\n\")\n        f.write(f\"python_abi {pymaj}.{pymin}.* *cp{pymaj}{pymin}*\\n\")\n        f.write(f\"{cudatoolkit}\\n\")\n\n    with open(prefix / \".condarc\", \"a\") as f:\n        f.write(\"always_yes: true\\n\")\n\n    with open(\"/etc/ipython/ipython_config.py\", \"a\") as f:\n        f.write(\n            f\"\"\"\\nc.InteractiveShellApp.exec_lines = [\n                    \"import sys\",\n                    \"sp = f'{prefix}/lib/python{pymaj}.{pymin}/site-packages'\",\n                    \"if sp not in sys.path:\",\n                    \"    sys.path.insert(0, sp)\",\n                ]\n            \"\"\"\n        )\n    sitepackages = f\"{prefix}/lib/python{pymaj}.{pymin}/site-packages\"\n    if sitepackages not in sys.path:\n        sys.path.insert(0, sitepackages)\n\n    print(\"\u0001fa79 Patching environment...\")\n    env = env or {}\n    bin_path = f\"{prefix}/bin\"\n    if bin_path not in os.environ.get(\"PATH\", \"\").split(\":\"):\n        env[\"PATH\"] = f\"{bin_path}:{os.environ.get('PATH', '')}\"\n    env[\"LD_LIBRARY_PATH\"] = f\"{prefix}/lib:{os.environ.get('LD_LIBRARY_PATH', '')}\"\n\n    os.rename(sys.executable, f\"{sys.executable}.real\")\n    with open(sys.executable, \"w\") as f:\n        f.write(\"#!/bin/bash\\n\")\n        envstr = \" \".join(f\"{k}={v}\" for k, v in env.items())\n        f.write(f\"exec env {envstr} {sys.executable}.real -x $@\\n\")\n    run([\"chmod\", \"+x\", sys.executable])\n\n    taken = timedelta(seconds=round((datetime.now() - t0).total_seconds(), 0))\n    print(f\"\u0001f553 Done in {taken}\")\n\n    print(\"\u0001f501 Restarting kernel...\")\n    get_ipython().kernel.do_shutdown(True)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "urlopen",
+        "open",
+        "shutil.copyfileobj",
+        "open",
+        "_chunked_sha256",
+        "open",
+        "open",
+        "open",
+        "open",
+        "os.rename",
+        "open",
+        "run",
+        "os.unlink",
+        "Path",
+        "Path.mkdir",
+        "sys.version_info",
+        "open",
+        "open",
+        "open",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "sys.path.insert",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "run",
+        "datetime.now",
+        "get_ipython",
+        "get_ipython().kernel.do_shutdown"
+      ],
+      "api_sequence_with_args": [
+        "urlopen(installer_url)",
+        "open(installer_fn, \"wb\")",
+        "shutil.copyfileobj(response, out)",
+        "open(\"condacolab_install.log\", \"w\")",
+        "_chunked_sha256(installer_fn)",
+        "open(condameta / \"pinned\", \"a\")",
+        "open(prefix / \".condarc\", \"a\")",
+        "open(\"/etc/ipython/ipython_config.py\", \"a\")",
+        "open(sys.executable, \"w\")",
+        "os.rename(sys.executable, f\"{sys.executable}.real\")",
+        "open(sys.executable, \"w\")",
+        "run([\"bash\", installer_fn, \"-bfp\", str(prefix)], check=False, stdout=PIPE, stderr=STDOUT, text=True)",
+        "os.unlink(installer_fn)",
+        "Path(prefix)",
+        "Path(prefix).mkdir(parents=True, exist_ok=True)",
+        "sys.version_info[:2]",
+        "open(condameta / \"pinned\", \"a\")",
+        "open(prefix / \".condarc\", \"a\")",
+        "open(\"/etc/ipython/ipython_config.py\", \"a\")",
+        "os.environ.get(\"CUDA_VERSION\", \"*.*.*\")",
+        "os.environ.get(\"PATH\", \"\")",
+        "os.environ.get('PATH', '')",
+        "os.environ.get('LD_LIBRARY_PATH', '')",
+        "sys.path.insert(0, sitepackages)",
+        "os.environ.get(\"PATH\", \"\")",
+        "os.environ.get('PATH', '')",
+        "os.environ.get('LD_LIBRARY_PATH', '')",
+        "os.environ.get('LD_LIBRARY_PATH', '')",
+        "run([\"chmod\", \"+x\", sys.executable])",
+        "datetime.now()",
+        "get_ipython()",
+        "get_ipython().kernel.do_shutdown(True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "shutil.copyfileobj",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "_chunked_sha256",
+          "id": "create_sha256_hash",
+          "description": "Creates SHA-256 hash object from encoded string",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.rename",
+          "id": "rename_file",
+          "description": "Renames file or moves it to new location",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.unlink",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "sys.version_info",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open",
+          "id": "combined_mode_operations",
+          "description": "Combined mode file opening operations (read-write mode, append mode, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.path.insert",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "datetime.now",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "get_ipython",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "get_ipython().kernel.do_shutdown",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "def install_from_url(installer_url, prefix=PREFIX, env=None, run_checks=True, sha256=None):\n    if run_checks:\n        try:\n            return check(prefix)\n        except AssertionError:\n            pass\n    t0 = datetime.now()\n    installer_fn = \"__installer__.sh\"\n    with urlopen(installer_url) as response, open(installer_fn, \"wb\") as out:\n        shutil.copyfileobj(response, out)\n    if sha256 is not None:\n        digest = _chunked_sha256(installer_fn)\n        assert digest == sha256\n    task = run([\"bash\", installer_fn, \"-bfp\", str(prefix)], check=False, stdout=PIPE, stderr=STDOUT, text=True)\n    os.unlink(installer_fn)\n    with open(\"condacolab_install.log\", \"w\") as f:\n        f.write(task.stdout)\n    prefix = Path(prefix)\n    condameta = prefix / \"conda-meta\"\n    condameta.mkdir(parents=True, exist_ok=True)\n    pymaj, pymin = sys.version_info[:2]\n    with open(condameta / \"pinned\", \"a\") as f:\n        f.write(f\"python {pymaj}.{pymin}.*\\n\")\n        f.write(f\"python_abi {pymaj}.{pymin}.* *cp{pymaj}{pymin}*\\n\")\n        f.write(f\"{cudatoolkit}\\n\")\n    with open(prefix / \".condarc\", \"a\") as f:\n        f.write(\"always_yes: true\\n\")\n    with open(\"/etc/ipython/ipython_config.py\", \"a\") as f:\n        f.write(f\"\"\"\\nc.InteractiveShellApp.exec_lines = [ ... ]\\n\"\"\")\n    sitepackages = f\"{prefix}/lib/python{pymaj}.{pymin}/site-packages\"\n    if sitepackages not in sys.path:\n        sys.path.insert(0, sitepackages)\n    env = env or {}\n    bin_path = f\"{prefix}/bin\"\n    if bin_path not in os.environ.get(\"PATH\", \"\").split(\":\"):\n        env[\"PATH\"] = f\"{bin_path}:{os.environ.get('PATH', '')}\"\n    env[\"LD_LIBRARY_PATH\"] = f\"{prefix}/lib:{os.environ.get('LD_LIBRARY_PATH', '')}\"\n    os.rename(sys.executable, f\"{sys.executable}.real\")\n    with open(sys.executable, \"w\") as f:\n        f.write(\"#!/bin/bash\\n\")\n        envstr = \" \".join(f\"{k}={v}\" for k, v in env.items())\n        f.write(f\"exec env {envstr} {sys.executable}.real -x $@\\n\")\n    run([\"chmod\", \"+x\", sys.executable])\n    taken = timedelta(seconds=round((datetime.now() - t0).total_seconds(), 0))\n    get_ipython().kernel.do_shutdown(True)"
+    }
+  }
+]

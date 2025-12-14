@@ -1,0 +1,118 @@
+[
+  {
+    "metadata": {
+      "package_name": "scikit_build_core-0.11.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_pyproject_pep517.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/scikit_build_core-0.11.1/scikit_build_core-0.11.1/tests/test_pyproject_pep517.py",
+    "line_number": "212",
+    "type_description": "B834:open",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "211\n212\t        with zf.open(\"cmake_example-0.0.1.dist-info/METADATA\") as f:\n213\t            metadata = f.read().decode(\"utf-8\")",
+    "code_snippet": "@pytest.mark.compile\n@pytest.mark.configure\n@pytest.mark.usefixtures(\"package_simple_pyproject_ext\")\ndef test_pep517_wheel(virtualenv, tmp_path: Path):\n    dist = tmp_path / \"dist\"\n    out = build_wheel(\n        str(dist), {\"cmake.targets\": [\"cmake_example\"]}\n    )  # Could leave empty\n    (wheel,) = dist.glob(\"cmake_example-0.0.1-*.whl\")\n    assert wheel == dist / out\n\n    with zipfile.ZipFile(wheel) as zf:\n        file_paths = {Path(p) for p in zf.namelist()}\n        file_names = {p.parts[0] for p in file_paths}\n\n        with zf.open(\"cmake_example-0.0.1.dist-info/METADATA\") as f:\n            metadata = f.read().decode(\"utf-8\")\n\n        with zf.open(\"cmake_example-0.0.1.dist-info/entry_points.txt\") as f:\n            entry_points = f.read().decode(\"utf-8\")\n\n    assert Path(\"cmake_example-0.0.1.dist-info/licenses/LICENSE\") in file_paths\n\n    assert len(file_names) == 2\n    assert \"cmake_example-0.0.1.dist-info\" in file_names\n    file_names.remove(\"cmake_example-0.0.1.dist-info\")\n    (so_file,) = file_names\n\n    assert so_file.startswith(\"cmake_example\")\n    print(\"SOFILE:\", so_file)\n\n    print(entry_points == ENTRYPOINTS)\n    assert 'Requires-Dist: pytest>=6.0; extra == \"test\"' in metadata\n    assert \"Metadata-Version: 2.2\" in metadata\n    assert \"Name: CMake.Example\" in metadata\n    assert \"Version: 0.0.1\" in metadata\n    assert \"Requires-Python: >=3.8\" in metadata\n    assert \"Provides-Extra: test\" in metadata\n\n    virtualenv.install(wheel)\n\n    version = virtualenv.execute(\n        \"import cmake_example; print(cmake_example.__version__)\",\n    )\n    assert version.strip() == \"0.0.1\"\n\n    add = virtualenv.execute(\n        \"import cmake_example; print(cmake_example.add(1, 2))\",\n    )\n    assert add.strip() == \"3\"",
+    "pattern_analysis": {
+      "api_sequence": [
+        "build_wheel",
+        "pathlib.Path.glob",
+        "zipfile.ZipFile",
+        "zipfile.ZipFile.namelist",
+        "zipfile.ZipFile.open",
+        "zipfile.ZipFile.open",
+        "virtualenv.install",
+        "virtualenv.execute",
+        "virtualenv.execute"
+      ],
+      "api_sequence_with_args": [
+        "build_wheel(str(dist), {\"cmake.targets\": [\"cmake_example\"]})",
+        "pathlib.Path.glob(\"cmake_example-0.0.1-*.whl\")",
+        "zipfile.ZipFile(wheel)",
+        "zipfile.ZipFile.namelist()",
+        "zipfile.ZipFile.open(\"cmake_example-0.0.1.dist-info/METADATA\")",
+        "zipfile.ZipFile.open(\"cmake_example-0.0.1.dist-info/entry_points.txt\")",
+        "virtualenv.install(wheel)",
+        "virtualenv.execute(\"import cmake_example; print(cmake_example.__version__)\")",
+        "virtualenv.execute(\"import cmake_example; print(cmake_example.add(1, 2))\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "build_wheel",
+          "id": "create_zip_archive",
+          "description": "Creates new ZIP archive for writing",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.namelist",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "zipfile.ZipFile.open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "virtualenv.install",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "virtualenv.execute",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "virtualenv.execute",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        }
+      ],
+      "contextual_code": "@pytest.mark.compile\n@pytest.mark.configure\n@pytest.mark.usefixtures(\"package_simple_pyproject_ext\")\ndef test_pep517_wheel(virtualenv, tmp_path: Path):\n    dist = tmp_path / \"dist\"\n    out = build_wheel(\n        str(dist), {\"cmake.targets\": [\"cmake_example\"]}\n    )\n    (wheel,) = dist.glob(\"cmake_example-0.0.1-*.whl\")\n\n    with zipfile.ZipFile(wheel) as zf:\n        file_paths = {Path(p) for p in zf.namelist()}\n        file_names = {p.parts[0] for p in file_paths}\n\n        with zf.open(\"cmake_example-0.0.1.dist-info/METADATA\") as f:\n            metadata = f.read().decode(\"utf-8\")\n\n        with zf.open(\"cmake_example-0.0.1.dist-info/entry_points.txt\") as f:\n            entry_points = f.read().decode(\"utf-8\")\n\n    virtualenv.install(wheel)\n\n    version = virtualenv.execute(\n        \"import cmake_example; print(cmake_example.__version__)\",\n    )\n    add = virtualenv.execute(\n        \"import cmake_example; print(cmake_example.add(1, 2))\",\n    )"
+    }
+  }
+]

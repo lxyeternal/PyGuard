@@ -1,0 +1,236 @@
+{
+  "metadata": {
+    "package_name": "hikari-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/hikari-2.2.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "rest.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/hikari-2.2.1/hikari-2.2.1/hikari/impl/rest.py",
+      "line_number": "837",
+      "type_description": "B825:request",
+      "context_snippet": "    @typing.final\n    async def _perform_request(  # noqa: C901, PLR0912, PLR0915\n        self,\n        compiled_route: routes.CompiledRoute,\n        *,\n        query: data_binding.StringMapBuilder | None = None,\n        form_builder: data_binding.URLEncodedFormBuilder | None = None,\n        json: data_binding.JSONObject | data_binding.JSONArray | None = None,\n        reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,\n        auth: undefined.UndefinedNoneOr[str] = undefined.UNDEFINED,\n    ) -> None | data_binding.JSONObject | data_binding.JSONArray:\n        # Make a ratelimit-protected HTTP request to a JSON endpoint and expect some form\n        # of JSON response.\n\n        assert self._client_session is not None  # This will never be None here\n\n        headers = data_binding.StringMapBuilder()\n        headers.put(_USER_AGENT_HEADER, _HTTP_USER_AGENT)\n        # As per the docs, UTF-8 characters are only supported here if it's url-encoded.\n        headers.put(_X_AUDIT_LOG_REASON_HEADER, reason, conversion=urllib.parse.quote)\n\n        can_re_auth = False\n        if auth is undefined.UNDEFINED:\n            if isinstance(self._token, rest_api.TokenStrategy):\n                auth = await self._token.acquire(self)\n                can_re_auth = True\n\n            else:\n                auth = self._token\n\n        if auth:\n            headers[_AUTHORIZATION_HEADER] = auth\n\n        data: None | aiohttp.BytesPayload | aiohttp.FormData = None\n        if json is not None:\n            if form_builder:\n                msg = \"Can only provide one of 'json' or 'form_builder', not both\"\n                raise ValueError(msg)\n\n            data = data_binding.JSONPayload(json, dumps=self._dumps)\n\n        url = compiled_route.create_url(self._rest_url)\n\n        stack = contextlib.AsyncExitStack()\n        # This is initiated the first time we time out or hit a 5xx error to\n        # save a little memory when nothing goes wrong\n        backoff: rate_limits.ExponentialBackOff | None = None\n        retry_count = 0\n        trace_logging_enabled = _LOGGER.isEnabledFor(ux.TRACE)\n\n        while True:\n            try:\n                if form_builder:\n                    data = await form_builder.build(stack, executor=self._executor)\n\n                if compiled_route.route.has_ratelimits:\n                    await stack.enter_async_context(self._bucket_manager.acquire_bucket(compiled_route, auth))\n\n                if trace_logging_enabled:\n                    uuid = time.uuid()\n                    _LOGGER.log(\n                        ux.TRACE,\n                        \"%s %s %s\\n%s\",\n                        uuid,\n                        compiled_route.method,\n                        url,\n                        _stringify_http_message(headers, self._dumps(json)) if json else None,\n                    )\n                    start = time.monotonic()\n\n                # Make the request.\n                response = await self._client_session.request(\n                    compiled_route.method,\n                    url,\n                    headers=headers,\n                    params=query,\n                    data=data,\n                    allow_redirects=self._http_settings.max_redirects is not None,\n                    max_redirects=self._http_settings.max_redirects,\n                    proxy=self._proxy_settings.url,\n                    proxy_headers=self._proxy_settings.all_headers,\n                )\n\n                if trace_logging_enabled:\n                    time_taken = (time.monotonic() - start) * 1_000  # pyright: ignore[reportUnboundVariable]\n                    _LOGGER.log(\n                        ux.TRACE,\n                        \"%s %s %s in %sms\\n%s\",\n                        uuid,  # pyright: ignore[reportUnboundVariable]\n                        response.status,\n                        response.reason,\n                        time_taken,\n                        _stringify_http_message(response.headers, await response.read()),\n                    )\n\n                # Ensure we are not rate limited, and update rate limiting headers where appropriate.\n                time_before_retry = await self._parse_ratelimits(compiled_route, auth, response)\n\n            except (asyncio.TimeoutError, aiohttp.ClientConnectionError) as ex:\n                if retry_count >= self._max_retries:\n                    raise errors.HTTPError(message=str(ex)) from ex\n\n                if backoff is None:\n                    backoff = rate_limits.ExponentialBackOff(maximum=_MAX_BACKOFF_DURATION)\n\n                sleep_time = next(backoff)\n                _LOGGER.warning(\n                    \"Connection error (%s), backing off for %.2fs and retrying. Retries remaining: %s\",\n                    type(ex).__name__,\n                    sleep_time,\n                    self._max_retries - retry_count,\n                )\n                retry_count += 1\n\n                await asyncio.sleep(sleep_time)\n                continue\n\n            finally:\n                await stack.aclose()\n\n            if time_before_retry is not None:\n                await asyncio.sleep(time_before_retry)\n                continue\n\n            # Don't bother processing any further if we got NO CONTENT. There's not anything\n            # to check.\n            if response.status == http.HTTPStatus.NO_CONTENT:\n                return None\n\n            # Handle the response when everything went good\n            if 200 <= response.status < 300:\n                if response.content_type == _APPLICATION_JSON:\n                    # Only deserializing here stops Cloudflare shenanigans messing us around.\n                    return self._loads(await response.read())\n\n                real_url = str(response.real_url)\n                msg = f\"Expected JSON [{response.content_type=}, {real_url=}]\"\n                raise errors.HTTPError(msg)\n\n            # Handling 5xx errors\n            if response.status in _RETRY_ERROR_CODES and retry_count < self._max_retries:\n                if not backoff:\n                    backoff = rate_limits.ExponentialBackOff(maximum=_MAX_BACKOFF_DURATION)\n\n                sleep_time = next(backoff)\n                retry_count += 1\n                _LOGGER.warning(\n                    \"Received status %s on request, backing off for %.2fs and retrying. Retries remaining: %s\",\n                    response.status,\n                    sleep_time,\n                    self._max_retries - retry_count,\n                )\n\n                await asyncio.sleep(sleep_time)\n                continue\n\n            # Attempt to re-auth on UNAUTHORIZED if we are using a TokenStrategy\n            if can_re_auth and response.status == 401:\n                # can_re_auth ensures that it is a token strategy\n                assert isinstance(self._token, rest_api.TokenStrategy)\n\n                self._token.invalidate(auth)\n                auth = headers[_AUTHORIZATION_HEADER] = await self._token.acquire(self)\n                can_re_auth = False\n                continue\n\n            raise await net.generate_error_response(response)\n",
+      "hash_value": "aac17bf92643c0a542003abf78cd49ca",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    @typing.final\n    async def _perform_request(  # noqa: C901, PLR0912, PLR0915\n        self,\n        compiled_route: routes.CompiledRoute,\n        *,\n        query: data_binding.StringMapBuilder | None = None,\n        form_builder: data_binding.URLEncodedFormBuilder | None = None,\n        json: data_binding.JSONObject | data_binding.JSONArray | None = None,\n        reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,\n        auth: undefined.UndefinedNoneOr[str] = undefined.UNDEFINED,\n    ) -> None | data_binding.JSONObject | data_binding.JSONArray:\n        # Make a ratelimit-protected HTTP request to a JSON endpoint and expect some form\n        # of JSON response.\n\n        assert self._client_session is not None  # This will never be None here\n\n        headers = data_binding.StringMapBuilder()\n        headers.put(_USER_AGENT_HEADER, _HTTP_USER_AGENT)\n        # As per the docs, UTF-8 characters are only supported here if it's url-encoded.\n        headers.put(_X_AUDIT_LOG_REASON_HEADER, reason, conversion=urllib.parse.quote)\n\n        can_re_auth = False\n        if auth is undefined.UNDEFINED:\n            if isinstance(self._token, rest_api.TokenStrategy):\n                auth = await self._token.acquire(self)\n                can_re_auth = True\n\n            else:\n                auth = self._token\n\n        if auth:\n            headers[_AUTHORIZATION_HEADER] = auth\n\n        data: None | aiohttp.BytesPayload | aiohttp.FormData = None\n        if json is not None:\n            if form_builder:\n                msg = \"Can only provide one of 'json' or 'form_builder', not both\"\n                raise ValueError(msg)\n\n            data = data_binding.JSONPayload(json, dumps=self._dumps)\n\n        url = compiled_route.create_url(self._rest_url)\n\n        stack = contextlib.AsyncExitStack()\n        # This is initiated the first time we time out or hit a 5xx error to\n        # save a little memory when nothing goes wrong\n        backoff: rate_limits.ExponentialBackOff | None = None\n        retry_count = 0\n        trace_logging_enabled = _LOGGER.isEnabledFor(ux.TRACE)\n\n        while True:\n            try:\n                if form_builder:\n                    data = await form_builder.build(stack, executor=self._executor)\n\n                if compiled_route.route.has_ratelimits:\n                    await stack.enter_async_context(self._bucket_manager.acquire_bucket(compiled_route, auth))\n\n                if trace_logging_enabled:\n                    uuid = time.uuid()\n                    _LOGGER.log(\n                        ux.TRACE,\n                        \"%s %s %s\\n%s\",\n                        uuid,\n                        compiled_route.method,\n                        url,\n                        _stringify_http_message(headers, self._dumps(json)) if json else None,\n                    )\n                    start = time.monotonic()\n\n                # Make the request.\n                response = await self._client_session.request(\n                    compiled_route.method,\n                    url,\n                    headers=headers,\n                    params=query,\n                    data=data,\n                    allow_redirects=self._http_settings.max_redirects is not None,\n                    max_redirects=self._http_settings.max_redirects,\n                    proxy=self._proxy_settings.url,\n                    proxy_headers=self._proxy_settings.all_headers,\n                )\n\n                if trace_logging_enabled:\n                    time_taken = (time.monotonic() - start) * 1_000  # pyright: ignore[reportUnboundVariable]\n                    _LOGGER.log(\n                        ux.TRACE,\n                        \"%s %s %s in %sms\\n%s\",\n                        uuid,  # pyright: ignore[reportUnboundVariable]\n                        response.status,\n                        response.reason,\n                        time_taken,\n                        _stringify_http_message(response.headers, await response.read()),\n                    )\n\n                # Ensure we are not rate limited, and update rate limiting headers where appropriate.\n                time_before_retry = await self._parse_ratelimits(compiled_route, auth, response)\n\n            except (asyncio.TimeoutError, aiohttp.ClientConnectionError) as ex:\n                if retry_count >= self._max_retries:\n                    raise errors.HTTPError(message=str(ex)) from ex\n\n                if backoff is None:\n                    backoff = rate_limits.ExponentialBackOff(maximum=_MAX_BACKOFF_DURATION)\n\n                sleep_time = next(backoff)\n                _LOGGER.warning(\n                    \"Connection error (%s), backing off for %.2fs and retrying. Retries remaining: %s\",\n                    type(ex).__name__,\n                    sleep_time,\n                    self._max_retries - retry_count,\n                )\n                retry_count += 1\n\n                await asyncio.sleep(sleep_time)\n                continue\n\n            finally:\n                await stack.aclose()\n\n            if time_before_retry is not None:\n                await asyncio.sleep(time_before_retry)\n                continue\n\n            # Don't bother processing any further if we got NO CONTENT. There's not anything\n            # to check.\n            if response.status == http.HTTPStatus.NO_CONTENT:\n                return None\n\n            # Handle the response when everything went good\n            if 200 <= response.status < 300:\n                if response.content_type == _APPLICATION_JSON:\n                    # Only deserializing here stops Cloudflare shenanigans messing us around.\n                    return self._loads(await response.read())\n\n                real_url = str(response.real_url)\n                msg = f\"Expected JSON [{response.content_type=}, {real_url=}]\"\n                raise errors.HTTPError(msg)\n\n            # Handling 5xx errors\n            if response.status in _RETRY_ERROR_CODES and retry_count < self._max_retries:\n                if not backoff:\n                    backoff = rate_limits.ExponentialBackOff(maximum=_MAX_BACKOFF_DURATION)\n\n                sleep_time = next(backoff)\n                retry_count += 1\n                _LOGGER.warning(\n                    \"Received status %s on request, backing off for %.2fs and retrying. Retries remaining: %s\",\n                    response.status,\n                    sleep_time,\n                    self._max_retries - retry_count,\n                )\n\n                await asyncio.sleep(sleep_time)\n                continue\n\n            # Attempt to re-auth on UNAUTHORIZED if we are using a TokenStrategy\n            if can_re_auth and response.status == 401:\n                # can_re_auth ensures that it is a token strategy\n                assert isinstance(self._token, rest_api.TokenStrategy)\n\n                self._token.invalidate(auth)\n                auth = headers[_AUTHORIZATION_HEADER] = await self._token.acquire(self)\n                can_re_auth = False\n                continue\n\n            raise await net.generate_error_response(response)\n",
+          "triple_sequences": [
+            {
+              "action_api": "headers.put()",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "_USER_AGENT_HEADER, _HTTP_USER_AGENT",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "headers.put()",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "_X_AUDIT_LOG_REASON_HEADER, reason, conversion=urllib.parse.quote",
+              "object_description": "HTTP header",
+              "object_id": "http_header",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "self._token, rest_api.TokenStrategy",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Determine presence of valid authentication",
+              "intention_id": "determine_valid_authentication_presence"
+            },
+            {
+              "action_api": "self._token.acquire()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Check validity of authentication cookie",
+              "intention_id": "check_authentication_cookie"
+            },
+            {
+              "action_api": "headers[_AUTHORIZATION_HEADER] = auth",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "_AUTHORIZATION_HEADER, auth",
+              "object_description": "Authorization header value",
+              "object_id": "authorization_header",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "data_binding.JSONPayload()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "json, dumps=self._dumps",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "compiled_route.create_url()",
+              "action_description": "Encodes mapping object to URL query string",
+              "action_id": "encode_url_query",
+              "object": "self._rest_url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "form_builder.build()",
+              "action_description": "Adds field to multipart HTTP request",
+              "action_id": "add_multipart_field",
+              "object": "stack, executor=self._executor",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "stack.enter_async_context()",
+              "action_description": "Creates HTTP session for making asynchronous requests",
+              "action_id": "create_http_session",
+              "object": "self._bucket_manager.acquire_bucket(compiled_route, auth)",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Establish connection",
+              "intention_id": "establish_connection"
+            },
+            {
+              "action_api": "self._client_session.request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "compiled_route.method, url, headers=headers, params=query, data=data, allow_redirects, max_redirects, proxy, proxy_headers",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "response.read()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode downloaded content",
+              "intention_id": "decode_downloaded_content"
+            },
+            {
+              "action_api": "self._parse_ratelimits()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "compiled_route, auth, response",
+              "object_description": "HTTP response remote content",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "asyncio.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "sleep_time",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "stack.aclose()",
+              "action_description": "Closes the HTTP response object",
+              "action_id": "close_http_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            },
+            {
+              "action_api": "response.read()",
+              "action_description": "Receives data from socket connection",
+              "action_id": "receive_socket_data",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Decode downloaded content",
+              "intention_id": "decode_downloaded_content"
+            },
+            {
+              "action_api": "self._loads()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "await response.read()",
+              "object_description": "HTTP response remote content",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "str()",
+              "action_description": "Encodes string to bytes using default encoding",
+              "action_id": "encode_string_to_bytes",
+              "object": "response.real_url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "rate_limits.ExponentialBackOff()",
+              "action_description": "Generate random number",
+              "action_id": "generate_random_number",
+              "object": "maximum=_MAX_BACKOFF_DURATION",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "self._token.invalidate()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "auth",
+              "object_description": "API key or token",
+              "object_id": "api_key",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self._token.acquire()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "self",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Check validity of authentication cookie",
+              "intention_id": "check_authentication_cookie"
+            },
+            {
+              "action_api": "net.generate_error_response()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "response",
+              "object_description": "HTTP response remote content",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

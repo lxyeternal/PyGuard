@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "whoosh-2.7.4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "compound.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/whoosh-2.7.4/Whoosh-2.7.4/src/whoosh/filedb/compound.py",
+    "line_number": "319",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "318\t                offset = self._dbfile.tell()\n319\t                self._dbfile.write(bio.getvalue()[:buflen])\n320\t                self._dbfile.write(inbytes)",
+    "context_snippet": "class CompoundWriter(object):\n    def __init__(self, tempstorage, buffersize=32 * 1024):\n        assert isinstance(buffersize, int)\n        self._tempstorage = tempstorage\n        self._tempname = \"%s.ctmp\" % random_name()\n        self._temp = tempstorage.create_file(self._tempname, mode=\"w+b\")\n        self._buffersize = buffersize\n        self._streams = {}\n\n    def create_file(self, name):\n        ss = self.SubStream(self._temp, self._buffersize)\n        self._streams[name] = ss\n        return StructFile(ss)\n\n    def _readback(self):\n        temp = self._temp\n        for name, substream in self._streams.items():\n            substream.close()\n\n            def gen():\n                for f, offset, length in substream.blocks:\n                    if f is None:\n                        f = temp\n                    f.seek(offset)\n                    yield f.read(length)\n\n            yield (name, gen)\n        temp.close()\n        self._tempstorage.delete_file(self._tempname)\n\n    def save_as_compound(self, dbfile):\n        basepos = dbfile.tell()\n        dbfile.write_long(0)  # Directory offset\n        dbfile.write_int(0)  # Directory length\n\n        directory = {}\n        for name, blocks in self._readback():\n            filestart = dbfile.tell()\n            for block in blocks():\n                dbfile.write(block)\n            directory[name] = {\"offset\": filestart,\n                               \"length\": dbfile.tell() - filestart}\n\n        CompoundStorage.write_dir(dbfile, basepos, directory)\n\n    def save_as_files(self, storage, name_fn):\n        for name, blocks in self._readback():\n            f = storage.create_file(name_fn(name))\n            for block in blocks():\n                f.write(block)\n            f.close()\n\n    class SubStream(object):\n        def __init__(self, dbfile, buffersize):\n            self._dbfile = dbfile\n            self._buffersize = buffersize\n            self._buffer = BytesIO()\n            self.blocks = []\n\n        def tell(self):\n            return sum(b[2] for b in self.blocks) + self._buffer.tell()\n\n        def write(self, inbytes):\n            bio = self._buffer\n            buflen = bio.tell()\n            length = buflen + len(inbytes)\n            if length >= self._buffersize:\n                offset = self._dbfile.tell()\n                self._dbfile.write(bio.getvalue()[:buflen])\n                self._dbfile.write(inbytes)\n\n                self.blocks.append((None, offset, length))\n                self._buffer.seek(0)\n            else:\n                bio.write(inbytes)\n\n        def close(self):\n            bio = self._buffer\n            length = bio.tell()\n            if length:\n                self.blocks.append((bio, 0, length))",
+    "hash_value": "603a348fb7333035bf9d4b274d5693f4"
+  }
+]

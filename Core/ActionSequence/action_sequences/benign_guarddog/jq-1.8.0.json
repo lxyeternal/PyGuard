@@ -1,0 +1,167 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport shlex\nimport shutil\nimport subprocess\nimport sys\nimport sysconfig\nimport tarfile\n\nfrom setuptools import setup\nfrom setuptools.command.build_ext import build_ext\nfrom setuptools.extension import Extension\n\n\ndef _path_in_dir(relative_path):\n    return os.path.abspath(os.path.join(os.path.dirname(__file__), relative_path))\n\ndef _dep_source_path(relative_path):\n    return os.path.join(_path_in_dir(\"deps\"), relative_path)\n\ndef _dep_build_path(relative_path):\n    return os.path.join(_path_in_dir(\"_deps/build\"), relative_path)\n\ndef _read(fname):\n    return open(os.path.join(os.path.dirname(__file__), fname)).read()\n\n\njq_lib_tarball_path = _dep_source_path(\"jq-1.7.1.tar.gz\")\njq_lib_dir = _dep_build_path(\"jq-1.7.1\")\n\nclass jq_with_deps_build_ext(build_ext):\n    def finalize_options(self):\n        build_ext.finalize_options(self)\n        if os.name == \"nt\":\n            self.compiler = \"mingw32\"\n\n    def run(self):\n        if not os.path.exists(_dep_build_path(\".\")):\n            os.makedirs(_dep_build_path(\".\"))\n        self._build_libjq()\n        build_ext.run(self)\n\n    def _build_libjq(self):\n        self._build_lib(\n            tarball_path=jq_lib_tarball_path,\n            lib_dir=jq_lib_dir,\n            commands=[\n                [\"./configure\", \"CFLAGS=-fPIC -pthread\", \"--disable-maintainer-mode\", \"--with-oniguruma=builtin\"],\n                [\"make\"],\n            ])\n\n    def _build_lib(self, tarball_path, lib_dir, commands):\n        self._extract_tarball(\n            tarball_path=tarball_path,\n            lib_dir=lib_dir,\n        )\n\n        macosx_deployment_target = sysconfig.get_config_var(\"MACOSX_DEPLOYMENT_TARGET\")\n        if macosx_deployment_target:\n            os.environ['MACOSX_DEPLOYMENT_TARGET'] = str(macosx_deployment_target)\n\n        def run_command(args):\n            print(\"Executing: %s\" % ' '.join(args))\n\n            if os.name == \"nt\":\n                command = [\"msys2.cmd\", \"-c\", \" \".join(shlex.quote(arg) for arg in args)]\n            else:\n                command = args\n\n            subprocess.check_call(command, cwd=lib_dir)\n\n        for command in commands:\n            run_command(command)\n\n    def _extract_tarball(self, tarball_path, lib_dir):\n        if os.path.exists(lib_dir):\n            shutil.rmtree(lib_dir)\n        tarfile.open(tarball_path, \"r:gz\").extractall(_dep_build_path(\".\"))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.abspath",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.dirname",
+        "open",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.exists",
+        "os.makedirs",
+        "os.path.exists",
+        "shutil.rmtree",
+        "tarfile.open",
+        "tarfile.TarFile.extractall",
+        "sysconfig.get_config_var",
+        "os.environ.__setitem__",
+        "shlex.quote",
+        "subprocess.check_call"
+      ],
+      "api_sequence_with_args": [
+        "os.path.abspath(os.path.join(os.path.dirname(__file__), relative_path))",
+        "os.path.join(os.path.dirname(__file__), relative_path)",
+        "os.path.dirname(__file__)",
+        "os.path.join(_path_in_dir(\"deps\"), relative_path)",
+        "os.path.join(_path_in_dir(\"_deps/build\"), relative_path)",
+        "os.path.dirname(__file__)",
+        "os.path.join(os.path.dirname(__file__), fname)",
+        "os.path.dirname(__file__)",
+        "open(os.path.join(os.path.dirname(__file__), fname))",
+        "os.path.join(os.path.dirname(__file__), fname)",
+        "os.path.dirname(__file__)",
+        "os.path.exists(_dep_build_path(\".\"))",
+        "os.makedirs(_dep_build_path(\".\"))",
+        "os.path.exists(lib_dir)",
+        "shutil.rmtree(lib_dir)",
+        "tarfile.open(tarball_path, \"r:gz\")",
+        "tarfile.TarFile.extractall(_dep_build_path(\".\"))",
+        "sysconfig.get_config_var(\"MACOSX_DEPLOYMENT_TARGET\")",
+        "os.environ.__setitem__('MACOSX_DEPLOYMENT_TARGET', str(macosx_deployment_target))",
+        "shlex.quote(arg)",
+        "subprocess.check_call(command, cwd=lib_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.rmtree",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.extractall",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "sysconfig.get_config_var",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.__setitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "shlex.quote",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport shlex\nimport shutil\nimport subprocess\nimport sysconfig\nimport tarfile\n\ndef _path_in_dir(relative_path):\n    return os.path.abspath(os.path.join(os.path.dirname(__file__), relative_path))\n\ndef _dep_source_path(relative_path):\n    return os.path.join(_path_in_dir(\"deps\"), relative_path)\n\ndef _dep_build_path(relative_path):\n    return os.path.join(_path_in_dir(\"_deps/build\"), relative_path)\n\ndef _read(fname):\n    return open(os.path.join(os.path.dirname(__file__), fname)).read()\n\nclass jq_with_deps_build_ext(build_ext):\n    def run(self):\n        if not os.path.exists(_dep_build_path(\".\")):\n            os.makedirs(_dep_build_path(\".\"))\n        self._build_libjq()\n        build_ext.run(self)\n\n    def _build_lib(self, tarball_path, lib_dir, commands):\n        self._extract_tarball(\n            tarball_path=tarball_path,\n            lib_dir=lib_dir,\n        )\n\n        macosx_deployment_target = sysconfig.get_config_var(\"MACOSX_DEPLOYMENT_TARGET\")\n        if macosx_deployment_target:\n            os.environ['MACOSX_DEPLOYMENT_TARGET'] = str(macosx_deployment_target)\n\n        def run_command(args):\n            if os.name == \"nt\":\n                command = [\"msys2.cmd\", \"-c\", \" \".join(shlex.quote(arg) for arg in args)]\n            else:\n                command = args\n            subprocess.check_call(command, cwd=lib_dir)\n\n        for command in commands:\n            run_command(command)\n\n    def _extract_tarball(self, tarball_path, lib_dir):\n        if os.path.exists(lib_dir):\n            shutil.rmtree(lib_dir)\n        tarfile.open(tarball_path, \"r:gz\").extractall(_dep_build_path(\".\"))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "jq-1.8.0",
+      "total_matches": 1
+    }
+  }
+]

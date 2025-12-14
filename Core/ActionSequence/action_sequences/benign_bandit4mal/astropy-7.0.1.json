@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "astropy-7.0.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "html.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/astropy-7.0.1/astropy-7.0.1/astropy/cosmology/_io/html.py",
+    "line_number": "184",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "183\t    with u.add_enabled_units(cu):  # (cosmology units not turned on by default)\n184\t        table = QTable.read(filename, format=\"ascii.html\", **kwargs)\n185",
+    "code_snippet": "def read_html_table(\n    filename: PathLike | ReadableFileLike[Table],\n    index: int | str | None = None,\n    *,\n    move_to_meta: bool = False,\n    cosmology: str | type[_CosmoT] | None = None,\n    latex_names: bool = True,\n    **kwargs: Any,\n) -> _CosmoT:\n    r\"\"\"Read a |Cosmology| from an HTML file.\n\n    Parameters\n    ----------\n    filename : path-like or file-like\n        From where to read the Cosmology.\n    index : int or str or None, optional\n        Needed to select the row in tables with multiple rows. ``index`` can be an\n        integer for the row number or, if the table is indexed by a column, the value of\n        that column. If the table is not indexed and ``index`` is a string, the \"name\"\n        column is used as the indexing column.\n\n    move_to_meta : bool, optional keyword-only\n        Whether to move keyword arguments that are not in the Cosmology class' signature\n        to the Cosmology's metadata. This will only be applied if the Cosmology does NOT\n        have a keyword-only argument (e.g. ``**kwargs``). Arguments moved to the\n        metadata will be merged with existing metadata, preferring specified metadata in\n        the case of a merge conflict (e.g. for ``Cosmology(meta={'key':10}, key=42)``,\n        the ``Cosmology.meta`` will be ``{'key': 10}``).\n    cosmology : str or |Cosmology| class or None, optional keyword-only\n        The cosmology class (or string name thereof) to use when constructing the\n        cosmology instance. The class also provides default parameter values, filling in\n        any non-mandatory arguments missing in 'table'.\n    latex_names : bool, optional keyword-only\n        Whether the |Table| (might) have latex column names for the parameters that need\n        to be mapped to the correct parameter name -- e.g. $$H_{0}$$ to 'H0'. This is\n        `True` by default, but can be turned off (set to `False`) if there is a known\n        name conflict (e.g. both an 'H0' and '$$H_{0}$$' column) as this will raise an\n        error. In this case, the correct name ('H0') is preferred.\n    **kwargs : Any\n        Passed to ``QTable.read``. ``format`` is set to 'ascii.html', regardless of\n        input.\n\n    Returns\n    -------\n    |Cosmology| subclass instance\n\n    Raises\n    ------\n    ValueError\n        If the keyword argument 'format' is given and is not \"ascii.html\".\n    \"\"\"\n    # Check that the format is 'ascii.html' (or not specified)\n    format = kwargs.pop(\"format\", \"ascii.html\")\n    if format != \"ascii.html\":\n        raise ValueError(f\"format must be 'ascii.html', not {format}\")\n\n    # Reading is handled by `QTable`.\n    with u.add_enabled_units(cu):  # (cosmology units not turned on by default)\n        table = QTable.read(filename, format=\"ascii.html\", **kwargs)\n\n    # Need to map the table's column names to Cosmology inputs (parameter\n    # names).\n    # TODO! move the `latex_names` into `from_table`\n    if latex_names:\n        table_columns = set(table.colnames)\n        for name, latex in _FORMAT_TABLE.items():\n            if latex in table_columns:\n                table.rename_column(latex, name)\n\n    # Build the cosmology from table, using the private backend.\n    return from_table(\n        table, index=index, move_to_meta=move_to_meta, cosmology=cosmology, rename=None\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "QTable.read",
+        "table.colnames",
+        "table.rename_column",
+        "from_table"
+      ],
+      "api_sequence_with_args": [
+        "QTable.read(filename, format=\"ascii.html\", **kwargs)",
+        "table.colnames",
+        "table.rename_column(latex, name)",
+        "from_table(table, index=index, move_to_meta=move_to_meta, cosmology=cosmology, rename=None)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "QTable.read",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "table.colnames",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "table.rename_column",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "from_table",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "def read_html_table(\n    filename: PathLike | ReadableFileLike[Table],\n    index: int | str | None = None,\n    *,\n    move_to_meta: bool = False,\n    cosmology: str | type[_CosmoT] | None = None,\n    latex_names: bool = True,\n    **kwargs: Any,\n) -> _CosmoT:\n    format = kwargs.pop(\"format\", \"ascii.html\")\n    if format != \"ascii.html\":\n        raise ValueError(f\"format must be 'ascii.html', not {format}\")\n\n    with u.add_enabled_units(cu):\n        table = QTable.read(filename, format=\"ascii.html\", **kwargs)\n\n    if latex_names:\n        table_columns = set(table.colnames)\n        for name, latex in _FORMAT_TABLE.items():\n            if latex in table_columns:\n                table.rename_column(latex, name)\n\n    return from_table(\n        table, index=index, move_to_meta=move_to_meta, cosmology=cosmology, rename=None\n    )"
+    }
+  }
+]

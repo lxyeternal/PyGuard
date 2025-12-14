@@ -1,0 +1,277 @@
+[
+  {
+    "metadata": {
+      "package_name": "seven_cloudapp_frame-1.2.15",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "shakeshop_base_model.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/seven_cloudapp_frame-1.2.15/seven_cloudapp_frame-1.2.15/seven_cloudapp_frame/models/third/shakeshop_base_model.py",
+    "line_number": "68",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "67\t        if self._token:\n68\t            if self._token.get('expires_in') - int(time.time()) < 3000:\n69\t                self._refresh_token()",
+    "code_snippet": "class ShakeShopBaseModel():\n    \"\"\"\n    :description: 抖店接口业务模型(IP白名单功能说明应用IP白名单功能:开发者需在开放平台控制台提前配置可信的IP白名单，只有属于IP白名单中的IP地址访问AP接口时，平台网关才允许通过，否则调用AP 接口将被拒绝)\n    \"\"\"\n    def __init__(self, context, app_key: str, app_secret: str, app_type=\"SELF\", code=None, shop_id: str = None, auth_subject_type: str = \"MiniApp\", proxy: str = None, test_mode=False, logging_error=None, logging_info=None):\n        \"\"\"\n        :description:  初始化实例，自用型应用传入shop_id用于初始化access token，工具型应用传入code换取access token（如初始化时未传入，可以在访问抖店API之前调用init_token(code)进行token的初始化。\n        :param context: 上下文\n        :param app_key: app_key\n        :param app_secret: app_secret\n        :param app_type: app_type(SELF或TOOL)\n        :param code: code\n        :param shop_id: 店铺ID\n        :param auth_subject_type:授权主体类型，配合auth_id字段使用，YunCang -云仓；WuLiuShang -物流商；WLGongYingShang -物流供应商；MiniApp -小程序；MCN-联盟MCN机构；DouKe-联盟抖客 ；Colonel-联盟团长；\n        :param proxy: 代理\n        :param test_mode: 是否测试沙盒\n        :param logging_error: logging_error\n        :param logging_info: logging_info\n        :return \n        :last_editors: HuangJianYi\n        \"\"\"\n        self.context = context\n        self.logging_link_error = logging_error\n        self.logging_link_info = logging_info\n        self.app_key = app_key\n        self.app_secret = app_secret\n        self.app_type = app_type\n        if self.app_type == \"SELF\" and not shop_id:\n            raise Exception('shop_id不能为空')\n        self.shop_id = shop_id\n        self.auth_subject_type = auth_subject_type\n        self.proxy = proxy\n        self.test_mode = test_mode\n        if self.test_mode:\n            self._gate_way = 'https://openapi-sandbox.jinritemai.com'\n        else:\n            self._gate_way = 'https://openapi-fxg.jinritemai.com'\n        self._version = 2\n        self.redis_token_key = f\"shakeshop_access_token:{str(app_key)}_{self.test_mode}\"\n        if shop_id:\n            self.redis_token_key += f\"_{shop_id}\"\n        redis_token = SevenHelper.redis_init(config_dict=config.get_value(\"platform_redis\")).get(self.redis_token_key)\n        if redis_token:\n            redis_token = json.loads(redis_token)\n        self._token = redis_token\n        self._sign_method = 'hmac-sha256'\n        if self._token:\n            if self._token.get('expires_in') - int(time.time()) < 3000:\n                self._refresh_token()\n        else:\n            exception_message = 'assess_token获取失败，请检查配置，店铺ID:' + str(shop_id)\n            if self.app_type == \"SELF\":\n                if self.init_token() == False:\n                    raise Exception(exception_message) \n            elif self.app_type == \"TOOL\" and code:\n                if self.init_token(code) == False:\n                    raise Exception(exception_message) ",
+    "pattern_analysis": {
+      "api_sequence": [
+        "config.get_value",
+        "SevenHelper.redis_init",
+        "SevenHelper.redis_init.get",
+        "json.loads",
+        "time.time",
+        "self._refresh_token",
+        "self.init_token",
+        "self.init_token"
+      ],
+      "api_sequence_with_args": [
+        "config.get_value(\"platform_redis\")",
+        "SevenHelper.redis_init(config_dict=config.get_value(\"platform_redis\"))",
+        "SevenHelper.redis_init(config_dict=config.get_value(\"platform_redis\")).get(self.redis_token_key)",
+        "json.loads(redis_token)",
+        "time.time()",
+        "self._refresh_token()",
+        "self.init_token()",
+        "self.init_token(code)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "config.get_value",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "SevenHelper.redis_init",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "SevenHelper.redis_init.get",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "json.loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "self._refresh_token",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "self.init_token",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "self.init_token",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        }
+      ],
+      "contextual_code": "def __init__(self, context, app_key: str, app_secret: str, app_type=\"SELF\", code=None, shop_id: str = None, auth_subject_type: str = \"MiniApp\", proxy: str = None, test_mode=False, logging_error=None, logging_info=None):\n    self.context = context\n    self.logging_link_error = logging_error\n    self.logging_link_info = logging_info\n    self.app_key = app_key\n    self.app_secret = app_secret\n    self.app_type = app_type\n    if self.app_type == \"SELF\" and not shop_id:\n        raise Exception('shop_id不能为空')\n    self.shop_id = shop_id\n    self.auth_subject_type = auth_subject_type\n    self.proxy = proxy\n    self.test_mode = test_mode\n    if self.test_mode:\n        self._gate_way = 'https://openapi-sandbox.jinritemai.com'\n    else:\n        self._gate_way = 'https://openapi-fxg.jinritemai.com'\n    self._version = 2\n    self.redis_token_key = f\"shakeshop_access_token:{str(app_key)}_{self.test_mode}\"\n    if shop_id:\n        self.redis_token_key += f\"_{shop_id}\"\n    redis_token = SevenHelper.redis_init(config_dict=config.get_value(\"platform_redis\")).get(self.redis_token_key)\n    if redis_token:\n        redis_token = json.loads(redis_token)\n    self._token = redis_token\n    self._sign_method = 'hmac-sha256'\n    if self._token:\n        if self._token.get('expires_in') - int(time.time()) < 3000:\n            self._refresh_token()\n    else:\n        exception_message = 'assess_token获取失败，请检查配置，店铺ID:' + str(shop_id)\n        if self.app_type == \"SELF\":\n            if self.init_token() == False:\n                raise Exception(exception_message) \n        elif self.app_type == \"TOOL\" and code:\n            if self.init_token(code) == False:\n                raise Exception(exception_message)"
+    }
+  },
+  {
+    "pyfile": "tiktok_helper.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/seven_cloudapp_frame-1.2.15/seven_cloudapp_frame-1.2.15/seven_cloudapp_frame/libs/customize/tiktok_helper.py",
+    "line_number": "283",
+    "type_description": "B821:post",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "282\t            headers = {\"Content-type\": \"application/json\", \"access-token\": access_token}\n283\t            response = requests.post(requset_url, headers=headers, data=json.dumps(param))\n284\t            response_data = SevenHelper.json_loads(response.text)",
+    "code_snippet": "@classmethod\n    def create_qr_code(self, path=\"\", width=430, line_color={ \"r\": 0, \"g\": 0, \"b\": 0 }, background={ \"r\": 255, \"g\": 255, \"b\": 255 }, app_name=\"douyin\", set_icon=False, is_circle_code=False, app_id=\"\", app_secret=\"\"):\n        \"\"\"\n        :description:获取小程序/小游戏的二维码。该二维码可通过任意 app 扫码打开，能跳转到开发者指定的对应字节系 app 内拉起小程序/小游戏， 并传入开发者指定的参数。通过该接口生成的二维码，永久有效，暂无数量限制。\n        :param path: 小程序/小游戏启动参数，小程序则格式为 encode({path}?{query})，小游戏则格式为 JSON 字符串，默认为空\n        :param width: 二维码宽度，单位 px，最小 280px，最大 1280px，默认为 430px\n        :param line_color: 二维码线条颜色，默认为黑色\n        :param background: 二维码背景颜色，默认为白色\n        :param app_name: 打开二维码的字节系 app 名称\n        :param set_icon: 是否展示小程序/小游戏 icon，默认不展示\n        :param is_circle_code: 默认是false，是否生成抖音码，默认不生成（抖音码不支持自定义颜色）\n        :return: 图片二进制 数据类型Array<byte>\n        :last_editors: HuangJianYi\n        \"\"\"\n        app_id = app_id if app_id else share_config.get_value(\"app_id\")\n        app_secret = app_secret if app_secret else share_config.get_value(\"app_secret\")\n\n        invoke_result_data = InvokeResultData()\n        redis_init = SevenHelper.redis_init(decode_responses=False)\n        redis_key = \"create_qr_code:\" + CryptoHelper.md5_encrypt(f\"{path}\")\n        redis_value = redis_init.get(redis_key)\n        if redis_value:\n            invoke_result_data.data = redis_value\n            return invoke_result_data\n\n        for i in range(2):\n            if i == 0:\n                invoke_result_data = self.get_client_token(app_id=app_id, app_secret=app_secret)\n            else:\n                invoke_result_data = self.get_client_token(app_id=app_id, app_secret=app_secret, is_del=True)\n\n            if invoke_result_data.success == True:\n                break\n        if invoke_result_data.success == False:\n            return invoke_result_data\n        access_token = invoke_result_data.data\n        param = {\n                \"app_name\": app_name,\n                \"appid\": app_id,\n                \"path\": path,\n                \"width\": width,\n                \"line_color\": line_color,\n                \"background\": background,\n                \"set_icon\": set_icon,\n                \"is_circle_code\": is_circle_code\n                }\n        response = None\n        try:\n            requset_url = 'https://open.douyin.com/api/apps/v1/qrcode/create/'\n            headers = {\"Content-type\": \"application/json\", \"access-token\": access_token}\n            response = requests.post(requset_url, headers=headers, data=json.dumps(param))\n            response_data = SevenHelper.json_loads(response.text)\n            if response_data.__contains__(\"err_no\") and response_data[\"err_no\"] != 0:\n                invoke_result_data.success = False\n                invoke_result_data.error_code = response_data[\"err_no\"]\n                invoke_result_data.error_message = response_data[\"err_msg\"]\n                return invoke_result_data\n            if not isinstance(response_data, dict) or \"data\" not in response_data:\n                raise Exception(\"返回格式异常\")\n            if not isinstance(response_data[\"data\"], dict):\n                raise Exception(\"返回格式异常\")\n            invoke_result_data.data = response_data[\"data\"][\"img\"]\n            return invoke_result_data\n        except Exception as ex:\n            self.logger_error.error(f\"【create_qr_code】,info:{SevenHelper.json_dumps(response)},异常:{traceback.format_exc()}\")\n            invoke_result_data.success = False\n            invoke_result_data.error_code = \"exception\"\n            invoke_result_data.error_message = \"获取小程序/小游戏的二维码失败\"\n            return invoke_result_data",
+    "pattern_analysis": {
+      "api_sequence": [
+        "share_config.get_value",
+        "share_config.get_value",
+        "SevenHelper.redis_init",
+        "CryptoHelper.md5_encrypt",
+        "redis.Redis.get",
+        "self.get_client_token",
+        "self.get_client_token",
+        "requests.post",
+        "json.dumps",
+        "SevenHelper.json_loads",
+        "isinstance",
+        "isinstance",
+        "self.logger_error.error",
+        "SevenHelper.json_dumps",
+        "traceback.format_exc"
+      ],
+      "api_sequence_with_args": [
+        "share_config.get_value(\"app_id\")",
+        "share_config.get_value(\"app_secret\")",
+        "SevenHelper.redis_init(decode_responses=False)",
+        "CryptoHelper.md5_encrypt(f\"{path}\")",
+        "redis_init.get(redis_key)",
+        "self.get_client_token(app_id=app_id, app_secret=app_secret)",
+        "self.get_client_token(app_id=app_id, app_secret=app_secret, is_del=True)",
+        "requests.post(requset_url, headers=headers, data=json.dumps(param))",
+        "json.dumps(param)",
+        "SevenHelper.json_loads(response.text)",
+        "isinstance(response_data, dict)",
+        "isinstance(response_data[\"data\"], dict)",
+        "self.logger_error.error(f\"【create_qr_code】,info:{SevenHelper.json_dumps(response)},异常:{traceback.format_exc()}\")",
+        "SevenHelper.json_dumps(response)",
+        "traceback.format_exc()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "share_config.get_value",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "share_config.get_value",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "SevenHelper.redis_init",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "CryptoHelper.md5_encrypt",
+          "id": "create_md5_hash",
+          "description": "Creates MD5 hash object from encoded hostname",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "redis.Redis.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "self.get_client_token",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "self.get_client_token",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "SevenHelper.json_loads",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.logger_error.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "SevenHelper.json_dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "traceback.format_exc",
+          "id": "get_exception_info",
+          "description": "Retrieves exception information from current stack frame",
+          "first_id": "data_transformation_processing",
+          "second_id": "collection_operations",
+          "third_id": "iterator_operations"
+        }
+      ],
+      "contextual_code": "@classmethod\n    def create_qr_code(self, path=\"\", width=430, line_color={ \"r\": 0, \"g\": 0, \"b\": 0 }, background={ \"r\": 255, \"g\": 255, \"b\": 255 }, app_name=\"douyin\", set_icon=False, is_circle_code=False, app_id=\"\", app_secret=\"\"):\n        app_id = app_id if app_id else share_config.get_value(\"app_id\")\n        app_secret = app_secret if app_secret else share_config.get_value(\"app_secret\")\n\n        invoke_result_data = InvokeResultData()\n        redis_init = SevenHelper.redis_init(decode_responses=False)\n        redis_key = \"create_qr_code:\" + CryptoHelper.md5_encrypt(f\"{path}\")\n        redis_value = redis_init.get(redis_key)\n        if redis_value:\n            invoke_result_data.data = redis_value\n            return invoke_result_data\n\n        for i in range(2):\n            if i == 0:\n                invoke_result_data = self.get_client_token(app_id=app_id, app_secret=app_secret)\n            else:\n                invoke_result_data = self.get_client_token(app_id=app_id, app_secret=app_secret, is_del=True)\n\n            if invoke_result_data.success == True:\n                break\n        if invoke_result_data.success == False:\n            return invoke_result_data\n        access_token = invoke_result_data.data\n        param = {\n                \"app_name\": app_name,\n                \"appid\": app_id,\n                \"path\": path,\n                \"width\": width,\n                \"line_color\": line_color,\n                \"background\": background,\n                \"set_icon\": set_icon,\n                \"is_circle_code\": is_circle_code\n                }\n        response = None\n        try:\n            requset_url = 'https://open.douyin.com/api/apps/v1/qrcode/create/'\n            headers = {\"Content-type\": \"application/json\", \"access-token\": access_token}\n            response = requests.post(requset_url, headers=headers, data=json.dumps(param))\n            response_data = SevenHelper.json_loads(response.text)\n            if response_data.__contains__(\"err_no\") and response_data[\"err_no\"] != 0:\n                invoke_result_data.success = False\n                invoke_result_data.error_code = response_data[\"err_no\"]\n                invoke_result_data.error_message = response_data[\"err_msg\"]\n                return invoke_result_data\n            if not isinstance(response_data, dict) or \"data\" not in response_data:\n                raise Exception(\"返回格式异常\")\n            if not isinstance(response_data[\"data\"], dict):\n                raise Exception(\"返回格式异常\")\n            invoke_result_data.data = response_data[\"data\"][\"img\"]\n            return invoke_result_data\n        except Exception as ex:\n            self.logger_error.error(f\"【create_qr_code】,info:{SevenHelper.json_dumps(response)},异常:{traceback.format_exc()}\")\n            invoke_result_data.success = False\n            invoke_result_data.error_code = \"exception\"\n            invoke_result_data.error_message = \"获取小程序/小游戏的二维码失败\"\n            return invoke_result_data"
+    }
+  }
+]

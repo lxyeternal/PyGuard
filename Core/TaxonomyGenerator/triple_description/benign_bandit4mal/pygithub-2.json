@@ -1,0 +1,296 @@
+{
+  "metadata": {
+    "package_name": "pygithub-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/pygithub-2.6.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "Framework.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pygithub-2.6.1/pygithub-2.6.1/tests/Framework.py",
+      "line_number": "191",
+      "type_description": "B802:b64encode",
+      "context_snippet": "import base64\n\nclass RecordingConnection:\n    __openFile = None\n\n    @staticmethod\n    def setOpenFile(func):\n        RecordingConnection.__openFile = func\n\n    def __init__(self, protocol, host, port, *args, **kwds):\n        self.__file = self.__openFile(\"w\")\n        # write operations make the assumption that the file is not in binary mode\n        assert isinstance(self.__file, io.TextIOBase)\n        self.__protocol = protocol\n        self.__host = host\n        self.__port = port\n        self.__cnx = self._realConnection(host, port, *args, **kwds)\n        self.__stream = False\n\n    @property\n    def host(self):\n        return self.__host\n\n    def request(self, verb, url, input, headers, stream=False):\n        self.__cnx.request(verb, url, input, headers)\n        self.__stream = stream\n        # fixAuthorizationHeader changes the parameter directly to remove Authorization token.\n        # however, this is the real dictionary that *will be sent* by \"requests\",\n        # since we are writing here *before* doing the actual request.\n        # So we must avoid changing the real \"headers\" or this create this:\n        # https://github.com/PyGithub/PyGithub/pull/664#issuecomment-389964369\n        # https://github.com/PyGithub/PyGithub/issues/822\n        # Since it's dict[str, str], a simple copy is enough.\n        anonymous_headers = headers.copy()\n        fixAuthorizationHeader(anonymous_headers)\n        self.__writeLine(self.__protocol)\n        self.__writeLine(verb)\n        self.__writeLine(self.__host)\n        self.__writeLine(self.__port)\n        self.__writeLine(url)\n        self.__writeLine(anonymous_headers)\n        self.__writeLine(str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\"))\n\n    def getresponse(self):\n        res = self.__cnx.getresponse()\n\n        status = res.status\n        headers = res.getheaders()\n        output = res if self.__stream else res.read()\n\n        self.__writeLine(status)\n        self.__writeLine(list(headers))\n        if self.__stream:\n            chunks = [chunk for chunk in output.iter_content(chunk_size=64)]\n            output = b\"\".join(chunks)\n            for chunk in chunks:\n                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n            self.__writeLine(\"\")\n        else:\n            self.__writeLine(output)\n        self.__writeLine(\"\")\n\n        return FakeHttpResponse(status, headers, output)\n\n    def close(self):\n        return self.__cnx.close()\n\n    def __writeLine(self, line):\n        self.__file.write(str(line) + \"\\n\")",
+      "hash_value": "5621911d2be0daee90e55dbf13444da2",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "import base64\n\nclass RecordingConnection:\n    __openFile = None\n\n    @staticmethod\n    def setOpenFile(func):\n        RecordingConnection.__openFile = func\n\n    def __init__(self, protocol, host, port, *args, **kwds):\n        self.__file = self.__openFile(\"w\")\n        # write operations make the assumption that the file is not in binary mode\n        assert isinstance(self.__file, io.TextIOBase)\n        self.__protocol = protocol\n        self.__host = host\n        self.__port = port\n        self.__cnx = self._realConnection(host, port, *args, **kwds)\n        self.__stream = False\n\n    @property\n    def host(self):\n        return self.__host\n\n    def request(self, verb, url, input, headers, stream=False):\n        self.__cnx.request(verb, url, input, headers)\n        self.__stream = stream\n        # fixAuthorizationHeader changes the parameter directly to remove Authorization token.\n        # however, this is the real dictionary that *will be sent* by \"requests\",\n        # since we are writing here *before* doing the actual request.\n        # So we must avoid changing the real \"headers\" or this create this:\n        # https://github.com/PyGithub/PyGithub/pull/664#issuecomment-389964369\n        # https://github.com/PyGithub/PyGithub/issues/822\n        # Since it's dict[str, str], a simple copy is enough.\n        anonymous_headers = headers.copy()\n        fixAuthorizationHeader(anonymous_headers)\n        self.__writeLine(self.__protocol)\n        self.__writeLine(verb)\n        self.__writeLine(self.__host)\n        self.__writeLine(self.__port)\n        self.__writeLine(url)\n        self.__writeLine(anonymous_headers)\n        self.__writeLine(str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\"))\n\n    def getresponse(self):\n        res = self.__cnx.getresponse()\n\n        status = res.status\n        headers = res.getheaders()\n        output = res if self.__stream else res.read()\n\n        self.__writeLine(status)\n        self.__writeLine(list(headers))\n        if self.__stream:\n            chunks = [chunk for chunk in output.iter_content(chunk_size=64)]\n            output = b\"\".join(chunks)\n            for chunk in chunks:\n                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n            self.__writeLine(\"\")\n        else:\n            self.__writeLine(output)\n        self.__writeLine(\"\")\n\n        return FakeHttpResponse(status, headers, output)\n\n    def close(self):\n        return self.__cnx.close()\n\n    def __writeLine(self, line):\n        self.__file.write(str(line) + \"\\n\")",
+          "triple_sequences": [
+            {
+              "action_api": "self.__openFile()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"w\"",
+              "object_description": "File open mode string",
+              "object_id": "file_mode",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "self.__file, io.TextIOBase",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "self.__cnx.request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "verb, url, input, headers",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "headers.copy()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "headers",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "fixAuthorizationHeader()",
+              "action_description": "Adds HTTP header to request object",
+              "action_id": "add_http_header",
+              "object": "anonymous_headers",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "self.__protocol",
+              "object_description": "Protocol string",
+              "object_id": "protocol_string",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "verb",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "self.__host",
+              "object_description": "System hostname",
+              "object_id": "system_hostname",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "self.__port",
+              "object_description": "Network port number",
+              "object_id": "network_port",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "url",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "anonymous_headers",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "str.replace()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\")",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Prepare string for further processing",
+              "intention_id": "prepare_string_processing"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\")",
+              "object_description": "Command output",
+              "object_id": "command_output",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__cnx.getresponse()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "res.getheaders()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "res.read()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "status",
+              "object_description": "HTTP status code",
+              "object_id": "status_code",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "list(headers)",
+              "object_description": "HTTP request/response headers",
+              "object_id": "http_headers",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "output.iter_content()",
+              "action_description": "Iterates over response content in chunks",
+              "action_id": "iterate_response_chunks",
+              "object": "chunk_size=64",
+              "object_description": "Timeout duration value",
+              "object_id": "timeout_value",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "base64.b64encode()",
+              "action_description": "Encodes bytes to base64-encoded bytes",
+              "action_id": "encode_bytes_to_base64",
+              "object": "chunk",
+              "object_description": "Obfuscated byte string",
+              "object_id": "obfuscated_byte_string",
+              "intention_description": "Prepare base64-encoded data for transmission",
+              "intention_id": "prepare_base64_data_transmission"
+            },
+            {
+              "action_api": "str.decode()",
+              "action_description": "Decodes bytes using specified codec",
+              "action_id": "decode_bytes_codec",
+              "object": "\"ascii\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "base64.b64encode(chunk).decode(\"ascii\")",
+              "object_description": "Base64-encoded string",
+              "object_id": "base64_encoded_string",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"\"",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "output",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__writeLine()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\"\"",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "self.__cnx.close()",
+              "action_description": "Closes the socket connection",
+              "action_id": "close_socket",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Release connection resource",
+              "intention_id": "release_connection_resource"
+            },
+            {
+              "action_api": "self.__file.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "str(line) + \"\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

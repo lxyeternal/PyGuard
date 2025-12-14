@@ -1,0 +1,208 @@
+[
+  {
+    "metadata": {
+      "package_name": "py4j-0.10.9.9",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "java_gateway.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/py4j-0.10.9.9/py4j-0.10.9.9/src/py4j/java_gateway.py",
+    "line_number": "2459",
+    "type_description": "B806:sendall",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2458\t                    _garbage_collect_proxy(self.pool, obj_id)\n2459\t                    self.socket.sendall(\n2460\t                        proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n2461\t                else:",
+    "code_snippet": "class CallbackConnection(Thread):\n    \"\"\"A `CallbackConnection` receives callbacks and garbage collection\n       requests from the Java side.\n    \"\"\"\n    def __init__(\n            self, pool, input, socket_instance, gateway_client,\n            callback_server_parameters, callback_server):\n        super(CallbackConnection, self).__init__()\n        self.pool = pool\n        self.input = input\n        self.socket = socket_instance\n        self.gateway_client = gateway_client\n\n        # TODO Remove in 1.0. Take it from the callback_server directly\n        self.callback_server_parameters = callback_server_parameters\n\n        if not callback_server_parameters:\n            # TODO Remove in 1.0. This should never be the case.\n            self.callback_server_parameters = CallbackServerParameters()\n\n        self.callback_server = callback_server\n\n        self.daemon = self.callback_server_parameters.daemonize_connections\n\n    def run(self):\n        logger.info(\"Callback Connection ready to receive messages\")\n        reset = False\n        authenticated = self.callback_server_parameters.auth_token is None\n        try:\n            while True:\n                command = smart_decode(self.input.readline())[:-1]\n                if not authenticated:\n                    token = self.callback_server_parameters.auth_token\n                    # Will raise an exception if auth fails in any way.\n                    authenticated = do_client_auth(\n                        command, self.input, self.socket, token)\n                    continue\n\n                obj_id = smart_decode(self.input.readline())[:-1]\n                logger.info(\n                    \"Received command {0} on object id {1}\".\n                    format(command, obj_id))\n                if obj_id is None or len(obj_id.strip()) == 0:\n                    break\n                if command == proto.CALL_PROXY_COMMAND_NAME:\n                    return_message = self._call_proxy(obj_id, self.input)\n                    self.socket.sendall(return_message.encode(\"utf-8\"))\n                elif command == proto.GARBAGE_COLLECT_PROXY_COMMAND_NAME:\n                    self.input.readline()\n                    _garbage_collect_proxy(self.pool, obj_id)\n                    self.socket.sendall(\n                        proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n                else:\n                    logger.error(\"Unknown command {0}\".format(command))\n                    # We're sending something to prevent blokincg, but at this\n                    # point, the protocol is broken.\n                    self.socket.sendall(\n                        proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\"))\n        except Py4JAuthenticationError:\n            reset = True\n            logger.exception(\"Could not authenticate connection.\")\n        except socket.timeout:\n            reset = True\n            logger.info(\n                \"Timeout while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        except Exception:\n            # This is a normal exception...\n            logger.info(\n                \"Error while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        self.close(reset)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "logger.info",
+        "self.input.readline",
+        "smart_decode",
+        "self.callback_server_parameters.auth_token",
+        "do_client_auth",
+        "self.input.readline",
+        "smart_decode",
+        "logger.info",
+        "self.socket.sendall",
+        "self.input.readline",
+        "_garbage_collect_proxy",
+        "self.socket.sendall",
+        "logger.error",
+        "self.socket.sendall",
+        "logger.exception",
+        "logger.info",
+        "logger.info",
+        "self.close"
+      ],
+      "api_sequence_with_args": [
+        "logger.info(\"Callback Connection ready to receive messages\")",
+        "self.input.readline()",
+        "smart_decode(self.input.readline())[:-1]",
+        "self.callback_server_parameters.auth_token",
+        "do_client_auth(command, self.input, self.socket, token)",
+        "self.input.readline()",
+        "smart_decode(self.input.readline())[:-1]",
+        "logger.info(\"Received command {0} on object id {1}\".format(command, obj_id))",
+        "self.socket.sendall(return_message.encode(\"utf-8\"))",
+        "self.input.readline()",
+        "_garbage_collect_proxy(self.pool, obj_id)",
+        "self.socket.sendall(proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))",
+        "logger.error(\"Unknown command {0}\".format(command))",
+        "self.socket.sendall(proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\"))",
+        "logger.exception(\"Could not authenticate connection.\")",
+        "logger.info(\"Timeout while callback connection was waiting for\" \"a message\", exc_info=True)",
+        "logger.info(\"Error while callback connection was waiting for\" \"a message\", exc_info=True)",
+        "self.close(reset)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.input.readline",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "smart_decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "self.callback_server_parameters.auth_token",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "do_client_auth",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.input.readline",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "smart_decode",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self.input.readline",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "_garbage_collect_proxy",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "self.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "logger.error",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "logger.exception",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "logger.info",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "self.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def run(self):\n    logger.info(\"Callback Connection ready to receive messages\")\n    reset = False\n    authenticated = self.callback_server_parameters.auth_token is None\n    try:\n        while True:\n            command = smart_decode(self.input.readline())[:-1]\n            if not authenticated:\n                token = self.callback_server_parameters.auth_token\n                authenticated = do_client_auth(\n                    command, self.input, self.socket, token)\n                continue\n\n            obj_id = smart_decode(self.input.readline())[:-1]\n            logger.info(\n                \"Received command {0} on object id {1}\".\n                format(command, obj_id))\n            if obj_id is None or len(obj_id.strip()) == 0:\n                break\n            if command == proto.CALL_PROXY_COMMAND_NAME:\n                return_message = self._call_proxy(obj_id, self.input)\n                self.socket.sendall(return_message.encode(\"utf-8\"))\n            elif command == proto.GARBAGE_COLLECT_PROXY_COMMAND_NAME:\n                self.input.readline()\n                _garbage_collect_proxy(self.pool, obj_id)\n                self.socket.sendall(\n                    proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n            else:\n                logger.error(\"Unknown command {0}\".format(command))\n                self.socket.sendall(\n                    proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\"))\n    except Py4JAuthenticationError:\n        reset = True\n        logger.exception(\"Could not authenticate connection.\")\n    except socket.timeout:\n        reset = True\n        logger.info(\n            \"Timeout while callback connection was waiting for\"\n            \"a message\", exc_info=True)\n    except Exception:\n        logger.info(\n            \"Error while callback connection was waiting for\"\n            \"a message\", exc_info=True)\n    self.close(reset)"
+    }
+  }
+]

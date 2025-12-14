@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import logging\nimport os\nimport stat\n\nfrom setuptools import find_packages, setup\nfrom setuptools.command.install import install\n\nimport speech_recognition\n\nlogger = logging.getLogger(\"SpeechRecognition.setup\")\n\nFILES_TO_MARK_EXECUTABLE = [\"flac-linux-x86\", \"flac-linux-x86_64\", \"flac-mac\", \"flac-win32.exe\"]\n\nclass InstallWithExtraSteps(install):\n    def run(self):\n        install.run(self)  # do the original install steps\n\n        # mark the FLAC executables as executable by all users (this fixes occasional issues when file permissions get messed up)\n        for output_path in self.get_outputs():\n            if os.path.basename(output_path) in FILES_TO_MARK_EXECUTABLE:\n                logger.info(\"setting executable permissions on %s\", output_path)\n                stat_info = os.stat(output_path)\n                OWNER_CAN_READ_EXECUTE = stat.S_IRUSR | stat.S_IXUSR\n                GROUP_CAN_READ_EXECUTE = stat.S_IRGRP | stat.S_IXGRP\n                OTHERS_CAN_READ_EXECUTE = stat.S_IROTH | stat.S_IXOTH\n                os.chmod(\n                    output_path,\n                    stat_info.st_mode\n                    | OWNER_CAN_READ_EXECUTE\n                    | GROUP_CAN_READ_EXECUTE\n                    | OTHERS_CAN_READ_EXECUTE,\n                )\n\nsetup(\n    name=\"SpeechRecognition\",\n    version=speech_recognition.__version__,\n    packages=find_packages(exclude=[\"tests.*\", \"test\"]),\n    include_package_data=True,\n    cmdclass={\"install\": InstallWithExtraSteps},\n\n    # PyPI metadata\n    author=speech_recognition.__author__,\n    author_email=\"azhang9@gmail.com\",\n    description=speech_recognition.__doc__,\n    long_description=open(\"README.rst\").read(),\n    long_description_content_type=\"text/x-rst\",\n    license=speech_recognition.__license__,\n    keywords=\"speech recognition voice sphinx google wit bing api houndify ibm snowboy\",\n    url=\"https://github.com/Uberi/speech_recognition#readme\",\n    classifiers=[\n        \"Development Status :: 5 - Production/Stable\",\n        \"Intended Audience :: Developers\",\n        \"Natural Language :: English\",\n        \"License :: OSI Approved :: BSD License\",\n        \"Operating System :: Microsoft :: Windows\",\n        \"Operating System :: POSIX :: Linux\",\n        \"Operating System :: MacOS :: MacOS X\",\n        \"Operating System :: Other OS\",\n        \"Programming Language :: Python\",\n        \"Programming Language :: Python :: 3\",\n        \"Programming Language :: Python :: 3.9\",\n        \"Programming Language :: Python :: 3.10\",\n        \"Programming Language :: Python :: 3.11\",\n        \"Programming Language :: Python :: 3.12\",\n        \"Topic :: Software Development :: Libraries :: Python Modules\",\n        \"Topic :: Multimedia :: Sound/Audio :: Speech\",\n    ],\n    python_requires=\">=3.9\",\n    install_requires=[\n        \"typing-extensions\",\n        \"standard-aifc; python_version>='3.13'\",\n        \"audioop-lts; python_version>='3.13'\",\n    ],\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.basename",
+        "os.stat",
+        "os.chmod",
+        "open",
+        "read"
+      ],
+      "api_sequence_with_args": [
+        "os.path.basename(output_path)",
+        "os.stat(output_path)",
+        "os.chmod(output_path, stat_info.st_mode | OWNER_CAN_READ_EXECUTE | GROUP_CAN_READ_EXECUTE | OTHERS_CAN_READ_EXECUTE)",
+        "open(\"README.rst\")",
+        "read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chmod",
+          "id": "change_file_mode_execute",
+          "description": "Changes file mode to add execute permission",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "class InstallWithExtraSteps(install):\n    def run(self):\n        install.run(self)\n        for output_path in self.get_outputs():\n            if os.path.basename(output_path) in FILES_TO_MARK_EXECUTABLE:\n                logger.info(\"setting executable permissions on %s\", output_path)\n                stat_info = os.stat(output_path)\n                OWNER_CAN_READ_EXECUTE = stat.S_IRUSR | stat.S_IXUSR\n                GROUP_CAN_READ_EXECUTE = stat.S_IRGRP | stat.S_IXGRP\n                OTHERS_CAN_READ_EXECUTE = stat.S_IROTH | stat.S_IXOTH\n                os.chmod(\n                    output_path,\n                    stat_info.st_mode\n                    | OWNER_CAN_READ_EXECUTE\n                    | GROUP_CAN_READ_EXECUTE\n                    | OTHERS_CAN_READ_EXECUTE,\n                )\n\nsetup(\n    ...\n    long_description=open(\"README.rst\").read(),\n    ...\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "speechrecognition-3.14.2",
+      "total_matches": 1
+    }
+  }
+]

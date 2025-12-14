@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "py4j-0.10.9.9",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "java_gateway.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/py4j-0.10.9.9/py4j-0.10.9.9/src/py4j/java_gateway.py",
+    "line_number": "2459",
+    "type_description": "B806:sendall",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2458\t                    _garbage_collect_proxy(self.pool, obj_id)\n2459\t                    self.socket.sendall(\n2460\t                        proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n2461\t                else:",
+    "context_snippet": "class CallbackConnection(Thread):\n    \"\"\"A `CallbackConnection` receives callbacks and garbage collection\n       requests from the Java side.\n    \"\"\"\n    def __init__(\n            self, pool, input, socket_instance, gateway_client,\n            callback_server_parameters, callback_server):\n        super(CallbackConnection, self).__init__()\n        self.pool = pool\n        self.input = input\n        self.socket = socket_instance\n        self.gateway_client = gateway_client\n\n        # TODO Remove in 1.0. Take it from the callback_server directly\n        self.callback_server_parameters = callback_server_parameters\n\n        if not callback_server_parameters:\n            # TODO Remove in 1.0. This should never be the case.\n            self.callback_server_parameters = CallbackServerParameters()\n\n        self.callback_server = callback_server\n\n        self.daemon = self.callback_server_parameters.daemonize_connections\n\n    def run(self):\n        logger.info(\"Callback Connection ready to receive messages\")\n        reset = False\n        authenticated = self.callback_server_parameters.auth_token is None\n        try:\n            while True:\n                command = smart_decode(self.input.readline())[:-1]\n                if not authenticated:\n                    token = self.callback_server_parameters.auth_token\n                    # Will raise an exception if auth fails in any way.\n                    authenticated = do_client_auth(\n                        command, self.input, self.socket, token)\n                    continue\n\n                obj_id = smart_decode(self.input.readline())[:-1]\n                logger.info(\n                    \"Received command {0} on object id {1}\".\n                    format(command, obj_id))\n                if obj_id is None or len(obj_id.strip()) == 0:\n                    break\n                if command == proto.CALL_PROXY_COMMAND_NAME:\n                    return_message = self._call_proxy(obj_id, self.input)\n                    self.socket.sendall(return_message.encode(\"utf-8\"))\n                elif command == proto.GARBAGE_COLLECT_PROXY_COMMAND_NAME:\n                    self.input.readline()\n                    _garbage_collect_proxy(self.pool, obj_id)\n                    self.socket.sendall(\n                        proto.SUCCESS_RETURN_MESSAGE.encode(\"utf-8\"))\n                else:\n                    logger.error(\"Unknown command {0}\".format(command))\n                    # We're sending something to prevent blokincg, but at this\n                    # point, the protocol is broken.\n                    self.socket.sendall(\n                        proto.ERROR_RETURN_MESSAGE.encode(\"utf-8\"))\n        except Py4JAuthenticationError:\n            reset = True\n            logger.exception(\"Could not authenticate connection.\")\n        except socket.timeout:\n            reset = True\n            logger.info(\n                \"Timeout while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        except Exception:\n            # This is a normal exception...\n            logger.info(\n                \"Error while callback connection was waiting for\"\n                \"a message\", exc_info=True)\n        self.close(reset)\n",
+    "hash_value": "2cd4b082efaf6386185d2efc160bc1b6"
+  }
+]

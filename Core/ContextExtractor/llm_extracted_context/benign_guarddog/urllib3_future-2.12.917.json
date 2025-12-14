@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "urllib3_future-2.12.917",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/urllib3_future-2.12.917.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "noxfile.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urllib3_future-2.12.917/urllib3_future-2.12.917/noxfile.py",
+    "line_number": "143",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "r = urlopen(\nRequest(\nf\"http://{traefik_ipv4}:8888/get\",\nheaders={\"Host\": \"httpbin.local\"},\n),\ntimeout=1.0,\n)",
+    "context_snippet": "from urllib.error import HTTPError, URLError\nfrom urllib.request import Request, urlopen\nfrom http.client import RemoteDisconnected\nfrom socket import timeout as SocketTimeout\nimport time\n\n@contextlib.contextmanager\ndef traefik_boot(\n    session: nox.Session, *args: str\n) -> typing.Generator[None, None, None]:\n    ...\n    traefik_ipv4 = os.environ.get(\"TRAEFIK_HTTPBIN_IPV4\", \"127.0.0.1\")\n    ...\n    try:\n        session.log(\"Attempt to start Traefik with go-httpbin[...]\")\n        ...\n        dc_process.wait()\n    except OSError as e:\n        session.warn(\n            f\"Traefik server cannot be run due to an error with containers: {e}\"\n        )\n    else:\n        session.log(\"Traefik server is starting[...]\")\n\n        i = 0\n\n        while True:\n            if i >= 120:\n                if not dc_v1_legacy:\n                    subprocess.Popen(\n                        [\n                            \"docker\",\n                            \"compose\",\n                            \"-f\",\n                            \"docker-compose.win.yaml\",\n                            \"logs\",\n                            \"--tail=128\",\n                        ]\n                    )\n\n                raise TimeoutError(\n                    \"Error while waiting for the Traefik server (timeout/readiness)\"\n                )\n\n            try:\n                r = urlopen(\n                    Request(\n                        f\"http://{traefik_ipv4}:8888/get\",\n                        headers={\"Host\": \"httpbin.local\"},\n                    ),\n                    timeout=1.0,\n                )\n            except (\n                HTTPError,\n                URLError,\n                RemoteDisconnected,\n                TimeoutError,\n                SocketTimeout,\n                ConnectionError,\n            ) as e:\n                i += 1\n                time.sleep(1)\n                session.log(f\"Waiting for the Traefik server: {e}...\")\n                continue\n\n            if int(r.status) == 200:\n                break\n\n        session.log(\"Traefik server is ready to accept connections[...]\")\n        external_stack_started = True\n\n    yield\n\n    if external_stack_started:\n        if dc_v1_legacy:\n            dc_process = subprocess.Popen([\"docker-compose\", \"stop\"])\n        else:\n            dc_process = subprocess.Popen([\"docker\", \"compose\", \"stop\"])\n\n        dc_process.wait()",
+    "hash_value": "19a1de7ae57593e61c853640772e4547",
+    "detection_index": 1
+  }
+]

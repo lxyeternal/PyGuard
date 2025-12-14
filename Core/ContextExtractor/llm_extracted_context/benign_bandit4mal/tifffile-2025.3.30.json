@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "tifffile-2025.3.30",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_tifffile.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tifffile-2025.3.30/tifffile-2025.3.30/tests/test_tifffile.py",
+    "line_number": "17906",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "17905\n17906\t        imwrite(\n17907\t            fname,\n17908\t            strips(),\n17909\t            shape=data.shape,\n17910\t            dtype=data.dtype,\n17911\t            rowsperstrip=rowsperstrip,\n17912\t            compression=compression,\n17913\t            planarconfig='separate',\n17914\t            photometric='rgb',\n17915\t        )",
+    "context_snippet": "def test_issue_write_separated():\n    \"\"\"Test write SEPARATED colorspace.\"\"\"\n    # https://github.com/cgohlke/tifffile/issues/37\n    contig = random_data(numpy.uint8, (63, 95, 4))\n    separate = random_data(numpy.uint8, (4, 63, 95))\n    extrasample = random_data(numpy.uint8, (63, 95, 5))\n    with TempFileName('issue_write_separated') as fname:\n        with TiffWriter(fname) as tif:\n            tif.write(contig, photometric=PHOTOMETRIC.SEPARATED)\n            tif.write(separate, photometric=PHOTOMETRIC.SEPARATED)\n            tif.write(\n                extrasample,\n                photometric=PHOTOMETRIC.SEPARATED,\n                extrasamples=[1],\n            )\n        assert_valid_tiff(fname)\n        with TiffFile(fname) as tif:\n            assert len(tif.pages) == 3\n            assert len(tif.series) == 3\n            page = tif.pages.first\n            assert page.photometric == PHOTOMETRIC.SEPARATED\n            assert_array_equal(page.asarray(), contig)\n            page = tif.pages[1]\n            assert page.photometric == PHOTOMETRIC.SEPARATED\n            assert_array_equal(page.asarray(), separate)\n            page = tif.pages[2]\n            assert page.photometric == PHOTOMETRIC.SEPARATED\n            assert page.extrasamples == (1,)\n            assert_array_equal(page.asarray(), extrasample)",
+    "hash_value": "32d4447ef4434f40c32d3e49bbe7bafc"
+  },
+  {
+    "pyfile": "test_tifffile.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tifffile-2025.3.30/tifffile-2025.3.30/tests/test_tifffile.py",
+    "line_number": "1741",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1740\t        ijmeta['axes'] = 'ZYX'\n1741\t        imwrite(fname, data, imagej=True, colormap=colormap, metadata=ijmeta)\n1742",
+    "context_snippet": "@pytest.mark.skipif(SKIP_PRIVATE, reason=REASON)\ndef test_issue_imagej_prop():\n    \"\"\"Test read and write ImageJ prop metadata type.\"\"\"\n    # https://github.com/cgohlke/tifffile/issues/103\n    # also test write indexed ImageJ file\n\n    fname = private_file('issues/triple-sphere-big-distance=035.tif')\n    with tifffile.TiffFile(fname) as tif:\n        assert tif.is_imagej\n        ijmeta = tif.imagej_metadata\n        assert ijmeta is not None\n        prop = ijmeta['Properties']\n        assert ijmeta['slices'] == 500\n        assert not ijmeta['loop']\n        assert prop['CurrentLUT'] == 'glasbey_on_dark'\n        assert tif.pages.first.photometric == PHOTOMETRIC.PALETTE\n        colormap = tif.pages.first.colormap\n        data = tif.asarray()\n\n    prop['Test'] = 0.1\n    with TempFileName('issue_imagej_prop') as fname:\n        ijmeta['axes'] = 'ZYX'\n        imwrite(fname, data, imagej=True, colormap=colormap, metadata=ijmeta)\n\n    with tifffile.TiffFile(fname) as tif:\n        assert tif.is_imagej\n        ijmeta = tif.imagej_metadata\n        assert ijmeta is not None\n        prop = ijmeta['Properties']\n        assert ijmeta['slices'] == 500\n        assert not ijmeta['loop']\n        assert prop['CurrentLUT'] == 'glasbey_on_dark'\n        assert prop['Test'] == '0.1'\n        assert tif.pages.first.photometric == PHOTOMETRIC.PALETTE\n        colormap = tif.pages.first.colormap\n        image = tif.asarray()\n        assert_array_equal(image, data)\n",
+    "hash_value": "2317cc1d78f216d287e94eda6f07c446"
+  }
+]

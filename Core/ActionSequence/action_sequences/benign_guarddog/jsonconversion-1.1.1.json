@@ -1,0 +1,121 @@
+[
+  {
+    "pyfile": "conversion.py",
+    "code_snippet": "import sys\nfrom pydoc import locate, ErrorDuringImport\nfrom inspect import isclass\n\nfrom jsonconversion import basestring, builtins, PY2_BUILTINS_STR, PY3_BUILTINS_STR\n\n\ndef string2type(string_value):\n    \"\"\"Converts a string into a type or class\n\n    :param string_value: the string to be converted, e.g. \"int\"\n    :return: The type derived from string_value, e.g. int\n    \"\"\"\n    # If the parameter is already a type, return it\n    if isinstance(string_value, type) or isclass(string_value):\n        return string_value\n\n    # Special case, which cannot be handled otherwise\n    if string_value.endswith('NoneType'):\n        return type(None)\n\n    # Get object associated with string\n    # First check whether we are having a built in type (int, str, etc)\n    if hasattr(builtins, string_value):\n        obj = getattr(builtins, string_value)\n        if type(obj) is type:\n            return obj\n\n    if isinstance(string_value, basestring) and '.' in string_value:\n        return get_class_from_qualified_name(string_value)\n\n    # If not, try to locate the module\n    try:\n        obj = locate(string_value)\n    except ErrorDuringImport as e:\n        raise ValueError(\"Unknown type '{0}'\".format(e))\n\n    # Check whether object is a type\n    if type(obj) is type:\n        return locate(string_value)\n\n    # Check whether object is a class\n    if isclass(obj):\n        return obj\n\n    # Raise error if none is the case\n    raise ValueError(\"Unknown type '{0}'\".format(string_value))\n\n\ndef get_class_from_qualified_name(qualified_name):\n    parts = qualified_name.split('.')\n    module_name = \".\".join(parts[:-1])\n    # First ensure, that the module is imported\n    if module_name in ['builtins', '__builtin__']:\n        cls = builtins\n    else:\n        cls = __import__(module_name)\n    # Find nested class\n    for comp in parts[1:]:\n        cls = getattr(cls, comp)\n    return cls\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "inspect.isclass",
+        "hasattr",
+        "getattr",
+        "isinstance",
+        "get_class_from_qualified_name",
+        "pydoc.locate",
+        "type",
+        "pydoc.locate",
+        "inspect.isclass"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(string_value, type)",
+        "inspect.isclass(string_value)",
+        "hasattr(builtins, string_value)",
+        "getattr(builtins, string_value)",
+        "isinstance(string_value, basestring)",
+        "get_class_from_qualified_name(string_value)",
+        "pydoc.locate(string_value)",
+        "type(obj)",
+        "pydoc.locate(string_value)",
+        "inspect.isclass(obj)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "inspect.isclass",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "get_class_from_qualified_name",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "pydoc.locate",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "type",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "pydoc.locate",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "inspect.isclass",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "from pydoc import locate, ErrorDuringImport\nfrom inspect import isclass\nfrom jsonconversion import basestring, builtins, PY2_BUILTINS_STR, PY3_BUILTINS_STR\n\ndef string2type(string_value):\n    if isinstance(string_value, type) or isclass(string_value):\n        return string_value\n    if string_value.endswith('NoneType'):\n        return type(None)\n    if hasattr(builtins, string_value):\n        obj = getattr(builtins, string_value)\n        if type(obj) is type:\n            return obj\n    if isinstance(string_value, basestring) and '.' in string_value:\n        return get_class_from_qualified_name(string_value)\n    try:\n        obj = locate(string_value)\n    except ErrorDuringImport as e:\n        raise ValueError(\"Unknown type '{0}'\".format(e))\n    if type(obj) is type:\n        return locate(string_value)\n    if isclass(obj):\n        return obj\n    raise ValueError(\"Unknown type '{0}'\".format(string_value))\n\ndef get_class_from_qualified_name(qualified_name):\n    parts = qualified_name.split('.')\n    module_name = \".\".join(parts[:-1])\n    if module_name in ['builtins', '__builtin__']:\n        cls = builtins\n    else:\n        cls = __import__(module_name)\n    for comp in parts[1:]:\n        cls = getattr(cls, comp)\n    return cls"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "jsonconversion-1.1.1",
+      "total_matches": 1
+    }
+  }
+]

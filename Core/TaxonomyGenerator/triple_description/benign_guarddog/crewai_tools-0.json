@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "package_name": "crewai_tools-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/crewai_tools-0.40.1.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "brave_search_tool.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/crewai_tools-0.40.1/crewai_tools-0.40.1/crewai_tools/tools/brave_search_tool/brave_search_tool.py",
+      "line_number": "87",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "import datetime\nimport os\nimport time\nfrom typing import Any, ClassVar, Optional, Type\n\nimport requests\nfrom crewai.tools import BaseTool\nfrom pydantic import BaseModel, Field\n\n\ndef _save_results_to_file(content: str) -> None:\n    \"\"\"Saves the search results to a file.\"\"\"\n    filename = f\"search_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt\"\n    with open(filename, \"w\") as file:\n        file.write(content)\n    print(f\"Results saved to {filename}\")\n\n\nclass BraveSearchToolSchema(BaseModel):\n    \"\"\"Input for BraveSearchTool.\"\"\"\n\n    search_query: str = Field(\n        ..., description=\"Mandatory search query you want to use to search the internet\"\n    )\n\n\nclass BraveSearchTool(BaseTool):\n    \"\"\"\n    BraveSearchTool - A tool for performing web searches using the Brave Search API.\n\n    This module provides functionality to search the internet using Brave's Search API,\n    supporting customizable result counts and country-specific searches.\n\n    Dependencies:\n        - requests\n        - pydantic\n        - python-dotenv (for API key management)\n    \"\"\"\n\n    name: str = \"Brave Web Search the internet\"\n    description: str = (\n        \"A tool that can be used to search the internet with a search_query.\"\n    )\n    args_schema: Type[BaseModel] = BraveSearchToolSchema\n    search_url: str = \"https://api.search.brave.com/res/v1/web/search\"\n    country: Optional[str] = \"\"\n    n_results: int = 10\n    save_file: bool = False\n    _last_request_time: ClassVar[float] = 0\n    _min_request_interval: ClassVar[float] = 1.0  # seconds\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        if \"BRAVE_API_KEY\" not in os.environ:\n            raise ValueError(\n                \"BRAVE_API_KEY environment variable is required for BraveSearchTool\"\n            )\n\n    def _run(\n        self,\n        **kwargs: Any,\n    ) -> Any:\n        current_time = time.time()\n        if (current_time - self._last_request_time) < self._min_request_interval:\n            time.sleep(\n                self._min_request_interval - (current_time - self._last_request_time)\n            )\n        BraveSearchTool._last_request_time = time.time()\n        try:\n            search_query = kwargs.get(\"search_query\") or kwargs.get(\"query\")\n            if not search_query:\n                raise ValueError(\"Search query is required\")\n\n            save_file = kwargs.get(\"save_file\", self.save_file)\n            n_results = kwargs.get(\"n_results\", self.n_results)\n\n            payload = {\"q\": search_query, \"count\": n_results}\n\n            if self.country != \"\":\n                payload[\"country\"] = self.country\n\n            headers = {\n                \"X-Subscription-Token\": os.environ[\"BRAVE_API_KEY\"],\n                \"Accept\": \"application/json\",\n            }\n\n            response = requests.get(self.search_url, headers=headers, params=payload)\n            response.raise_for_status()  # Handle non-200 responses\n            results = response.json()\n\n            if \"web\" in results:\n                results = results[\"web\"][\"results\"]\n                string = []\n                for result in results:\n                    try:\n                        string.append(\n                            \"\\n\".join(\n                                [\n                                    f\"Title: {result['title']}\",\n                                    f\"Link: {result['url']}\",\n                                    f\"Snippet: {result['description']}\",\n                                    \"---\",\n                                ]\n                            )\n                        )\n                    except KeyError:\n                        continue\n\n            content = \"\\n\".join(string)\n        except requests.RequestException as e:\n            return f\"Error performing search: {str(e)}\"\n        except KeyError as e:\n            return f\"Error parsing search results: {str(e)}\"\n        if save_file:\n            _save_results_to_file(content)\n            return f\"\\nSearch results: {content}\\n\"\n        else:\n            return content",
+      "hash_value": "467099438ffc5e58ee7ce793e0d4bf5d",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "import datetime\nimport os\nimport time\nfrom typing import Any, ClassVar, Optional, Type\n\nimport requests\nfrom crewai.tools import BaseTool\nfrom pydantic import BaseModel, Field\n\n\ndef _save_results_to_file(content: str) -> None:\n    \"\"\"Saves the search results to a file.\"\"\"\n    filename = f\"search_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt\"\n    with open(filename, \"w\") as file:\n        file.write(content)\n    print(f\"Results saved to {filename}\")\n\n\nclass BraveSearchToolSchema(BaseModel):\n    \"\"\"Input for BraveSearchTool.\"\"\"\n\n    search_query: str = Field(\n        ..., description=\"Mandatory search query you want to use to search the internet\"\n    )\n\n\nclass BraveSearchTool(BaseTool):\n    \"\"\"\n    BraveSearchTool - A tool for performing web searches using the Brave Search API.\n\n    This module provides functionality to search the internet using Brave's Search API,\n    supporting customizable result counts and country-specific searches.\n\n    Dependencies:\n        - requests\n        - pydantic\n        - python-dotenv (for API key management)\n    \"\"\"\n\n    name: str = \"Brave Web Search the internet\"\n    description: str = (\n        \"A tool that can be used to search the internet with a search_query.\"\n    )\n    args_schema: Type[BaseModel] = BraveSearchToolSchema\n    search_url: str = \"https://api.search.brave.com/res/v1/web/search\"\n    country: Optional[str] = \"\"\n    n_results: int = 10\n    save_file: bool = False\n    _last_request_time: ClassVar[float] = 0\n    _min_request_interval: ClassVar[float] = 1.0  # seconds\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        if \"BRAVE_API_KEY\" not in os.environ:\n            raise ValueError(\n                \"BRAVE_API_KEY environment variable is required for BraveSearchTool\"\n            )\n\n    def _run(\n        self,\n        **kwargs: Any,\n    ) -> Any:\n        current_time = time.time()\n        if (current_time - self._last_request_time) < self._min_request_interval:\n            time.sleep(\n                self._min_request_interval - (current_time - self._last_request_time)\n            )\n        BraveSearchTool._last_request_time = time.time()\n        try:\n            search_query = kwargs.get(\"search_query\") or kwargs.get(\"query\")\n            if not search_query:\n                raise ValueError(\"Search query is required\")\n\n            save_file = kwargs.get(\"save_file\", self.save_file)\n            n_results = kwargs.get(\"n_results\", self.n_results)\n\n            payload = {\"q\": search_query, \"count\": n_results}\n\n            if self.country != \"\":\n                payload[\"country\"] = self.country\n\n            headers = {\n                \"X-Subscription-Token\": os.environ[\"BRAVE_API_KEY\"],\n                \"Accept\": \"application/json\",\n            }\n\n            response = requests.get(self.search_url, headers=headers, params=payload)\n            response.raise_for_status()  # Handle non-200 responses\n            results = response.json()\n\n            if \"web\" in results:\n                results = results[\"web\"][\"results\"]\n                string = []\n                for result in results:\n                    try:\n                        string.append(\n                            \"\\n\".join(\n                                [\n                                    f\"Title: {result['title']}\",\n                                    f\"Link: {result['url']}\",\n                                    f\"Snippet: {result['description']}\",\n                                    \"---\",\n                                ]\n                            )\n                        )\n                    except KeyError:\n                        continue\n\n            content = \"\\n\".join(string)\n        except requests.RequestException as e:\n            return f\"Error performing search: {str(e)}\"\n        except KeyError as e:\n            return f\"Error parsing search results: {str(e)}\"\n        if save_file:\n            _save_results_to_file(content)\n            return f\"\\nSearch results: {content}\\n\"\n        else:\n            return content",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.__contains__()",
+              "action_description": "Checks if specified path exists in filesystem",
+              "action_id": "check_path_exists",
+              "object": "BRAVE_API_KEY",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Determine presence of valid authentication",
+              "intention_id": "determine_valid_authentication_presence"
+            },
+            {
+              "action_api": "os.environ.__getitem__()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "BRAVE_API_KEY",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "time.time()",
+              "action_description": "Returns current time",
+              "action_id": "get_current_time",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Get datetime epoch",
+              "intention_id": "get_datetime_epoch"
+            },
+            {
+              "action_api": "time.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "self._min_request_interval - (current_time - self._last_request_time)",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Delay next operation",
+              "intention_id": "delay_next_operation"
+            },
+            {
+              "action_api": "requests.get()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "self.search_url, headers=headers, params=payload",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "response.raise_for_status()",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "response.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "datetime.now().strftime()",
+              "action_description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+              "action_id": "path_string_operations",
+              "object": "'%Y-%m-%d_%H-%M-%S'",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare file for writing",
+              "intention_id": "prepare_file_writing"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "filename, \"w\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "file.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "content",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

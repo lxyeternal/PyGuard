@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "azureml_rag-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/azureml_rag-0.2.38-py3-none-any.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "models.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/azureml_rag-0.2.38-py3-none-any/azureml/rag/models.py",
+      "line_number": "162",
+      "type_description": "B820:get",
+      "context_snippet": "def init_open_ai_from_config(config: dict, credential: Optional[TokenCredential] = None) -> dict:\n    \"\"\"Initialize an OpenAI model from a configuration dictionary.\"\"\"\n    import openai\n\n    logger.debug(\"OpenAI arguments: \\n\")\n    logger.debug(\n        \"\\n\".join(f\"{k}={v}\" if k != \"key\" and k != \"api_key\" else f\"{k}=[REDACTED]\" for k, v in config.items())\n    )\n\n    try:\n        if config.get(\"key\") is not None:\n            config[\"api_key\"] = config.get(\"key\")\n        elif \"connection_type\" not in config:\n            if config.get(\"api_key\") is None:\n                config[\"api_key\"] = os.environ.get(\"OPENAI_API_KEY\", None)\n            if config[\"api_key\"] is None and \"azure\" in config[\"api_type\"]:\n                credential = get_default_azure_credential() if credential is None else credential\n                config[\"api_key\"] = credential.get_token(\"https://cognitiveservices.azure.com/.default\").token\n                config[\"api_type\"] = \"azure_ad\"\n        else:\n            if config[\"connection_type\"] == \"workspace_connection\":\n                connection_id = config.get(\"connection\", {}).get(\"id\", \"\")\n                connection = get_connection_by_id_v2(connection_id, credential=credential)\n                # Only change base, version, and type in AOAI case\n                if hasattr(connection, \"type\"):\n                    if connection.type == \"azure_open_ai\":\n                        config[\"api_base\"] = (\n                            connection.target[:-1] if connection.target.endswith(\"/\") else connection.target\n                        )\n                        config[\"api_version\"] = (\n                            connection.api_version\n                            if hasattr(connection, \"api_version\") and connection.api_version is not None\n                            else \"2023-03-15-preview\"\n                        )\n                        config[\"api_type\"] = (\n                            connection.api_type\n                            if hasattr(connection, \"api_type\") and connection.api_type is not None\n                            else \"azure\"\n                        )\n                elif (\n                    isinstance(connection, dict)\n                    and connection.get(\"properties\", {}).get(\"category\", None) == \"AzureOpenAI\"\n                ):\n                    config[\"api_base\"] = connection.get(\"properties\", {}).get(\"target\")\n                    connection_metadata = connection.get(\"properties\", {}).get(\"metadata\", {})\n                    config[\"api_version\"] = connection_metadata.get(\n                        \"apiVersion\", connection_metadata.get(\"ApiVersion\", \"2023-03-15-preview\")\n                    )\n                    config[\"api_type\"] = connection_metadata.get(\n                        \"apiType\", connection_metadata.get(\"ApiType\", \"azure\")\n                    ).lower()\n\n                conn_credential = connection_to_credential(\n                    connection=connection, credential=credential, data_plane=True\n                )\n\n            else:\n                conn_credential = get_connection_credential(config, credential, data_plane=True)\n\n            if not hasattr(conn_credential, \"key\"):\n                # Add hack to check for \"BAKER-OPENAI-API-KEY\"\n                if config.get(\"connection_type\", \"workspace_keyvault\") == \"workspace_keyvault\":\n                    new_args = copy.deepcopy(config)\n                    new_args[\"connection\"][\"key\"] = \"BAKER-OPENAI-API-KEY\"\n                    credential = get_connection_credential(new_args)\n\n            if hasattr(conn_credential, \"key\"):\n                config[\"api_key\"] = conn_credential.key\n            else:\n                if callable(conn_credential):\n                    config[\"api_type\"] = \"azure_ad\"\n                    config[\"azure_ad_token_provider\"] = conn_credential\n    except Exception as e:\n        if \"OPENAI_API_KEY\" in os.environ:\n            logger.warning(f\"Failed to get credential for ACS with {e}, falling back to env vars.\")\n            config[\"api_key\"] = os.environ[\"OPENAI_API_KEY\"]\n            config[\"api_type\"] = os.environ.get(\"OPENAI_API_TYPE\", \"azure\")\n            config[\"api_base\"] = os.environ.get(\n                \"OPENAI_API_BASE\", openai.api_base if hasattr(openai, \"api_base\") else openai.base_url\n            )\n            config[\"api_version\"] = os.environ.get(\"OPENAI_API_VERSION\", openai.api_version)\n        else:\n            raise e\n\n    if isinstance(openai.api_type, str) and \"azure\" in openai.api_type:\n        config[\"api_version\"] = config.get(\"api_version\", \"2023-03-15-preview\")\n\n    return config",
+      "hash_value": "d7b1a0140c02a85557b139a5a5ccd570",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def init_open_ai_from_config(config: dict, credential: Optional[TokenCredential] = None) -> dict:\n    \"\"\"Initialize an OpenAI model from a configuration dictionary.\"\"\"\n    import openai\n\n    logger.debug(\"OpenAI arguments: \\n\")\n    logger.debug(\n        \"\\n\".join(f\"{k}={v}\" if k != \"key\" and k != \"api_key\" else f\"{k}=[REDACTED]\" for k, v in config.items())\n    )\n\n    try:\n        if config.get(\"key\") is not None:\n            config[\"api_key\"] = config.get(\"key\")\n        elif \"connection_type\" not in config:\n            if config.get(\"api_key\") is None:\n                config[\"api_key\"] = os.environ.get(\"OPENAI_API_KEY\", None)\n            if config[\"api_key\"] is None and \"azure\" in config[\"api_type\"]:\n                credential = get_default_azure_credential() if credential is None else credential\n                config[\"api_key\"] = credential.get_token(\"https://cognitiveservices.azure.com/.default\").token\n                config[\"api_type\"] = \"azure_ad\"\n        else:\n            if config[\"connection_type\"] == \"workspace_connection\":\n                connection_id = config.get(\"connection\", {}).get(\"id\", \"\")\n                connection = get_connection_by_id_v2(connection_id, credential=credential)\n                # Only change base, version, and type in AOAI case\n                if hasattr(connection, \"type\"):\n                    if connection.type == \"azure_open_ai\":\n                        config[\"api_base\"] = (\n                            connection.target[:-1] if connection.target.endswith(\"/\") else connection.target\n                        )\n                        config[\"api_version\"] = (\n                            connection.api_version\n                            if hasattr(connection, \"api_version\") and connection.api_version is not None\n                            else \"2023-03-15-preview\"\n                        )\n                        config[\"api_type\"] = (\n                            connection.api_type\n                            if hasattr(connection, \"api_type\") and connection.api_type is not None\n                            else \"azure\"\n                        )\n                elif (\n                    isinstance(connection, dict)\n                    and connection.get(\"properties\", {}).get(\"category\", None) == \"AzureOpenAI\"\n                ):\n                    config[\"api_base\"] = connection.get(\"properties\", {}).get(\"target\")\n                    connection_metadata = connection.get(\"properties\", {}).get(\"metadata\", {})\n                    config[\"api_version\"] = connection_metadata.get(\n                        \"apiVersion\", connection_metadata.get(\"ApiVersion\", \"2023-03-15-preview\")\n                    )\n                    config[\"api_type\"] = connection_metadata.get(\n                        \"apiType\", connection_metadata.get(\"ApiType\", \"azure\")\n                    ).lower()\n\n                conn_credential = connection_to_credential(\n                    connection=connection, credential=credential, data_plane=True\n                )\n\n            else:\n                conn_credential = get_connection_credential(config, credential, data_plane=True)\n\n            if not hasattr(conn_credential, \"key\"):\n                # Add hack to check for \"BAKER-OPENAI-API-KEY\"\n                if config.get(\"connection_type\", \"workspace_keyvault\") == \"workspace_keyvault\":\n                    new_args = copy.deepcopy(config)\n                    new_args[\"connection\"][\"key\"] = \"BAKER-OPENAI-API-KEY\"\n                    credential = get_connection_credential(new_args)\n\n            if hasattr(conn_credential, \"key\"):\n                config[\"api_key\"] = conn_credential.key\n            else:\n                if callable(conn_credential):\n                    config[\"api_type\"] = \"azure_ad\"\n                    config[\"azure_ad_token_provider\"] = conn_credential\n    except Exception as e:\n        if \"OPENAI_API_KEY\" in os.environ:\n            logger.warning(f\"Failed to get credential for ACS with {e}, falling back to env vars.\")\n            config[\"api_key\"] = os.environ[\"OPENAI_API_KEY\"]\n            config[\"api_type\"] = os.environ.get(\"OPENAI_API_TYPE\", \"azure\")\n            config[\"api_base\"] = os.environ.get(\n                \"OPENAI_API_BASE\", openai.api_base if hasattr(openai, \"api_base\") else openai.base_url\n            )\n            config[\"api_version\"] = os.environ.get(\"OPENAI_API_VERSION\", openai.api_version)\n        else:\n            raise e\n\n    if isinstance(openai.api_type, str) and \"azure\" in openai.api_type:\n        config[\"api_version\"] = config.get(\"api_version\", \"2023-03-15-preview\")\n\n    return config",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "OPENAI_API_KEY",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "credential.get_token()",
+              "action_description": "Retrieves API key or token",
+              "action_id": "get_api_key",
+              "object": "https://cognitiveservices.azure.com/.default",
+              "object_description": "API key or token",
+              "object_id": "api_key",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "OPENAI_API_TYPE",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "OPENAI_API_BASE",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "OPENAI_API_VERSION",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "copy.deepcopy()",
+              "action_description": "Copies memory from source to destination buffer",
+              "action_id": "copy_memory",
+              "object": "config",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "logger.debug()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\"OpenAI arguments: \\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "logger.debug()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "\"\\n\".join(f\"{k}={v}\" if k != \"key\" and k != \"api_key\" else f\"{k}=[REDACTED]\" for k, v in config.items())",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "logger.warning()",
+              "action_description": "Writes file content",
+              "action_id": "basic_write_operations",
+              "object": "f\"Failed to get credential for ACS with {e}, falling back to env vars.\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1302 @@
+[
+  {
+    "metadata": {
+      "package_name": "multiprocess-0.70.17",
+      "total_matches": 7,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "pool.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/pypy3.10/multiprocess/pool.py",
+    "line_number": "708",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "707\t        util.debug('joining worker handler')\n708\t        if threading.current_thread() is not worker_handler:\n709\t            worker_handler.join()",
+    "code_snippet": "    @classmethod\n    def _terminate_pool(cls, taskqueue, inqueue, outqueue, pool, change_notifier,\n                        worker_handler, task_handler, result_handler, cache):\n        # this is guaranteed to only be called once\n        util.debug('finalizing pool')\n\n        # Notify that the worker_handler state has been changed so the\n        # _handle_workers loop can be unblocked (and exited) in order to\n        # send the finalization sentinel all the workers.\n        worker_handler._state = TERMINATE\n        change_notifier.put(None)\n\n        task_handler._state = TERMINATE\n\n        util.debug('helping task handler/workers to finish')\n        cls._help_stuff_finish(inqueue, task_handler, len(pool))\n\n        if (not result_handler.is_alive()) and (len(cache) != 0):\n            raise AssertionError(\n                \"Cannot have cache with result_hander not alive\")\n\n        result_handler._state = TERMINATE\n        change_notifier.put(None)\n        outqueue.put(None)                  # sentinel\n\n        # We must wait for the worker handler to exit before terminating\n        # workers because we don't want workers to be restarted behind our back.\n        util.debug('joining worker handler')\n        if threading.current_thread() is not worker_handler:\n            worker_handler.join()\n\n        # Terminate workers which haven't already finished.\n        if pool and hasattr(pool[0], 'terminate'):\n            util.debug('terminating workers')\n            for p in pool:\n                if p.exitcode is None:\n                    p.terminate()\n\n        util.debug('joining task handler')\n        if threading.current_thread() is not task_handler:\n            task_handler.join()\n\n        util.debug('joining result handler')\n        if threading.current_thread() is not result_handler:\n            result_handler.join()\n\n        if pool and hasattr(pool[0], 'terminate'):\n            util.debug('joining pool workers')\n            for p in pool:\n                if p.is_alive():\n                    # worker has not yet exited\n                    util.debug('cleaning up worker %d' % p.pid)\n                    p.join()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "util.debug",
+        "change_notifier.put",
+        "util.debug",
+        "cls._help_stuff_finish",
+        "result_handler.is_alive",
+        "result_handler._state",
+        "change_notifier.put",
+        "outqueue.put",
+        "util.debug",
+        "threading.current_thread",
+        "worker_handler.join",
+        "pool[0].terminate",
+        "util.debug",
+        "p.terminate",
+        "util.debug",
+        "threading.current_thread",
+        "task_handler.join",
+        "util.debug",
+        "threading.current_thread",
+        "result_handler.join",
+        "util.debug",
+        "p.is_alive",
+        "util.debug",
+        "p.pid",
+        "p.join"
+      ],
+      "api_sequence_with_args": [
+        "util.debug('finalizing pool')",
+        "change_notifier.put(None)",
+        "util.debug('helping task handler/workers to finish')",
+        "cls._help_stuff_finish(inqueue, task_handler, len(pool))",
+        "result_handler.is_alive()",
+        "result_handler._state = TERMINATE",
+        "change_notifier.put(None)",
+        "outqueue.put(None)",
+        "util.debug('joining worker handler')",
+        "threading.current_thread()",
+        "worker_handler.join()",
+        "hasattr(pool[0], 'terminate')",
+        "util.debug('terminating workers')",
+        "p.terminate()",
+        "util.debug('joining task handler')",
+        "threading.current_thread()",
+        "task_handler.join()",
+        "util.debug('joining result handler')",
+        "threading.current_thread()",
+        "result_handler.join()",
+        "util.debug('joining pool workers')",
+        "p.is_alive()",
+        "util.debug('cleaning up worker %d' % p.pid)",
+        "p.pid",
+        "p.join()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "change_notifier.put",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "cls._help_stuff_finish",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "result_handler.is_alive",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "result_handler._state",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "change_notifier.put",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "outqueue.put",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "threading.current_thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "worker_handler.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "p.terminate",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "threading.current_thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "task_handler.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "threading.current_thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "result_handler.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "p.is_alive",
+          "id": "check_process_terminated",
+          "description": "Checks if process has terminated",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "util.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "p.pid",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "p.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "@classmethod\ndef _terminate_pool(cls, taskqueue, inqueue, outqueue, pool, change_notifier,\n                    worker_handler, task_handler, result_handler, cache):\n    util.debug('finalizing pool')\n    worker_handler._state = TERMINATE\n    change_notifier.put(None)\n    task_handler._state = TERMINATE\n    util.debug('helping task handler/workers to finish')\n    cls._help_stuff_finish(inqueue, task_handler, len(pool))\n    if (not result_handler.is_alive()) and (len(cache) != 0):\n        raise AssertionError(\n            \"Cannot have cache with result_hander not alive\")\n    result_handler._state = TERMINATE\n    change_notifier.put(None)\n    outqueue.put(None)                  # sentinel\n    util.debug('joining worker handler')\n    if threading.current_thread() is not worker_handler:\n        worker_handler.join()\n    if pool and hasattr(pool[0], 'terminate'):\n        util.debug('terminating workers')\n        for p in pool:\n            if p.exitcode is None:\n                p.terminate()\n    util.debug('joining task handler')\n    if threading.current_thread() is not task_handler:\n        task_handler.join()\n    util.debug('joining result handler')\n    if threading.current_thread() is not result_handler:\n        result_handler.join()\n    if pool and hasattr(pool[0], 'terminate'):\n        util.debug('joining pool workers')\n        for p in pool:\n            if p.is_alive():\n                util.debug('cleaning up worker %d' % p.pid)\n                p.join()"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/pypy3.10/multiprocess/tests/__init__.py",
+    "line_number": "5167",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5166\t            p.start()\n5167\t            child_conn.close()\n5168\t            address = conn.recv()",
+    "code_snippet": "def test_spawn_close(self):\n    # We test that a pipe connection can be closed by parent\n    # process immediately after child is spawned.  On Windows this\n    # would have sometimes failed on old versions because\n    # child_conn would be closed before the child got a chance to\n    # duplicate it.\n    conn, child_conn = self.Pipe()\n\n    p = self.Process(target=self._echo, args=(child_conn,))\n    p.daemon = True\n    p.start()\n    child_conn.close()    # this might complete before child initializes\n\n    msg = latin('hello')\n    conn.send_bytes(msg)\n    self.assertEqual(conn.recv_bytes(), msg)\n\n    conn.send_bytes(SENTINEL)\n    conn.close()\n    p.join()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.Pipe",
+        "self.Process",
+        "self.Process.start",
+        "child_conn.close",
+        "conn.send_bytes",
+        "conn.recv_bytes",
+        "conn.send_bytes",
+        "conn.close",
+        "p.join"
+      ],
+      "api_sequence_with_args": [
+        "self.Pipe()",
+        "self.Process(target=self._echo, args=(child_conn,))",
+        "self.Process.start()",
+        "child_conn.close()",
+        "conn.send_bytes(msg)",
+        "conn.recv_bytes()",
+        "conn.send_bytes(SENTINEL)",
+        "conn.close()",
+        "p.join()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.Pipe",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "self.Process",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "self.Process.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "child_conn.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "p.join",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "def test_spawn_close(self):\n    conn, child_conn = self.Pipe()\n    p = self.Process(target=self._echo, args=(child_conn,))\n    p.daemon = True\n    p.start()\n    child_conn.close()\n    msg = latin('hello')\n    conn.send_bytes(msg)\n    self.assertEqual(conn.recv_bytes(), msg)\n    conn.send_bytes(SENTINEL)\n    conn.close()\n    p.join()"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.12/multiprocess/tests/__init__.py",
+    "line_number": "5363",
+    "type_description": "B805:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5362\t        signal.signal(signal.SIGUSR1, handler)\n5363\t        conn.send('ready')\n5364\t        x = conn.recv()",
+    "code_snippet": "class TestIgnoreEINTR(unittest.TestCase):\n\n    # Sending CONN_MAX_SIZE bytes into a multiprocessing pipe must block\n    CONN_MAX_SIZE = max(support.PIPE_MAX_SIZE, support.SOCK_MAX_SIZE)\n\n    @classmethod\n    def _test_ignore(cls, conn):\n        def handler(signum, frame):\n            pass\n        signal.signal(signal.SIGUSR1, handler)\n        conn.send('ready')\n        x = conn.recv()\n        conn.send(x)\n        conn.send_bytes(b'x' * cls.CONN_MAX_SIZE)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "signal.signal",
+        "conn.send",
+        "conn.recv",
+        "conn.send",
+        "conn.send_bytes"
+      ],
+      "api_sequence_with_args": [
+        "signal.signal(signal.SIGUSR1, handler)",
+        "conn.send('ready')",
+        "conn.recv()",
+        "conn.send(x)",
+        "conn.send_bytes(b'x' * cls.CONN_MAX_SIZE)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "signal.signal",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        }
+      ],
+      "contextual_code": "def handler(signum, frame):\n    pass\nsignal.signal(signal.SIGUSR1, handler)\nconn.send('ready')\nx = conn.recv()\nconn.send(x)\nconn.send_bytes(b'x' * cls.CONN_MAX_SIZE)"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.10/multiprocess/tests/__init__.py",
+    "line_number": "4972",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4971\t            conn = l.accept()\n4972\t            self.assertEqual(conn.recv(), 456)\n4973\t            conn.close()",
+    "code_snippet": "class TestTimeouts(unittest.TestCase):\n    @classmethod\n    def _test_timeout(cls, child, address):\n        time.sleep(1)\n        child.send(123)\n        child.close()\n        conn = multiprocessing.connection.Client(address)\n        conn.send(456)\n        conn.close()\n\n    def test_timeout(self):\n        old_timeout = socket.getdefaulttimeout()\n        try:\n            socket.setdefaulttimeout(0.1)\n            parent, child = multiprocessing.Pipe(duplex=True)\n            l = multiprocessing.connection.Listener(family='AF_INET')\n            p = multiprocessing.Process(target=self._test_timeout,\n                                        args=(child, l.address))\n            p.start()\n            child.close()\n            self.assertEqual(parent.recv(), 123)\n            parent.close()\n            conn = l.accept()\n            self.assertEqual(conn.recv(), 456)\n            conn.close()\n            l.close()\n            join_process(p)\n        finally:\n            socket.setdefaulttimeout(old_timeout)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "time.sleep",
+        "multiprocessing.connection.Client",
+        "multiprocessing.connection.Client.send",
+        "multiprocessing.connection.Client.close",
+        "socket.getdefaulttimeout",
+        "socket.setdefaulttimeout",
+        "multiprocessing.Pipe",
+        "multiprocessing.connection.Listener",
+        "multiprocessing.Process",
+        "multiprocessing.Process.start",
+        "multiprocessing.connection.Listener.accept",
+        "multiprocessing.connection.Listener.close",
+        "join_process"
+      ],
+      "api_sequence_with_args": [
+        "time.sleep(1)",
+        "multiprocessing.connection.Client(address)",
+        "multiprocessing.connection.Client.send(456)",
+        "multiprocessing.connection.Client.close()",
+        "socket.getdefaulttimeout()",
+        "socket.setdefaulttimeout(0.1)",
+        "multiprocessing.Pipe(duplex=True)",
+        "multiprocessing.connection.Listener(family='AF_INET')",
+        "multiprocessing.Process(target=self._test_timeout, args=(child, l.address))",
+        "multiprocessing.Process.start()",
+        "multiprocessing.connection.Listener.accept()",
+        "multiprocessing.connection.Listener.close()",
+        "join_process(p)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "multiprocessing.connection.Client",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "multiprocessing.connection.Client.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "multiprocessing.connection.Client.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.getdefaulttimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "socket.setdefaulttimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "multiprocessing.Pipe",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "multiprocessing.connection.Listener",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "multiprocessing.Process",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "multiprocessing.Process.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "multiprocessing.connection.Listener.accept",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "multiprocessing.connection.Listener.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "join_process",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "class TestTimeouts(unittest.TestCase):\n    @classmethod\n    def _test_timeout(cls, child, address):\n        time.sleep(1)\n        child.send(123)\n        child.close()\n        conn = multiprocessing.connection.Client(address)\n        conn.send(456)\n        conn.close()\n\n    def test_timeout(self):\n        old_timeout = socket.getdefaulttimeout()\n        try:\n            socket.setdefaulttimeout(0.1)\n            parent, child = multiprocessing.Pipe(duplex=True)\n            l = multiprocessing.connection.Listener(family='AF_INET')\n            p = multiprocessing.Process(target=self._test_timeout,\n                                        args=(child, l.address))\n            p.start()\n            child.close()\n            self.assertEqual(parent.recv(), 123)\n            parent.close()\n            conn = l.accept()\n            self.assertEqual(conn.recv(), 456)\n            conn.close()\n            l.close()\n            join_process(p)\n        finally:\n            socket.setdefaulttimeout(old_timeout)"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.11/multiprocess/tests/__init__.py",
+    "line_number": "3774",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3773\t        w.close()\n3774\t        self.assertEqual(conn.recv(), 'foobar'*2)\n3775",
+    "code_snippet": "class _TestPicklingConnections(BaseTestCase):\n\n    ALLOWED_TYPES = ('processes',)\n\n    @classmethod\n    def tearDownClass(cls):\n        from multiprocess import resource_sharer\n        resource_sharer.stop(timeout=support.LONG_TIMEOUT)\n\n    @classmethod\n    def child_access(cls, conn):\n        w = conn.recv()\n        w.send('all is well')\n        w.close()\n\n        r = conn.recv()\n        msg = r.recv()\n        conn.send(msg*2)\n\n        conn.close()\n\n    def test_access(self):\n        # On Windows, if we do not specify a destination pid when\n        # using DupHandle then we need to be careful to use the\n        # correct access flags for DuplicateHandle(), or else\n        # DupHandle.detach() will raise PermissionError.  For example,\n        # for a read only pipe handle we should use\n        # access=FILE_GENERIC_READ.  (Unfortunately\n        # DUPLICATE_SAME_ACCESS does not work.)\n        conn, child_conn = self.Pipe()\n        p = self.Process(target=self.child_access, args=(child_conn,))\n        p.daemon = True\n        p.start()\n        child_conn.close()\n\n        r, w = self.Pipe(duplex=False)\n        conn.send(w)\n        w.close()\n        self.assertEqual(r.recv(), 'all is well')\n        r.close()\n\n        r, w = self.Pipe(duplex=False)\n        conn.send(r)\n        r.close()\n        w.send('foobar')\n        w.close()\n        self.assertEqual(conn.recv(), 'foobar'*2)\n\n        p.join()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "multiprocess.resource_sharer.stop",
+        "conn.recv",
+        "w.send",
+        "w.close",
+        "conn.recv",
+        "r.recv",
+        "conn.send",
+        "conn.close",
+        "self.Pipe",
+        "self.Process",
+        "p.start",
+        "child_conn.close",
+        "self.Pipe",
+        "conn.send",
+        "w.close",
+        "r.recv",
+        "r.close",
+        "self.Pipe",
+        "conn.send",
+        "r.close",
+        "w.send",
+        "w.close",
+        "conn.recv",
+        "p.join"
+      ],
+      "api_sequence_with_args": [
+        "multiprocess.resource_sharer.stop(timeout=support.LONG_TIMEOUT)",
+        "conn.recv()",
+        "w.send('all is well')",
+        "w.close()",
+        "conn.recv()",
+        "r.recv()",
+        "conn.send(msg*2)",
+        "conn.close()",
+        "self.Pipe()",
+        "self.Process(target=self.child_access, args=(child_conn,))",
+        "p.start()",
+        "child_conn.close()",
+        "self.Pipe(duplex=False)",
+        "conn.send(w)",
+        "w.close()",
+        "r.recv()",
+        "r.close()",
+        "self.Pipe(duplex=False)",
+        "conn.send(r)",
+        "r.close()",
+        "w.send('foobar')",
+        "w.close()",
+        "conn.recv()",
+        "p.join()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "multiprocess.resource_sharer.stop",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "w.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "w.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "r.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "self.Pipe",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "self.Process",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "p.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "child_conn.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "self.Pipe",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "w.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "r.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "r.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "self.Pipe",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "r.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "w.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "w.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "p.join",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "from multiprocess import resource_sharer\n\nclass _TestPicklingConnections(BaseTestCase):\n    @classmethod\n    def tearDownClass(cls):\n        resource_sharer.stop(timeout=support.LONG_TIMEOUT)\n\n    @classmethod\n    def child_access(cls, conn):\n        w = conn.recv()\n        w.send('all is well')\n        w.close()\n\n        r = conn.recv()\n        msg = r.recv()\n        conn.send(msg*2)\n\n        conn.close()\n\n    def test_access(self):\n        conn, child_conn = self.Pipe()\n        p = self.Process(target=self.child_access, args=(child_conn,))\n        p.daemon = True\n        p.start()\n        child_conn.close()\n\n        r, w = self.Pipe(duplex=False)\n        conn.send(w)\n        w.close()\n        self.assertEqual(r.recv(), 'all is well')\n        r.close()\n\n        r, w = self.Pipe(duplex=False)\n        conn.send(r)\n        r.close()\n        w.send('foobar')\n        w.close()\n        self.assertEqual(conn.recv(), 'foobar'*2)\n\n        p.join()"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.8/multiprocess/tests/__init__.py",
+    "line_number": "3041",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3040\t        self.assertEqual(conn.send(seq), None)\n3041\t        self.assertEqual(conn.recv(), seq)\n3042",
+    "code_snippet": "def test_connection(self):\n    conn, child_conn = self.Pipe()\n\n    p = self.Process(target=self._echo, args=(child_conn,))\n    p.daemon = True\n    p.start()\n\n    seq = [1, 2.25, None]\n    msg = latin('hello world')\n    longmsg = msg * 10\n    arr = array.array('i', list(range(4)))\n\n    if self.TYPE == 'processes':\n        self.assertEqual(type(conn.fileno()), int)\n\n    self.assertEqual(conn.send(seq), None)\n    self.assertEqual(conn.recv(), seq)\n\n    self.assertEqual(conn.send_bytes(msg), None)\n    self.assertEqual(conn.recv_bytes(), msg)\n\n    if self.TYPE == 'processes':\n        buffer = array.array('i', [0]*10)\n        expected = list(arr) + [0] * (10 - len(arr))\n        self.assertEqual(conn.send_bytes(arr), None)\n        self.assertEqual(conn.recv_bytes_into(buffer),\n                         len(arr) * buffer.itemsize)\n        self.assertEqual(list(buffer), expected)\n\n        buffer = array.array('i', [0]*10)\n        expected = [0] * 3 + list(arr) + [0] * (10 - 3 - len(arr))\n        self.assertEqual(conn.send_bytes(arr), None)\n        self.assertEqual(conn.recv_bytes_into(buffer, 3 * buffer.itemsize),\n                         len(arr) * buffer.itemsize)\n        self.assertEqual(list(buffer), expected)\n\n        buffer = bytearray(latin(' ' * 40))\n        self.assertEqual(conn.send_bytes(longmsg), None)\n        try:\n            res = conn.recv_bytes_into(buffer)\n        except multiprocessing.BufferTooShort as e:\n            self.assertEqual(e.args, (longmsg,))\n        else:\n            self.fail('expected BufferTooShort, got %s' % res)\n\n    poll = TimingWrapper(conn.poll)\n\n    self.assertEqual(poll(), False)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n\n    self.assertEqual(poll(-1), False)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n\n    self.assertEqual(poll(TIMEOUT1), False)\n    self.assertTimingAlmostEqual(poll.elapsed, TIMEOUT1)\n\n    conn.send(None)\n    time.sleep(.1)\n\n    self.assertEqual(poll(TIMEOUT1), True)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n\n    self.assertEqual(conn.recv(), None)\n\n    really_big_msg = latin('X') * (1024 * 1024 * 16)   # 16Mb\n    conn.send_bytes(really_big_msg)\n    self.assertEqual(conn.recv_bytes(), really_big_msg)\n\n    conn.send_bytes(SENTINEL)                          # tell child to quit\n    child_conn.close()\n\n    if self.TYPE == 'processes':\n        self.assertEqual(conn.readable, True)\n        self.assertEqual(conn.writable, True)\n        self.assertRaises(EOFError, conn.recv)\n        self.assertRaises(EOFError, conn.recv_bytes)\n\n    p.join()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.Pipe",
+        "self.Process",
+        "self.Process.start",
+        "conn.fileno",
+        "conn.send",
+        "conn.recv",
+        "conn.send_bytes",
+        "conn.recv_bytes",
+        "conn.send_bytes",
+        "conn.recv_bytes_into",
+        "conn.send_bytes",
+        "conn.recv_bytes_into",
+        "conn.send_bytes",
+        "conn.recv_bytes_into",
+        "conn.poll",
+        "conn.poll",
+        "conn.poll",
+        "conn.send",
+        "time.sleep",
+        "conn.poll",
+        "conn.recv",
+        "conn.send_bytes",
+        "conn.recv_bytes",
+        "conn.send_bytes",
+        "child_conn.close",
+        "conn.readable",
+        "conn.writable",
+        "conn.recv",
+        "conn.recv_bytes",
+        "p.join"
+      ],
+      "api_sequence_with_args": [
+        "self.Pipe()",
+        "self.Process(target=self._echo, args=(child_conn,))",
+        "self.Process.start()",
+        "conn.fileno()",
+        "conn.send(seq)",
+        "conn.recv()",
+        "conn.send_bytes(msg)",
+        "conn.recv_bytes()",
+        "conn.send_bytes(arr)",
+        "conn.recv_bytes_into(buffer)",
+        "conn.send_bytes(arr)",
+        "conn.recv_bytes_into(buffer, 3 * buffer.itemsize)",
+        "conn.send_bytes(longmsg)",
+        "conn.recv_bytes_into(buffer)",
+        "conn.poll()",
+        "conn.poll(-1)",
+        "conn.poll(TIMEOUT1)",
+        "conn.send(None)",
+        "time.sleep(.1)",
+        "conn.poll(TIMEOUT1)",
+        "conn.recv()",
+        "conn.send_bytes(really_big_msg)",
+        "conn.recv_bytes()",
+        "conn.send_bytes(SENTINEL)",
+        "child_conn.close()",
+        "conn.readable",
+        "conn.writable",
+        "conn.recv()",
+        "conn.recv_bytes()",
+        "p.join()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.Pipe",
+          "id": "create_pipe",
+          "description": "Creates a pipe for interprocess communication",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "self.Process",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "self.Process.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "conn.fileno",
+          "id": "get_socket_fd",
+          "description": "Retrieves file descriptor for socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes_into",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes_into",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes_into",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.poll",
+          "id": "check_socket_poll",
+          "description": "Checks if there is any data available to read on the connection",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "conn.poll",
+          "id": "check_socket_poll",
+          "description": "Checks if there is any data available to read on the connection",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "conn.poll",
+          "id": "check_socket_poll",
+          "description": "Checks if there is any data available to read on the connection",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "conn.poll",
+          "id": "check_socket_poll",
+          "description": "Checks if there is any data available to read on the connection",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.send_bytes",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "child_conn.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "conn.readable",
+          "id": "get_socket_status",
+          "description": "Checks if the connection is readable",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "conn.writable",
+          "id": "get_socket_status",
+          "description": "Checks if the connection is writable",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "conn.recv_bytes",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "p.join",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "def test_connection(self):\n    conn, child_conn = self.Pipe()\n    p = self.Process(target=self._echo, args=(child_conn,))\n    p.daemon = True\n    p.start()\n    ...\n    if self.TYPE == 'processes':\n        self.assertEqual(type(conn.fileno()), int)\n    self.assertEqual(conn.send(seq), None)\n    self.assertEqual(conn.recv(), seq)\n    self.assertEqual(conn.send_bytes(msg), None)\n    self.assertEqual(conn.recv_bytes(), msg)\n    if self.TYPE == 'processes':\n        buffer = array.array('i', [0]*10)\n        expected = list(arr) + [0] * (10 - len(arr))\n        self.assertEqual(conn.send_bytes(arr), None)\n        self.assertEqual(conn.recv_bytes_into(buffer), len(arr) * buffer.itemsize)\n        self.assertEqual(list(buffer), expected)\n        buffer = array.array('i', [0]*10)\n        expected = [0] * 3 + list(arr) + [0] * (10 - 3 - len(arr))\n        self.assertEqual(conn.send_bytes(arr), None)\n        self.assertEqual(conn.recv_bytes_into(buffer, 3 * buffer.itemsize), len(arr) * buffer.itemsize)\n        self.assertEqual(list(buffer), expected)\n        buffer = bytearray(latin(' ' * 40))\n        self.assertEqual(conn.send_bytes(longmsg), None)\n        try:\n            res = conn.recv_bytes_into(buffer)\n        except multiprocessing.BufferTooShort as e:\n            self.assertEqual(e.args, (longmsg,))\n        else:\n            self.fail('expected BufferTooShort, got %s' % res)\n    poll = TimingWrapper(conn.poll)\n    self.assertEqual(poll(), False)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n    self.assertEqual(poll(-1), False)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n    self.assertEqual(poll(TIMEOUT1), False)\n    self.assertTimingAlmostEqual(poll.elapsed, TIMEOUT1)\n    conn.send(None)\n    time.sleep(.1)\n    self.assertEqual(poll(TIMEOUT1), True)\n    self.assertTimingAlmostEqual(poll.elapsed, 0)\n    self.assertEqual(conn.recv(), None)\n    really_big_msg = latin('X') * (1024 * 1024 * 16)   # 16Mb\n    conn.send_bytes(really_big_msg)\n    self.assertEqual(conn.recv_bytes(), really_big_msg)\n    conn.send_bytes(SENTINEL)                          # tell child to quit\n    child_conn.close()\n    if self.TYPE == 'processes':\n        self.assertEqual(conn.readable, True)\n        self.assertEqual(conn.writable, True)\n        self.assertRaises(EOFError, conn.recv)\n        self.assertRaises(EOFError, conn.recv_bytes)\n    p.join()"
+    }
+  },
+  {
+    "pyfile": "__init__.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/multiprocess-0.70.17/multiprocess-0.70.17/py3.11/multiprocess/tests/__init__.py",
+    "line_number": "3683",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3682\n3683\t        address, msg = conn.recv()\n3684\t        client = socket.socket()",
+    "code_snippet": "    @classmethod\n    def _remote(cls, conn):\n        for (address, msg) in iter(conn.recv, None):\n            client = cls.connection.Client(address)\n            client.send(msg.upper())\n            client.close()\n\n        address, msg = conn.recv()\n        client = socket.socket()\n        client.connect(address)\n        client.sendall(msg.upper())\n        client.close()\n\n        conn.close()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "conn.recv",
+        "cls.connection.Client",
+        "cls.connection.Client.send",
+        "cls.connection.Client.close",
+        "conn.recv",
+        "socket.socket",
+        "socket.socket.connect",
+        "socket.socket.sendall",
+        "socket.socket.close",
+        "conn.close"
+      ],
+      "api_sequence_with_args": [
+        "conn.recv",
+        "cls.connection.Client(address)",
+        "cls.connection.Client.send(msg.upper())",
+        "cls.connection.Client.close()",
+        "conn.recv()",
+        "socket.socket()",
+        "socket.socket.connect(address)",
+        "socket.socket.sendall(msg.upper())",
+        "socket.socket.close()",
+        "conn.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "cls.connection.Client",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "cls.connection.Client.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "cls.connection.Client.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "conn.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "socket.socket.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "conn.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "@classmethod\ndef _remote(cls, conn):\n    for (address, msg) in iter(conn.recv, None):\n        client = cls.connection.Client(address)\n        client.send(msg.upper())\n        client.close()\n\n    address, msg = conn.recv()\n    client = socket.socket()\n    client.connect(address)\n    client.sendall(msg.upper())\n    client.close()\n\n    conn.close()"
+    }
+  }
+]

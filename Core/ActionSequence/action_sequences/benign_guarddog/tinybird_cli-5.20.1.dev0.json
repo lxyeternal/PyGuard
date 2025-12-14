@@ -1,0 +1,354 @@
+[
+  {
+    "pyfile": "common.py",
+    "code_snippet": "import pyperclip\nimport click\nimport sys\nimport json\nfrom typing import Any, Optional\n\n# ... (other imports and code omitted for brevity)\n\nasync def validate_aws_iamrole_integration(\n    client: TinyB,\n    service: str,\n    role_arn: Optional[str],\n    region: Optional[str],\n    policy: str = \"write\",\n    no_validate: Optional[bool] = False,\n):\n    if no_validate is False:\n        access_policy, trust_policy, external_id = await get_aws_iamrole_policies(\n            client, service=service, policy=policy\n        )\n\n        if not role_arn:\n            if not click.confirm(\n                FeedbackManager.prompt_s3_iamrole_connection_login_aws(),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n\n            access_policy_copied = True\n            try:\n                pyperclip.copy(access_policy)\n            except Exception:\n                access_policy_copied = False\n\n            replacements_dict = {\n                \"<bucket>\": \"<bucket> with your bucket name\",\n                \"<table_name>\": \"<table_name> with your DynamoDB table name\",\n            }\n\n            replacements = [\n                replacements_dict.get(replacement, \"\")\n                for replacement in replacements_dict.keys()\n                if replacement in access_policy\n            ]\n\n            if not click.confirm(\n                (\n                    FeedbackManager.prompt_s3_iamrole_connection_policy(\n                        access_policy=access_policy, replacements=\", \".join(replacements)\n                    )\n                    if access_policy_copied\n                    else FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied(access_policy=access_policy)\n                ),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n\n            trust_policy_copied = True\n            try:\n                pyperclip.copy(trust_policy)\n            except Exception:\n                trust_policy_copied = False\n\n            if not click.confirm(\n                (\n                    FeedbackManager.prompt_s3_iamrole_connection_role(trust_policy=trust_policy)\n                    if trust_policy_copied\n                    else FeedbackManager.prompt_s3_iamrole_connection_role_not_copied(trust_policy=trust_policy)\n                ),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n    else:\n        try:\n            trust_policy = await client.get_trust_policy(service)\n            external_id = trust_policy[\"Statement\"][0][\"Condition\"][\"StringEquals\"][\"sts:ExternalId\"]\n        except Exception:\n            external_id = \"\"\n\n    if not role_arn:\n        role_arn = click.prompt(\"Enter the ARN of the role you just created\")\n        validate_string_connector_param(\"Role ARN\", role_arn)\n\n    if not region:\n        region_resource = \"table\" if service == DataConnectorType.AMAZON_DYNAMODB else \"bucket\"\n        region = click.prompt(f\"Enter the region where the {region_resource} is located\")\n        validate_string_connector_param(\"Region\", region)\n\n    return role_arn, region, external_id\n\nasync def get_aws_iamrole_policies(client: TinyB, service: str, policy: str = \"write\"):\n    access_policy: Dict[str, Any] = {}\n    if service == DataConnectorType.AMAZON_S3_IAMROLE:\n        service = DataConnectorType.AMAZON_S3\n    try:\n        if policy == \"write\":\n            access_policy = await client.get_access_write_policy(service)\n        elif policy == \"read\":\n            access_policy = await client.get_access_read_policy(service)\n        else:\n            raise Exception(f\"Access policy {policy} not supported. Choose from 'read' or 'write'\")\n        if not len(access_policy) > 0:\n            raise Exception(f\"{service.upper()} Integration not supported in this region\")\n    except Exception as e:\n        raise CLIConnectionException(FeedbackManager.error_connection_integration_not_available(error=str(e)))\n\n    trust_policy: Dict[str, Any] = {}\n    try:\n        trust_policy = await client.get_trust_policy(service)\n        if not len(trust_policy) > 0:\n            raise Exception(f\"{service.upper()} Integration not supported in this region\")\n    except Exception as e:\n        raise CLIConnectionException(FeedbackManager.error_connection_integration_not_available(error=str(e)))\n    try:\n        external_id = trust_policy[\"Statement\"][0][\"Condition\"][\"StringEquals\"][\"sts:ExternalId\"]\n    except Exception:\n        external_id = \"\"\n    return json.dumps(access_policy, indent=4), json.dumps(trust_policy, indent=4), external_id\n\ndef validate_string_connector_param(param, s):\n    if not isinstance(s, str):\n        raise CLIConnectionException(param + \" format is not correct, it should be a string\")\n\n# Data dependencies:\n# - pyperclip: imported at top\n# - click: imported at top\n# - sys: imported at top\n# - FeedbackManager: imported from tinybird.feedback_manager\n# - get_aws_iamrole_policies: defined above\n# - validate_string_connector_param: defined above\n# - DataConnectorType: defined as Enum in this file\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "get_aws_iamrole_policies",
+        "click.confirm",
+        "FeedbackManager.prompt_s3_iamrole_connection_login_aws",
+        "sys.exit",
+        "pyperclip.copy",
+        "click.confirm",
+        "FeedbackManager.prompt_s3_iamrole_connection_policy",
+        "FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied",
+        "sys.exit",
+        "pyperclip.copy",
+        "click.confirm",
+        "FeedbackManager.prompt_s3_iamrole_connection_role",
+        "FeedbackManager.prompt_s3_iamrole_connection_role_not_copied",
+        "sys.exit",
+        "client.get_trust_policy",
+        "click.prompt",
+        "validate_string_connector_param",
+        "click.prompt",
+        "validate_string_connector_param",
+        "client.get_access_write_policy",
+        "client.get_access_read_policy",
+        "json.dumps",
+        "client.get_trust_policy",
+        "json.dumps",
+        "json.dumps"
+      ],
+      "api_sequence_with_args": [
+        "get_aws_iamrole_policies(client, service=service, policy=policy)",
+        "click.confirm(FeedbackManager.prompt_s3_iamrole_connection_login_aws(), show_default=False, prompt_suffix=\"Press y to continue:\")",
+        "FeedbackManager.prompt_s3_iamrole_connection_login_aws()",
+        "sys.exit(1)",
+        "pyperclip.copy(access_policy)",
+        "click.confirm(FeedbackManager.prompt_s3_iamrole_connection_policy(access_policy=access_policy, replacements=\", \".join(replacements)) if access_policy_copied else FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied(access_policy=access_policy), show_default=False, prompt_suffix=\"Press y to continue:\")",
+        "FeedbackManager.prompt_s3_iamrole_connection_policy(access_policy=access_policy, replacements=\", \".join(replacements))",
+        "FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied(access_policy=access_policy)",
+        "sys.exit(1)",
+        "pyperclip.copy(trust_policy)",
+        "click.confirm(FeedbackManager.prompt_s3_iamrole_connection_role(trust_policy=trust_policy) if trust_policy_copied else FeedbackManager.prompt_s3_iamrole_connection_role_not_copied(trust_policy=trust_policy), show_default=False, prompt_suffix=\"Press y to continue:\")",
+        "FeedbackManager.prompt_s3_iamrole_connection_role(trust_policy=trust_policy)",
+        "FeedbackManager.prompt_s3_iamrole_connection_role_not_copied(trust_policy=trust_policy)",
+        "sys.exit(1)",
+        "client.get_trust_policy(service)",
+        "click.prompt(\"Enter the ARN of the role you just created\")",
+        "validate_string_connector_param(\"Role ARN\", role_arn)",
+        "click.prompt(f\"Enter the region where the {region_resource} is located\")",
+        "validate_string_connector_param(\"Region\", region)",
+        "client.get_access_write_policy(service)",
+        "client.get_access_read_policy(service)",
+        "json.dumps(access_policy, indent=4)",
+        "client.get_trust_policy(service)",
+        "json.dumps(trust_policy, indent=4)",
+        "json.dumps(trust_policy, indent=4)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "get_aws_iamrole_policies",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "click.confirm",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "FeedbackManager.prompt_s3_iamrole_connection_login_aws",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "click.confirm",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "FeedbackManager.prompt_s3_iamrole_connection_policy",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "click.confirm",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "FeedbackManager.prompt_s3_iamrole_connection_role",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "FeedbackManager.prompt_s3_iamrole_connection_role_not_copied",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "client.get_trust_policy",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "click.prompt",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "validate_string_connector_param",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "click.prompt",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "validate_string_connector_param",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "client.get_access_write_policy",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "client.get_access_read_policy",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "client.get_trust_policy",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        }
+      ],
+      "contextual_code": "import pyperclip\nimport click\nimport sys\nimport json\n\nasync def validate_aws_iamrole_integration(\n    client: TinyB,\n    service: str,\n    role_arn: Optional[str],\n    region: Optional[str],\n    policy: str = \"write\",\n    no_validate: Optional[bool] = False,\n):\n    if no_validate is False:\n        access_policy, trust_policy, external_id = await get_aws_iamrole_policies(\n            client, service=service, policy=policy\n        )\n\n        if not role_arn:\n            if not click.confirm(\n                FeedbackManager.prompt_s3_iamrole_connection_login_aws(),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n\n            access_policy_copied = True\n            try:\n                pyperclip.copy(access_policy)\n            except Exception:\n                access_policy_copied = False\n\n            replacements_dict = {\n                \"<bucket>\": \"<bucket> with your bucket name\",\n                \"<table_name>\": \"<table_name> with your DynamoDB table name\",\n            }\n\n            replacements = [\n                replacements_dict.get(replacement, \"\")\n                for replacement in replacements_dict.keys()\n                if replacement in access_policy\n            ]\n\n            if not click.confirm(\n                (\n                    FeedbackManager.prompt_s3_iamrole_connection_policy(\n                        access_policy=access_policy, replacements=\", \".join(replacements)\n                    )\n                    if access_policy_copied\n                    else FeedbackManager.prompt_s3_iamrole_connection_policy_not_copied(access_policy=access_policy)\n                ),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n\n            trust_policy_copied = True\n            try:\n                pyperclip.copy(trust_policy)\n            except Exception:\n                trust_policy_copied = False\n\n            if not click.confirm(\n                (\n                    FeedbackManager.prompt_s3_iamrole_connection_role(trust_policy=trust_policy)\n                    if trust_policy_copied\n                    else FeedbackManager.prompt_s3_iamrole_connection_role_not_copied(trust_policy=trust_policy)\n                ),\n                show_default=False,\n                prompt_suffix=\"Press y to continue:\",\n            ):\n                sys.exit(1)\n    else:\n        try:\n            trust_policy = await client.get_trust_policy(service)\n            external_id = trust_policy[\"Statement\"][0][\"Condition\"][\"StringEquals\"][\"sts:ExternalId\"]\n        except Exception:\n            external_id = \"\"\n\n    if not role_arn:\n        role_arn = click.prompt(\"Enter the ARN of the role you just created\")\n        validate_string_connector_param(\"Role ARN\", role_arn)\n\n    if not region:\n        region_resource = \"table\" if service == DataConnectorType.AMAZON_DYNAMODB else \"bucket\"\n        region = click.prompt(f\"Enter the region where the {region_resource} is located\")\n        validate_string_connector_param(\"Region\", region)\n\n    return role_arn, region, external_id\n\nasync def get_aws_iamrole_policies(client: TinyB, service: str, policy: str = \"write\"):\n    access_policy: Dict[str, Any] = {}\n    if service == DataConnectorType.AMAZON_S3_IAMROLE:\n        service = DataConnectorType.AMAZON_S3\n    try:\n        if policy == \"write\":\n            access_policy = await client.get_access_write_policy(service)\n        elif policy == \"read\":\n            access_policy = await client.get_access_read_policy(service)\n        else:\n            raise Exception(f\"Access policy {policy} not supported. Choose from 'read' or 'write'\")\n        if not len(access_policy) > 0:\n            raise Exception(f\"{service.upper()} Integration not supported in this region\")\n    except Exception as e:\n        raise CLIConnectionException(FeedbackManager.error_connection_integration_not_available(error=str(e)))\n\n    trust_policy: Dict[str, Any] = {}\n    try:\n        trust_policy = await client.get_trust_policy(service)\n        if not len(trust_policy) > 0:\n            raise Exception(f\"{service.upper()} Integration not supported in this region\")\n    except Exception as e:\n        raise CLIConnectionException(FeedbackManager.error_connection_integration_not_available(error=str(e)))\n    try:\n        external_id = trust_policy[\"Statement\"][0][\"Condition\"][\"StringEquals\"][\"sts:ExternalId\"]\n    except Exception:\n        external_id = \"\"\n    return json.dumps(access_policy, indent=4), json.dumps(trust_policy, indent=4), external_id\n\ndef validate_string_connector_param(param, s):\n    if not isinstance(s, str):\n        raise CLIConnectionException(param + \" format is not correct, it should be a string\")"
+    }
+  },
+  {
+    "pyfile": "token.py",
+    "code_snippet": "import pyperclip\nfrom tinybird.client import AuthNoTokenException, TinyB\nfrom tinybird.feedback_manager import FeedbackManager\nfrom tinybird.tb_cli_modules.exceptions import CLITokenException\nimport click\nfrom click import Context\n\n@token.command(name=\"copy\")\n@click.argument(\"token_id\")\n@click.pass_context\n@coro\nasync def token_copy(ctx: Context, token_id: str) -> None:\n    \"\"\"Copy a Static Token.\"\"\"\n\n    obj: Dict[str, Any] = ctx.ensure_object(dict)\n    client: TinyB = obj[\"client\"]\n\n    try:\n        token = await client.token_get(token_id)\n        pyperclip.copy(token[\"token\"].strip())\n    except AuthNoTokenException:\n        raise\n    except DoesNotExistException:\n        raise CLITokenException(FeedbackManager.error_token_does_not_exist(token_id=token_id))\n    except Exception as e:\n        raise CLITokenException(FeedbackManager.error_exception(error=e))\n    click.echo(FeedbackManager.success_copy_token(token=token_id))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ctx.ensure_object",
+        "client.token_get",
+        "pyperclip.copy",
+        "FeedbackManager.error_token_does_not_exist",
+        "FeedbackManager.error_exception",
+        "click.echo",
+        "FeedbackManager.success_copy_token"
+      ],
+      "api_sequence_with_args": [
+        "ctx.ensure_object(dict)",
+        "client.token_get(token_id)",
+        "pyperclip.copy(token[\"token\"].strip())",
+        "FeedbackManager.error_token_does_not_exist(token_id=token_id)",
+        "FeedbackManager.error_exception(error=e)",
+        "click.echo(FeedbackManager.success_copy_token(token=token_id))",
+        "FeedbackManager.success_copy_token(token=token_id)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ctx.ensure_object",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "client.token_get",
+          "id": "check_discord_token",
+          "description": "Checks validity of Discord token",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_control"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        },
+        {
+          "api_name": "FeedbackManager.error_token_does_not_exist",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "FeedbackManager.error_exception",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "click.echo",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "FeedbackManager.success_copy_token",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        }
+      ],
+      "contextual_code": "async def token_copy(ctx: Context, token_id: str) -> None:\n    obj: Dict[str, Any] = ctx.ensure_object(dict)\n    client: TinyB = obj[\"client\"]\n    try:\n        token = await client.token_get(token_id)\n        pyperclip.copy(token[\"token\"].strip())\n    except AuthNoTokenException:\n        raise\n    except DoesNotExistException:\n        raise CLITokenException(FeedbackManager.error_token_does_not_exist(token_id=token_id))\n    except Exception as e:\n        raise CLITokenException(FeedbackManager.error_exception(error=e))\n    click.echo(FeedbackManager.success_copy_token(token=token_id))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "tinybird_cli-5.20.1.dev0",
+      "total_matches": 3
+    }
+  }
+]

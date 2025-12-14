@@ -1,0 +1,78 @@
+[
+  {
+    "metadata": {
+      "package_name": "awscrt-0.26.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_http_client.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/awscrt-0.26.1/awscrt-0.26.1/test/test_http_client.py",
+    "line_number": "58",
+    "type_description": "B827:httpserver",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "57\n58\t        self.server = HTTPServer((self.hostname, 0), TestRequestHandler)\n59\t        if secure:",
+    "code_snippet": "    def _start_server(self, secure, http_1_0=False):\n        # HTTP/1.0 closes the connection at the end of each request\n        # HTTP/1.1 will keep the connection alive\n        if http_1_0:\n            TestRequestHandler.protocol_version = \"HTTP/1.0\"\n        else:\n            TestRequestHandler.protocol_version = \"HTTP/1.1\"\n\n        self.server = HTTPServer((self.hostname, 0), TestRequestHandler)\n        if secure:\n            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n            context.load_cert_chain(certfile='test/resources/unittest.crt', keyfile=\"test/resources/unittest.key\")\n            self.server.socket = context.wrap_socket(self.server.socket, server_side=True)\n        self.port = self.server.server_address[1]\n\n        # put requests are stored in this dict\n        self.server.put_requests = {}\n\n        self.server_thread = threading.Thread(target=self.server.serve_forever, name='test_server')\n        self.server_thread.start()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "ssl.SSLContext",
+        "ssl.SSLContext.load_cert_chain",
+        "ssl.SSLContext.wrap_socket",
+        "threading.Thread",
+        "threading.Thread.start"
+      ],
+      "api_sequence_with_args": [
+        "ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)",
+        "ssl.SSLContext.load_cert_chain(certfile='test/resources/unittest.crt', keyfile='test/resources/unittest.key')",
+        "ssl.SSLContext.wrap_socket(self.server.socket, server_side=True)",
+        "threading.Thread(target=self.server.serve_forever, name='test_server')",
+        "threading.Thread.start()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "ssl.SSLContext",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "ssl.SSLContext.load_cert_chain",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "ssl.SSLContext.wrap_socket",
+          "id": "wrap_socket_ssl",
+          "description": "Wraps socket for SSL/TLS communication",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "threading.Thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "threading.Thread.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "def _start_server(self, secure, http_1_0=False):\n    if http_1_0:\n        TestRequestHandler.protocol_version = \"HTTP/1.0\"\n    else:\n        TestRequestHandler.protocol_version = \"HTTP/1.1\"\n\n    self.server = HTTPServer((self.hostname, 0), TestRequestHandler)\n    if secure:\n        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n        context.load_cert_chain(certfile='test/resources/unittest.crt', keyfile=\"test/resources/unittest.key\")\n        self.server.socket = context.wrap_socket(self.server.socket, server_side=True)\n    self.port = self.server.server_address[1]\n    self.server.put_requests = {}\n    self.server_thread = threading.Thread(target=self.server.serve_forever, name='test_server')\n    self.server_thread.start()"
+    }
+  }
+]

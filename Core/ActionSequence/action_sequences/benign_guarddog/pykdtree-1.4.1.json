@@ -1,0 +1,71 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport re\n\nimport numpy as np\nfrom Cython.Build import build_ext\nfrom Cython.Distutils import Extension\nfrom setuptools import setup\nfrom setuptools.command.build_ext import build_ext\n\n# ... (other code omitted for brevity)\n\ndef _compile_link_paths_from_manifest(cmd):\n    \"\"\"Parse include and library paths from OSX package managers.\n\n    Example executions::\n\n        # Homebrew\n        $ brew ls --verbose libomp\n        /opt/homebrew/Cellar/libomp/15.0.7/INSTALL_RECEIPT.json\n        /opt/homebrew/Cellar/libomp/15.0.7/.brew/libomp.rb\n        /opt/homebrew/Cellar/libomp/15.0.7/include/ompt.h\n        /opt/homebrew/Cellar/libomp/15.0.7/include/omp.h\n        /opt/homebrew/Cellar/libomp/15.0.7/include/omp-tools.h\n        /opt/homebrew/Cellar/libomp/15.0.7/lib/libomp.dylib\n        /opt/homebrew/Cellar/libomp/15.0.7/lib/libomp.a\n\n        # MacPorts\n        $ port contents libomp\n        Port libomp contains:\n          /opt/local/include/libomp/omp-tools.h\n          /opt/local/include/libomp/omp.h\n          /opt/local/include/libomp/ompt.h\n          /opt/local/lib/libomp/libgomp.dylib\n          /opt/local/lib/libomp/libiomp5.dylib\n          /opt/local/lib/libomp/libomp.dylib\n          /opt/local/share/doc/libomp/LICENSE.TXT\n          /opt/local/share/doc/libomp/README.txt\n\n    \"\"\"\n    from subprocess import run\n    query = run(cmd, shell=True, check=False, capture_output=True)\n    if query.returncode != 0:\n        return None, None\n    manifest = query.stdout.decode(\"UTF-8\")\n    # find all the unique directories mentioned in the manifest\n    dirs = set(os.path.split(filename)[0] for filename in re.findall(r'^\\s*(/.*?)\\s*$', manifest, re.MULTILINE))\n    # find a unique libdir and incdir\n    inc = tuple(d for d in dirs if re.search(r'/include(\\W|$)', d))\n    lib = tuple(d for d in dirs if re.search(r'/lib(\\W|$)', d))\n    # only return success if there's no ambiguity\n    return (inc + lib) if len(inc) == 1 and len(lib) == 1 else (None, None)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "subprocess.run",
+        "os.path.split",
+        "re.findall",
+        "re.search",
+        "re.search"
+      ],
+      "api_sequence_with_args": [
+        "subprocess.run(cmd, shell=True, check=False, capture_output=True)",
+        "os.path.split(filename)[0] for filename in re.findall(r'^\\s*(/.*?)\\s*$', manifest, re.MULTILINE)",
+        "re.findall(r'^\\s*(/.*?)\\s*$', manifest, re.MULTILINE)",
+        "re.search(r'/include(\\W|$)', d)",
+        "re.search(r'/lib(\\W|$)', d)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "re.findall",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        }
+      ],
+      "contextual_code": "def _compile_link_paths_from_manifest(cmd):\n    from subprocess import run\n    query = run(cmd, shell=True, check=False, capture_output=True)\n    if query.returncode != 0:\n        return None, None\n    manifest = query.stdout.decode(\"UTF-8\")\n    dirs = set(os.path.split(filename)[0] for filename in re.findall(r'^\\s*(/.*?)\\s*$', manifest, re.MULTILINE))\n    inc = tuple(d for d in dirs if re.search(r'/include(\\W|$)', d))\n    lib = tuple(d for d in dirs if re.search(r'/lib(\\W|$)', d))\n    return (inc + lib) if len(inc) == 1 and len(lib) == 1 else (None, None)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pykdtree-1.4.1",
+      "total_matches": 1
+    }
+  }
+]

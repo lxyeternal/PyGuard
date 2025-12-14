@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "package_name": "oracle_ads-2.13.6",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "generic_model.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/oracle_ads-2.13.6/oracle_ads-2.13.6/ads/model/generic_model.py",
+    "line_number": "938",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "937\t            try:\n938\t                conda_prefix = os.environ.get(\"CONDA_PREFIX\", None)\n939\t                manifest = fetch_manifest_from_conda_location(conda_prefix)",
+    "code_snippet": "def prepare(\n        self,\n        inference_conda_env: str = None,\n        inference_python_version: str = None,\n        training_conda_env: str = None,\n        training_python_version: str = None,\n        model_file_name: str = None,\n        as_onnx: bool = False,\n        initial_types: List[Tuple] = None,\n        force_overwrite: bool = False,\n        namespace: str = CONDA_BUCKET_NS,\n        use_case_type: str = None,\n        X_sample: Union[list, tuple, pd.DataFrame, pd.Series, np.ndarray] = None,\n        y_sample: Union[list, tuple, pd.DataFrame, pd.Series, np.ndarray] = None,\n        training_script_path: str = None,\n        training_id: str = _TRAINING_RESOURCE_ID,\n        ignore_pending_changes: bool = True,\n        max_col_num: int = DATA_SCHEMA_MAX_COL_NUM,\n        ignore_conda_error: bool = False,\n        score_py_uri: str = None,\n        **kwargs: Dict,\n    ) -> \"GenericModel\":\n        \"\"\"Prepare and save the score.py, serialized model and runtime.yaml file.\n\n        ... (docstring omitted for brevity) ...\n        \"\"\"\n        # Populate properties from args and kwargs.\n        # empty values will be ignored.\n\n        locals_dict = _extract_locals(locals())\n        locals_dict.pop(\"training_id\", None)\n        self.properties.with_dict(locals_dict)\n\n        if training_id != _TRAINING_RESOURCE_ID:\n            self.properties.training_id = training_id\n        elif not self.properties.training_id:\n            self.properties.training_id = _TRAINING_RESOURCE_ID\n\n        self.ignore_conda_error = ignore_conda_error\n        if self.ignore_conda_error:\n            logger.info(\n                \"`ignore_conda_error` is set to True and `.verify()` is targeted to test the generated score.py on the local conda environment, not the container.\"\n            )\n        if not self.properties.inference_conda_env:\n            try:\n                conda_prefix = os.environ.get(\"CONDA_PREFIX\", None)\n                manifest = fetch_manifest_from_conda_location(conda_prefix)\n                if \"pack_path\" in manifest:\n                    self.properties.inference_conda_env = manifest[\"pack_path\"]\n                elif not self.ignore_conda_error:\n                    raise ValueError(\n                        \"`inference_conda_env` must be specified for conda runtime. If you are using container runtime, set `ignore_conda_error=True`.\"\n                    )\n                self.properties.inference_python_version = (\n                    manifest[\"python\"]\n                    if \"python\" in manifest\n                    and not self.properties.inference_python_version\n                    else self.properties.inference_python_version\n                )\n            except:\n                if not self.ignore_conda_error:\n                    raise ValueError(\n                        \"`inference_conda_env` must be specified for conda runtime. If you are using container runtime, set `ignore_conda_error=True`.\"\n                    )\n\n        self._as_onnx = as_onnx\n        if as_onnx:\n            self._set_model_save_serializer_to_onnx()\n\n        self.model_file_name = self._handle_model_file_name(\n            as_onnx=as_onnx, model_file_name=model_file_name\n        )\n        if (\n            not isinstance(self.model_file_name, str)\n            or self.model_file_name.strip() == \"\"\n        ):\n            raise ValueError(\"The `model_file_name` needs to be provided.\")\n\n        if not ObjectStorageDetails.is_oci_path(self.artifact_dir):\n            os.makedirs(self.artifact_dir, exist_ok=True)\n\n        # Bring in .model-ignore file\n        uri_src = os.path.join(\n            os.path.dirname(os.path.realpath(__file__)),\n            \"common/.model-ignore\",\n        )\n        uri_dst = os.path.join(self.artifact_dir, \".model-ignore\")\n        utils.copy_file(uri_src=uri_src, uri_dst=uri_dst, force_overwrite=True)\n\n        self.model_artifact = ModelArtifact(\n            artifact_dir=self.artifact_dir,\n            model_file_name=self.model_file_name,\n            auth=self.auth,\n            local_copy_dir=self.local_copy_dir,\n        )\n        try:\n            self.runtime_info = self.model_artifact.prepare_runtime_yaml(\n                inference_conda_env=self.properties.inference_conda_env,\n                inference_python_version=self.properties.inference_python_version,\n                training_conda_env=self.properties.training_conda_env,\n                training_python_version=self.properties.training_python_version,\n                force_overwrite=force_overwrite,\n                namespace=namespace,\n                bucketname=DEFAULT_CONDA_BUCKET_NAME,\n                auth=self.auth,\n                ignore_conda_error=self.ignore_conda_error,\n            )\n        except ValueError as e:\n            raise e\n\n        self.update_summary_status(\n            detail=PREPARE_STATUS_GEN_RUNTIME_DETAIL, status=ModelState.DONE.value\n        )\n\n        if self.estimator:\n            if as_onnx:\n                X_sample = self._onnx_data_transformer(\n                    X_sample,\n                    impute_values=kwargs.pop(\"impute_values\", {}),\n                    force_overwrite=force_overwrite,\n                )\n            try:\n                self.serialize_model(\n                    as_onnx=as_onnx,\n                    force_overwrite=force_overwrite,\n                    initial_types=initial_types,\n                    X_sample=X_sample,\n                    **kwargs,\n                )\n                self.update_summary_status(\n                    detail=PREPARE_STATUS_SERIALIZE_MODEL_DETAIL,\n                    status=ModelState.DONE.value,\n                )\n            except SerializeModelNotImplementedError:\n                if not utils.is_path_exists(\n                    uri=os.path.join(self.artifact_dir, self.model_file_name),\n                    auth=self.auth,\n                ):\n                    self.update_summary_action(\n                        detail=PREPARE_STATUS_SERIALIZE_MODEL_DETAIL,\n                        action=(\n                            \"Model is not automatically serialized. \"\n                            f\"Serialize the model as `{self.model_file_name}` and \"\n                            f\"save to the {self.artifact_dir}.\"\n                        ),\n                    )\n                    self.update_summary_status(\n                        detail=PREPARE_STATUS_SERIALIZE_MODEL_DETAIL,\n                        status=ModelState.NEEDSACTION.value,\n                    )\n                    logger.warning(\n                        f\"{self.model_file_name} not found in {self.artifact_dir}. \"\n                        f\"Save the serialized model under {self.artifact_dir}.\"\n                    )\n                    self.update_summary_action(\n                        detail=PREPARE_STATUS_GEN_SCORE_DETAIL,\n                        action=(\n                            \"`load_model` is not automatically generated. \"\n                            \"Finish implementing it and call .verify to check if it works.\"\n                        ),\n                    )\n            except Exception as e:\n                raise e\n\n        if self.framework == Framework.EMBEDDING_ONNX:\n            self.model_artifact.prepare_schema(schema_name=\"openapi.json\")\n\n        if as_onnx:\n            jinja_template_filename = \"score_onnx_new\"\n        elif self.framework and self.framework != \"other\":\n            jinja_template_filename = \"score_\" + self.framework\n            if self.framework == \"transformers\":\n                jinja_template_filename = \"score_\" + \"huggingface_pipeline\"\n        else:\n            jinja_template_filename = (\n                \"score-pkl\" if self._serialize else \"score_generic\"\n            )\n\n        if score_py_uri:\n            utils.copy_file(\n                uri_src=score_py_uri,\n                uri_dst=os.path.join(self.artifact_dir, \"score.py\"),\n                force_overwrite=force_overwrite,\n                auth=self.auth,\n            )\n        else:\n            self.model_artifact.prepare_score_py(\n                jinja_template_filename=jinja_template_filename,\n                model_file_name=self.model_file_name,\n                data_deserializer=self.model_input_serializer.name,\n                model_serializer=self.model_save_serializer.name,\n                auth=self.auth,\n                **{**kwargs, **self._score_args},\n            )\n\n        self.update_summary_status(\n            detail=PREPARE_STATUS_GEN_SCORE_DETAIL, status=ModelState.DONE.value\n        )\n\n        self.populate_metadata(\n            use_case_type=use_case_type,\n            X_sample=X_sample,\n            y_sample=y_sample,\n            training_script_path=self.properties.training_script_path,\n            training_id=self.properties.training_id,\n            ignore_pending_changes=ignore_pending_changes,\n            max_col_num=max_col_num,\n            ignore_conda_error=self.ignore_conda_error,\n            auth=self.auth,\n        )\n\n        self.update_summary_status(\n            detail=PREPARE_STATUS_POPULATE_METADATA_DETAIL,\n            status=ModelState.DONE.value,\n        )\n\n        self.update_summary_status(\n            detail=VERIFY_STATUS_LOCAL_TEST_DETAIL,\n            status=ModelState.AVAILABLE.value,\n        )\n\n        if not self.ignore_conda_error:\n            self.update_summary_status(\n                detail=SAVE_STATUS_INTROSPECT_TEST_DETAIL,\n                status=ModelState.AVAILABLE.value,\n            )\n\n        self.update_summary_status(\n            detail=SAVE_STATUS_UPLOAD_ARTIFACT_DETAIL,\n            status=ModelState.AVAILABLE.value,\n        )\n        return self",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "fetch_manifest_from_conda_location",
+        "os.makedirs",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.realpath",
+        "utils.copy_file",
+        "os.path.join",
+        "utils.copy_file",
+        "os.path.join",
+        "utils.is_path_exists"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get(\"CONDA_PREFIX\", None)",
+        "fetch_manifest_from_conda_location(conda_prefix)",
+        "os.makedirs(self.artifact_dir, exist_ok=True)",
+        "os.path.join(os.path.dirname(os.path.realpath(__file__)), \"common/.model-ignore\")",
+        "os.path.dirname(os.path.realpath(__file__))",
+        "os.path.realpath(__file__)",
+        "utils.copy_file(uri_src=uri_src, uri_dst=uri_dst, force_overwrite=True)",
+        "os.path.join(self.artifact_dir, \"score.py\")",
+        "utils.copy_file(uri_src=score_py_uri, uri_dst=os.path.join(self.artifact_dir, \"score.py\"), force_overwrite=force_overwrite, auth=self.auth)",
+        "os.path.join(self.artifact_dir, self.model_file_name)",
+        "utils.is_path_exists(uri=os.path.join(self.artifact_dir, self.model_file_name), auth=self.auth)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "fetch_manifest_from_conda_location",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "utils.copy_file",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "utils.copy_file",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "utils.is_path_exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "if not self.properties.inference_conda_env:\n    try:\n        conda_prefix = os.environ.get(\"CONDA_PREFIX\", None)\n        manifest = fetch_manifest_from_conda_location(conda_prefix)\n        if \"pack_path\" in manifest:\n            self.properties.inference_conda_env = manifest[\"pack_path\"]\n        elif not self.ignore_conda_error:\n            raise ValueError(...)\n        self.properties.inference_python_version = (\n            manifest[\"python\"]\n            if \"python\" in manifest\n            and not self.properties.inference_python_version\n            else self.properties.inference_python_version\n        )\n    except:\n        if not self.ignore_conda_error:\n            raise ValueError(...)\n\nif not ObjectStorageDetails.is_oci_path(self.artifact_dir):\n    os.makedirs(self.artifact_dir, exist_ok=True)\n\nuri_src = os.path.join(\n    os.path.dirname(os.path.realpath(__file__)),\n    \"common/.model-ignore\",\n)\nuri_dst = os.path.join(self.artifact_dir, \".model-ignore\")\nutils.copy_file(uri_src=uri_src, uri_dst=uri_dst, force_overwrite=True)\n\nif score_py_uri:\n    utils.copy_file(\n        uri_src=score_py_uri,\n        uri_dst=os.path.join(self.artifact_dir, \"score.py\"),\n        force_overwrite=force_overwrite,\n        auth=self.auth,\n    )\nelse:\n    self.model_artifact.prepare_score_py(...)\n\ntry:\n    self.serialize_model(...)\n    ...\nexcept SerializeModelNotImplementedError:\n    if not utils.is_path_exists(\n        uri=os.path.join(self.artifact_dir, self.model_file_name),\n        auth=self.auth,\n    ):\n        ...\n"
+    }
+  }
+]

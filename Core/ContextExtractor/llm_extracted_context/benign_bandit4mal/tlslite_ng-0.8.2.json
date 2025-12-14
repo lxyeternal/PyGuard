@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "tlslite_ng-0.8.2",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "tlstest.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tlslite_ng-0.8.2/tlslite_ng-0.8.2/tests/tlstest.py",
+    "line_number": "949",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "948\t    testConnClient(connection)\n949\t    connection.close()\n950",
+    "context_snippet": "def clientTestCmd(argv):\n\n    address = argv[0]\n    dir = argv[1]\n\n    #Split address into hostname/port tuple\n    address = address.split(\":\")\n    address = ( address[0], int(address[1]) )\n\n    #open synchronisation FIFO\n    synchro = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    synchro.settimeout(60)\n    synchro.connect((address[0], address[1]-1))\n\n    def connect():\n        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n        sock.settimeout(15)\n        sock.connect(address)\n        c = TLSConnection(sock)\n        return c\n\n    test_no = 0\n\n    badFault = False\n\n    print(\"Test {0} - anonymous handshake\".format(test_no))\n    synchro.recv(1)\n    connection = connect()\n    settings = HandshakeSettings()\n    settings.maxVersion = (3, 3)\n    connection.handshakeClientAnonymous(settings=settings)\n    testConnClient(connection)\n    connection.close()\n\n    # ... (function continues for hundreds of lines, with repeated usage of connection.close())\n",
+    "hash_value": "39e56ec316660b54be93a9e9da6e2972"
+  },
+  {
+    "pyfile": "tlstest.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tlslite_ng-0.8.2/tlslite_ng-0.8.2/tests/tlstest.py",
+    "line_number": "3483",
+    "type_description": "B831:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3482\t          \"with expired ticket\".format(test_no))\n3483\t    synchro.send(b'R')\n3484\t    connection = connect()",
+    "context_snippet": "def serverTestCmd(argv):\n\n    address = argv[0]\n    dir = argv[1]\n\n    #Split address into hostname/port tuple\n    address = address.split(\":\")\n    address = ( address[0], int(address[1]) )\n\n    #Create synchronisation FIFO\n    synchroSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    synchroSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n    synchroSocket.bind((address[0], address[1]-1))\n    synchroSocket.listen(2)\n\n    #Connect to server\n    lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    lsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n    lsock.bind(address)\n    lsock.listen(5)\n\n    # following is blocking until the other side doesn't open\n    synchro = synchroSocket.accept()[0]\n\n    def connect():\n        s = lsock.accept()[0]\n        s.settimeout(15)\n        return TLSConnection(s)\n\n    with open(os.path.join(dir, \"serverX509Cert.pem\")) as f:\n        x509Cert = X509().parse(f.read())\n    x509Chain = X509CertChain([x509Cert])\n    with open(os.path.join(dir, \"serverX509Key.pem\")) as f:\n        x509Key = parsePEMKey(f.read(), private=True)\n\n    ...\n\n    test_no += 1\n\n    print(\"Test {0} - session_ticket resumption in TLSv1.2 \"\n          \"with expired ticket\".format(test_no))\n    synchro.send(b'R')\n    connection = connect()\n    settings = HandshakeSettings()\n    settings.ticketLifetime = 1\n    settings.maxVersion = (3, 3)\n    settings.ticketKeys = [getRandomBytes(32)]\n    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,\n                               settings=settings)\n    testConnServer(connection)\n    connection.close()\n\n    time.sleep(2)\n\n    # resume\n    synchro.send(b'R')\n    connection = connect()\n    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,\n                               settings=settings)\n    testConnServer(connection)\n    connection.close()\n\n    ...\n",
+    "hash_value": "a1719507df936a08d7ad03a7baf72104"
+  },
+  {
+    "pyfile": "tlstest.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tlslite_ng-0.8.2/tlslite_ng-0.8.2/tests/tlstest.py",
+    "line_number": "3118",
+    "type_description": "B831:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "3117\t    print(\"Test {0} - good mutual X.509, SSLv3\".format(test_no))\n3118\t    synchro.send(b'R')\n3119\t    connection = connect()",
+    "context_snippet": "def serverTestCmd(argv):\n\n    address = argv[0]\n    dir = argv[1]\n\n    #Split address into hostname/port tuple\n    address = address.split(\":\")\n    address = ( address[0], int(address[1]) )\n\n    #Create synchronisation FIFO\n    synchroSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    synchroSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n    synchroSocket.bind((address[0], address[1]-1))\n    synchroSocket.listen(2)\n\n    #Connect to server\n    lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    lsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n    lsock.bind(address)\n    lsock.listen(5)\n\n    # following is blocking until the other side doesn't open\n    synchro = synchroSocket.accept()[0]\n\n    def connect():\n        s = lsock.accept()[0]\n        s.settimeout(15)\n        return TLSConnection(s)\n\n    ...\n\n    test_no = 0\n\n    print(\"Test {0} - Anonymous server handshake\".format(test_no))\n    synchro.send(b'R')\n    connection = connect()\n    connection.handshakeServer(anon=True)\n    testConnServer(connection)\n    connection.close()\n\n    test_no += 1\n\n    print(\"Test {0} - good X.509 (plus SNI)\".format(test_no))\n    synchro.send(b'R')\n    connection = connect()\n    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)\n    assert connection.session.serverName == address[0]\n    assert connection.extendedMasterSecret\n    assert connection.session.appProto is None\n    assert connection.server_cert_compression_algo == \"zlib\"\n    assert connection.client_cert_compression_algo is None\n    testConnServer(connection)\n    connection.close()\n\n    ...\n\n    print(\"Test {0} - good X.509, SSLv3\".format(test_no))\n    synchro.send(b'R')\n    connection = connect()\n    settings = HandshakeSettings()\n    settings.minVersion = (3,0)\n    settings.maxVersion = (3,0)\n    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)\n    assert(not connection.extendedMasterSecret)\n    testConnServer(connection)\n    connection.close()\n\n    test_no += 1\n",
+    "hash_value": "626a95d718b906747232a04f266eddfa"
+  }
+]

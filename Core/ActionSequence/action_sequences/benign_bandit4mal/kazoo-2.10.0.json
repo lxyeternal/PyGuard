@@ -1,0 +1,117 @@
+[
+  {
+    "metadata": {
+      "package_name": "kazoo-2.10.0",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_client.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/kazoo-2.10.0/kazoo-2.10.0/kazoo/tests/test_client.py",
+    "line_number": "425",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "424\t        # close the connection to free the socket\n425\t        client.close()\n426\t        assert client._connection._write_sock is None",
+    "code_snippet": "def test_closed(self):\n    client = self.client\n    client.stop()\n\n    write_sock = client._connection._write_sock\n\n    # close the connection to free the socket\n    client.close()\n    assert client._connection._write_sock is None\n\n    # sneak in and patch client to simulate race between a thread\n    # calling stop(); close() and one running a command\n    oldstate = client._state\n    client._state = KeeperState.CONNECTED\n    client._connection._write_sock = write_sock\n\n    try:\n        # simulate call made after write socket is closed\n        with pytest.raises(ConnectionClosedError):\n            client.exists(\"/\")\n\n        # simulate call made after write socket is set to None\n        client._connection._write_sock = None\n\n        with pytest.raises(ConnectionClosedError):\n            client.exists(\"/\")\n\n    finally:\n        # reset for teardown\n        client._state = oldstate\n        client._connection._write_sock = None",
+    "pattern_analysis": {
+      "api_sequence": [
+        "client.stop",
+        "client.close",
+        "client.exists"
+      ],
+      "api_sequence_with_args": [
+        "client.stop()",
+        "client.close()",
+        "client.exists(\"/\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "client.stop",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "client.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "client.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "def test_closed(self):\n    client = self.client\n    client.stop()\n\n    write_sock = client._connection._write_sock\n\n    # close the connection to free the socket\n    client.close()\n    assert client._connection._write_sock is None\n\n    # sneak in and patch client to simulate race between a thread\n    # calling stop(); close() and one running a command\n    oldstate = client._state\n    client._state = KeeperState.CONNECTED\n    client._connection._write_sock = write_sock\n\n    try:\n        # simulate call made after write socket is closed\n        with pytest.raises(ConnectionClosedError):\n            client.exists(\"/\")\n\n        # simulate call made after write socket is set to None\n        client._connection._write_sock = None\n\n        with pytest.raises(ConnectionClosedError):\n            client.exists(\"/\")\n\n    finally:\n        # reset for teardown\n        client._state = oldstate\n        client._connection._write_sock = None"
+    }
+  },
+  {
+    "pyfile": "test_selectors_select.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/kazoo-2.10.0/kazoo-2.10.0/kazoo/tests/test_selectors_select.py",
+    "line_number": "54",
+    "type_description": "B813:popen",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "53\t        cmd = \"for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done\"\n54\t        p = os.popen(cmd, \"r\")\n55\t        for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:",
+    "code_snippet": "    def test_select(self):\n        cmd = \"for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done\"\n        p = os.popen(cmd, \"r\")\n        for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:\n            rfd, wfd, xfd = select([p], [], [], tout)\n            if (rfd, wfd, xfd) == ([], [], []):\n                continue\n            if (rfd, wfd, xfd) == ([p], [], []):\n                line = p.readline()\n                if not line:\n                    break\n                continue\n            self.fail(\"Unexpected return values from select():\", rfd, wfd, xfd)\n        p.close()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.popen",
+        "select.select",
+        "file.readline",
+        "file.close"
+      ],
+      "api_sequence_with_args": [
+        "os.popen(cmd, \"r\")",
+        "select.select([p], [], [], tout)",
+        "file.readline()",
+        "file.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.popen",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "select.select",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "file.readline",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "file.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        }
+      ],
+      "contextual_code": "def test_select(self):\n    cmd = \"for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done\"\n    p = os.popen(cmd, \"r\")\n    for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:\n        rfd, wfd, xfd = select([p], [], [], tout)\n        if (rfd, wfd, xfd) == ([], [], []):\n            continue\n        if (rfd, wfd, xfd) == ([p], [], []):\n            line = p.readline()\n            if not line:\n                break\n            continue\n        self.fail(\"Unexpected return values from select():\", rfd, wfd, xfd)\n    p.close()"
+    }
+  }
+]

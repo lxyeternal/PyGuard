@@ -1,0 +1,278 @@
+[
+  {
+    "metadata": {
+      "package_name": "pygithub-2.6.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "Framework.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pygithub-2.6.1/pygithub-2.6.1/tests/Framework.py",
+    "line_number": "191",
+    "type_description": "B802:b64encode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "190\t            for chunk in chunks:\n191\t                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n192\t            self.__writeLine(\"\")",
+    "code_snippet": "import base64\n\nclass RecordingConnection:\n    __openFile = None\n\n    @staticmethod\n    def setOpenFile(func):\n        RecordingConnection.__openFile = func\n\n    def __init__(self, protocol, host, port, *args, **kwds):\n        self.__file = self.__openFile(\"w\")\n        # write operations make the assumption that the file is not in binary mode\n        assert isinstance(self.__file, io.TextIOBase)\n        self.__protocol = protocol\n        self.__host = host\n        self.__port = port\n        self.__cnx = self._realConnection(host, port, *args, **kwds)\n        self.__stream = False\n\n    @property\n    def host(self):\n        return self.__host\n\n    def request(self, verb, url, input, headers, stream=False):\n        self.__cnx.request(verb, url, input, headers)\n        self.__stream = stream\n        # fixAuthorizationHeader changes the parameter directly to remove Authorization token.\n        # however, this is the real dictionary that *will be sent* by \"requests\",\n        # since we are writing here *before* doing the actual request.\n        # So we must avoid changing the real \"headers\" or this create this:\n        # https://github.com/PyGithub/PyGithub/pull/664#issuecomment-389964369\n        # https://github.com/PyGithub/PyGithub/issues/822\n        # Since it's dict[str, str], a simple copy is enough.\n        anonymous_headers = headers.copy()\n        fixAuthorizationHeader(anonymous_headers)\n        self.__writeLine(self.__protocol)\n        self.__writeLine(verb)\n        self.__writeLine(self.__host)\n        self.__writeLine(self.__port)\n        self.__writeLine(url)\n        self.__writeLine(anonymous_headers)\n        self.__writeLine(str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\"))\n\n    def getresponse(self):\n        res = self.__cnx.getresponse()\n\n        status = res.status\n        headers = res.getheaders()\n        output = res if self.__stream else res.read()\n\n        self.__writeLine(status)\n        self.__writeLine(list(headers))\n        if self.__stream:\n            chunks = [chunk for chunk in output.iter_content(chunk_size=64)]\n            output = b\"\".join(chunks)\n            for chunk in chunks:\n                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n            self.__writeLine(\"\")\n        else:\n            self.__writeLine(output)\n        self.__writeLine(\"\")\n\n        return FakeHttpResponse(status, headers, output)\n\n    def close(self):\n        return self.__cnx.close()\n\n    def __writeLine(self, line):\n        self.__file.write(str(line) + \"\\n\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "RecordingConnection.__openFile",
+        "io.TextIOBase",
+        "RecordingConnection._realConnection",
+        "RecordingConnection.__cnx.request",
+        "fixAuthorizationHeader",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__cnx.getresponse",
+        "res.getheaders",
+        "res.read",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "output.iter_content",
+        "base64.b64encode",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__writeLine",
+        "RecordingConnection.__cnx.close",
+        "self.__file.write"
+      ],
+      "api_sequence_with_args": [
+        "RecordingConnection.__openFile(\"w\")",
+        "isinstance(self.__file, io.TextIOBase)",
+        "RecordingConnection._realConnection(host, port, *args, **kwds)",
+        "self.__cnx.request(verb, url, input, headers)",
+        "fixAuthorizationHeader(anonymous_headers)",
+        "self.__writeLine(self.__protocol)",
+        "self.__writeLine(verb)",
+        "self.__writeLine(self.__host)",
+        "self.__writeLine(self.__port)",
+        "self.__writeLine(url)",
+        "self.__writeLine(anonymous_headers)",
+        "self.__writeLine(str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\"))",
+        "self.__cnx.getresponse()",
+        "res.getheaders()",
+        "res.read()",
+        "self.__writeLine(status)",
+        "self.__writeLine(list(headers))",
+        "self.__writeLine(output)",
+        "self.__writeLine(\"\")",
+        "output.iter_content(chunk_size=64)",
+        "base64.b64encode(chunk).decode(\"ascii\")",
+        "self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))",
+        "self.__writeLine(\"\")",
+        "self.__cnx.close()",
+        "self.__file.write(str(line) + \"\\n\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "RecordingConnection.__openFile",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOBase",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "RecordingConnection._realConnection",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "RecordingConnection.__cnx.request",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "fixAuthorizationHeader",
+          "id": "set_builtin_attr",
+          "description": "Sets attribute on builtins object",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__cnx.getresponse",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.getheaders",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "res.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "output.iter_content",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__writeLine",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "RecordingConnection.__cnx.close",
+          "id": "close_http_response",
+          "description": "Closes the HTTP response object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "self.__file.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "import base64\n\nclass RecordingConnection:\n    __openFile = None\n\n    @staticmethod\n    def setOpenFile(func):\n        RecordingConnection.__openFile = func\n\n    def __init__(self, protocol, host, port, *args, **kwds):\n        self.__file = self.__openFile(\"w\")\n        assert isinstance(self.__file, io.TextIOBase)\n        self.__protocol = protocol\n        self.__host = host\n        self.__port = port\n        self.__cnx = self._realConnection(host, port, *args, **kwds)\n        self.__stream = False\n\n    def request(self, verb, url, input, headers, stream=False):\n        self.__cnx.request(verb, url, input, headers)\n        self.__stream = stream\n        anonymous_headers = headers.copy()\n        fixAuthorizationHeader(anonymous_headers)\n        self.__writeLine(self.__protocol)\n        self.__writeLine(verb)\n        self.__writeLine(self.__host)\n        self.__writeLine(self.__port)\n        self.__writeLine(url)\n        self.__writeLine(anonymous_headers)\n        self.__writeLine(str(input).replace(\"\\n\", \"\").replace(\"\\r\", \"\"))\n\n    def getresponse(self):\n        res = self.__cnx.getresponse()\n        status = res.status\n        headers = res.getheaders()\n        output = res if self.__stream else res.read()\n        self.__writeLine(status)\n        self.__writeLine(list(headers))\n        if self.__stream:\n            chunks = [chunk for chunk in output.iter_content(chunk_size=64)]\n            output = b\"\".join(chunks)\n            for chunk in chunks:\n                self.__writeLine(base64.b64encode(chunk).decode(\"ascii\"))\n            self.__writeLine(\"\")\n        else:\n            self.__writeLine(output)\n        self.__writeLine(\"\")\n        return FakeHttpResponse(status, headers, output)\n\n    def close(self):\n        return self.__cnx.close()\n\n    def __writeLine(self, line):\n        self.__file.write(str(line) + \"\\n\")"
+    }
+  }
+]

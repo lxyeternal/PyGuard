@@ -1,0 +1,311 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import csv\nimport hashlib\nfrom html.parser import HTMLParser\nimport os\nimport subprocess\nimport sys\nfrom urllib.parse import urlsplit\nfrom urllib.request import urlopen\n\nCURRENT_WINDOWS_7Z_SHA256 = (\n    'ce633f98c3ce6aec82be3c0d273ab8bdd160642174faba4eb47d8dcd92af7f05'\n)\nCURRENT_DLL_VERSION = '1.0.28.11946'\n\nclass update_libusb(Command):\n    user_options = []\n\n    def initialize_options(self):\n        pass\n\n    def finalize_options(self):\n        pass\n\n    class WindowsBinariesArchiveLinkFinder(HTMLParser):\n        found = None\n        __a_href = None\n        def handle_starttag(self, tag, attrs):\n            if tag == 'a':\n                assert self.__a_href is None, repr(self.__a_href)\n                self.__a_href = dict(attrs).get('href')\n\n        def handle_endtag(self, tag):\n            if tag == 'a':\n                self.__a_href = None\n\n        def handle_data(self, data):\n            if self.__a_href is not None and data == 'Latest Windows Binaries':\n                assert self.found is None, repr(self.found)\n                self.found = self.__a_href\n\n    def run(self):\n        finder = self.WindowsBinariesArchiveLinkFinder()\n        finder.feed(urlopen('https://libusb.info/').read().decode('utf-8'))\n        finder.close()\n        url = finder.found\n        if url is None:\n            raise ValueError('Failed to locate current windows binary release')\n        if not url.endswith('.7z'):\n            raise ValueError('unexpected extension: %r' % (url, ))\n        build_dir = os.path.join(os.path.dirname(__file__), 'build')\n        download_cache_path = os.path.join(build_dir, 'download-cache')\n        if not os.path.exists(download_cache_path):\n            os.makedirs(download_cache_path)\n        url_basename = urlsplit(url).path.rsplit('/', 1)[-1]\n        archive_path = os.path.join(download_cache_path, url_basename)\n        if not os.path.exists(archive_path):\n            for suffix in ('', '.asc'):\n                with open(archive_path + suffix, 'wb') as archive_file:\n                    archive_file.write(urlopen(url + suffix).read())\n        # to build/update trustedkeys-libusb.kbx:\n        # gpg --no-default-keyring --keyring trustedkeys-libusb.kbx --receive-keys ...\n        subprocess.check_call(\n            [\n                'gpgv',\n                '--keyring', 'trustedkeys-libusb.kbx',\n                archive_path + '.asc', archive_path,\n            ],\n            # gnupg will not shut its pie hole.\n            stderr=subprocess.DEVNULL,\n            close_fds=True,\n        )\n        # This check is for the maintainer to notice a new release, and\n        # to retrospectively confirm that a release was done with files\n        # from a certain archive (and not just any signed release).\n        # It is *not* to check file authenticity (for this, we have gpg).\n        with open(archive_path, 'rb') as archive_file:\n            archive_sha256 = hashlib.sha256(archive_file.read()).hexdigest()\n        if archive_sha256 != CURRENT_WINDOWS_7Z_SHA256:\n            raise ValueError(\n                'Windows release sha56 mismatch: %r fetched with a sha256 of %r' % (\n                    url,\n                    archive_sha256,\n                )\n            )\n        for arch_path, out_dir in (\n            ('VS2019/MS32/dll/libusb-1.0.dll', os.path.join(build_dir, 'win32')),\n            ('VS2019/MS64/dll/libusb-1.0.dll', os.path.join(build_dir, 'win_amd64')),\n        ):\n            subprocess.check_call(\n                [\n                    '7z', 'e', '-aoa',\n                    '-o' + out_dir,\n                    archive_path,\n                    arch_path,\n                ],\n                # 7z will not shut its pie hole.\n                stdout=subprocess.DEVNULL,\n                close_fds=True,\n            )\n            out_dll = os.path.join(out_dir, 'libusb-1.0.dll')\n            assert os.path.exists(out_dll)\n            peres_stdout = subprocess.run(\n                [\n                    'peres',\n                    '--format', 'csv',\n                    '-v',\n                    out_dll,\n                ],\n                check=True,\n                stdout=subprocess.PIPE,\n                encoding='ascii',\n                close_fds=True,\n            ).stdout\n            try:\n                for name, value in csv.reader(peres_stdout.splitlines()):\n                    if name == 'Product Version':\n                        if value != CURRENT_DLL_VERSION:\n                            raise ValueError(\n                                f'{out_dll} unexpected DLL version: {value}',\n                            )\n                        break\n                else:\n                    raise ValueError('No \"Product Version\" in peres output')\n            except Exception as exc:\n                raise ValueError(f'Peres stdout: {peres_stdout!r}') from exc",
+    "pattern_analysis": {
+      "api_sequence": [
+        "urlopen",
+        "urlopen.read",
+        "decode",
+        "HTMLParser.feed",
+        "HTMLParser.close",
+        "os.path.join",
+        "os.path.dirname",
+        "os.path.join",
+        "os.path.exists",
+        "os.makedirs",
+        "urlsplit",
+        "os.path.join",
+        "os.path.exists",
+        "open",
+        "urlopen",
+        "urlopen.read",
+        "open.write",
+        "open",
+        "urlopen",
+        "urlopen.read",
+        "open.write",
+        "subprocess.check_call",
+        "open",
+        "open.read",
+        "hashlib.sha256",
+        "hashlib.sha256.hexdigest",
+        "open",
+        "csv.reader",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "urlopen('https://libusb.info/')",
+        "urlopen('https://libusb.info/').read()",
+        "urlopen('https://libusb.info/').read().decode('utf-8')",
+        "HTMLParser.feed(urlopen('https://libusb.info/').read().decode('utf-8'))",
+        "HTMLParser.close()",
+        "os.path.join(os.path.dirname(__file__), 'build')",
+        "os.path.dirname(__file__)",
+        "os.path.join(build_dir, 'download-cache')",
+        "os.path.exists(download_cache_path)",
+        "os.makedirs(download_cache_path)",
+        "urlsplit(url).path.rsplit('/', 1)[-1]",
+        "os.path.join(download_cache_path, url_basename)",
+        "os.path.exists(archive_path)",
+        "open(archive_path + suffix, 'wb')",
+        "urlopen(url + suffix)",
+        "urlopen(url + suffix).read()",
+        "open(archive_path + suffix, 'wb').write(urlopen(url + suffix).read())",
+        "open(archive_path + suffix, 'wb')",
+        "urlopen(url + suffix)",
+        "urlopen(url + suffix).read()",
+        "open(archive_path + suffix, 'wb').write(urlopen(url + suffix).read())",
+        "subprocess.check_call([ 'gpgv', '--keyring', 'trustedkeys-libusb.kbx', archive_path + '.asc', archive_path ], stderr=subprocess.DEVNULL, close_fds=True)",
+        "open(archive_path, 'rb')",
+        "open(archive_path, 'rb').read()",
+        "hashlib.sha256(archive_file.read())",
+        "hashlib.sha256(archive_file.read()).hexdigest()",
+        "open(out_dll, 'rb')",
+        "csv.reader(peres_stdout.splitlines())",
+        "subprocess.run([ 'peres', '--format', 'csv', '-v', out_dll ], check=True, stdout=subprocess.PIPE, encoding='ascii', close_fds=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "urllib.request.urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "http.client.HTTPResponse.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "bytes.decode",
+          "id": "decode_bytes_codec",
+          "description": "Decodes bytes using specified codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "html.parser.HTMLParser.feed",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "html.parser.HTMLParser.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "urllib.parse.urlsplit",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "urllib.request.urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "http.client.HTTPResponse.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "io.BufferedWriter.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "urllib.request.urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "http.client.HTTPResponse.read",
+          "id": "read_response_bytes",
+          "description": "Reads response body as bytes",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "io.BufferedWriter.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.BufferedReader.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "hashlib.sha256",
+          "id": "create_sha256_hash",
+          "description": "Creates SHA-256 hash object from encoded string",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_object_creation"
+        },
+        {
+          "api_name": "hashlib.sha256.hexdigest",
+          "id": "get_sha256_digest",
+          "description": "Returns hexadecimal digest of SHA-256 hash",
+          "first_id": "encryption_hashing",
+          "second_id": "hash_calculation",
+          "third_id": "hash_value_retrieval"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "csv.reader",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "from urllib.request import urlopen\nfrom urllib.parse import urlsplit\nimport os\nimport subprocess\nimport hashlib\nimport csv\n\nclass update_libusb(Command):\n    ...\n    def run(self):\n        finder = self.WindowsBinariesArchiveLinkFinder()\n        finder.feed(urlopen('https://libusb.info/').read().decode('utf-8'))\n        finder.close()\n        url = finder.found\n        if url is None:\n            raise ValueError('Failed to locate current windows binary release')\n        if not url.endswith('.7z'):\n            raise ValueError('unexpected extension: %r' % (url, ))\n        build_dir = os.path.join(os.path.dirname(__file__), 'build')\n        download_cache_path = os.path.join(build_dir, 'download-cache')\n        if not os.path.exists(download_cache_path):\n            os.makedirs(download_cache_path)\n        url_basename = urlsplit(url).path.rsplit('/', 1)[-1]\n        archive_path = os.path.join(download_cache_path, url_basename)\n        if not os.path.exists(archive_path):\n            for suffix in ('', '.asc'):\n                with open(archive_path + suffix, 'wb') as archive_file:\n                    archive_file.write(urlopen(url + suffix).read())\n        subprocess.check_call([\n            'gpgv',\n            '--keyring', 'trustedkeys-libusb.kbx',\n            archive_path + '.asc', archive_path,\n        ], stderr=subprocess.DEVNULL, close_fds=True)\n        with open(archive_path, 'rb') as archive_file:\n            archive_sha256 = hashlib.sha256(archive_file.read()).hexdigest()\n        for arch_path, out_dir in (\n            ('VS2019/MS32/dll/libusb-1.0.dll', os.path.join(build_dir, 'win32')),\n            ('VS2019/MS64/dll/libusb-1.0.dll', os.path.join(build_dir, 'win_amd64')),\n        ):\n            subprocess.check_call([\n                '7z', 'e', '-aoa',\n                '-o' + out_dir,\n                archive_path,\n                arch_path,\n            ], stdout=subprocess.DEVNULL, close_fds=True)\n            out_dll = os.path.join(out_dir, 'libusb-1.0.dll')\n            peres_stdout = subprocess.run([\n                'peres',\n                '--format', 'csv',\n                '-v',\n                out_dll,\n            ], check=True, stdout=subprocess.PIPE, encoding='ascii', close_fds=True).stdout\n            for name, value in csv.reader(peres_stdout.splitlines()):\n                if name == 'Product Version':\n                    if value != CURRENT_DLL_VERSION:\n                        raise ValueError(f'{out_dll} unexpected DLL version: {value}')\n                    break\n            else:\n                raise ValueError('No \"Product Version\" in peres output')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "libusb1-3.3.1",
+      "total_matches": 2
+    }
+  }
+]

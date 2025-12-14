@@ -1,0 +1,241 @@
+[
+  {
+    "pyfile": "flask_cloudflared.py",
+    "code_snippet": "import atexit\nimport requests\nimport subprocess\nimport tarfile\nimport tempfile\nimport shutil\nimport os\nimport platform\nimport time\nimport re\nfrom random import randint\nfrom threading import Timer\nfrom pathlib import Path\n\nCLOUDFLARED_CONFIG = {\n    ('Windows', 'AMD64'): {\n        'command': 'cloudflared-windows-amd64.exe',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe'\n    },\n    ('Windows', 'x86'): {\n        'command': 'cloudflared-windows-386.exe',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-386.exe'\n    },\n    ('Linux', 'x86_64'): {\n        'command': 'cloudflared-linux-amd64',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64'\n    },\n    ('Linux', 'i386'): {\n        'command': 'cloudflared-linux-386',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-386'\n    },\n    ('Linux', 'arm'): {\n        'command': 'cloudflared-linux-arm',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm'\n    },\n    ('Linux', 'arm64'): {\n        'command': 'cloudflared-linux-arm64',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64'\n    },\n    ('Linux', 'aarch64'): {\n        'command': 'cloudflared-linux-arm64',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64'\n    },\n    ('Darwin', 'x86_64'): {\n        'command': 'cloudflared',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz'\n    },\n    ('Darwin', 'arm64'): {\n        'command': 'cloudflared',\n        'url': 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz'\n    }\n}\n\ndef _get_command(system, machine):\n    try:\n        return CLOUDFLARED_CONFIG[(system, machine)]['command']\n    except KeyError:\n        raise Exception(f\"{machine} is not supported on {system}\")\n\ndef _get_url(system, machine):\n    try:\n        return CLOUDFLARED_CONFIG[(system, machine)]['url']\n    except KeyError:\n        raise Exception(f\"{machine} is not supported on {system}\")\n\n# Needed for the darwin package\ndef _extract_tarball(tar_path, filename):\n    tar = tarfile.open(tar_path+'/'+filename, 'r')\n    for item in tar:\n        tar.extract(item, tar_path)\n        if item.name.find(\".tgz\") != -1 or item.name.find(\".tar\") != -1:\n            extract(item.name, \"./\" + item.name[:item.name.rfind('/')])\n\ndef _download_cloudflared(cloudflared_path, command):\n    system, machine = platform.system(), platform.machine()\n    if Path(cloudflared_path, command).exists():\n        executable = (cloudflared_path+'/'+'cloudflared') if (system == \"Darwin\" and machine in [\"x86_64\", \"arm64\"]) else (cloudflared_path+'/'+command)\n        update_cloudflared = subprocess.Popen([executable, 'update'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n        return\n    print(f\" * Downloading cloudflared for {system} {machine}...\")\n    url = _get_url(system, machine)\n    _download_file(url)\n\ndef _download_file(url):\n    local_filename = url.split('/')[-1]\n    r = requests.get(url, stream=True)\n    download_path = str(Path(tempfile.gettempdir(), local_filename))\n    with open(download_path, 'wb') as f:\n        shutil.copyfileobj(r.raw, f)\n    return download_path\n\ndef _run_cloudflared(port, metrics_port, tunnel_id=None, config_path=None):\n    system, machine = platform.system(), platform.machine()\n    command = _get_command(system, machine)\n    cloudflared_path = str(Path(tempfile.gettempdir()))\n    if system == \"Darwin\":\n        _download_cloudflared(cloudflared_path, \"cloudflared-darwin-amd64.tgz\")\n        _extract_tarball(cloudflared_path, \"cloudflared-darwin-amd64.tgz\")\n    else:\n        _download_cloudflared(cloudflared_path, command)\n\n    executable = str(Path(cloudflared_path, command))\n    os.chmod(executable, 0o777)\n\n    cloudflared_command = [executable, 'tunnel', '--metrics', f'127.0.0.1:{metrics_port}']\n    if config_path:\n        cloudflared_command += ['--config', config_path, 'run']\n    elif tunnel_id:\n        cloudflared_command += ['--url', f'http://127.0.0.1:{port}', 'run', tunnel_id]\n    else:\n        cloudflared_command += ['--url', f'http://127.0.0.1:{port}']\n\n    if system == \"Darwin\" and machine == \"arm64\":\n        cloudflared = subprocess.Popen(['arch', '-x86_64'] + cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n    else:\n        cloudflared = subprocess.Popen(cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n\n    atexit.register(cloudflared.terminate)\n    localhost_url = f\"http://127.0.0.1:{metrics_port}/metrics\"\n\n    for _ in range(10):\n        try:\n            metrics = requests.get(localhost_url).text\n            if tunnel_id or config_path:\n                # If tunnel_id or config_path is provided, we check for cloudflared_tunnel_ha_connections, as no tunnel URL is available in the metrics\n                if re.search(\"cloudflared_tunnel_ha_connections\\s\\d\", metrics):\n                    # No tunnel URL is available in the metrics, so we return a generic text\n                    tunnel_url = \"preconfigured tunnel URL\"\n                    break\n            else:\n                # If neither tunnel_id nor config_path is provided, we check for the tunnel URL in the metrics\n                tunnel_url = (re.search(\"(?P<url>https?:\\/\\/[^\u001fs]+.trycloudflare.com)\", metrics).group(\"url\"))\n                break\n        except:\n            time.sleep(3)\n    else:\n        raise Exception(f\"! Can't connect to Cloudflare Edge\")\n\n    return tunnel_url\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.system",
+        "platform.machine",
+        "pathlib.Path.exists",
+        "subprocess.Popen",
+        "platform.system",
+        "platform.machine",
+        "pathlib.Path",
+        "requests.get",
+        "tempfile.gettempdir",
+        "pathlib.Path",
+        "open",
+        "shutil.copyfileobj",
+        "tarfile.open",
+        "tarfile.TarFile.extract",
+        "os.chmod",
+        "subprocess.Popen",
+        "subprocess.Popen",
+        "atexit.register",
+        "requests.get",
+        "re.search",
+        "re.search",
+        "time.sleep"
+      ],
+      "api_sequence_with_args": [
+        "platform.system()",
+        "platform.machine()",
+        "pathlib.Path(cloudflared_path, command).exists()",
+        "subprocess.Popen([executable, 'update'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)",
+        "platform.system()",
+        "platform.machine()",
+        "pathlib.Path(tempfile.gettempdir(), local_filename)",
+        "requests.get(url, stream=True)",
+        "tempfile.gettempdir()",
+        "pathlib.Path(tempfile.gettempdir(), local_filename)",
+        "open(download_path, 'wb')",
+        "shutil.copyfileobj(r.raw, f)",
+        "tarfile.open(tar_path+'/'+filename, 'r')",
+        "tarfile.TarFile.extract(item, tar_path)",
+        "os.chmod(executable, 0o777)",
+        "subprocess.Popen(['arch', '-x86_64'] + cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)",
+        "subprocess.Popen(cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)",
+        "atexit.register(cloudflared.terminate)",
+        "requests.get(localhost_url)",
+        "re.search(\"cloudflared_tunnel_ha_connections\\s\\d\", metrics)",
+        "re.search(\"(?P<url>https?:\\/\\/[^\\x1Fs]+.trycloudflare.com)\", metrics)",
+        "time.sleep(3)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "platform.machine",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "pathlib.Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "platform.machine",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "pathlib.Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "tempfile.gettempdir",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "pathlib.Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "shutil.copyfileobj",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.extract",
+          "id": "extract_zip_files",
+          "description": "Extracts all files from ZIP archive to specified directory",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "os.chmod",
+          "id": "change_file_mode_execute",
+          "description": "Changes file mode to add execute permission",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "atexit.register",
+          "id": "register_exit_function",
+          "description": "Registers function to be called at program exit",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "persistence_configuration"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.search",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "import atexit\nimport requests\nimport subprocess\nimport tarfile\nimport tempfile\nimport shutil\nimport os\nimport platform\nimport time\nimport re\nfrom pathlib import Path\n\ndef _download_cloudflared(cloudflared_path, command):\n    system, machine = platform.system(), platform.machine()\n    if Path(cloudflared_path, command).exists():\n        executable = (cloudflared_path+'/'+'cloudflared') if (system == \"Darwin\" and machine in [\"x86_64\", \"arm64\"]) else (cloudflared_path+'/'+command)\n        update_cloudflared = subprocess.Popen([executable, 'update'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n        return\n    url = _get_url(system, machine)\n    _download_file(url)\n\ndef _download_file(url):\n    local_filename = url.split('/')[-1]\n    r = requests.get(url, stream=True)\n    download_path = str(Path(tempfile.gettempdir(), local_filename))\n    with open(download_path, 'wb') as f:\n        shutil.copyfileobj(r.raw, f)\n    return download_path\n\ndef _extract_tarball(tar_path, filename):\n    tar = tarfile.open(tar_path+'/'+filename, 'r')\n    for item in tar:\n        tar.extract(item, tar_path)\n\ndef _run_cloudflared(port, metrics_port, tunnel_id=None, config_path=None):\n    system, machine = platform.system(), platform.machine()\n    command = _get_command(system, machine)\n    cloudflared_path = str(Path(tempfile.gettempdir()))\n    if system == \"Darwin\":\n        _download_cloudflared(cloudflared_path, \"cloudflared-darwin-amd64.tgz\")\n        _extract_tarball(cloudflared_path, \"cloudflared-darwin-amd64.tgz\")\n    else:\n        _download_cloudflared(cloudflared_path, command)\n\n    executable = str(Path(cloudflared_path, command))\n    os.chmod(executable, 0o777)\n\n    cloudflared_command = [executable, 'tunnel', '--metrics', f'127.0.0.1:{metrics_port}']\n    if config_path:\n        cloudflared_command += ['--config', config_path, 'run']\n    elif tunnel_id:\n        cloudflared_command += ['--url', f'http://127.0.0.1:{port}', 'run', tunnel_id]\n    else:\n        cloudflared_command += ['--url', f'http://127.0.0.1:{port}']\n\n    if system == \"Darwin\" and machine == \"arm64\":\n        cloudflared = subprocess.Popen(['arch', '-x86_64'] + cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n    else:\n        cloudflared = subprocess.Popen(cloudflared_command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)\n\n    atexit.register(cloudflared.terminate)\n    localhost_url = f\"http://127.0.0.1:{metrics_port}/metrics\"\n\n    for _ in range(10):\n        try:\n            metrics = requests.get(localhost_url).text\n            if tunnel_id or config_path:\n                if re.search(\"cloudflared_tunnel_ha_connections\\s\\d\", metrics):\n                    tunnel_url = \"preconfigured tunnel URL\"\n                    break\n            else:\n                tunnel_url = (re.search(\"(?P<url>https?:\\/\\/[^\\x1Fs]+.trycloudflare.com)\", metrics).group(\"url\"))\n                break\n        except:\n            time.sleep(3)\n    else:\n        raise Exception(f\"! Can't connect to Cloudflare Edge\")\n\n    return tunnel_url"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "flask_cloudflared-0.0.14",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,317 @@
+[
+  {
+    "metadata": {
+      "package_name": "evo-1.31.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "main_evo.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/evo-1.31.1/evo-1.31.1/evo/main_evo.py",
+    "line_number": "158",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "157\t            if not args.message:\n158\t                msg = sys.stdin.read()\n159\t            else:",
+    "code_snippet": "def main() -> None:\n    import sys\n    import argparse\n    import argcomplete\n    main_parser = argparse.ArgumentParser()\n    shared_parser = argparse.ArgumentParser(add_help=False)\n    sub_parsers = main_parser.add_subparsers(dest=\"subcommand\")\n    sub_parsers.required = True\n    pkg_parser = sub_parsers.add_parser(\n        \"pkg\", description=\"show infos of the package\",\n        parents=[shared_parser])\n    pkg_parser.add_argument(\"--info\", help=\"show the package description\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--version\", help=\"print the package version\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--pyversion\", help=\"print the Python version\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--license\", help=\"print the package license\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--location\", help=\"print the package path\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--logfile\", help=\"print the logfile path\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--open_log\", help=\"open the package logfile\",\n                            action=\"store_true\")\n    pkg_parser.add_argument(\"--clear_log\", help=\"clear package logfile\",\n                            action=\"store_true\")\n    cat_parser = sub_parsers.add_parser(\n        \"cat_log\", description=\"pipe stdin to global evo logfile\"\n        \" or print logfile to stdout (if no stdin)\", parents=[shared_parser])\n    cat_parser.add_argument(\"-l\", \"--loglevel\", help=\"loglevel of the message\",\n                            default=\"info\",\n                            choices=[\"error\", \"warning\", \"info\", \"debug\"])\n    cat_parser.add_argument(\"-m\", \"--message\",\n                            help=\"explicit message instead of pipe\")\n    cat_parser.add_argument(\"-s\", \"--source\",\n                            help=\"source name to use for the log message\")\n    cat_parser.add_argument(\"--clear_log\", help=\"clear logfile before exiting\",\n                            action=\"store_true\")\n    argcomplete.autocomplete(main_parser)\n    if len(sys.argv[1:]) == 0:\n        sys.argv.extend([\"pkg\", \"--info\"])  # cheap trick because YOLO\n    args = main_parser.parse_args()\n    line_end = \"\\n\" if sys.stdout.isatty() else \"\"\n\n    if args.subcommand == \"pkg\":\n        if not len(sys.argv) > 2:\n            pkg_parser.print_help()\n            sys.exit(1)\n        if args.license:\n            print(open(PACKAGE_BASE_PATH / \"LICENSE\").read())\n        if args.info:\n            main_parser.print_usage()\n            print(DESC)\n        if args.version:\n            print(__version__, end=line_end)\n        if args.pyversion:\n            import platform as pf\n            print(pf.python_version(), end=line_end)\n        if args.location:\n            print(PACKAGE_BASE_PATH, end=line_end)\n        if args.logfile or args.open_log:\n            print(settings.GLOBAL_LOGFILE_PATH, end=line_end)\n            if not settings.GLOBAL_LOGFILE_PATH.exists():\n                print(\n                    \"no logfile found - run: \"\n                    \"evo_config set global_logfile_enabled\", end=line_end)\n                sys.exit(1)\n            if args.open_log:\n                import webbrowser\n                webbrowser.open(str(settings.GLOBAL_LOGFILE_PATH))\n        if args.clear_log:\n            from evo.tools import user\n            if user.confirm(\"clear logfile? (y/n)\"):\n                open(settings.GLOBAL_LOGFILE_PATH, mode='w')\n\n    elif args.subcommand == \"cat_log\":\n        if os.name == \"nt\":\n            print(\"cat_log feature not available on Windows\")\n            sys.exit(1)\n        if not args.message and sys.stdin.isatty():\n            if not settings.GLOBAL_LOGFILE_PATH.exists():\n                print(\n                    \"no logfile found - run: \"\n                    \"evo_config set global_logfile_enabled\", end=line_end)\n            else:\n                print(open(settings.GLOBAL_LOGFILE_PATH).read(), end=\"\")\n        elif not settings.SETTINGS.global_logfile_enabled:\n            print(\"logfile disabled\", end=line_end)\n            sys.exit(1)\n        else:\n            import logging\n            logger = logging.getLogger(__name__)\n            from evo.tools import log\n            file_fmt = log.DEFAULT_LONG_FMT\n            if args.source:\n                file_fmt = file_fmt.replace(\n                    \"%(module)s.%(funcName)s():%(lineno)s\", args.source)\n            log.configure_logging(silent=True, file_fmt=file_fmt)\n            if not args.message:\n                msg = sys.stdin.read()\n            else:\n                msg = args.message\n            getattr(logger, args.loglevel)(msg)\n        if args.clear_log:\n            open(settings.GLOBAL_LOGFILE_PATH, mode='w')",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.argv",
+        "sys.stdout.isatty",
+        "sys.exit",
+        "open",
+        "open.read",
+        "main_parser.print_usage",
+        "print",
+        "print",
+        "print",
+        "print",
+        "print",
+        "settings.GLOBAL_LOGFILE_PATH.exists",
+        "print",
+        "sys.exit",
+        "webbrowser.open",
+        "user.confirm",
+        "open",
+        "os.name",
+        "sys.exit",
+        "settings.GLOBAL_LOGFILE_PATH.exists",
+        "print",
+        "open",
+        "open.read",
+        "settings.SETTINGS.global_logfile_enabled",
+        "sys.exit",
+        "sys.stdin.isatty",
+        "sys.stdin.read",
+        "getattr",
+        "open"
+      ],
+      "api_sequence_with_args": [
+        "sys.argv",
+        "sys.stdout.isatty()",
+        "sys.exit(1)",
+        "open(PACKAGE_BASE_PATH / \"LICENSE\")",
+        "open(PACKAGE_BASE_PATH / \"LICENSE\").read()",
+        "main_parser.print_usage()",
+        "print(DESC)",
+        "print(__version__, end=line_end)",
+        "print(PACKAGE_BASE_PATH, end=line_end)",
+        "print(settings.GLOBAL_LOGFILE_PATH, end=line_end)",
+        "settings.GLOBAL_LOGFILE_PATH.exists()",
+        "print(\"no logfile found - run: evo_config set global_logfile_enabled\", end=line_end)",
+        "sys.exit(1)",
+        "webbrowser.open(str(settings.GLOBAL_LOGFILE_PATH))",
+        "user.confirm(\"clear logfile? (y/n)\")",
+        "open(settings.GLOBAL_LOGFILE_PATH, mode='w')",
+        "os.name",
+        "sys.exit(1)",
+        "settings.GLOBAL_LOGFILE_PATH.exists()",
+        "print(\"no logfile found - run: evo_config set global_logfile_enabled\", end=line_end)",
+        "open(settings.GLOBAL_LOGFILE_PATH)",
+        "open(settings.GLOBAL_LOGFILE_PATH).read()",
+        "settings.SETTINGS.global_logfile_enabled",
+        "sys.exit(1)",
+        "sys.stdin.isatty()",
+        "sys.stdin.read()",
+        "getattr(logger, args.loglevel)(msg)",
+        "open(settings.GLOBAL_LOGFILE_PATH, mode='w')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.stdout.isatty",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "main_parser.print_usage",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "settings.GLOBAL_LOGFILE_PATH.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "webbrowser.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "user.confirm",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.name",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "settings.GLOBAL_LOGFILE_PATH.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "print",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "settings.SETTINGS.global_logfile_enabled",
+          "id": "check_persistence_entry",
+          "description": "Checks if persistence entry exists for specified program name",
+          "first_id": "persistence_stealth",
+          "second_id": "persistence_mechanisms",
+          "third_id": "startup_checking"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "sys.stdin.isatty",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "sys.stdin.read",
+          "id": "read_user_input",
+          "description": "Reads user input from standard input",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "if len(sys.argv[1:]) == 0:\n    sys.argv.extend([\"pkg\", \"--info\"])\nargs = main_parser.parse_args()\nline_end = \"\\n\" if sys.stdout.isatty() else \"\"\n\nif args.subcommand == \"pkg\":\n    if not len(sys.argv) > 2:\n        pkg_parser.print_help()\n        sys.exit(1)\n    if args.license:\n        print(open(PACKAGE_BASE_PATH / \"LICENSE\").read())\n    if args.info:\n        main_parser.print_usage()\n        print(DESC)\n    if args.version:\n        print(__version__, end=line_end)\n    if args.pyversion:\n        import platform as pf\n        print(pf.python_version(), end=line_end)\n    if args.location:\n        print(PACKAGE_BASE_PATH, end=line_end)\n    if args.logfile or args.open_log:\n        print(settings.GLOBAL_LOGFILE_PATH, end=line_end)\n        if not settings.GLOBAL_LOGFILE_PATH.exists():\n            print(\n                \"no logfile found - run: \"\n                \"evo_config set global_logfile_enabled\", end=line_end)\n            sys.exit(1)\n        if args.open_log:\n            import webbrowser\n            webbrowser.open(str(settings.GLOBAL_LOGFILE_PATH))\n    if args.clear_log:\n        from evo.tools import user\n        if user.confirm(\"clear logfile? (y/n)\"):\n            open(settings.GLOBAL_LOGFILE_PATH, mode='w')\n\nelif args.subcommand == \"cat_log\":\n    if os.name == \"nt\":\n        print(\"cat_log feature not available on Windows\")\n        sys.exit(1)\n    if not args.message and sys.stdin.isatty():\n        if not settings.GLOBAL_LOGFILE_PATH.exists():\n            print(\n                \"no logfile found - run: \"\n                \"evo_config set global_logfile_enabled\", end=line_end)\n        else:\n            print(open(settings.GLOBAL_LOGFILE_PATH).read(), end=\"\")\n    elif not settings.SETTINGS.global_logfile_enabled:\n        print(\"logfile disabled\", end=line_end)\n        sys.exit(1)\n    else:\n        import logging\n        logger = logging.getLogger(__name__)\n        from evo.tools import log\n        file_fmt = log.DEFAULT_LONG_FMT\n        if args.source:\n            file_fmt = file_fmt.replace(\n                \"%(module)s.%(funcName)s():%(lineno)s\", args.source)\n        log.configure_logging(silent=True, file_fmt=file_fmt)\n        if not args.message:\n            msg = sys.stdin.read()\n        else:\n            msg = args.message\n        getattr(logger, args.loglevel)(msg)\n    if args.clear_log:\n        open(settings.GLOBAL_LOGFILE_PATH, mode='w')"
+    }
+  }
+]

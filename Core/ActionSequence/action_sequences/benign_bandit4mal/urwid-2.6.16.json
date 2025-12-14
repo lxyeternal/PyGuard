@@ -1,0 +1,217 @@
+[
+  {
+    "metadata": {
+      "package_name": "urwid-2.6.16",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_main_loop.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urwid-2.6.16/urwid-2.6.16/tests/test_main_loop.py",
+    "line_number": "99",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "98\t            wr_w,\n99\t        ), concurrent.futures.ThreadPoolExecutor(\n100\t            max_workers=1,\n101\t        ) as executor, unittest.mock.patch(",
+    "code_snippet": "@unittest.skipIf(IS_WINDOWS, \"selectors for pipe are not supported on Windows\")\ndef test_watch_pipe(self):\n    \"\"\"Test watching pipe is stopped on explicit False only.\"\"\"\n    evt = threading.Event()  # We need thread synchronization\n    outcome: list[bytes] = []\n\n    def pipe_cb(data: bytes) -> typing.Any:\n        outcome.append(data)\n\n        if not evt.is_set():\n            evt.set()\n\n        if data == b\"false\":\n            return False\n        if data == b\"true\":\n            return True\n        if data == b\"null\":\n            return None\n        return object()\n\n    def pipe_writer(fd: int) -> None:\n        os.write(fd, b\"something\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"true\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"null\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"false\")\n\n    with ClosingTemporaryFilesPair() as (\n        rd_r,\n        wr_r,\n    ), ClosingTemporaryFilesPair() as (\n        rd_w,\n        wr_w,\n    ), concurrent.futures.ThreadPoolExecutor(\n        max_workers=1,\n    ) as executor, unittest.mock.patch(\n        \"subprocess.Popen\",  # we want to be sure that nothing outside is called\n        autospec=True,\n    ):\n        evl = urwid.MainLoop(\n            urwid.SolidFill(),\n            screen=urwid.display.raw.Screen(input=rd_r, output=wr_w),  # We need screen which support mocked IO\n            handle_mouse=False,  # Less external calls - better\n        )\n        evl.set_alarm_in(1, stop_screen_cb)\n        pipe_fd = evl.watch_pipe(pipe_cb)\n        executor.submit(pipe_writer, pipe_fd)\n\n        evl.run()\n        self.assertEqual([b\"something\", b\"true\", b\"null\", b\"false\"], outcome)\n        not_removed = evl.remove_watch_pipe(pipe_fd)\n        self.assertFalse(not_removed)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.write",
+        "threading.Event.wait",
+        "threading.Event.clear",
+        "os.write",
+        "threading.Event.wait",
+        "threading.Event.clear",
+        "os.write",
+        "threading.Event.wait",
+        "threading.Event.clear",
+        "os.write"
+      ],
+      "api_sequence_with_args": [
+        "os.write(fd, b\"something\")",
+        "evt.wait(0.1)",
+        "evt.clear()",
+        "os.write(fd, b\"true\")",
+        "evt.wait(0.1)",
+        "evt.clear()",
+        "os.write(fd, b\"null\")",
+        "evt.wait(0.1)",
+        "evt.clear()",
+        "os.write(fd, b\"false\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "threading.Event.wait",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "threading.Event.clear",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "os.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "threading.Event.wait",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "threading.Event.clear",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "os.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "threading.Event.wait",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "threading.Event.clear",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "os.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "def pipe_writer(fd: int) -> None:\n    os.write(fd, b\"something\")\n    if evt.wait(0.1):\n        evt.clear()\n        os.write(fd, b\"true\")\n    if evt.wait(0.1):\n        evt.clear()\n        os.write(fd, b\"null\")\n    if evt.wait(0.1):\n        evt.clear()\n        os.write(fd, b\"false\")"
+    }
+  },
+  {
+    "pyfile": "test_event_loops.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urwid-2.6.16/urwid-2.6.16/tests/test_event_loops.py",
+    "line_number": "293",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "292\t        def step2():\n293\t            out.append(rd.recv(2).decode(\"ascii\"))\n294",
+    "code_snippet": "def test_event_loop(self):\n    evl: urwid.EventLoop = self.evl\n    out = []\n    rd: socket.socket\n    wr: socket.socket\n\n    def step1():\n        out.append(\"writing\")\n        wr.send(b\"hi\")\n\n    def step2():\n        out.append(rd.recv(2).decode(\"ascii\"))\n        raise urwid.ExitMainLoop\n\n    with ClosingSocketPair() as (rd, wr):\n        _handle = evl.alarm(0, step1)\n        _handle = evl.watch_file(rd.fileno(), step2)\n\n        evl.run()\n\n    self.assertEqual(out, [\"writing\", \"hi\"])",
+    "pattern_analysis": {
+      "api_sequence": [
+        "socket.socket.send",
+        "socket.socket.fileno",
+        "urwid.EventLoop.watch_file",
+        "urwid.EventLoop.alarm",
+        "urwid.EventLoop.run",
+        "socket.socket.recv",
+        "socket.socket.fileno"
+      ],
+      "api_sequence_with_args": [
+        "socket.socket.send(b\"hi\")",
+        "socket.socket.fileno()",
+        "urwid.EventLoop.watch_file(rd.fileno(), step2)",
+        "urwid.EventLoop.alarm(0, step1)",
+        "urwid.EventLoop.run()",
+        "socket.socket.recv(2)",
+        "socket.socket.fileno()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "socket.socket.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.fileno",
+          "id": "get_socket_fd",
+          "description": "Retrieves file descriptor for socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "urwid.EventLoop.watch_file",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "urwid.EventLoop.alarm",
+          "id": "create_async_task",
+          "description": "Creates asynchronous task for coroutine",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "urwid.EventLoop.run",
+          "id": "run_async_function",
+          "description": "Runs asynchronous function until completion",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "socket.socket.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.fileno",
+          "id": "get_socket_fd",
+          "description": "Retrieves file descriptor for socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def test_event_loop(self):\n    evl: urwid.EventLoop = self.evl\n    out = []\n    rd: socket.socket\n    wr: socket.socket\n\n    def step1():\n        out.append(\"writing\")\n        wr.send(b\"hi\")\n\n    def step2():\n        out.append(rd.recv(2).decode(\"ascii\"))\n        raise urwid.ExitMainLoop\n\n    with ClosingSocketPair() as (rd, wr):\n        _handle = evl.alarm(0, step1)\n        _handle = evl.watch_file(rd.fileno(), step2)\n        evl.run()\n\n    self.assertEqual(out, [\"writing\", \"hi\"])"
+    }
+  }
+]

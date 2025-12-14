@@ -1,0 +1,128 @@
+[
+  {
+    "metadata": {
+      "package_name": "pykx-3.1.2-cp39-cp39-win_amd64",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "license.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pykx-3.1.2-cp39-cp39-win_amd64/pykx/license.py",
+    "line_number": "104",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "103\t    with open(installed_lic, 'rb') as f:\n104\t        license_content = base64.encodebytes(f.read()).decode('utf-8')\n105\t        license_content = license_content.replace('\\n', '')",
+    "code_snippet": "import base64\nimport os\nimport shutil\nfrom pathlib import Path\nfrom typing import Optional\n\nfrom . import licensed\nfrom .config import lic_type, qlic\n\n\ndef check(license: str,\n          *,\n          format: Optional[str] = 'FILE',\n          license_type: Optional[str] = lic_type\n) -> bool:\n    \"\"\"\n    Validate the license key information you provided matches the license\n        saved to disk which is read by PyKX\n\n    Parameters:\n        license: If using \"FILE\" format this is the location of the file being used for comparison.\n            If \"STRING\" this is the base64 encoded string provided in your license email\n        format: Is the license check being completed using a downloaded file or base64\n            encoded string. Accepted inputs are \"FILE\"(default) or \"STRING\".\n        license_type: The license file type/name which is to be checked, by default this\n            is 'kc.lic' which is the version provided with personal and commercial\n            evaluation licenses but can be changed to 'k4.lic' or 'kx.lic' if appropriate\n\n    Returns:\n        A boolean indicating if the license is correct or not and a printed message describing\n            the issue\n\n    Examples:\n\n    Validate that a provided license matches an existing persisted license\n\n    ```python\n    >>> import pykx as kx\n    >>> kx.license.check('/usr/location/kc.lic')\n    True\n    ```\n\n    Attempt to check a new license against an existing installed license\n\n    ```python\n    >>> import pykx as kx\n    >>> check = kx.license.check('/usr/location/kc.lic')\n    Supplied license information does not match.\n    Please consider reinstalling your license using pykx.license.install\n\n    Installed license representation:\n    b'iIXSiEWzCNTkkCWK5Gggy..'\n    User expected license representation:\n    b'IyEvdXNyL2Jpbi9lbngDf..'\n    >>> check\n    False\n    ```\n\n    Attempt to check a license in the case no license is currently installed\n\n    ```python\n    >>> import pykx as kx\n    >>> check = kx.license.check('setup.py', license_type='kc.lic')\n    Unable to find an installed license: kc.lic at location: /usr/local/anaconda3/envs/qenv/q.\n    Please consider installing your license again using pykx.license.install\n    >>> check\n    False\n    ```\n    \"\"\"\n    format = format.lower()\n    if format not in ('file', 'string'):\n        raise Exception('Unsupported option provided for format parameter')\n\n    if license_type not in ('kx.lic', 'kc.lic', 'k4.lic'):\n        raise Exception(f'License type {license_type} not supported.')\n\n    license_located = False\n    installed_lic = qlic/license_type\n    if os.path.exists(installed_lic):\n        license_located = True\n\n    if not license_located:\n        print(f'Unable to find an installed license: {license_type} at location: {str(qlic)}.\\n'\n              'Please consider installing your license again using pykx.license.install')\n        return False\n\n    with open(installed_lic, 'rb') as f:\n        license_content = base64.encodebytes(f.read()).decode('utf-8')\n        license_content = license_content.replace('\\n', '')\n        license_content = bytes(license_content, 'utf-8')\n\n    if format == 'file':\n        license_path = Path(os.path.expanduser(license))\n        if os.path.exists(license_path):\n            with open(str(license_path), 'rb') as f:\n                license = base64.encodebytes(f.read()).decode('utf-8')\n                license = license.replace('\\n', '')\n        else:\n            print(f'Unable to locate license {license_path} for comparison')\n            return False\n\n    if isinstance(license, str):\n        license = license.replace('\\n', '')\n        license = bytes(license, 'utf-8')\n\n    if not license_content == license:\n        print('Supplied license information does not match.\\n'\n              'Please consider reinstalling your license using pykx.license.install\\n\\n'\n              f'Installed license representation:\\n{license_content}\\n\\n'\n              f'User expected license representation:\\n{license}')\n        return False\n\n    return True",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "open",
+        "base64.encodebytes",
+        "open",
+        "base64.encodebytes",
+        "Path",
+        "os.path.expanduser",
+        "os.path.exists",
+        "open",
+        "isinstance"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists(installed_lic)",
+        "open(installed_lic, 'rb')",
+        "base64.encodebytes(f.read())",
+        "open(str(license_path), 'rb')",
+        "base64.encodebytes(f.read())",
+        "Path(os.path.expanduser(license))",
+        "os.path.expanduser(license)",
+        "os.path.exists(license_path)",
+        "open(str(license_path), 'rb')",
+        "isinstance(license, str)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "base64.encodebytes",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "base64.encodebytes",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.expanduser",
+          "id": "path_special_operations",
+          "description": "Special path operations (home directory expansion, temporary directory path, executable path, directory tree generation)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "def check(license: str,\n          *,\n          format: Optional[str] = 'FILE',\n          license_type: Optional[str] = lic_type\n) -> bool:\n    format = format.lower()\n    if format not in ('file', 'string'):\n        raise Exception('Unsupported option provided for format parameter')\n\n    if license_type not in ('kx.lic', 'kc.lic', 'k4.lic'):\n        raise Exception(f'License type {license_type} not supported.')\n\n    license_located = False\n    installed_lic = qlic/license_type\n    if os.path.exists(installed_lic):\n        license_located = True\n\n    if not license_located:\n        print(f'Unable to find an installed license: {license_type} at location: {str(qlic)}.\\n'\n              'Please consider installing your license again using pykx.license.install')\n        return False\n\n    with open(installed_lic, 'rb') as f:\n        license_content = base64.encodebytes(f.read()).decode('utf-8')\n        license_content = license_content.replace('\\n', '')\n        license_content = bytes(license_content, 'utf-8')\n\n    if format == 'file':\n        license_path = Path(os.path.expanduser(license))\n        if os.path.exists(license_path):\n            with open(str(license_path), 'rb') as f:\n                license = base64.encodebytes(f.read()).decode('utf-8')\n                license = license.replace('\\n', '')\n        else:\n            print(f'Unable to locate license {license_path} for comparison')\n            return False\n\n    if isinstance(license, str):\n        license = license.replace('\\n', '')\n        license = bytes(license, 'utf-8')"
+    }
+  }
+]

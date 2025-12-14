@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "eyed3-0.9.7-py3-none-any",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "tag.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eyed3-0.9.7-py3-none-any/eyed3/id3/tag.py",
+    "line_number": "145",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "144\t        fp.seek(-128, 2)\n145\t        tag_data = fp.read(128)\n146",
+    "context_snippet": "    def _loadV1Tag(self, fp):\n        v1_enc = \"latin1\"\n\n        # Seek to the end of the file where all v1x tags are written.\n        # v1.x tags are 128 bytes min and max\n        fp.seek(0, 2)\n        if fp.tell() < 128:\n            return False, 0\n        fp.seek(-128, 2)\n        tag_data = fp.read(128)\n\n        if tag_data[0:3] != b\"TAG\":\n            return False, 0\n\n        log.debug(\"Located ID3 v1 tag\")\n        # v1.0 is implied until a v1.1 feature is recognized.\n        self.version = ID3_V1_0\n\n        title = tag_data[3:33].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Title: %s\" % title)\n        if title:\n            self.title = str(title, v1_enc)\n\n        artist = tag_data[33:63].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Artist: %s\" % artist)\n        if artist:\n            self.artist = str(artist, v1_enc)\n\n        album = tag_data[63:93].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Album: %s\" % album)\n        if album:\n            self.album = str(album, v1_enc)\n\n        year = tag_data[93:97].strip(ID3_V1_STRIP_CHARS)\n        log.debug(\"Year: %s\" % year)\n        try:\n            if year and int(year):\n                # Values here typically mean the year of release\n                self.release_date = int(year)\n        except ValueError:\n            # Bogus year strings.\n            log.warn(\"ID3v1.x tag contains invalid year: %s\" % year)\n            pass\n\n        # Can't use ID3_V1_STRIP_CHARS here, since the final byte is numeric\n        comment = tag_data[97:127].rstrip(b\"\\x00\")\n        # Track numbers stuffed in the comment field is what makes v1.1\n        if comment:\n            if (len(comment) >= 2 and\n                    # Python the slices (the chars), so this is really\n                    # comment[2]       and        comment[-1]\n                    comment[-2:-1] == b\"\\x00\"):\n                log.debug(\"Track Num found, setting version to v1.1\")\n                self.version = ID3_V1_1\n\n                track = comment[-1]\n                self.track_num = (track, None)\n                log.debug(\"Track: \" + str(track))\n                comment = comment[:-2].strip(ID3_V1_STRIP_CHARS)\n\n            # There may only have been a track #\n            if comment:\n                log.debug(f\"Comment: {comment}\")\n                self.comments.set(str(comment, v1_enc), ID3_V1_COMMENT_DESC)\n\n        genre = ord(tag_data[127:128])\n        log.debug(f\"Genre ID: {genre}\")\n        try:\n            self.genre = genre\n        except ValueError as ex:\n            log.warning(ex)\n            self.genre = None\n\n        return True, 0",
+    "hash_value": "b4b0ca8e7df017ffcaa8f3ff2b519a84"
+  }
+]

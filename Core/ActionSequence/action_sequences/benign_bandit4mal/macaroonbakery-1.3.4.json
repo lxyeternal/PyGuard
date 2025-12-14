@@ -1,0 +1,102 @@
+[
+  {
+    "metadata": {
+      "package_name": "macaroonbakery-1.3.4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_client.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/macaroonbakery-1.3.4/macaroonbakery-1.3.4/macaroonbakery/tests/test_client.py",
+    "line_number": "305",
+    "type_description": "B827:httpserver",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "304\t        try:\n305\t            httpd = HTTPServer(('', 0), handler)\n306\t            thread = threading.Thread(target=httpd.serve_forever)",
+    "code_snippet": "def test_single_service_first_party(self):\n    b = new_bakery('loc', None, None)\n\n    def handler(*args):\n        GetHandler(b, None, None, None, None, AGES, *args)\n    try:\n        httpd = HTTPServer(('', 0), handler)\n        thread = threading.Thread(target=httpd.serve_forever)\n        thread.start()\n        srv_macaroon = b.oven.macaroon(\n            version=bakery.LATEST_VERSION, expiry=AGES,\n            caveats=None, ops=[TEST_OP])\n        self.assertEqual(srv_macaroon.macaroon.location, 'loc')\n        client = httpbakery.Client()\n        client.cookies.set_cookie(requests.cookies.create_cookie(\n            'macaroon-test', base64.b64encode(json.dumps([\n                srv_macaroon.to_dict().get('m')\n            ]).encode('utf-8')).decode('utf-8')\n        ))\n        resp = requests.get(\n            url='http://' + httpd.server_address[0] + ':' +\n                str(httpd.server_address[1]),\n            cookies=client.cookies, auth=client.auth())\n        resp.raise_for_status()\n        self.assertEqual(resp.text, 'done')\n    finally:\n        httpd.shutdown()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "new_bakery",
+        "GetHandler",
+        "HTTPServer",
+        "threading.Thread",
+        "threading.Thread.start",
+        "bakery.oven.macaroon",
+        "srv_macaroon.to_dict",
+        "httpbakery.Client",
+        "requests.cookies.create_cookie",
+        "base64.b64encode",
+        "json.dumps",
+        "srv_macaroon.to_dict.get",
+        "client.cookies.set_cookie",
+        "requests.get",
+        "client.auth",
+        "resp.raise_for_status",
+        "httpd.shutdown"
+      ],
+      "api_sequence_with_args": [
+        "new_bakery('loc', None, None)",
+        "GetHandler(b, None, None, None, None, AGES, *args)",
+        "HTTPServer(('', 0), handler)",
+        "threading.Thread(target=httpd.serve_forever)",
+        "threading.Thread.start()",
+        "bakery.oven.macaroon(version=bakery.LATEST_VERSION, expiry=AGES, caveats=None, ops=[TEST_OP])",
+        "srv_macaroon.to_dict()",
+        "httpbakery.Client()",
+        "requests.cookies.create_cookie('macaroon-test', base64.b64encode(json.dumps([srv_macaroon.to_dict().get('m')]).encode('utf-8')).decode('utf-8'))",
+        "base64.b64encode(json.dumps([srv_macaroon.to_dict().get('m')]).encode('utf-8'))",
+        "json.dumps([srv_macaroon.to_dict().get('m')])",
+        "srv_macaroon.to_dict().get('m')",
+        "client.cookies.set_cookie(...)",
+        "requests.get(url='http://' + httpd.server_address[0] + ':' + str(httpd.server_address[1]), cookies=client.cookies, auth=client.auth())",
+        "client.auth()",
+        "resp.raise_for_status()",
+        "httpd.shutdown()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.cookies.create_cookie",
+          "id": "create_http_request",
+          "description": "Creates HTTP request object with specified URL, data, and headers",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "base64.b64encode",
+          "id": "encode_bytes_to_base64",
+          "description": "Encodes bytes to base64-encoded bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "base_encoding"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "resp.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def test_single_service_first_party(self):\n    b = new_bakery('loc', None, None)\n\n    def handler(*args):\n        GetHandler(b, None, None, None, None, AGES, *args)\n    try:\n        httpd = HTTPServer(('', 0), handler)\n        thread = threading.Thread(target=httpd.serve_forever)\n        thread.start()\n        srv_macaroon = b.oven.macaroon(\n            version=bakery.LATEST_VERSION, expiry=AGES,\n            caveats=None, ops=[TEST_OP])\n        client = httpbakery.Client()\n        client.cookies.set_cookie(requests.cookies.create_cookie(\n            'macaroon-test', base64.b64encode(json.dumps([\n                srv_macaroon.to_dict().get('m')\n            ]).encode('utf-8')).decode('utf-8')\n        ))\n        resp = requests.get(\n            url='http://' + httpd.server_address[0] + ':' +\n                str(httpd.server_address[1]),\n            cookies=client.cookies, auth=client.auth())\n        resp.raise_for_status()\n    finally:\n        httpd.shutdown()"
+    }
+  }
+]

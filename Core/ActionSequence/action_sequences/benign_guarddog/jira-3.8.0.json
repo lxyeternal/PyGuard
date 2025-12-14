@@ -1,0 +1,111 @@
+[
+  {
+    "pyfile": "make_local_jira_user.py",
+    "code_snippet": "from os import environ\nimport requests\nimport sys\nimport time\n\nCI_JIRA_URL = environ[\"CI_JIRA_URL\"]\n\nif __name__ == \"__main__\":\n    if environ.get(\"CI_JIRA_TYPE\", \"Server\").upper() == \"CLOUD\":\n        print(\"Do not need to create a user for Jira Cloud CI, quitting.\")\n        sys.exit()\n\n    start_time = time.time()\n    timeout_mins = 15\n    print(\n        \"waiting for instance of jira to be running, to add a user for CI system:\\n\"\n        f\" timeout = {timeout_mins} mins\"\n    )\n    while True:\n        try:\n            requests.get(CI_JIRA_URL + \"rest/api/2/permissions\")\n            print(\"JIRA IS REACHABLE\")\n            add_user_to_jira()\n            break\n        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as ex:\n            print(f\"encountered {ex} while waiting for the JiraServer docker\")\n            time.sleep(20)\n        if start_time + 60 * timeout_mins < time.time():\n            raise TimeoutError(\n                f\"Jira server wasn't reachable within timeout {timeout_mins}\"\n            )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.environ.get",
+        "str.upper",
+        "sys.exit",
+        "time.time",
+        "requests.get",
+        "add_user_to_jira",
+        "time.sleep",
+        "time.time"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"CI_JIRA_URL\"]",
+        "os.environ.get(\"CI_JIRA_TYPE\", \"Server\")",
+        "str.upper()",
+        "sys.exit()",
+        "time.time()",
+        "requests.get(CI_JIRA_URL + \"rest/api/2/permissions\")",
+        "add_user_to_jira()",
+        "time.sleep(20)",
+        "time.time()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "str.upper",
+          "id": "decode_bytes_default",
+          "description": "Decodes bytes using default codec",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "sys.exit",
+          "id": "exit_program",
+          "description": "Exits program with specified status code",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "add_user_to_jira",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "time.time",
+          "id": "get_current_time",
+          "description": "Returns current time in seconds since epoch",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "from os import environ\nimport requests\nimport sys\nimport time\n\nCI_JIRA_URL = environ[\"CI_JIRA_URL\"]\n\nif __name__ == \"__main__\":\n    if environ.get(\"CI_JIRA_TYPE\", \"Server\").upper() == \"CLOUD\":\n        sys.exit()\n\n    start_time = time.time()\n    timeout_mins = 15\n    while True:\n        try:\n            requests.get(CI_JIRA_URL + \"rest/api/2/permissions\")\n            add_user_to_jira()\n            break\n        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as ex:\n            time.sleep(20)\n        if start_time + 60 * timeout_mins < time.time():\n            raise TimeoutError()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "jira-3.8.0",
+      "total_matches": 1
+    }
+  }
+]

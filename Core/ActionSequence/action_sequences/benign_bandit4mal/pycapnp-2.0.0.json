@@ -1,0 +1,68 @@
+[
+  {
+    "metadata": {
+      "package_name": "pycapnp-2.0.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "async_ssl_calculator_client.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pycapnp-2.0.0/pycapnp-2.0.0/examples/async_ssl_calculator_client.py",
+    "line_number": "197",
+    "type_description": "B831:send",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "196\t    add_5_params[1].literal = 5\n197\t    add_5_promise = add_5_request.send().value.read()\n198",
+    "code_snippet": "async def main(host):\n    addr, port = host.split(\":\")\n\n    # Setup SSL context\n    ctx = ssl.create_default_context(\n        ssl.Purpose.SERVER_AUTH, cafile=os.path.join(this_dir, \"selfsigned.cert\")\n    )\n\n    # Handle both IPv4 and IPv6 cases\n    try:\n        print(\"Try IPv4\")\n        stream = await capnp.AsyncIoStream.create_connection(\n            addr, port, ssl=ctx, family=socket.AF_INET\n        )\n    except Exception:\n        print(\"Try IPv6\")\n        stream = await capnp.AsyncIoStream.create_connection(\n            addr, port, ssl=ctx, family=socket.AF_INET6\n        )\n\n    client = capnp.TwoPartyClient(stream)\n\n    # Bootstrap the Calculator interface\n    calculator = client.bootstrap().cast_as(calculator_capnp.Calculator)\n\n    ...\n\n    # Get the \"add\" function from the server.\n    add = calculator.getOperator(op=\"add\").func\n    # Get the \"multiply\" function from the server.\n    multiply = calculator.getOperator(op=\"multiply\").func\n\n    # Build the request to evaluate 4 * 6\n    request = calculator.evaluate_request()\n\n    multiply_call = request.expression.init(\"call\")\n    multiply_call.function = multiply\n    multiply_params = multiply_call.init(\"params\", 2)\n    multiply_params[0].literal = 4\n    multiply_params[1].literal = 6\n\n    multiply_result = request.send().value\n\n    # Use the result in two calls that add 3 and add 5.\n\n    add_3_request = calculator.evaluate_request()\n    add_3_call = add_3_request.expression.init(\"call\")\n    add_3_call.function = add\n    add_3_params = add_3_call.init(\"params\", 2)\n    add_3_params[0].previousResult = multiply_result\n    add_3_params[1].literal = 3\n    add_3_promise = add_3_request.send().value.read()\n\n    add_5_request = calculator.evaluate_request()\n    add_5_call = add_5_request.expression.init(\"call\")\n    add_5_call.function = add\n    add_5_params = add_5_call.init(\"params\", 2)\n    add_5_params[0].previousResult = multiply_result\n    add_5_params[1].literal = 5\n    add_5_promise = add_5_request.send().value.read()\n\n    # Now wait for the results.\n    assert (await add_3_promise).value == 27\n    assert (await add_5_promise).value == 29\n\n    print(\"PASS\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "ssl.create_default_context",
+        "capnp.AsyncIoStream.create_connection",
+        "capnp.AsyncIoStream.create_connection"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(this_dir, \"selfsigned.cert\")",
+        "ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=os.path.join(this_dir, \"selfsigned.cert\"))",
+        "capnp.AsyncIoStream.create_connection(addr, port, ssl=ctx, family=socket.AF_INET)",
+        "capnp.AsyncIoStream.create_connection(addr, port, ssl=ctx, family=socket.AF_INET6)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "ssl.create_default_context",
+          "id": "create_ssl_context",
+          "description": "Creates SSL context with specified protocol",
+          "first_id": "persistence_stealth",
+          "second_id": "stealth_techniques",
+          "third_id": "warning_disabling"
+        },
+        {
+          "api_name": "capnp.AsyncIoStream.create_connection",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "capnp.AsyncIoStream.create_connection",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "addr, port = host.split(\":\")\nctx = ssl.create_default_context(\n    ssl.Purpose.SERVER_AUTH, cafile=os.path.join(this_dir, \"selfsigned.cert\")\n)\ntry:\n    stream = await capnp.AsyncIoStream.create_connection(\n        addr, port, ssl=ctx, family=socket.AF_INET\n    )\nexcept Exception:\n    stream = await capnp.AsyncIoStream.create_connection(\n        addr, port, ssl=ctx, family=socket.AF_INET6\n    )"
+    }
+  }
+]

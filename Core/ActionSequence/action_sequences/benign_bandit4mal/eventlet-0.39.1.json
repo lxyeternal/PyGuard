@@ -1,0 +1,455 @@
+[
+  {
+    "metadata": {
+      "package_name": "eventlet-0.39.1",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "wsgi_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/wsgi_test.py",
+    "line_number": "1581",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1580\t        self.site.application = wsgi_app\n1581\t        sock = eventlet.connect(self.server_addr)\n1582\t        sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n')",
+    "code_snippet": "def test_007_get_arg(self):\n    # define a new handler that does a get_arg as well as a read_body\n    def new_app(env, start_response):\n        body = bytes_to_str(env['wsgi.input'].read())\n        a = parse.parse_qs(body).get('a', [1])[0]\n        start_response('200 OK', [('Content-type', 'text/plain')])\n        return [('a is %s, body is %s' % (a, body)).encode()]\n\n    self.site.application = new_app\n    sock = eventlet.connect(self.server_addr)\n    request = b'\\r\\n'.join((\n        b'POST / HTTP/1.0',\n        b'Host: localhost',\n        b'Content-Length: 3',\n        b'',\n        b'a=a'))\n    sock.sendall(request)\n\n    # send some junk after the actual request\n    sock.sendall(b'01234567890123456789')\n    result = read_http(sock)\n    self.assertEqual(result.body, b'a is a, body is a=a')",
+    "pattern_analysis": {
+      "api_sequence": [
+        "env['wsgi.input'].read",
+        "parse.parse_qs",
+        "eventlet.connect",
+        "sock.sendall",
+        "sock.sendall",
+        "read_http",
+        "self.assertEqual"
+      ],
+      "api_sequence_with_args": [
+        "env['wsgi.input'].read()",
+        "parse.parse_qs(body)",
+        "eventlet.connect(self.server_addr)",
+        "sock.sendall(request)",
+        "sock.sendall(b'01234567890123456789')",
+        "read_http(sock)",
+        "self.assertEqual(result.body, b'a is a, body is a=a')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "env['wsgi.input'].read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "parse.parse_qs",
+          "id": "deserialize_from_bytes",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "eventlet.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "sock.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "sock.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "read_http",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "self.assertEqual",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def test_007_get_arg(self):\n    def new_app(env, start_response):\n        body = bytes_to_str(env['wsgi.input'].read())\n        a = parse.parse_qs(body).get('a', [1])[0]\n        start_response('200 OK', [('Content-type', 'text/plain')])\n        return [('a is %s, body is %s' % (a, body)).encode()]\n\n    self.site.application = new_app\n    sock = eventlet.connect(self.server_addr)\n    request = b'\\r\\n'.join((\n        b'POST / HTTP/1.0',\n        b'Host: localhost',\n        b'Content-Length: 3',\n        b'',\n        b'a=a'))\n    sock.sendall(request)\n    sock.sendall(b'01234567890123456789')\n    result = read_http(sock)\n    self.assertEqual(result.body, b'a is a, body is a=a')"
+    }
+  },
+  {
+    "pyfile": "greenio_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/greenio_test.py",
+    "line_number": "531",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "530\t        def reader(s):\n531\t            s.recv(1)\n532",
+    "code_snippet": "def test_raised_multiple_readers(self):\n    debug.hub_prevent_multiple_readers(True)\n\n    def handle(sock, addr):\n        sock.recv(1)\n        sock.sendall(b\"a\")\n        raise eventlet.StopServe()\n\n    listener = eventlet.listen(('127.0.0.1', 0))\n    eventlet.spawn(eventlet.serve, listener, handle)\n\n    def reader(s):\n        s.recv(1)\n\n    s = eventlet.connect(('127.0.0.1', listener.getsockname()[1]))\n    a = eventlet.spawn(reader, s)\n    eventlet.sleep(0)\n    self.assertRaises(RuntimeError, s.recv, 1)\n    s.sendall(b'b')\n    a.wait()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "debug.hub_prevent_multiple_readers",
+        "eventlet.listen",
+        "eventlet.spawn",
+        "socket.socket.recv",
+        "socket.socket.sendall",
+        "eventlet.StopServe",
+        "eventlet.serve",
+        "eventlet.connect",
+        "eventlet.spawn",
+        "socket.socket.recv",
+        "eventlet.sleep",
+        "socket.socket.recv",
+        "socket.socket.sendall",
+        "eventlet.spawn.wait"
+      ],
+      "api_sequence_with_args": [
+        "debug.hub_prevent_multiple_readers(True)",
+        "eventlet.listen(('127.0.0.1', 0))",
+        "eventlet.spawn(eventlet.serve, listener, handle)",
+        "sock.recv(1)",
+        "sock.sendall(b\"a\")",
+        "eventlet.StopServe()",
+        "eventlet.serve(listener, handle)",
+        "eventlet.connect(('127.0.0.1', listener.getsockname()[1]))",
+        "eventlet.spawn(reader, s)",
+        "s.recv(1)",
+        "eventlet.sleep(0)",
+        "s.recv(1)",
+        "s.sendall(b'b')",
+        "a.wait()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "debug.hub_prevent_multiple_readers",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "eventlet.listen",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "eventlet.spawn",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "socket.socket.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "eventlet.StopServe",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "eventlet.serve",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "eventlet.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "eventlet.spawn",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "socket.socket.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "eventlet.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "socket.socket.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "socket.socket.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "eventlet.spawn.wait",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "def test_raised_multiple_readers(self):\n    debug.hub_prevent_multiple_readers(True)\n\n    def handle(sock, addr):\n        sock.recv(1)\n        sock.sendall(b\"a\")\n        raise eventlet.StopServe()\n\n    listener = eventlet.listen(('127.0.0.1', 0))\n    eventlet.spawn(eventlet.serve, listener, handle)\n\n    def reader(s):\n        s.recv(1)\n\n    s = eventlet.connect(('127.0.0.1', listener.getsockname()[1]))\n    a = eventlet.spawn(reader, s)\n    eventlet.sleep(0)\n    self.assertRaises(RuntimeError, s.recv, 1)\n    s.sendall(b'b')\n    a.wait()"
+    }
+  },
+  {
+    "pyfile": "greenio_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/greenio_test.py",
+    "line_number": "603",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "602\t        try:\n603\t            client.recv(1)\n604\t            assert False",
+    "code_snippet": "def test_zero_timeout_and_back(self):\n    listen = eventlet.listen(('', 0))\n    # Keep reference to server side of socket\n    server = eventlet.spawn(listen.accept)\n    client = eventlet.connect(listen.getsockname())\n\n    client.settimeout(0.05)\n    # Now must raise socket.timeout\n    self.assertRaises(socket.timeout, client.recv, 1)\n\n    client.settimeout(0)\n    # Now must raise socket.error with EAGAIN\n    try:\n        client.recv(1)\n        assert False\n    except OSError as e:\n        assert get_errno(e) == errno.EAGAIN\n\n    client.settimeout(0.05)\n    # Now socket.timeout again\n    self.assertRaises(socket.timeout, client.recv, 1)\n    server.wait()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "eventlet.listen",
+        "eventlet.listen.accept",
+        "eventlet.listen.getsockname",
+        "eventlet.connect",
+        "eventlet.connect.settimeout",
+        "eventlet.connect.recv",
+        "eventlet.connect.settimeout",
+        "eventlet.connect.recv",
+        "eventlet.connect.settimeout",
+        "eventlet.connect.recv",
+        "eventlet.listen.accept.wait"
+      ],
+      "api_sequence_with_args": [
+        "eventlet.listen(('', 0))",
+        "eventlet.listen.accept()",
+        "eventlet.listen.getsockname()",
+        "eventlet.connect(listen.getsockname())",
+        "eventlet.connect.settimeout(0.05)",
+        "eventlet.connect.recv(1)",
+        "eventlet.connect.settimeout(0)",
+        "eventlet.connect.recv(1)",
+        "eventlet.connect.settimeout(0.05)",
+        "eventlet.connect.recv(1)",
+        "eventlet.listen.accept.wait()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "eventlet.listen",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "eventlet.listen.accept",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "eventlet.listen.getsockname",
+          "id": "get_socket_local_addr",
+          "description": "Retrieves local address of the socket",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "eventlet.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "eventlet.connect.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "eventlet.connect.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "eventlet.connect.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "eventlet.connect.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "eventlet.connect.settimeout",
+          "id": "set_socket_timeout",
+          "description": "Sets timeout for socket operations",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_configuration"
+        },
+        {
+          "api_name": "eventlet.connect.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "eventlet.listen.accept.wait",
+          "id": "wait_thread",
+          "description": "Waits for thread to finish execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        }
+      ],
+      "contextual_code": "def test_zero_timeout_and_back(self):\n    listen = eventlet.listen(('', 0))\n    server = eventlet.spawn(listen.accept)\n    client = eventlet.connect(listen.getsockname())\n\n    client.settimeout(0.05)\n    self.assertRaises(socket.timeout, client.recv, 1)\n\n    client.settimeout(0)\n    try:\n        client.recv(1)\n        assert False\n    except OSError as e:\n        assert get_errno(e) == errno.EAGAIN\n\n    client.settimeout(0.05)\n    self.assertRaises(socket.timeout, client.recv, 1)\n    server.wait()"
+    }
+  },
+  {
+    "pyfile": "wsgi_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/wsgi_test.py",
+    "line_number": "1910",
+    "type_description": "B806:sendall",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1909\t        sock = eventlet.connect(self.server_addr)\n1910\t        sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nx-ANY_k: one\\r\\nx-ANY_k: two\\r\\n\\r\\n')\n1911\t        result = read_http(sock)",
+    "code_snippet": "def test_headers_raw(self):\n    def app(environ, start_response):\n        start_response('200 OK', [])\n        return [b'\\n'.join('{}: {}'.format(*kv).encode() for kv in environ['headers_raw'])]\n\n    self.spawn_server(site=app)\n    sock = eventlet.connect(self.server_addr)\n    sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nx-ANY_k: one\\r\\nx-ANY_k: two\\r\\n\\r\\n')\n    result = read_http(sock)\n    sock.close()\n    assert result.status == 'HTTP/1.1 200 OK'\n    assert result.body == b'Host: localhost\\nx-ANY_k: one\\nx-ANY_k: two'",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.spawn_server",
+        "eventlet.connect",
+        "sock.sendall",
+        "read_http",
+        "sock.close"
+      ],
+      "api_sequence_with_args": [
+        "self.spawn_server(site=app)",
+        "eventlet.connect(self.server_addr)",
+        "sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nx-ANY_k: one\\r\\nx-ANY_k: two\\r\\n\\r\\n')",
+        "read_http(sock)",
+        "sock.close()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.spawn_server",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "eventlet.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "sock.sendall",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "read_http",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "sock.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        }
+      ],
+      "contextual_code": "def test_headers_raw(self):\n    def app(environ, start_response):\n        start_response('200 OK', [])\n        return [b'\\n'.join('{}: {}'.format(*kv).encode() for kv in environ['headers_raw'])]\n\n    self.spawn_server(site=app)\n    sock = eventlet.connect(self.server_addr)\n    sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nx-ANY_k: one\\r\\nx-ANY_k: two\\r\\n\\r\\n')\n    result = read_http(sock)\n    sock.close()"
+    }
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "pyfile": "tabular_base.py",
+    "code_snippet": "    @timeit\n    def copy(self, header=False):\n        \"\"\"\n        Copy the selected cells to clipboard in an Excel-pasteable format\n        \"\"\"\n        # Get the bounds using the top left and bottom right selected cells\n\n        fmt = self.dataView.model().format\n\n        # Copy from data, columns, or index depending on which has focus\n        if header or self.dataView.hasFocus():\n            selection_model = self.dataView.selectionModel()\n            rows = [i for i in range(self.pgdf.df.cached_size[0]) if selection_model.rowIntersectsSelection(i)]\n            cols = [i for i in range(self.pgdf.df.cached_size[1]) if selection_model.columnIntersectsSelection(i)]\n\n            temp_df = self.pgdf.df\n            df = temp_df.iloc[min(rows) : max(rows) + 1, min(cols) : max(cols) + 1]\n\n        elif self.indexHeader.hasFocus():\n            selection_model = self.indexHeader.selectionModel()\n            rows = [i for i in range(self.pgdf.df.cached_size[0]) if selection_model.rowIntersectsSelection(i)]\n            cols = [i for i in range(self.pgdf.df.cached_size[1]) if selection_model.columnIntersectsSelection(i)]\n\n            temp_df = self.pgdf.df.index.to_frame()\n            df = temp_df.iloc[min(rows) : max(rows) + 1, min(cols) : max(cols) + 1]\n\n        elif self.columnHeader.hasFocus():\n            selection_model = self.columnHeader.selectionModel()\n            rows = [i for i in range(self.pgdf.df.cached_size[0]) if selection_model.rowIntersectsSelection(i)]\n            cols = [i for i in range(self.pgdf.df.cached_size[1]) if selection_model.columnIntersectsSelection(i)]\n\n            # Column header should be horizontal so we transpose\n            temp_df = self.pgdf.df.columns.to_frame().transpose()\n            df = temp_df.iloc[min(rows) : max(rows) + 1, min(cols) : max(cols) + 1]\n        else:\n            return\n\n        if fmt in (\"hex\", \"bin\") and len(df):\n            fmt = \"{:X}\" if fmt == \"hex\" else \"{:b}\"\n\n            for name in df.columns:\n                col = df[name]\n                if isinstance(col.values[0], np.integer):\n                    col = pd.Series([fmt.format(val) for val in col], index=df.index)\n                    df[name] = col\n\n        for name in df.columns:\n            col = df[name]\n            if isinstance(col.values[0], bytes | np.bytes_):\n                df[name] = pd.Series(col, dtype=pd.StringDtype())\n\n        if self.dataView.model().float_precision != -1:\n            decimals = self.dataView.model().float_precision\n            for name in df.columns:\n                col = df[name]\n                if isinstance(col.values[0], np.floating):\n                    col = col.round(decimals)\n                    df[name] = col\n            float_format = f\"%.{decimals}f\"\n        else:\n            float_format = \"%.16f\"\n\n        # If I try to use df.to_clipboard without starting new thread, large selections give access denied error\n        if df.shape == (1, 1):\n            # Special case for single-cell copy, excel=False removes the trailing \\n character.\n            df.to_clipboard(\n                index=False,\n                header=False,\n                excel=False,\n                float_format=float_format,\n            )\n        else:\n            df.to_clipboard(\n                index=header,\n                header=header,\n                float_format=float_format,\n            )\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "df.to_clipboard"
+      ],
+      "api_sequence_with_args": [
+        "df.to_clipboard(index=False, header=False, excel=False, float_format=float_format)",
+        "df.to_clipboard(index=header, header=header, float_format=float_format)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "pandas.DataFrame.to_clipboard",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "if df.shape == (1, 1):\n    # Special case for single-cell copy, excel=False removes the trailing \\n character.\n    df.to_clipboard(\n        index=False,\n        header=False,\n        excel=False,\n        float_format=float_format,\n    )\nelse:\n    df.to_clipboard(\n        index=header,\n        header=header,\n        float_format=float_format,\n    )"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "asammdf-8.2.9",
+      "total_matches": 2
+    }
+  }
+]

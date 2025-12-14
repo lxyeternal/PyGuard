@@ -1,0 +1,38 @@
+Run started:2025-04-12 11:38:42.887776
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/mo_imports-7.678.25061/mo_imports-7.678.25061/setup.py:12
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+11	    license='MPL 2.0',
+12	    long_description='# More Imports! - Delayed importing \n\nA few methods to make late importing cleaner\n\n\n|Branch      |Status   |\n|------------|---------|\n|master      |  [![Build Status](https://github.com/klahnakoski/mo-imports/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/klahnakoski/mo-imports/actions/workflows/build.yml) |\n|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-imports.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-imports)    |\n\n\n\n## Problem\n\nSplitting code into modules is nice, but it can result in cyclic dependencies.  \n\n\n**foos.py**\n\n```python\nfrom bars import bar\n\ndef foo():\n    bar()\n```\n\n**bars.py**\n\n```python\nfrom foos import foo\n\ndef bar():\n    foo()\n```\n\n> We are not concerned with the infinite recursion; this is only for demonstrating cyclic dependencies. \n\n\n## More Imports!\n\n### Solution #1: Use `expect`/`export` pattern\n\nAll your cyclic dependencies are covered with this one pattern: Break cycles by `expect`ing a name in the first module, and let the second module `export` to the first when the value is available\n\n**foos.py**\n\n```python\nfrom mo_imports import expect\n\nbar = expect("bar")\n\ndef foo():\n    bar()\n```\n\n**bars.py**\n\n```python\nfrom mo_imports import export\nfrom foos import foo\n\ndef bar():\n    foo()\n\nexport("bars", bar)\n```\n\n**Benefits**\n  \n \n* every `expect` is verified to match with an `export` (and visa-versa)\n* using an expected variable before `export` raises an error     \n* code is run only once, at module load time, not later\n* methods do not run import code\n* all "imports" are at the top of the file\n\n\n### Solution #2: Use `delay_import`\n\nProvide a proxy which is responsible for import upon first use of the module variable.\n\n**foos.py**\n\n```python\nfrom mo_imports import delay_import\n\nbar = delay_import("bars.bar")\n\ndef foo():\n    bar()\n\n```\n\n**bars.py**\n\n```python\nfrom foos import foo\n\ndef bar():\n    foo()\n```\n\n\n**Benefits**\n  \n* cleaner code \n* costly imports are delayed until first use\n\n\n> WARNING\n> \n> Requires any of `__call__`, `__getitem__`, `__getattr__` to be called to trigger the\n> import.  This means sentinals, placeholders, and default values can NOT be imported \n> using `delay_import()`\n\n\n## Other solutions\n\nIf you do not use `mo-imports` your import cycles can be broken using one of the following common patterns:\n\n\n### Bad Solution: Keep in single file\n\nYou can declare yet-another-module that holds the cycles\n\n**foosbars.py**\n\n```python\n    def foo():\n        bar()\n\n    def bar():\n        foo()\n```\n\nbut this breaks the code modularity\n\n\n### Bad Solution: Use end-of-file imports\n\nDuring import, setup of the first module is paused while it imports a second. A bottom-of-file import will ensure the first module is mostly setup to be used by the second. \n\n**foos.py**\n\n```python\ndef foo():\n    bar()\n\nfrom bars import bar\n```\n\n**bars.py**\n\n```python\ndef bar():\n    foo()\n\nfrom foos import foo\n```\n\nLinters do not like this pattern: You may miss imports, since these are hiding at the bottom.\n    \n\n\n### Bad Solution: Inline import\n\nImport the name only when it is needed\n\n**foos.py**\n\n```python\ndef foo():\n    from bars import bar\n    bar()\n```\n    \n**bars.py**\n\n\n```python\ndef bar():\n    from foos import foo\n    foo()\n```\n\nThis is fine for rarely run code, but there is an undesirable overhead because import is checked everytime the method is run. You may miss imports because they are hiding inline rather than at the top of the file.\n  \n\n\n### Bad Solution: Use the `_late_import()` pattern\n\nWhen other bad solutions do not work work, then importing late is the remaining option\n\n**foos.py**\n\n```python\nfrom bars import bar\n\ndef foo():\n    bar()\n```\n\n**bars.py**\n\n```python\nfoo = None\n\ndef _late_import():\n    global foo\n    from foos import foo\n    _ = foo\n\ndef bar():\n    if not foo:\n        _late_import()\n    foo()\n```\n\nPlaceholders variables are added, which linters complain about type. There is the added `_late_import()` method. You risk it is not run everywhere as needed. This has less overhead than an inline import, but there is still a check.\n \n\n## More on importing\n\nImporting a complex modular library is still hard; the complexity comes from the the order *other modules* declare their imports; you have no control over which of your modules will be imported first.  For example, one module may \n\n```python\nfrom my_lib.bars import bar\nfrom my_lib.foos import foo\n```\n\nanother module may choose the opposite order\n\n```python\nfrom my_lib.foos import foo\nfrom my_lib.bars import bar\n```\n\n### Ordering imports\n\nWith cyclic dependencies, ordering the imports can get tricky.  Here are some rules \n\n* choose your principle modules and the order you want them imported.\n* your remaining modules are assumed to be imported in alphabetical order (as most linters prefer)\n* **use top level `__init__.py` to control the order of imports**\n* encourage third party modules to use this top level module.  for example\n  ```python\n  from my_lib import foo, bar\n  ```\n* finally, use `mo_imports` to break cycles\n',
+13	    long_description_content_type='text/markdown',
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/mo_imports-7.678.25061/mo_imports-7.678.25061/setup.py:16
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+15	    packages=["mo_imports"],
+16	    url='https://github.com/klahnakoski/mo-imports',
+17	    version='7.678.25061'
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 265
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+Files skipped (0):

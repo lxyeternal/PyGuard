@@ -1,0 +1,81 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport re\nimport distutils\nimport subprocess\nimport platform\nfrom setuptools import find_packages, monkey, setup, Extension\nfrom setuptools.command.build_ext import build_ext as build_ext_orig\nfrom distutils.extension import Extension\nfrom distutils.version import LooseVersion\nfrom distutils import log as logger\n\ntry:\n    from Cython.Build import cythonize\n    USE_CYTHON = True\nexcept ImportError:\n    USE_CYTHON = False\n\ndef get_build_env():\n    build_env = os.environ.copy()\n    return {k.upper(): v for k, v in build_env.items()}\n\ndef get_generator_flags():\n    flags = [\"-G\"]\n    if is_win:\n        flags.append(\"\\\"Visual Studio 17 2022\\\"\")\n        flags.append(\"-A\")\n        flags.append(\"ARM64\" if platform.machine() == \"ARM64\" else \"x64\" if is_x64 else \"Win32\")\n    else:\n        flags.append(\"\\\"Unix Makefiles\\\"\")\n    return \" \".join(flags)\n\nclass build_ext(build_ext_orig):\n\n    def run(self):\n        monkey.patch_all()\n        cmake_build_dir = None\n\n        for ext in self.extensions:\n\n            if isinstance(ext, UAMQPExtension):\n                self.build_cmake(ext)\n                # Now I have built in ext.cmake_build_dir\n                cmake_build_dir = self.cmake_build_dir\n            else:\n                ext.library_dirs += [\n                    cmake_build_dir,\n                    cmake_build_dir + \"/deps/azure-c-shared-utility/\",\n                    cmake_build_dir + \"/Debug/\",\n                    cmake_build_dir + \"/Release/\",\n                    cmake_build_dir + \"/deps/azure-c-shared-utility/Debug/\",\n                    cmake_build_dir + \"/deps/azure-c-shared-utility/Release/\"\n                ]\n\n        build_ext_orig.run(self)\n\n    def build_cmake(self, ext):\n        cwd = os.getcwd()\n\n        # these dirs will be created in build_py, so if you don't have\n        # any python sources to bundle, the dirs will be missing\n        self.cmake_build_dir = self.build_temp + \"/cmake\"\n        create_folder_no_exception(self.cmake_build_dir)\n\n        extdir = self.get_ext_fullpath(ext.name)\n        create_folder_no_exception(extdir)\n\n        logger.info(\"will build uamqp in %s\", self.cmake_build_dir)\n        os.chdir(cwd + \"/\" + self.cmake_build_dir)\n\n        generator_flags = get_generator_flags()\n        logger.info(\"Building with generator flags: {}\".format(generator_flags))\n\n        build_env = get_build_env()\n\n        # Configure\n        configure_command = [\n            \"cmake\",\n            cwd + \"/src/vendor/azure-uamqp-c/\",\n            generator_flags,\n            \"-Duse_openssl:bool={}\".format(\"ON\" if use_openssl else \"OFF\"),\n            \"-Duse_default_uuid:bool=ON \", # Should we use libuuid in the system or light one?\n            \"-Duse_builtin_httpapi:bool=ON \", # Should we use libcurl in the system or light one?\n            \"-Dskip_samples:bool=ON\", # Don't compile uAMQP samples binaries\n            \"-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE\", # ask for -fPIC\n            \"-DCMAKE_BUILD_TYPE=Release\"\n        ]\n\n        joined_cmd = \" \".join(configure_command)\n        logger.info(\"calling %s\", joined_cmd)\n        subprocess.check_call(joined_cmd, shell=True, universal_newlines=True, env=build_env)\n\n        compile_command  = [\"cmake\", \"--build\", \".\", \"--config\", \"Release\"]\n        joined_cmd = \" \".join(compile_command)\n        logger.info(\"calling %s\", joined_cmd)\n        subprocess.check_call(joined_cmd, shell=True, universal_newlines=True, env=build_env)\n\n        os.chdir(cwd)\n\n        if USE_CYTHON:\n            create_cython_file()\n\ndef create_folder_no_exception(foldername):\n    try:\n        os.makedirs(foldername)\n    except Exception: # Assume it's already there, and not impossible to create\n        pass\n\nclass UAMQPExtension(Extension):\n\n    def __init__(self, name):\n        # don't invoke the original build_ext for this special extension\n        Extension.__init__(self, name, sources=[])",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.copy",
+        "os.makedirs",
+        "os.getcwd",
+        "os.chdir",
+        "subprocess.check_call",
+        "os.chdir"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.copy()",
+        "os.makedirs(foldername)",
+        "os.getcwd()",
+        "os.chdir(cwd + \"/\" + self.cmake_build_dir)",
+        "subprocess.check_call(joined_cmd, shell=True, universal_newlines=True, env=build_env)",
+        "os.chdir(cwd)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "os.chdir",
+          "id": "change_working_dir",
+          "description": "Changes current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "def get_build_env():\n    build_env = os.environ.copy()\n    return {k.upper(): v for k, v in build_env.items()}\n\ndef create_folder_no_exception(foldername):\n    try:\n        os.makedirs(foldername)\n    except Exception: # Assume it's already there, and not impossible to create\n        pass\n\nclass build_ext(build_ext_orig):\n    def build_cmake(self, ext):\n        cwd = os.getcwd()\n        self.cmake_build_dir = self.build_temp + \"/cmake\"\n        create_folder_no_exception(self.cmake_build_dir)\n        extdir = self.get_ext_fullpath(ext.name)\n        create_folder_no_exception(extdir)\n        os.chdir(cwd + \"/\" + self.cmake_build_dir)\n        build_env = get_build_env()\n        joined_cmd = \" \".join(configure_command)\n        subprocess.check_call(joined_cmd, shell=True, universal_newlines=True, env=build_env)\n        joined_cmd = \" \".join(compile_command)\n        subprocess.check_call(joined_cmd, shell=True, universal_newlines=True, env=build_env)\n        os.chdir(cwd)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "uamqp-1.6.11",
+      "total_matches": 2
+    }
+  }
+]

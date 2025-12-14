@@ -1,0 +1,108 @@
+[
+  {
+    "metadata": {
+      "package_name": "pybedtools-0.12.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "venn_maker.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pybedtools-0.12.0/pybedtools-0.12.0/pybedtools/contrib/venn_maker.py",
+    "line_number": "232",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "231\t    fout = open(fn, \"w\")\n232\t    fout.write(s)\n233\t    fout.close()",
+    "code_snippet": "def venn_maker(\n    beds,\n    names=None,\n    figure_filename=None,\n    script_filename=None,\n    additional_args=None,\n    run=False,\n):\n    \"\"\"\n    Given a list of interval files, write an R script to create a Venn \\\n    diagram of overlaps (and optionally run it).\n\n    The R script calls the venn.diagram function of the R package VennDiagram\n    for extremely flexible Venn and Euler diagram creation.  Uses\n    `cleaned_intersect()` to create string representations of shared intervals.\n\n    `beds` is a list of up to 4 filenames or BedTools.\n\n    `names` is a list of names to use for the Venn diagram, in the same order\n    as `beds`. Default is \"abcd\"[:len(beds)].\n\n    `figure_filename` is the TIFF file to save the figure as.\n\n    `script_filename` is the optional filename to write the R script to\n\n    `additional_args` is list that will be inserted into the R script,\n    verbatim.  For example, to use scaled Euler diagrams with different colors,\n    use::\n\n        additional_args = ['euler.d=TRUE',\n                           'scaled=TRUE',\n                           'cat.col=c(\"red\",\"blue\")']\n\n    If `run` is True, then assume R is installed, is on the path, and has\n    VennDiagram installed . . . and run the script.  The resulting filename\n    will be saved as `figure_filename`.\n    \"\"\"\n\n    if figure_filename is None:\n        figure_filename = \"NULL\"\n    else:\n        figure_filename = '\"%s\"' % figure_filename\n\n    if names is None:\n        names = \"abcd\"[: len(beds)]\n\n    _beds = []\n    for bed in beds:\n        if not isinstance(bed, pybedtools.BedTool):\n            bed = pybedtools.BedTool(bed)\n        _beds.append(bed)\n\n    cleaned = cleaned_intersect(_beds)\n    results = OrderedDict(list(zip(names, cleaned)))\n\n    s = template.substitute(\n        x=_dict_to_R_named_list(results),\n        filename=figure_filename,\n        names=_list_to_R_syntax(names),\n    )\n    if additional_args:\n        s += \",\" + \", \".join(additional_args)\n\n    s += \")\"\n\n    if not script_filename:\n        fn = pybedtools.BedTool._tmp()\n    else:\n        fn = script_filename\n\n    fout = open(fn, \"w\")\n    fout.write(s)\n    fout.close()\n\n    out = fn + \".Rout\"\n    if run:\n\n        if not pybedtools.settings._R_installed:\n            helpers._check_for_R()\n\n        cmds = [os.path.join(pybedtools.settings._R_path, \"R\"), \"CMD\", \"BATCH\", fn, out]\n        p = subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n\n        stdout, stderr = p.communicate()\n        if stdout or stderr:\n            print(\"stdout:\", stdout)\n            print(\"stderr:\", stderr)\n\n    if not script_filename:\n        return s\n\n    return None",
+    "pattern_analysis": {
+      "api_sequence": [
+        "isinstance",
+        "pybedtools.BedTool",
+        "pybedtools.BedTool",
+        "open",
+        "open.write",
+        "open.close",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate"
+      ],
+      "api_sequence_with_args": [
+        "isinstance(bed, pybedtools.BedTool)",
+        "pybedtools.BedTool(bed)",
+        "pybedtools.BedTool._tmp()",
+        "open(fn, \"w\")",
+        "fout.write(s)",
+        "fout.close()",
+        "subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+        "p.communicate()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "pybedtools.BedTool",
+          "id": "init_grabber_class",
+          "description": "Instantiates Grabber class",
+          "first_id": "data_exfiltration",
+          "second_id": "exfiltration_component_initialization",
+          "third_id": "exfiltration_component_creation"
+        },
+        {
+          "api_name": "pybedtools.BedTool._tmp",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        }
+      ],
+      "contextual_code": "for bed in beds:\n    if not isinstance(bed, pybedtools.BedTool):\n        bed = pybedtools.BedTool(bed)\n    _beds.append(bed)\n\nif not script_filename:\n    fn = pybedtools.BedTool._tmp()\nelse:\n    fn = script_filename\n\nfout = open(fn, \"w\")\nfout.write(s)\nfout.close()\n\nif run:\n    cmds = [os.path.join(pybedtools.settings._R_path, \"R\"), \"CMD\", \"BATCH\", fn, out]\n    p = subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n    stdout, stderr = p.communicate()"
+    }
+  }
+]

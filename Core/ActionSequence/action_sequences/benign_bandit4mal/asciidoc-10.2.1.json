@@ -1,0 +1,112 @@
+[
+  {
+    "metadata": {
+      "package_name": "asciidoc-10.2.1",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "asciidoc.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/asciidoc-10.2.1/asciidoc-10.2.1/asciidoc/asciidoc.py",
+    "line_number": "2828",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2827\t                stag, etag = config.section2tags(template, self.attributes)\n2828\t                writer.write(stag, trace=name + ' open')\n2829\t                Section.translate_body(self)",
+    "code_snippet": "def translate(self):\n    AbstractBlock.translate(self)\n    reader.read()   # Discard delimiter.\n    self.merge_attributes(AttributeList.attrs)\n    if 'skip' not in self.parameters.options:\n        BlockTitle.consume(self.attributes)\n        AttributeList.consume()\n    if 'options' in self.attributes:\n        options = parse_options(self.attributes['options'], (), 'illegal option name')\n        for option in options:\n            self.attributes[option + '-option'] = ''\n    self.push_blockname()\n    options = self.parameters.options\n    if 'skip' in options:\n        reader.read_until(self.delimiter, same_file=True)\n    elif safe() and self.defname == 'blockdef-backend':\n        message.unsafe('Backend Block')\n        reader.read_until(self.delimiter, same_file=True)\n    else:\n        template = self.parameters.template\n        template = subs_attrs(template, self.attributes)\n        name = self.short_name() + ' block'\n        if 'sectionbody' in options:\n            # The body is treated like a section body.\n            stag, etag = config.section2tags(template, self.attributes)\n            writer.write(stag, trace=name + ' open')\n            Section.translate_body(self)\n            writer.write(etag, trace=name + ' close')\n        else:\n            stag = config.section2tags(template, self.attributes, skipend=True)[0]\n            body = reader.read_until(self.delimiter, same_file=True)\n            presubs = self.parameters.presubs\n            postsubs = self.parameters.postsubs\n            body = Lex.subs(body, presubs)\n            if self.parameters.filter:\n                body = filter_lines(self.parameters.filter, body, self.attributes)\n            body = Lex.subs(body, postsubs)\n            # Write start tag, content, end tag.\n            etag = config.section2tags(template, self.attributes, skipstart=True)[1]\n            writer.write(utils.dovetail_tags(stag, body, etag), trace=name)\n        trace(self.short_name() + ' block close', etag)\n    if reader.eof():\n        self.error('missing closing delimiter', self.start)\n    else:\n        delimiter = reader.read()   # Discard delimiter line.\n        assert re.match(self.delimiter, delimiter)\n    self.pop_blockname()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "AbstractBlock.translate",
+        "reader.read",
+        "self.merge_attributes",
+        "BlockTitle.consume",
+        "AttributeList.consume",
+        "parse_options",
+        "self.push_blockname",
+        "reader.read_until",
+        "safe",
+        "message.unsafe",
+        "reader.read_until",
+        "self.short_name",
+        "subs_attrs",
+        "config.section2tags",
+        "writer.write",
+        "Section.translate_body",
+        "writer.write",
+        "config.section2tags",
+        "reader.read_until",
+        "Lex.subs",
+        "filter_lines",
+        "Lex.subs",
+        "config.section2tags",
+        "writer.write",
+        "trace",
+        "reader.eof",
+        "self.error",
+        "reader.read",
+        "re.match",
+        "self.pop_blockname"
+      ],
+      "api_sequence_with_args": [
+        "AbstractBlock.translate(self)",
+        "reader.read()",
+        "self.merge_attributes(AttributeList.attrs)",
+        "BlockTitle.consume(self.attributes)",
+        "AttributeList.consume()",
+        "parse_options(self.attributes['options'], (), 'illegal option name')",
+        "self.push_blockname()",
+        "reader.read_until(self.delimiter, same_file=True)",
+        "safe()",
+        "message.unsafe('Backend Block')",
+        "reader.read_until(self.delimiter, same_file=True)",
+        "self.short_name()",
+        "subs_attrs(template, self.attributes)",
+        "config.section2tags(template, self.attributes)",
+        "writer.write(stag, trace=name + ' open')",
+        "Section.translate_body(self)",
+        "writer.write(etag, trace=name + ' close')",
+        "config.section2tags(template, self.attributes, skipend=True)[0]",
+        "reader.read_until(self.delimiter, same_file=True)",
+        "Lex.subs(body, presubs)",
+        "filter_lines(self.parameters.filter, body, self.attributes)",
+        "Lex.subs(body, postsubs)",
+        "config.section2tags(template, self.attributes, skipstart=True)[1]",
+        "writer.write(utils.dovetail_tags(stag, body, etag), trace=name)",
+        "trace(self.short_name() + ' block close', etag)",
+        "reader.eof()",
+        "self.error('missing closing delimiter', self.start)",
+        "reader.read()",
+        "re.match(self.delimiter, delimiter)",
+        "self.pop_blockname()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "reader.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "reader.read_until",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "writer.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        }
+      ],
+      "contextual_code": "def translate(self):\n    AbstractBlock.translate(self)\n    reader.read()   # Discard delimiter.\n    self.merge_attributes(AttributeList.attrs)\n    if 'skip' not in self.parameters.options:\n        BlockTitle.consume(self.attributes)\n        AttributeList.consume()\n    if 'options' in self.attributes:\n        options = parse_options(self.attributes['options'], (), 'illegal option name')\n        for option in options:\n            self.attributes[option + '-option'] = ''\n    self.push_blockname()\n    options = self.parameters.options\n    if 'skip' in options:\n        reader.read_until(self.delimiter, same_file=True)\n    elif safe() and self.defname == 'blockdef-backend':\n        message.unsafe('Backend Block')\n        reader.read_until(self.delimiter, same_file=True)\n    else:\n        template = self.parameters.template\n        template = subs_attrs(template, self.attributes)\n        name = self.short_name() + ' block'\n        if 'sectionbody' in options:\n            stag, etag = config.section2tags(template, self.attributes)\n            writer.write(stag, trace=name + ' open')\n            Section.translate_body(self)\n            writer.write(etag, trace=name + ' close')\n        else:\n            stag = config.section2tags(template, self.attributes, skipend=True)[0]\n            body = reader.read_until(self.delimiter, same_file=True)\n            presubs = self.parameters.presubs\n            postsubs = self.parameters.postsubs\n            body = Lex.subs(body, presubs)\n            if self.parameters.filter:\n                body = filter_lines(self.parameters.filter, body, self.attributes)\n            body = Lex.subs(body, postsubs)\n            etag = config.section2tags(template, self.attributes, skipstart=True)[1]\n            writer.write(utils.dovetail_tags(stag, body, etag), trace=name)\n        trace(self.short_name() + ' block close', etag)\n    if reader.eof():\n        self.error('missing closing delimiter', self.start)\n    else:\n        delimiter = reader.read()   # Discard delimiter line.\n        assert re.match(self.delimiter, delimiter)\n    self.pop_blockname()"
+    }
+  }
+]

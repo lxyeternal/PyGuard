@@ -1,0 +1,208 @@
+[
+  {
+    "metadata": {
+      "package_name": "snowflake_connector_python_nightly-2025.4.11",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "utils.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/snowflake_connector_python_nightly-2025.4.11/snowflake_connector_python_nightly-2025.4.11/src/snowflake/connector/vendored/requests/utils.py",
+    "line_number": "296",
+    "type_description": "B832:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "295\t        with atomic_open(extracted_path) as file_handler:\n296\t            file_handler.write(zip_file.read(member))\n297\t    return extracted_path",
+    "code_snippet": "def extract_zipped_paths(path):\n    \"\"\"Replace nonexistent paths that look like they refer to a member of a zip\n    archive with the location of an extracted copy of the target, or else\n    just return the provided path unchanged.\n    \"\"\"\n    if os.path.exists(path):\n        # this is already a valid path, no need to do anything further\n        return path\n\n    # find the first valid part of the provided path and treat that as a zip archive\n    # assume the rest of the path is the name of a member in the archive\n    archive, member = os.path.split(path)\n    while archive and not os.path.exists(archive):\n        archive, prefix = os.path.split(archive)\n        if not prefix:\n            # If we don't check for an empty prefix after the split (in other words, archive remains unchanged after the split),\n            # we _can_ end up in an infinite loop on a rare corner case affecting a small number of users\n            break\n        member = \"/\".join([prefix, member])\n\n    if not zipfile.is_zipfile(archive):\n        return path\n\n    zip_file = zipfile.ZipFile(archive)\n    if member not in zip_file.namelist():\n        return path\n\n    # we have a valid zip archive and a valid member of that archive\n    tmp = tempfile.gettempdir()\n    extracted_path = os.path.join(tmp, member.split(\"/\")[-1])\n    if not os.path.exists(extracted_path):\n        # use read + write to avoid the creating nested folders, we only want the file, avoids mkdir racing condition\n        with atomic_open(extracted_path) as file_handler:\n            file_handler.write(zip_file.read(member))\n    return extracted_path\n\n@contextlib.contextmanager\ndef atomic_open(filename):\n    \"\"\"Write a file to the disk in an atomic fashion\"\"\"\n    tmp_descriptor, tmp_name = tempfile.mkstemp(dir=os.path.dirname(filename))\n    try:\n        with os.fdopen(tmp_descriptor, \"wb\") as tmp_handler:\n            yield tmp_handler\n        os.replace(tmp_name, filename)\n    except BaseException:\n        os.remove(tmp_name)\n        raise",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "os.path.split",
+        "os.path.exists",
+        "os.path.split",
+        "zipfile.is_zipfile",
+        "zipfile.ZipFile",
+        "zipfile.ZipFile.namelist",
+        "tempfile.gettempdir",
+        "os.path.join",
+        "os.path.exists",
+        "atomic_open",
+        "zipfile.ZipFile.read",
+        "file_handler.write",
+        "tempfile.mkstemp",
+        "os.path.dirname",
+        "os.fdopen",
+        "os.replace",
+        "os.remove"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists(path)",
+        "os.path.split(path)",
+        "os.path.exists(archive)",
+        "os.path.split(archive)",
+        "zipfile.is_zipfile(archive)",
+        "zipfile.ZipFile(archive)",
+        "zipfile.ZipFile.namelist()",
+        "tempfile.gettempdir()",
+        "os.path.join(tmp, member.split(\"/\")[-1])",
+        "os.path.exists(extracted_path)",
+        "atomic_open(extracted_path)",
+        "zipfile.ZipFile.read(member)",
+        "file_handler.write(zipfile.ZipFile.read(member))",
+        "tempfile.mkstemp(dir=os.path.dirname(filename))",
+        "os.path.dirname(filename)",
+        "os.fdopen(tmp_descriptor, \"wb\")",
+        "os.replace(tmp_name, filename)",
+        "os.remove(tmp_name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.split",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "zipfile.is_zipfile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "zipfile.ZipFile.namelist",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "tempfile.gettempdir",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "atomic_open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "zipfile.ZipFile.read",
+          "id": "open_zip_read",
+          "description": "Opens ZIP archive for reading",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "file_handler.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "tempfile.mkstemp",
+          "id": "create_temp_file",
+          "description": "Creates temporary file that is not deleted on close",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.fdopen",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.replace",
+          "id": "rename_file",
+          "description": "Renames file or moves it to new location",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "def extract_zipped_paths(path):\n    if os.path.exists(path):\n        return path\n    archive, member = os.path.split(path)\n    while archive and not os.path.exists(archive):\n        archive, prefix = os.path.split(archive)\n        if not prefix:\n            break\n        member = \"/\".join([prefix, member])\n    if not zipfile.is_zipfile(archive):\n        return path\n    zip_file = zipfile.ZipFile(archive)\n    if member not in zip_file.namelist():\n        return path\n    tmp = tempfile.gettempdir()\n    extracted_path = os.path.join(tmp, member.split(\"/\")[-1])\n    if not os.path.exists(extracted_path):\n        with atomic_open(extracted_path) as file_handler:\n            file_handler.write(zip_file.read(member))\n    return extracted_path\n\n@contextlib.contextmanager\ndef atomic_open(filename):\n    tmp_descriptor, tmp_name = tempfile.mkstemp(dir=os.path.dirname(filename))\n    try:\n        with os.fdopen(tmp_descriptor, \"wb\") as tmp_handler:\n            yield tmp_handler\n        os.replace(tmp_name, filename)\n    except BaseException:\n        os.remove(tmp_name)\n        raise"
+    }
+  }
+]

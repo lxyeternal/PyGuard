@@ -1,0 +1,49 @@
+[
+  {
+    "metadata": {
+      "package_name": "g4f-0.5.0.4",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/g4f-0.5.0.4.txt",
+      "total_matches": 6
+    }
+  },
+  {
+    "pyfile": "Wuguokai.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/g4f-0.5.0.4/g4f-0.5.0.4/g4f/Provider/deprecated/Wuguokai.py",
+    "line_number": "29",
+    "type_description": "shady-links",
+    "original_snippet": "'referer': 'https://chat.wuguokai.xyz/',",
+    "context_snippet": "    @staticmethod\n    def create_completion(\n        model: str,\n        messages: list[dict[str, str]],\n        stream: bool,\n        **kwargs: Any,\n    ) -> CreateResult:\n        headers = {\n            'authority': 'ai-api.wuguokai.xyz',\n            'accept': 'application/json, text/plain, */*',\n            'accept-language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',\n            'content-type': 'application/json',\n            'origin': 'https://chat.wuguokai.xyz',\n            'referer': 'https://chat.wuguokai.xyz/',\n            'sec-ch-ua': '\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\"',\n            'sec-ch-ua-mobile': '?0',\n            'sec-ch-ua-platform': '\"Windows\"',\n            'sec-fetch-dest': 'empty',\n            'sec-fetch-mode': 'cors',\n            'sec-fetch-site': 'same-site',\n            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'\n        }\n        data ={\n            \"prompt\": format_prompt(messages),\n            \"options\": {},\n            \"userId\": f\"#/chat/{random.randint(1,99999999)}\",\n            \"usingContext\": True\n        }\n        response = requests.post(\n            \"https://ai-api20.wuguokai.xyz/api/chat-process\",\n            headers=headers,\n            timeout=3,\n            json=data,\n            proxies=kwargs.get('proxy', {}),\n        )\n        _split = response.text.split(\"> 若回答失败请重试或多刷新几次界面后重试\")\n        if response.status_code != 200:\n            raise Exception(f\"Error: {response.status_code} {response.reason}\")\n        if len(_split) > 1:\n            yield _split[1].strip()\n        else:\n            yield _split[0].strip()",
+    "hash_value": "77734284265a2331c35c8afd07c33329",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "Ylokh.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/g4f-0.5.0.4/g4f-0.5.0.4/g4f/Provider/deprecated/Ylokh.py",
+    "line_number": "44",
+    "type_description": "shady-links",
+    "original_snippet": "async with session.post(\"https://chatapi.ylokh.xyz/v1/chat/completions\", json=data) as response:",
+    "context_snippet": "    @classmethod\n    async def create_async_generator(\n        cls,\n        model: str,\n        messages: Messages,\n        stream: bool = True,\n        proxy: str = None,\n        timeout: int = 120,\n        **kwargs\n    ) -> AsyncResult:\n        model = model if model else \"gpt-3.5-turbo\"\n        headers = {\"Origin\": cls.url, \"Referer\": f\"{cls.url}/\"}\n        data = {\n            \"messages\": messages,\n            \"model\": model,\n            \"temperature\": 1,\n            \"presence_penalty\": 0,\n            \"top_p\": 1,\n            \"frequency_penalty\": 0,\n            \"allow_fallback\": True,\n            \"stream\": stream,\n            **kwargs\n        }\n        async with StreamSession(\n                headers=headers,\n                proxies={\"https\": proxy},\n                timeout=timeout\n            ) as session:\n            async with session.post(\"https://chatapi.ylokh.xyz/v1/chat/completions\", json=data) as response:\n                response.raise_for_status()\n                if stream:\n                    async for line in response.iter_lines():\n                        line = line.decode()\n                        if line.startswith(\"data: \"):\n                            if line.startswith(\"data: [DONE]\"):\n                                break\n                            line = json.loads(line[6:])\n                            content = line[\"choices\"][0][\"delta\"].get(\"content\")\n                            if content:\n                                yield content\n                else:\n                    chat = await response.json()\n                    yield chat[\"choices\"][0][\"message\"].get(\"content\")",
+    "hash_value": "682c2f3adf5f3533de0dc3febde5d4d8",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "Yqcloud.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/g4f-0.5.0.4/g4f-0.5.0.4/g4f/Provider/deprecated/Yqcloud.py",
+    "line_number": "11",
+    "type_description": "shady-links",
+    "original_snippet": "url = \"https://chat9.yqcloud.top/\"",
+    "context_snippet": "class Yqcloud(AsyncGeneratorProvider):\n    url = \"https://chat9.yqcloud.top/\"\n    working = False\n    supports_gpt_35_turbo = True\n\n    @staticmethod\n    async def create_async_generator(\n        model: str,\n        messages: Messages,\n        proxy: str = None,\n        timeout: int = 120,\n        **kwargs,\n    ) -> AsyncResult:\n        async with StreamSession(\n            headers=_create_header(), proxies={\"https\": proxy}, timeout=timeout\n        ) as session:\n            payload = _create_payload(messages, **kwargs)\n            async with session.post(\"https://api.aichatos.cloud/api/generateStream\", json=payload) as response:\n                response.raise_for_status()\n                async for chunk in response.iter_content():\n                    if chunk:\n                        chunk = chunk.decode()\n                        if \"sorry, 您的ip已由于触发防滥用检测而被封禁\" in chunk:\n                            raise RuntimeError(\"IP address is blocked by abuse detection.\")\n                        yield chunk",
+    "hash_value": "34f3ab46d79d40e2edc5c3e2c7fe6727",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "Prodia.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/g4f-0.5.0.4/g4f-0.5.0.4/g4f/Provider/not_working/Prodia.py",
+    "line_number": "155",
+    "type_description": "shady-links",
+    "original_snippet": "return f\"https://images.prodia.xyz/{job_id}.png\"",
+    "context_snippet": "    @classmethod\n    async def _poll_job(cls, session: ClientSession, job_id: str, proxy: str, max_attempts: int = 30, delay: int = 2) -> str:\n        for _ in range(max_attempts):\n            async with session.get(f\"https://api.prodia.com/job/{job_id}\", proxy=proxy) as response:\n                response.raise_for_status()\n                job_status = await response.json()\n\n                if job_status[\"status\"] == \"succeeded\":\n                    return f\"https://images.prodia.xyz/{job_id}.png\"\n                elif job_status[\"status\"] == \"failed\":\n                    raise Exception(\"Image generation failed\")\n\n            await asyncio.sleep(delay)\n\n        raise Exception(\"Timeout waiting for image generation\")",
+    "hash_value": "f8e316f9ac588695fad97f314601d97a",
+    "detection_index": 1
+  }
+]

@@ -1,0 +1,161 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport platform\nimport shlex\nimport shutil\nimport subprocess\n\nfrom setuptools import find_packages, setup\nfrom setuptools.command.egg_info import egg_info\n\nfrom sqllineage import NAME, STATIC_FOLDER, VERSION\n\nwith open(\"README.md\", \"r\") as f:\n    long_description = f.read()\n\n\nclass EggInfoWithJS(egg_info):\n    \"\"\"\n    egginfo is a hook both for\n        1) building source code distribution (python setup.py sdist)\n        2) building wheel distribution (python setup.py bdist_wheel)\n        3) installing from source code (python setup.py install) or pip install from GitHub\n    In this step, frontend code will be built to match MANIFEST.in list so that later the static files will be copied to\n    site-packages correctly as package_data. When building a distribution, no building process is needed at install time\n    \"\"\"\n\n    def run(self) -> None:\n        static_path = os.path.join(NAME, STATIC_FOLDER)\n        if os.path.exists(static_path) or \"READTHEDOCS\" in os.environ:\n            pass\n        else:\n            js_path = \"sqllineagejs\"\n            use_shell = True if platform.system() == \"Windows\" else False\n            subprocess.check_call(\n                shlex.split(\"npm install\"), cwd=js_path, shell=use_shell\n            )\n            subprocess.check_call(\n                shlex.split(\"npm run build\"), cwd=js_path, shell=use_shell\n            )\n            shutil.move(os.path.join(js_path, STATIC_FOLDER), static_path)\n        super().run()\n\n\nsetup(\n    name=NAME,\n    version=VERSION,\n    author=\"Reata\",\n    author_email=\"reddevil.hjw@gmail.com\",\n    description=\"SQL Lineage Analysis Tool powered by Python\",\n    long_description=long_description,\n    long_description_content_type=\"text/markdown\",\n    url=\"https://github.com/reata/sqllineage\",\n    packages=find_packages(exclude=(\"tests\",)),\n    package_data={\"\": [f\"{STATIC_FOLDER}/*\", f\"{STATIC_FOLDER}/**/**/*\", \"data/**/*\"]},\n    include_package_data=True,\n    classifiers=[\n        \"Development Status :: 5 - Production/Stable\",\n        \"License :: OSI Approved :: MIT License\",\n        \"Operating System :: OS Independent\",\n        \"Programming Language :: Python :: 3\",\n        \"Programming Language :: Python :: 3.9\",\n        \"Programming Language :: Python :: 3.10\",\n        \"Programming Language :: Python :: 3.11\",\n        \"Programming Language :: Python :: 3.12\",\n        \"Programming Language :: Python :: 3.13\",\n        \"Programming Language :: Python :: Implementation :: CPython\",\n    ],\n    python_requires=\">=3.8\",\n    install_requires=[\n        \"sqlparse==0.5.3\",\n        \"networkx>=2.4\",\n        \"sqlfluff==3.3.1\",\n        \"sqlalchemy>=2.0.0\",\n    ],\n    entry_points={\"console_scripts\": [\"sqllineage = sqllineage.cli:main\"]},\n    extras_require={\n        \"ci\": [\n            \"bandit\",\n            \"black\",\n            \"flake8\",\n            \"flake8-blind-except\",\n            \"flake8-builtins\",\n            \"flake8-import-order\",\n            \"flake8-logging-format\",\n            \"mypy\",\n            \"pytest\",\n            \"pytest-cov\",\n            \"tox\",\n            \"twine\",\n            \"wheel\",\n        ],\n        \"docs\": [\"Sphinx>=3.2.0\", \"sphinx_rtd_theme>=0.5.0\"],\n    },\n    cmdclass={\"egg_info\": EggInfoWithJS},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "os.path.exists",
+        "os.environ",
+        "platform.system",
+        "shlex.split",
+        "subprocess.check_call",
+        "shlex.split",
+        "subprocess.check_call",
+        "shutil.move",
+        "os.path.join",
+        "os.path.join",
+        "super().run",
+        "find_packages",
+        "setup"
+      ],
+      "api_sequence_with_args": [
+        "open(\"README.md\", \"r\")",
+        "os.path.exists(static_path)",
+        "os.environ",
+        "platform.system()",
+        "shlex.split(\"npm install\")",
+        "subprocess.check_call(shlex.split(\"npm install\"), cwd=js_path, shell=use_shell)",
+        "shlex.split(\"npm run build\")",
+        "subprocess.check_call(shlex.split(\"npm run build\"), cwd=js_path, shell=use_shell)",
+        "shutil.move(os.path.join(js_path, STATIC_FOLDER), static_path)",
+        "os.path.join(NAME, STATIC_FOLDER)",
+        "os.path.join(js_path, STATIC_FOLDER)",
+        "super().run()",
+        "find_packages(exclude=(\"tests\",))",
+        "setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "shlex.split",
+          "id": "exec_shell_command",
+          "description": "Executes shell command",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "shlex.split",
+          "id": "exec_shell_command",
+          "description": "Executes shell command",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "shutil.move",
+          "id": "move_file",
+          "description": "Moves file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "super().run",
+          "id": "exec_setuptools_dev",
+          "description": "Executes setuptools development procedure",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "find_packages",
+          "id": "find_packages",
+          "description": "Finds all packages in current directory",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        },
+        {
+          "api_name": "setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "with open(\"README.md\", \"r\") as f:\n    long_description = f.read()\n\nclass EggInfoWithJS(egg_info):\n    def run(self) -> None:\n        static_path = os.path.join(NAME, STATIC_FOLDER)\n        if os.path.exists(static_path) or \"READTHEDOCS\" in os.environ:\n            pass\n        else:\n            js_path = \"sqllineagejs\"\n            use_shell = True if platform.system() == \"Windows\" else False\n            subprocess.check_call(\n                shlex.split(\"npm install\"), cwd=js_path, shell=use_shell\n            )\n            subprocess.check_call(\n                shlex.split(\"npm run build\"), cwd=js_path, shell=use_shell\n            )\n            shutil.move(os.path.join(js_path, STATIC_FOLDER), static_path)\n        super().run()\n\nsetup(\n    ...,\n    packages=find_packages(exclude=(\"tests\",)),\n    ...,\n    cmdclass={\"egg_info\": EggInfoWithJS},\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "sqllineage-1.5.4",
+      "total_matches": 3
+    }
+  }
+]

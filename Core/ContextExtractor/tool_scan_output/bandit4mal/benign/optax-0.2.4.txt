@@ -1,0 +1,179 @@
+Run started:2025-04-12 11:52:42.807068
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/optax-0.2.4/optax-0.2.4/optax/_src/alias.py:507
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+506	nadam = functools.partial(adam, nesterov=True)
+507	nadam.__doc__ = r"""The NAdam optimizer.
+508	
+509	  Nadam is a variant of :func:`optax.adam` with Nesterov's momentum. The update
+510	  rule of this solver is as follows:
+511	
+512	  .. math::
+513	
+514	    \begin{align*}
+515	      m_t &\leftarrow \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot g_t \\
+516	      v_t &\leftarrow \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot {g_t}^2 \\
+517	      \hat{m}_t &\leftarrow
+518	      \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}\\
+519	      \hat{v}_t &\leftarrow v_t / {(1-\beta_2^t)} \\
+520	      u_t &\leftarrow -\alpha_t \cdot \hat{m}_t / \left({\sqrt{\hat{v}_t +
+521	      \bar{\varepsilon}} + \varepsilon} \right)\\
+522	      S_t &\leftarrow (m_t, v_t).
+523	    \end{align*}
+524	
+525	  Args:
+526	    learning_rate: A global scaling factor, either fixed or evolving along
+527	      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+528	    b1: Exponential decay rate to track the first moment of past gradients.
+529	    b2: Exponential decay rate to track the second moment of past gradients.
+530	    eps: A small constant applied to denominator outside of the square root
+531	      (as in the Adam paper) to avoid dividing by zero when rescaling.
+532	    eps_root: A small constant applied to denominator inside the square root (as
+533	      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+534	      example when computing (meta-)gradients through Adam.
+535	    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+536	      `None` then the `dtype` is inferred from `params` and `updates`.
+537	
+538	  Returns:
+539	    The corresponding :class:`optax.GradientTransformation`.
+540	
+541	  Examples:
+542	      >>> import optax
+543	      >>> import jax
+544	      >>> import jax.numpy as jnp
+545	      >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+546	      >>> solver = optax.nadam(learning_rate=0.003)
+547	      >>> params = jnp.array([1., 2., 3.])
+548	      >>> print('Objective function: ', f(params))
+549	      Objective function:  14.0
+550	      >>> opt_state = solver.init(params)
+551	      >>> for _ in range(5):
+552	      ...  grad = jax.grad(f)(params)
+553	      ...  updates, opt_state = solver.update(grad, opt_state, params)
+554	      ...  params = optax.apply_updates(params, updates)
+555	      ...  print('Objective function: {:.2E}'.format(f(params)))
+556	      Objective function: 1.39E+01
+557	      Objective function: 1.39E+01
+558	      Objective function: 1.39E+01
+559	      Objective function: 1.38E+01
+560	      Objective function: 1.38E+01
+561	
+562	  References:
+563	    Dozat, `Incorporating Nesterov Momentum into Adam
+564	    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+565	
+566	  .. seealso:: :func:`optax.adam`, :func:`optax.nadamw`.
+567	
+568	  .. versionadded:: 0.1.9
+569	"""
+570	
+571	
+572	def adamw(
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/optax-0.2.4/optax-0.2.4/optax/_src/alias.py:706
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+705	nadamw.__doc__ = (
+706	    r"""NAdamW optimizer, implemented as part of the AdamW optimizer.
+707	
+708	  NadamW is variant of :func:`optax.adamw` with Nesterov's momentum. Compared
+709	  to AdamW, this optimizer replaces the assignment
+710	
+711	  .. math::
+712	
+713	      \hat{m}_t \leftarrow m_t / {(1-\beta_1^t)}
+714	
+715	  with
+716	
+717	  .. math::
+718	
+719	      \hat{m}_t \leftarrow
+720	        \beta_1 m_t / {(1-\beta_1^{t+1})} + (1 - \beta_1) g_t / {(1-\beta_1^t)}.
+721	
+722	  Args:
+723	    learning_rate: A global scaling factor, either fixed or evolving along
+724	      iterations with a scheduler, see :func:`optax.scale_by_learning_rate`.
+725	    b1: Exponential decay rate to track the first moment of past gradients.
+726	    b2: Exponential decay rate to track the second moment of past gradients.
+727	    eps: A small constant applied to denominator outside of the square root
+728	      (as in the Adam paper) to avoid dividing by zero when rescaling.
+729	    eps_root: A small constant applied to denominator inside the square root (as
+730	      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+731	      instance when computing (meta-)gradients through Adam.
+732	    mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+733	      `None` then the `dtype` is inferred from `params` and `updates`.
+734	    weight_decay: Strength of the weight decay regularization. Note that this
+735	      weight decay is multiplied with the learning rate. This is consistent
+736	      with other frameworks such as PyTorch, but different from
+737	      (Loshchilov et al, 2019) where the weight decay is only multiplied with
+738	      the "schedule multiplier", but not the base learning rate.
+739	    mask: A tree with same structure as (or a prefix of) the params PyTree,
+740	      or a Callable that returns such a pytree given the params/updates.
+741	      The leaves should be booleans, `True` for leaves/subtrees you want to
+742	      apply the weight decay to, and `False` for those you want to skip. Note
+743	      that the Adam gradient transformations are applied to all parameters.
+744	
+745	  Returns:
+746	    The corresponding :class:`optax.GradientTransformation`.
+747	
+748	  Examples:
+749	    >>> import optax
+750	    >>> import jax
+751	    >>> import jax.numpy as jnp
+752	    >>> def f(x): return jnp.sum(x ** 2)  # simple quadratic function
+753	    >>> solver = optax.nadamw(learning_rate=0.003)
+754	    >>> params = jnp.array([1., 2., 3.])
+755	    >>> print('Objective function: ', f(params))
+756	    Objective function:  14.0
+757	    >>> opt_state = solver.init(params)
+758	    >>> for _ in range(5):
+759	    ...  grad = jax.grad(f)(params)
+760	    ...  updates, opt_state = solver.update(grad, opt_state, params)
+761	    ...  params = optax.apply_updates(params, updates)
+762	    ...  print('Objective function: {:.2E}'.format(f(params)))
+763	    Objective function: 1.39E+01
+764	    Objective function: 1.39E+01
+765	    Objective function: 1.39E+01
+766	    Objective function: 1.38E+01
+767	    Objective function: 1.38E+01
+768	
+769	  References:
+770	    Loshchilov et al, `Decoupled Weight Decay 
+771	    Regularization <https://arxiv.org/abs/1711.05101>`_, 2019
+772	
+773	    Dozat, `Incorporating Nesterov Momentum into Adam
+774	    <https://openreview.net/pdf?id=OM0jvwB8jIp57ZJjtNEZ>`_, 2016
+775	
+776	  .. seealso:: :func:`optax.adam`, :func:`optax.adamw`.
+777	
+778	  .. versionadded:: 0.1.9
+779	"""
+780	)
+781	
+782	
+783	def adan(
+784	    learning_rate: base.ScalarOrSchedule,
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 23290
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 0.0
+Files skipped (0):

@@ -1,0 +1,121 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport subprocess\n\nclass PkgConfigError(RuntimeError):\n    pass\n\ndef cmd_output(command):\n    \"\"\"\n    Returns the exit code and output of the program, as a triplet of the form\n    (exit_code, stdout, stderr).\n    \"\"\"\n    env = os.environ.copy()\n    env['LANG'] = ''\n    import subprocess\n    proc = subprocess.Popen(command,\n                            shell=True,\n                            stdout=subprocess.PIPE,\n                            stderr=subprocess.PIPE,\n                            env=env)\n    stdout, stderr = proc.communicate()\n    exit_code = proc.wait()\n    if exit_code != 0:\n        raise PkgConfigError(stderr.decode('ISO8859-1'))\n    return stdout\n\n# ...\n\ndef use_bundled_luajit(path, macros):\n    import os\n    import subprocess\n    from sys import platform\n    libname = os.path.basename(path.rstrip(os.sep))\n    assert 'luajit' in libname, libname\n    print('Using bundled LuaJIT in %s' % libname)\n    print('Building LuaJIT for %r in %s' % (platform, libname))\n\n    build_env = dict(os.environ)\n    src_dir = os.path.join(path, \"src\")\n    if platform.startswith('win'):\n        build_script = [os.path.join(src_dir, \"msvcbuild.bat\"), \"static\"]\n        lib_file = \"lua51.lib\"\n    else:\n        build_script = [\"make\",  \"libluajit.a\"]\n        lib_file = \"libluajit.a\"\n\n        if 'CFLAGS' in build_env:\n            if \"-fPIC\" not in build_env['CFLAGS']:\n                build_env['CFLAGS'] += \" -fPIC\"\n        else:\n            build_env['CFLAGS'] = \"-fPIC\"\n\n    output = subprocess.check_output(build_script, cwd=src_dir, env=build_env)\n    if lib_file.encode(\"ascii\") not in output:\n        print(\"Building LuaJIT did not report success:\")\n        print(output.decode().strip())\n        print(\"## Building LuaJIT may have failed ##\")\n\n    return {\n        'include_dirs': [src_dir],\n        'extra_objects': [os.path.join(src_dir, lib_file)],\n        'libversion': libname,\n    }\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.copy",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "subprocess.Popen.wait",
+        "os.environ",
+        "os.path.basename",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "subprocess.check_output"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.copy()",
+        "subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)",
+        "subprocess.Popen.communicate()",
+        "subprocess.Popen.wait()",
+        "os.environ",
+        "os.path.basename(path.rstrip(os.sep))",
+        "os.path.join(path, \"src\")",
+        "os.path.join(src_dir, \"msvcbuild.bat\")",
+        "os.path.join(src_dir, lib_file)",
+        "subprocess.check_output(build_script, cwd=src_dir, env=build_env)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "subprocess.Popen.wait",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "spawn_process_shell",
+          "description": "Spawns new process to execute command with shell access",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_reception"
+        }
+      ],
+      "contextual_code": "import os\nimport subprocess\n\nclass PkgConfigError(RuntimeError):\n    pass\n\ndef cmd_output(command):\n    env = os.environ.copy()\n    env['LANG'] = ''\n    import subprocess\n    proc = subprocess.Popen(command,\n                            shell=True,\n                            stdout=subprocess.PIPE,\n                            stderr=subprocess.PIPE,\n                            env=env)\n    stdout, stderr = proc.communicate()\n    exit_code = proc.wait()\n    if exit_code != 0:\n        raise PkgConfigError(stderr.decode('ISO8859-1'))\n    return stdout\n\n\ndef use_bundled_luajit(path, macros):\n    import os\n    import subprocess\n    from sys import platform\n    libname = os.path.basename(path.rstrip(os.sep))\n    assert 'luajit' in libname, libname\n    print('Using bundled LuaJIT in %s' % libname)\n    print('Building LuaJIT for %r in %s' % (platform, libname))\n\n    build_env = dict(os.environ)\n    src_dir = os.path.join(path, \"src\")\n    if platform.startswith('win'):\n        build_script = [os.path.join(src_dir, \"msvcbuild.bat\"), \"static\"]\n        lib_file = \"lua51.lib\"\n    else:\n        build_script = [\"make\",  \"libluajit.a\"]\n        lib_file = \"libluajit.a\"\n\n        if 'CFLAGS' in build_env:\n            if \"-fPIC\" not in build_env['CFLAGS']:\n                build_env['CFLAGS'] += \" -fPIC\"\n        else:\n            build_env['CFLAGS'] = \"-fPIC\"\n\n    output = subprocess.check_output(build_script, cwd=src_dir, env=build_env)\n    if lib_file.encode(\"ascii\") not in output:\n        print(\"Building LuaJIT did not report success:\")\n        print(output.decode().strip())\n        print(\"## Building LuaJIT may have failed ##\")\n\n    return {\n        'include_dirs': [src_dir],\n        'extra_objects': [os.path.join(src_dir, lib_file)],\n        'libversion': libname,\n    }"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "lupa-2.4",
+      "total_matches": 2
+    }
+  }
+]

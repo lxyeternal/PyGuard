@@ -1,0 +1,247 @@
+[
+  {
+    "metadata": {
+      "package_name": "devpi_server-6.14.0-py3-none-any",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "fileutil.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/devpi_server-6.14.0-py3-none-any/devpi_server/fileutil.py",
+    "line_number": "87",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "86\t        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n87\t            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n88\t        elif opcode == b'O':  # set",
+    "code_snippet": "def load(fp, _from_bytes=int.from_bytes, _unpack=unpack):\n    read = fp.read\n    stack = []\n    stack_append = stack.append\n    stack_pop = stack.pop\n\n    def _load_collection(type_):\n        length = _from_bytes(read(4), byteorder=\"big\", signed=True)\n        if length:\n            res = type_(stack[-length:])\n            del stack[-length:]\n            stack_append(res)\n        else:\n            stack_append(type_())\n\n    stopped = False\n    while True:\n        opcode = read(1)\n        if not opcode:\n            raise EOFError\n        if opcode == b'@':  # tuple\n            _load_collection(tuple)\n        elif opcode == b'A':  # bytes\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode == b'B':  # Channel\n            raise NotImplementedError(\"opcode B for Channel\")\n        elif opcode == b'C':  # False\n            stack_append(False)  # noqa: FBT003\n        elif opcode == b'D':  # float\n            stack_append(_unpack(\"!d\", read(8))[0])\n        elif opcode == b'E':  # frozenset\n            _load_collection(frozenset)\n        elif opcode in (b'F', b'G'):  # int, long\n            stack_append(_from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode in (b'H', b'I'):  # longint, longlong\n            stack_append(int(read(_from_bytes(read(4), byteorder=\"big\", signed=True))))\n        elif opcode == b'J':  # dict\n            stack_append({})\n        elif opcode == b'K':  # list\n            stack_append([None] * _from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode == b'L':  # None\n            stack_append(None)\n        elif opcode == b'M':  # Python 2 string\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n        elif opcode == b'O':  # set\n            _load_collection(set)\n        elif opcode == b'P':  # setitem\n            try:\n                value = stack_pop()\n                key = stack_pop()\n            except IndexError:\n                raise LoadError(\"not enough items for setitem\")\n            stack[-1][key] = value\n        elif opcode == b'Q':  # stop\n            stopped = True\n            break\n        elif opcode == b'R':  # True\n            stack_append(True)  # noqa: FBT003\n        elif opcode == b'T':  # complex\n            stack_append(complex(_unpack(\"!d\", read(8))[0], _unpack(\"!d\", read(8))[0]))\n        else:\n            raise LoadError(\n                \"unknown opcode %r - wire protocol corruption?\" % opcode)\n    if not stopped:\n        raise LoadError(\"didn't get STOP\")\n    if len(stack) != 1:\n        raise LoadError(\"internal unserialization error\")\n    return stack_pop(0)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "fp.read",
+        "int.from_bytes",
+        "fp.read",
+        "fp.read",
+        "fp.read",
+        "fp.read"
+      ],
+      "api_sequence_with_args": [
+        "fp.read(1)",
+        "int.from_bytes(read(4), byteorder=\"big\", signed=True)",
+        "fp.read(4)",
+        "fp.read(_from_bytes(read(4), byteorder=\"big\", signed=True))",
+        "fp.read(8)",
+        "fp.read(_from_bytes(read(4), byteorder=\"big\", signed=True))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "int.from_bytes",
+          "id": "convert_int_to_bytes",
+          "description": "Converts integer to bytes with specified length and byte order",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "byte_encoding"
+        },
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "fp.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        }
+      ],
+      "contextual_code": "def load(fp, _from_bytes=int.from_bytes, _unpack=unpack):\n    read = fp.read\n    ...\n    while True:\n        opcode = read(1)\n        if not opcode:\n            raise EOFError\n        if opcode == b'@':  # tuple\n            length = _from_bytes(read(4), byteorder=\"big\", signed=True)\n            ...\n        elif opcode == b'A':  # bytes\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode == b'D':  # float\n            stack_append(_unpack(\"!d\", read(8))[0])\n        elif opcode in (b'F', b'G'):  # int, long\n            stack_append(_from_bytes(read(4), byteorder=\"big\", signed=True))\n        elif opcode in (b'H', b'I'):  # longint, longlong\n            stack_append(int(read(_from_bytes(read(4), byteorder=\"big\", signed=True))))\n        elif opcode == b'M':  # Python 2 string\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)))\n        elif opcode in (b'N', b'S'):  # Python 3 string, unicode\n            stack_append(read(_from_bytes(read(4), byteorder=\"big\", signed=True)).decode('utf-8'))\n        ...\n"
+    }
+  },
+  {
+    "pyfile": "test_streaming.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/devpi_server-6.14.0-py3-none-any/test_devpi_server/test_streaming.py",
+    "line_number": "63",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "62\t        from time import sleep\n63\t        if \"storage_with_filesystem\" not in storage_info.get('_test_markers', []):\n64\t            pytest.skip(\"The storage doesn't have marker 'storage_with_filesystem'.\")",
+    "code_snippet": "@pytest.mark.slow\n@pytest.mark.parametrize(\"length,pkg_version,pkg_name\", [\n    (None, '1.0', 'pkg1'), (False, '1.1', 'pkg2')])\ndef test_streaming_download(self, content_digest, files_path, length, pkg_version, pkg_name, server_url_session, simpypi, storage_info):\n    from time import sleep\n    if \"storage_with_filesystem\" not in storage_info.get('_test_markers', []):\n        pytest.skip(\"The storage doesn't have marker 'storage_with_filesystem'.\")\n    (content, digest) = content_digest\n    (url, s) = server_url_session\n    pkgzip = f\"{pkg_name}-{pkg_version}.zip\"\n    simpypi.add_release(pkg_name, pkgver='%s#sha256=%s' % (pkgzip, digest))\n    simpypi.add_file(\n        f\"/{pkg_name}/{pkgzip}\", content, stream=True, length=length)\n    with contextlib.closing(s.get(url + f\"root/mirror/{pkg_name}\")) as r:\n        r = r.json()\n    assert pkg_version in r['result'], r\n    href = r['result'][pkg_version]['+links'][0]['href']\n    r = requests.get(href, stream=True)\n    with contextlib.closing(r):\n        stream = r.iter_content(1024)\n        data = next(stream)\n        assert data == b'deadbeaf' * 128\n        part = next(stream)\n        assert part == b'sandwich' * 128\n        data = data + part\n        if length is not False:\n            assert r.headers['content-length'] == str(len(content))\n        for part in stream:\n            data = data + part\n        assert data == content\n    pkg_file = files_path.joinpath(\n        'root', 'mirror', '+f', digest[:3], digest[3:16], pkgzip)\n    # this is sometimes delayed a bit, so we check for a while\n    for i in range(50):\n        if pkg_file.exists():\n            break\n        sleep(0.1)\n    assert pkg_file.exists()\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "storage_info.get",
+        "pytest.skip",
+        "simpypi.add_release",
+        "simpypi.add_file",
+        "requests.get",
+        "requests.Response.json",
+        "requests.get",
+        "requests.Response.iter_content",
+        "next",
+        "requests.Response.headers.__getitem__",
+        "files_path.joinpath",
+        "pkg_file.exists",
+        "sleep",
+        "pkg_file.exists"
+      ],
+      "api_sequence_with_args": [
+        "storage_info.get('_test_markers', [])",
+        "pytest.skip(\"The storage doesn't have marker 'storage_with_filesystem'.\")",
+        "simpypi.add_release(pkg_name, pkgver='%s#sha256=%s' % (pkgzip, digest))",
+        "simpypi.add_file(f\"/{pkg_name}/{pkgzip}\", content, stream=True, length=length)",
+        "s.get(url + f\"root/mirror/{pkg_name}\")",
+        "r.json()",
+        "requests.get(href, stream=True)",
+        "r.iter_content(1024)",
+        "next(stream)",
+        "r.headers['content-length']",
+        "files_path.joinpath('root', 'mirror', '+f', digest[:3], digest[3:16], pkgzip)",
+        "pkg_file.exists()",
+        "sleep(0.1)",
+        "pkg_file.exists()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "storage_info.get",
+          "id": "deserialize_from_json",
+          "description": "Deserializes JSON string to Python object",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "pytest.skip",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "simpypi.add_release",
+          "id": "add_file_zip",
+          "description": "Adds file to ZIP archive with specified archive name",
+          "first_id": "file_operations",
+          "second_id": "compression_archiving",
+          "third_id": "zip_operations"
+        },
+        {
+          "api_name": "simpypi.add_file",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.Response.iter_content",
+          "id": "iterate_response_chunks",
+          "description": "Iterates over response content in chunks",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "next",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "requests.Response.headers.__getitem__",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "files_path.joinpath",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "pkg_file.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "pkg_file.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        }
+      ],
+      "contextual_code": "from time import sleep\nif \"storage_with_filesystem\" not in storage_info.get('_test_markers', []):\n    pytest.skip(\"The storage doesn't have marker 'storage_with_filesystem'.\")\n(content, digest) = content_digest\n(url, s) = server_url_session\npkgzip = f\"{pkg_name}-{pkg_version}.zip\"\nsimpypi.add_release(pkg_name, pkgver='%s#sha256=%s' % (pkgzip, digest))\nsimpypi.add_file(f\"/{pkg_name}/{pkgzip}\", content, stream=True, length=length)\nwith contextlib.closing(s.get(url + f\"root/mirror/{pkg_name}\")) as r:\n    r = r.json()\nhref = r['result'][pkg_version]['+links'][0]['href']\nr = requests.get(href, stream=True)\nwith contextlib.closing(r):\n    stream = r.iter_content(1024)\n    data = next(stream)\n    part = next(stream)\n    data = data + part\n    if length is not False:\n        assert r.headers['content-length'] == str(len(content))\n    for part in stream:\n        data = data + part\npkg_file = files_path.joinpath('root', 'mirror', '+f', digest[:3], digest[3:16], pkgzip)\nfor i in range(50):\n    if pkg_file.exists():\n        break\n    sleep(0.1)\nassert pkg_file.exists()"
+    }
+  }
+]

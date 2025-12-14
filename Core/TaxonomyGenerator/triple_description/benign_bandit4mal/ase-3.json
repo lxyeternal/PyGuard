@@ -1,0 +1,376 @@
+{
+  "metadata": {
+    "package_name": "ase-3",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/ase-3.24.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "abinit.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/ase-3.24.0/ase-3.24.0/ase/io/abinit.py",
+      "line_number": "232",
+      "type_description": "B815:write",
+      "context_snippet": "def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):\n    from ase.calculators.calculator import kpts2mp\n\n    if param is None:\n        param = {}\n\n    if species is None:\n        species = sorted(set(atoms.numbers))\n\n    inp = dict(param)\n    xc = inp.pop('xc', 'LDA')\n    for key in ['smearing', 'kpts', 'pps', 'raw']:\n        inp.pop(key, None)\n\n    smearing = param.get('smearing')\n    if 'tsmear' in param or 'occopt' in param:\n        assert smearing is None\n\n    if smearing is not None:\n        inp['occopt'] = {'fermi-dirac': 3,\n                         'gaussian': 7}[smearing[0].lower()]\n        inp['tsmear'] = smearing[1]\n\n    inp['natom'] = len(atoms)\n\n    if 'nbands' in param:\n        inp['nband'] = param['nbands']\n        del inp['nbands']\n\n    # ixc is set from paw/xml file. Ignore 'xc' setting then.\n    if param.get('pps') not in ['pawxml']:\n        if 'ixc' not in param:\n            inp['ixc'] = {'LDA': 7,\n                          'PBE': 11,\n                          'revPBE': 14,\n                          'RPBE': 15,\n                          'WC': 23}[xc]\n\n    magmoms = atoms.get_initial_magnetic_moments()\n    if magmoms.any():\n        inp['nsppol'] = 2\n        fd.write('spinat\\n')\n        for n, M in enumerate(magmoms):\n            fd.write(f'{0:.14f} {0:.14f} {M:.14f}\\n')\n    else:\n        inp['nsppol'] = 1\n\n    if param.get('kpts') is not None:\n        mp = kpts2mp(atoms, param['kpts'])\n        fd.write('kptopt 1\\n')\n        fd.write('ngkpt %d %d %d\\n' % tuple(mp))\n        fd.write('nshiftk 1\\n')\n        fd.write('shiftk\\n')\n        fd.write('%.1f %.1f %.1f\\n' % tuple((np.array(mp) + 1) % 2 * 0.5))\n\n    valid_lists = (list, np.ndarray)\n    for key in sorted(inp):\n        value = inp[key]\n        unit = keys_with_units.get(key)\n        if unit is not None:\n            if 'fs**2' in unit:\n                value /= fs**2\n            elif 'fs' in unit:\n                value /= fs\n        if isinstance(value, valid_lists):\n            if isinstance(value[0], valid_lists):\n                fd.write(f\"{key}\\n\")\n                for dim in value:\n                    write_list(fd, dim, unit)\n            else:\n                fd.write(f\"{key}\\n\")\n                write_list(fd, value, unit)\n        else:\n            if unit is None:\n                fd.write(f\"{key} {value}\\n\")\n            else:\n                fd.write(f\"{key} {value} {unit}\\n\")\n\n    if param.get('raw') is not None:\n        if isinstance(param['raw'], str):\n            raise TypeError('The raw parameter is a single string; expected '\n                            'a sequence of lines')\n        for line in param['raw']:\n            if isinstance(line, tuple):\n                fd.write(' '.join([f'{x}' for x in line]) + '\\n')\n            else:\n                fd.write(f'{line}\\n')\n\n    fd.write('#Definition of the unit cell\\n')\n    fd.write('acell\\n')\n    fd.write(f'{1.0:.14f} {1.0:.14f} {1.0:.14f} Angstrom\\n')\n    fd.write('rprim\\n')\n    if atoms.cell.rank != 3:\n        raise RuntimeError('Abinit requires a 3D cell, but cell is {}'\n                           .format(atoms.cell))\n    for v in atoms.cell:\n        fd.write('%.14f %.14f %.14f\\n' % tuple(v))\n\n    fd.write('chkprim 0 # Allow non-primitive cells\\n')\n\n    fd.write('#Definition of the atom types\\n')\n    fd.write('ntypat %d\\n' % (len(species)))\n    fd.write('znucl {}\\n'.format(' '.join(str(Z) for Z in species)))\n    fd.write('#Enumerate different atomic species\\n')\n    fd.write('typat')\n    fd.write('\\n')\n\n    types = []\n    for Z in atoms.numbers:\n        for n, Zs in enumerate(species):\n            if Z == Zs:\n                types.append(n + 1)\n    n_entries_int = 20  # integer entries per line\n    for n, type in enumerate(types):\n        fd.write(' %d' % (type))\n        if n > 1 and ((n % n_entries_int) == 1):\n            fd.write('\\n')\n    fd.write('\\n')\n\n    if pseudos is not None:\n        listing = ',\\n'.join(pseudos)\n        line = f'pseudos \"{listing}\"\\n'\n        fd.write(line)\n\n    fd.write('#Definition of the atoms\\n')\n    fd.write('xcart\\n')\n    for pos in atoms.positions / Bohr:\n        fd.write('%.14f %.14f %.14f\\n' % tuple(pos))\n\n    fd.write('chkexit 1 # abinit.exit file in the running '\n             'directory terminates after the current SCF\\n')\n\ndef write_list(fd, value, unit):\n    for element in value:\n        fd.write(f\"{element} \")\n    if unit is not None:\n        fd.write(f\"{unit}\")\n    fd.write(\"\\n\")\n\nkeys_with_units = {\n    'toldfe': 'eV',\n    'tsmear': 'eV',\n    'paoenergyshift': 'eV',\n    'zmunitslength': 'Bohr',\n    'zmunitsangle': 'rad',\n    'zmforcetollength': 'eV/Ang',\n    'zmforcetolangle': 'eV/rad',\n    'zmmaxdispllength': 'Ang',\n    'zmmaxdisplangle': 'rad',\n    'ecut': 'eV',\n    'pawecutdg': 'eV',\n    'dmenergytolerance': 'eV',\n    'electronictemperature': 'eV',\n    'oneta': 'eV',\n    'onetaalpha': 'eV',\n    'onetabeta': 'eV',\n    'onrclwf': 'Ang',\n    'onchemicalpotentialrc': 'Ang',\n    'onchemicalpotentialtemperature': 'eV',\n    'mdmaxcgdispl': 'Ang',\n    'mdmaxforcetol': 'eV/Ang',\n    'mdmaxstresstol': 'eV/Ang**3',\n    'mdlengthtimestep': 'fs',\n    'mdinitialtemperature': 'eV',\n    'mdtargettemperature': 'eV',\n    'mdtargetpressure': 'eV/Ang**3',\n    'mdnosemass': 'eV*fs**2',\n    'mdparrinellorahmanmass': 'eV*fs**2',\n    'mdtaurelax': 'fs',\n    'mdbulkmodulus': 'eV/Ang**3',\n    'mdfcdispl': 'Ang',\n    'warningminimumatomicdistance': 'Ang',\n    'rcspatial': 'Ang',\n    'kgridcutoff': 'Ang',\n    'latticeconstant': 'Ang'}",
+      "hash_value": "fe16663977c93360b2ce0d129d1e1038",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):\n    from ase.calculators.calculator import kpts2mp\n\n    if param is None:\n        param = {}\n\n    if species is None:\n        species = sorted(set(atoms.numbers))\n\n    inp = dict(param)\n    xc = inp.pop('xc', 'LDA')\n    for key in ['smearing', 'kpts', 'pps', 'raw']:\n        inp.pop(key, None)\n\n    smearing = param.get('smearing')\n    if 'tsmear' in param or 'occopt' in param:\n        assert smearing is None\n\n    if smearing is not None:\n        inp['occopt'] = {'fermi-dirac': 3,\n                         'gaussian': 7}[smearing[0].lower()]\n        inp['tsmear'] = smearing[1]\n\n    inp['natom'] = len(atoms)\n\n    if 'nbands' in param:\n        inp['nband'] = param['nbands']\n        del inp['nbands']\n\n    # ixc is set from paw/xml file. Ignore 'xc' setting then.\n    if param.get('pps') not in ['pawxml']:\n        if 'ixc' not in param:\n            inp['ixc'] = {'LDA': 7,\n                          'PBE': 11,\n                          'revPBE': 14,\n                          'RPBE': 15,\n                          'WC': 23}[xc]\n\n    magmoms = atoms.get_initial_magnetic_moments()\n    if magmoms.any():\n        inp['nsppol'] = 2\n        fd.write('spinat\\n')\n        for n, M in enumerate(magmoms):\n            fd.write(f'{0:.14f} {0:.14f} {M:.14f}\\n')\n    else:\n        inp['nsppol'] = 1\n\n    if param.get('kpts') is not None:\n        mp = kpts2mp(atoms, param['kpts'])\n        fd.write('kptopt 1\\n')\n        fd.write('ngkpt %d %d %d\\n' % tuple(mp))\n        fd.write('nshiftk 1\\n')\n        fd.write('shiftk\\n')\n        fd.write('%.1f %.1f %.1f\\n' % tuple((np.array(mp) + 1) % 2 * 0.5))\n\n    valid_lists = (list, np.ndarray)\n    for key in sorted(inp):\n        value = inp[key]\n        unit = keys_with_units.get(key)\n        if unit is not None:\n            if 'fs**2' in unit:\n                value /= fs**2\n            elif 'fs' in unit:\n                value /= fs\n        if isinstance(value, valid_lists):\n            if isinstance(value[0], valid_lists):\n                fd.write(f\"{key}\\n\")\n                for dim in value:\n                    write_list(fd, dim, unit)\n            else:\n                fd.write(f\"{key}\\n\")\n                write_list(fd, value, unit)\n        else:\n            if unit is None:\n                fd.write(f\"{key} {value}\\n\")\n            else:\n                fd.write(f\"{key} {value} {unit}\\n\")\n\n    if param.get('raw') is not None:\n        if isinstance(param['raw'], str):\n            raise TypeError('The raw parameter is a single string; expected '\n                            'a sequence of lines')\n        for line in param['raw']:\n            if isinstance(line, tuple):\n                fd.write(' '.join([f'{x}' for x in line]) + '\\n')\n            else:\n                fd.write(f'{line}\\n')\n\n    fd.write('#Definition of the unit cell\\n')\n    fd.write('acell\\n')\n    fd.write(f'{1.0:.14f} {1.0:.14f} {1.0:.14f} Angstrom\\n')\n    fd.write('rprim\\n')\n    if atoms.cell.rank != 3:\n        raise RuntimeError('Abinit requires a 3D cell, but cell is {}'\n                           .format(atoms.cell))\n    for v in atoms.cell:\n        fd.write('%.14f %.14f %.14f\\n' % tuple(v))\n\n    fd.write('chkprim 0 # Allow non-primitive cells\\n')\n\n    fd.write('#Definition of the atom types\\n')\n    fd.write('ntypat %d\\n' % (len(species)))\n    fd.write('znucl {}\\n'.format(' '.join(str(Z) for Z in species)))\n    fd.write('#Enumerate different atomic species\\n')\n    fd.write('typat')\n    fd.write('\\n')\n\n    types = []\n    for Z in atoms.numbers:\n        for n, Zs in enumerate(species):\n            if Z == Zs:\n                types.append(n + 1)\n    n_entries_int = 20  # integer entries per line\n    for n, type in enumerate(types):\n        fd.write(' %d' % (type))\n        if n > 1 and ((n % n_entries_int) == 1):\n            fd.write('\\n')\n    fd.write('\\n')\n\n    if pseudos is not None:\n        listing = ',\\n'.join(pseudos)\n        line = f'pseudos \"{listing}\"\\n'\n        fd.write(line)\n\n    fd.write('#Definition of the atoms\\n')\n    fd.write('xcart\\n')\n    for pos in atoms.positions / Bohr:\n        fd.write('%.14f %.14f %.14f\\n' % tuple(pos))\n\n    fd.write('chkexit 1 # abinit.exit file in the running '\n             'directory terminates after the current SCF\\n')\n\ndef write_list(fd, value, unit):\n    for element in value:\n        fd.write(f\"{element} \")\n    if unit is not None:\n        fd.write(f\"{unit}\")\n    fd.write(\"\\n\")\n\nkeys_with_units = {\n    'toldfe': 'eV',\n    'tsmear': 'eV',\n    'paoenergyshift': 'eV',\n    'zmunitslength': 'Bohr',\n    'zmunitsangle': 'rad',\n    'zmforcetollength': 'eV/Ang',\n    'zmforcetolangle': 'eV/rad',\n    'zmmaxdispllength': 'Ang',\n    'zmmaxdisplangle': 'rad',\n    'ecut': 'eV',\n    'pawecutdg': 'eV',\n    'dmenergytolerance': 'eV',\n    'electronictemperature': 'eV',\n    'oneta': 'eV',\n    'onetaalpha': 'eV',\n    'onetabeta': 'eV',\n    'onrclwf': 'Ang',\n    'onchemicalpotentialrc': 'Ang',\n    'onchemicalpotentialtemperature': 'eV',\n    'mdmaxcgdispl': 'Ang',\n    'mdmaxforcetol': 'eV/Ang',\n    'mdmaxstresstol': 'eV/Ang**3',\n    'mdlengthtimestep': 'fs',\n    'mdinitialtemperature': 'eV',\n    'mdtargettemperature': 'eV',\n    'mdtargetpressure': 'eV/Ang**3',\n    'mdnosemass': 'eV*fs**2',\n    'mdparrinellorahmanmass': 'eV*fs**2',\n    'mdtaurelax': 'fs',\n    'mdbulkmodulus': 'eV/Ang**3',\n    'mdfcdispl': 'Ang',\n    'warningminimumatomicdistance': 'Ang',\n    'rcspatial': 'Ang',\n    'kgridcutoff': 'Ang',\n    'latticeconstant': 'Ang'}",
+          "triple_sequences": [
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "spinat\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f'{0:.14f} {0:.14f} {M:.14f}\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "kptopt 1\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'ngkpt %d %d %d\n' % tuple(mp)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "nshiftk 1\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "shiftk\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'%.1f %.1f %.1f\n' % tuple((np.array(mp) + 1) % 2 * 0.5)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"{key}\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "write_list()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "fd, dim, unit",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"{key}\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "write_list()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "fd, value, unit",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"{key} {value}\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f\"{key} {value} {unit}\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "' '.join([f'{x}' for x in line]) + '\\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f'{line}\\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "#Definition of the unit cell\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "acell\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "f'{1.0:.14f} {1.0:.14f} {1.0:.14f} Angstrom\\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "rprim\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'%.14f %.14f %.14f\\n' % tuple(v)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "chkprim 0 # Allow non-primitive cells\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "#Definition of the atom types\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'ntypat %d\\n' % (len(species))",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'znucl {}'.format(' '.join(str(Z) for Z in species))",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "#Enumerate different atomic species\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "typat",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "' %d' % (type)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "line = f'pseudos \"{listing}\"\\n'",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "#Definition of the atoms\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "xcart\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "'%.14f %.14f %.14f\\n' % tuple(pos)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "fd.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "chkexit 1 # abinit.exit file in the running directory terminates after the current SCF\n",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "write_list()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "fd, value, unit",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

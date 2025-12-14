@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# Relevant imports\nimport os\nimport sys\n\n# Data dependencies\n# - sys.platform: used to determine platform\n# - sys.argv: used to determine build command\n# - os.path.join, os.getcwd: used to construct DSTROOT\n# - os.walk: used to collect package_data\n# - install_requires, package_data, eager_resources, zip_safe, packages, package_dir: all declared above\n\nelif sys.platform.startswith(\"darwin\"):\n    packages.append('lightblue')\n    package_dir['lightblue'] = 'macos'\n    zip_safe = False\n\n    if sys.version_info >= (3,6):\n        install_requires += ['pyobjc-core>=6', 'pyobjc-framework-Cocoa>=6']\n    else:\n        install_requires += ['pyobjc-core>=3.1,<6', 'pyobjc-framework-Cocoa>=3.1,<6']\n\n    # FIXME: This is inelegant, how can we cover the cases?\n    build_cmds = set(['bdist', 'bdist_egg', 'bdist_wheel'])\n    if build_cmds & set(sys.argv):\n        # Build the framework into macos/\n        import subprocess\n        subprocess.check_call([\n            'xcodebuild', 'install',\n            '-project', 'macos/LightAquaBlue/LightAquaBlue.xcodeproj',\n            '-scheme', 'LightAquaBlue',\n            'DSTROOT=' + os.path.join(os.getcwd(), 'macos'),\n            'INSTALL_PATH=/',\n            'DEPLOYMENT_LOCATION=YES',\n        ])\n        \n        # We can't seem to list a directory as package_data, so we will\n        # recursively add all all files we find\n        package_data['lightblue'] = []\n        for path, _, files in os.walk('macos/LightAquaBlue.framework'):\n            for f in files:\n                include = os.path.join(path, f)[6:]  # trim off macos/\n                package_data['lightblue'].append(include)\n    \n        # This should allow us to use the framework from an egg [untested]\n        eager_resources.append('macos/LightAquaBlue.framework')\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.platform.startswith",
+        "sys.version_info.__ge__",
+        "sys.argv",
+        "os.getcwd",
+        "os.path.join",
+        "subprocess.check_call",
+        "os.walk"
+      ],
+      "api_sequence_with_args": [
+        "sys.platform.startswith(\"darwin\")",
+        "sys.version_info >= (3,6)",
+        "sys.argv",
+        "os.getcwd()",
+        "os.path.join(os.getcwd(), 'macos')",
+        "subprocess.check_call(['xcodebuild', 'install', '-project', 'macos/LightAquaBlue/LightAquaBlue.xcodeproj', '-scheme', 'LightAquaBlue', 'DSTROOT=' + os.path.join(os.getcwd(), 'macos'), 'INSTALL_PATH=/', 'DEPLOYMENT_LOCATION=YES'])",
+        "os.walk('macos/LightAquaBlue.framework')"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.version_info.__ge__",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.check_call",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.walk",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        }
+      ],
+      "contextual_code": "elif sys.platform.startswith(\"darwin\"):\n    packages.append('lightblue')\n    package_dir['lightblue'] = 'macos'\n    zip_safe = False\n\n    if sys.version_info >= (3,6):\n        install_requires += ['pyobjc-core>=6', 'pyobjc-framework-Cocoa>=6']\n    else:\n        install_requires += ['pyobjc-core>=3.1,<6', 'pyobjc-framework-Cocoa>=3.1,<6']\n\n    build_cmds = set(['bdist', 'bdist_egg', 'bdist_wheel'])\n    if build_cmds & set(sys.argv):\n        import subprocess\n        subprocess.check_call([\n            'xcodebuild', 'install',\n            '-project', 'macos/LightAquaBlue/LightAquaBlue.xcodeproj',\n            '-scheme', 'LightAquaBlue',\n            'DSTROOT=' + os.path.join(os.getcwd(), 'macos'),\n            'INSTALL_PATH=/',\n            'DEPLOYMENT_LOCATION=YES',\n        ])\n        package_data['lightblue'] = []\n        for path, _, files in os.walk('macos/LightAquaBlue.framework'):\n            for f in files:\n                include = os.path.join(path, f)[6:]\n                package_data['lightblue'].append(include)\n        eager_resources.append('macos/LightAquaBlue.framework')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pybluez-0.23",
+      "total_matches": 1
+    }
+  }
+]

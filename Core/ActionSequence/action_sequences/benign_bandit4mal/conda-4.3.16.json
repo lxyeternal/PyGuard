@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "package_name": "conda-4.3.16",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "install.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/conda-4.3.16/conda-4.3.16/conda/install.py",
+    "line_number": "96",
+    "type_description": "B810:chmod",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "95\t            mode |= (mode & 292) >> 2    # copy R bits to X\n96\t            chmod(dst, mode)\n97",
+    "code_snippet": "def win_conda_bat_redirect(src, dst, shell):\n    \"\"\"Special function for Windows XP where the `CreateSymbolicLink`\n    function is not available.\n\n    Simply creates a `.bat` file at `dst` which calls `src` together with\n    all command line arguments.\n\n    Works of course only with callable files, e.g. `.bat` or `.exe` files.\n    \"\"\"\n    from conda.utils import shells\n    try:\n        makedirs(dirname(dst))\n    except OSError as exc:  # Python >2.5\n        if exc.errno == EEXIST and isdir(dirname(dst)):\n            pass\n        else:\n            raise\n\n    # bat file redirect\n    if not isfile(dst + '.bat'):\n        with open(dst + '.bat', 'w') as f:\n            f.write('@echo off\\ncall \"%s\" %%*\\n' % src)\n\n    # TODO: probably need one here for powershell at some point\n\n    # This one is for bash/cygwin/msys\n    # set default shell to bash.exe when not provided, as that's most common\n    if not shell:\n        shell = \"bash.exe\"\n\n    # technically these are \"links\" - but islink doesn't work on win\n    if not isfile(dst):\n        with open(dst, \"w\") as f:\n            f.write(\"#!/usr/bin/env bash \\n\")\n            if src.endswith(\"conda\"):\n                f.write('%s \"$@\"' % shells[shell]['path_to'](src+\".exe\"))\n            else:\n                f.write('source %s \"$@\"' % shells[shell]['path_to'](src))\n        # Make the new file executable\n        # http://stackoverflow.com/a/30463972/1170370\n        mode = stat(dst).st_mode\n        mode |= (mode & 292) >> 2    # copy R bits to X\n        chmod(dst, mode)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.makedirs",
+        "os.path.dirname",
+        "os.path.isdir",
+        "os.path.isfile",
+        "builtins.open",
+        "io.TextIOWrapper.write",
+        "os.path.isfile",
+        "builtins.open",
+        "io.TextIOWrapper.write",
+        "os.stat",
+        "os.chmod"
+      ],
+      "api_sequence_with_args": [
+        "os.makedirs(os.path.dirname(dst))",
+        "os.path.dirname(dst)",
+        "os.path.isdir(os.path.dirname(dst))",
+        "os.path.isfile(dst + '.bat')",
+        "open(dst + '.bat', 'w')",
+        "f.write('@echo off\\ncall \"%s\" %%*\\n' % src)",
+        "os.path.isfile(dst)",
+        "open(dst, 'w')",
+        "f.write('#!/usr/bin/env bash \\n')",
+        "os.stat(dst)",
+        "os.chmod(dst, mode)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isdir",
+          "id": "check_directory_exists",
+          "description": "Checks if specified path exists and is a directory",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "builtins.open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "builtins.open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "io.TextIOWrapper.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "os.stat",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.chmod",
+          "id": "change_file_mode_execute",
+          "description": "Changes file mode to add execute permission",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_attribute_management"
+        }
+      ],
+      "contextual_code": "try:\n    makedirs(dirname(dst))\nexcept OSError as exc:\n    if exc.errno == EEXIST and isdir(dirname(dst)):\n        pass\n    else:\n        raise\n\nif not isfile(dst + '.bat'):\n    with open(dst + '.bat', 'w') as f:\n        f.write('@echo off\\ncall \"%s\" %%*\\n' % src)\n\nif not isfile(dst):\n    with open(dst, \"w\") as f:\n        f.write(\"#!/usr/bin/env bash \\n\")\n        if src.endswith(\"conda\"):\n            f.write('%s \"$@\"' % shells[shell]['path_to'](src+\".exe\"))\n        else:\n            f.write('source %s \"$@\"' % shells[shell]['path_to'](src))\n    mode = stat(dst).st_mode\n    mode |= (mode & 292) >> 2    # copy R bits to X\n    chmod(dst, mode)"
+    }
+  }
+]

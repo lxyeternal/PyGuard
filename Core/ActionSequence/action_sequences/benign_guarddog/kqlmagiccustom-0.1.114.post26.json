@@ -1,0 +1,144 @@
+[
+  {
+    "pyfile": "my_aad_helper.py",
+    "code_snippet": "import sys\nimport time\nfrom datetime import timedelta, datetime\nfrom urllib.parse import urlparse\nimport json\nfrom base64 import urlsafe_b64decode\n\nimport dateutil.parser\nfrom adal import AuthenticationContext\nfrom adal.constants import TokenResponseFields, OAuth2DeviceCodeResponseParameters\n\nfrom .dependencies import Dependencies\nfrom .my_utils import single_quote\nfrom .constants import Cloud\nfrom .log import logger\nfrom .display import Display\nfrom .constants import ConnStrKeys\nfrom .adal_token_cache import AdalTokenCache\nfrom .exceptions import KqlEngineError\nfrom .parser import Parser\nfrom .email_notification import EmailNotification\nfrom .aad_helper import AadHelper\nfrom .os_dependent_api import OsDependentAPI\n\nclass _MyAadHelper(AadHelper):\n    ...\n    def acquire_token(self):\n        \"\"\"Acquire tokens from AAD.\"\"\"\n        previous_token = self._current_token\n        try:\n            if self._current_token is not None:\n                self._current_token = self._validate_and_refresh_token(self._current_token)\n\n            if self._current_token is None:\n                self._current_authentication_method = None\n                self._current_adal_context = None\n\n            if self._current_token is None:\n                if self._options.get(\"try_token\") is not None:\n                    token = self._get_aux_token(token=self._options.get(\"try_token\"))\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                if self._options.get(\"try_msi\") is not None:\n                    token = self._get_msi_token(msi_params=self._options.get(\"try_msi\"))\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                if self._options.get(\"try_azcli_login_subscription\") is not None:\n                    token = self._get_azcli_token(subscription=self._options.get(\"try_azcli_login_subscription\"))\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                if self._options.get(\"try_azcli_login\"):\n                    token = self._get_azcli_token()\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                if self._options.get(\"try_azcli_login_by_profile\"):\n                    token = self._get_azcli_token()\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                if self._adal_context_sso is not None:\n                    token = self._get_adal_sso_token()\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                if self._adal_context is not None:\n                    token = self._get_adal_token()\n                    self._current_token = self._validate_and_refresh_token(token)\n\n            if self._current_token is None:\n                token = None\n                self._current_authentication_method = self._authentication_method\n                self._current_adal_context = self._adal_context_sso or self._adal_context\n\n                if self._authentication_method is AuthenticationMethod.aad_username_password:\n                    logger().debug(f\"_MyAadHelper::acquire_token - aad/user-password - resource: '{self._resource}', username: '{self._username}', password: '...', client: '{self._client_id}'\")\n                    token = self._current_adal_context.acquire_token_with_username_password(self._resource, self._username, self._password, self._client_id)\n\n                elif self._authentication_method is AuthenticationMethod.aad_application_key:\n                    logger().debug(f\"_MyAadHelper::acquire_token - aad/client-secret - resource: '{self._resource}', client: '{self._client_id}', secret: '...'\")\n                    token = self._current_adal_context.acquire_token_with_client_credentials(self._resource, self._client_id, self._client_secret)\n\n                elif self._authentication_method is AuthenticationMethod.aad_application_certificate:\n                    logger().debug(f\"_MyAadHelper::acquire_token - aad/client-certificate - resource: '{self._resource}', client: '{self._client_id}', _certificate: '...', thumbprint: '{self._thumbprint}'\")\n                    token = self._current_adal_context.acquire_token_with_client_certificate(self._resource, self._client_id, self._certificate, self._thumbprint)                \n\n                elif self._authentication_method is AuthenticationMethod.aad_code_login:\n                    logger().debug(f\"_MyAadHelper::acquire_token - aad/code - resource: '{self._resource}', client: '{self._client_id}'\")\n                    code: dict = self._current_adal_context.acquire_user_code(self._resource, self._client_id)\n                    url = code[OAuth2DeviceCodeResponseParameters.VERIFICATION_URL]\n                    device_code = code[OAuth2DeviceCodeResponseParameters.USER_CODE].strip()\n\n                    device_code_login_notification = self._options.get(\"device_code_login_notification\")\n                    if device_code_login_notification == \"auto\":\n                        if self._options.get(\"notebook_app\") in [\"azuredatastudiosaw\"]:\n                            device_code_login_notification = \"terminal\"\n                        elif self._options.get(\"notebook_app\") in [\"ipython\"]:\n                            device_code_login_notification = \"popup_interaction\"\n                        elif self._options.get(\"notebook_app\") in [\"visualstudiocode\", \"azuredatastudio\"]:\n                            device_code_login_notification = \"popup_interaction\"\n                        elif self._options.get(\"notebook_app\") in [\"nteract\"]:\n\n                            if self._options.get(\"kernel_location\") == \"local\":\n                                # ntreact cannot execute authentication script, workaround using temp_file_server webbrowser\n                                if self._options.get(\"temp_files_server_address\") is not None:\n                                    import urllib.parse\n                                    indirect_url = f'{self._options.get(\"temp_files_server_address\")}/webbrowser?url={urllib.parse.quote(url)}&kernelid={self._options.get(\"kernel_id\")}'\n                                    url = indirect_url\n                                    device_code_login_notification = \"popup_interaction\"\n                                else:\n                                    device_code_login_notification = \"browser\"\n                            else:\n                                device_code_login_notification = \"terminal\"\n                        else:\n                            device_code_login_notification = \"button\"\n\n                    if (self._options.get(\"kernel_location\") == \"local\"\n                            or device_code_login_notification in [\"browser\"]\n                            or (device_code_login_notification == \"popup_interaction\" and self._options.get(\"popup_interaction\") == \"webbrowser_open_at_kernel\")):\n                        # copy code to local clipboard\n                        try:\n                            pyperclip = Dependencies.get_module(\"pyperclip\", dont_throw=True)\n                            if pyperclip is not None:\n                                pyperclip.copy(device_code)\n                        except: # pylint: disable=bare-except\n                            pass\n\n                    # ... (rest of function omitted for brevity)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "logger.debug",
+        "self._current_adal_context.acquire_token_with_username_password",
+        "logger.debug",
+        "self._current_adal_context.acquire_token_with_client_credentials",
+        "logger.debug",
+        "self._current_adal_context.acquire_token_with_client_certificate",
+        "logger.debug",
+        "self._current_adal_context.acquire_user_code",
+        "pyperclip.copy"
+      ],
+      "api_sequence_with_args": [
+        "logger().debug(f\"_MyAadHelper::acquire_token - aad/user-password - resource: '{self._resource}', username: '{self._username}', password: '...', client: '{self._client_id}'\")",
+        "self._current_adal_context.acquire_token_with_username_password(self._resource, self._username, self._password, self._client_id)",
+        "logger().debug(f\"_MyAadHelper::acquire_token - aad/client-secret - resource: '{self._resource}', client: '{self._client_id}', secret: '...'\")",
+        "self._current_adal_context.acquire_token_with_client_credentials(self._resource, self._client_id, self._client_secret)",
+        "logger().debug(f\"_MyAadHelper::acquire_token - aad/client-certificate - resource: '{self._resource}', client: '{self._client_id}', _certificate: '...', thumbprint: '{self._thumbprint}'\")",
+        "self._current_adal_context.acquire_token_with_client_certificate(self._resource, self._client_id, self._certificate, self._thumbprint)",
+        "logger().debug(f\"_MyAadHelper::acquire_token - aad/code - resource: '{self._resource}', client: '{self._client_id}'\")",
+        "self._current_adal_context.acquire_user_code(self._resource, self._client_id)",
+        "pyperclip.copy(device_code)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "adal.AuthenticationContext.acquire_token_with_username_password",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "adal.AuthenticationContext.acquire_token_with_client_credentials",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "adal.AuthenticationContext.acquire_token_with_client_certificate",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "logger.debug",
+          "id": "log_info",
+          "description": "Logs informational message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "adal.AuthenticationContext.acquire_user_code",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "class _MyAadHelper(AadHelper):\n    def acquire_token(self):\n        ...\n        if self._authentication_method is AuthenticationMethod.aad_username_password:\n            logger().debug(f\"_MyAadHelper::acquire_token - aad/user-password - resource: '{self._resource}', username: '{self._username}', password: '...', client: '{self._client_id}'\")\n            token = self._current_adal_context.acquire_token_with_username_password(self._resource, self._username, self._password, self._client_id)\n\n        elif self._authentication_method is AuthenticationMethod.aad_application_key:\n            logger().debug(f\"_MyAadHelper::acquire_token - aad/client-secret - resource: '{self._resource}', client: '{self._client_id}', secret: '...'\")\n            token = self._current_adal_context.acquire_token_with_client_credentials(self._resource, self._client_id, self._client_secret)\n\n        elif self._authentication_method is AuthenticationMethod.aad_application_certificate:\n            logger().debug(f\"_MyAadHelper::acquire_token - aad/client-certificate - resource: '{self._resource}', client: '{self._client_id}', _certificate: '...', thumbprint: '{self._thumbprint}'\")\n            token = self._current_adal_context.acquire_token_with_client_certificate(self._resource, self._client_id, self._certificate, self._thumbprint)\n\n        elif self._authentication_method is AuthenticationMethod.aad_code_login:\n            logger().debug(f\"_MyAadHelper::acquire_token - aad/code - resource: '{self._resource}', client: '{self._client_id}'\")\n            code: dict = self._current_adal_context.acquire_user_code(self._resource, self._client_id)\n            url = code[OAuth2DeviceCodeResponseParameters.VERIFICATION_URL]\n            device_code = code[OAuth2DeviceCodeResponseParameters.USER_CODE].strip()\n            ...\n            try:\n                pyperclip = Dependencies.get_module(\"pyperclip\", dont_throw=True)\n                if pyperclip is not None:\n                    pyperclip.copy(device_code)\n            except:\n                pass"
+    }
+  },
+  {
+    "pyfile": "my_aad_helper_msal.py",
+    "code_snippet": "import sys\nfrom io import StringIO\nimport time\nimport dateutil.parser\nfrom .dependencies import Dependencies\nfrom .my_utils import single_quote\nfrom .constants import Cloud\nfrom .log import logger\nfrom .display import Display\nfrom .constants import ConnStrKeys\nfrom .msal_token_cache import MsalTokenCache \nfrom .exceptions import KqlEngineError\nfrom .parser import Parser\nfrom .email_notification import EmailNotification\nfrom .aad_helper import AadHelper\nfrom .os_dependent_api import OsDependentAPI\n\nclass _MyAadHelper(AadHelper):\n    ...\n    def acquire_token(self):\n        \"\"\"Acquire tokens from AAD.\"\"\"\n        acquire_token_result = None\n        previous_token = self._current_token\n        try:\n            ...\n            elif self._authentication_method is AuthenticationMethod.aad_code_login:\n                flow = self._current_msal_client_app.initiate_device_flow(scopes=self._scopes)\n                url = flow[OAuth2DeviceCodeResponseParameters.VERIFICATION_URL]\n                device_code = flow[OAuth2DeviceCodeResponseParameters.USER_CODE].strip()\n\n                device_code_login_notification = self._options.get(\"device_code_login_notification\")\n                if device_code_login_notification == \"auto\":\n                    if self._options.get(\"notebook_app\") in [\"ipython\"]:\n                        device_code_login_notification = \"popup_interaction\"\n                    elif self._options.get(\"notebook_app\") in [\"visualstudiocode\", \"azuredatastudio\", \"azuredatastudiosaw\"]:\n                        device_code_login_notification = \"popup_interaction\"\n                    elif self._options.get(\"notebook_app\") in [\"nteract\"]:\n                        if self._options.get(\"kernel_location\") == \"local\":\n                            # ntreact cannot execute authentication script, workaround using temp_file_server webbrowser\n                            if self._options.get(\"temp_files_server_address\") is not None:\n                                import urllib.parse\n                                indirect_url = f'{self._options.get(\"temp_files_server_address\")}/webbrowser?url={urllib.parse.quote(url)}&kernelid={self._options.get(\"kernel_id\")}'\n                                url = indirect_url\n                                device_code_login_notification = \"popup_interaction\"\n                            else:\n                                device_code_login_notification = \"browser_reference\"\n                        else:\n                            device_code_login_notification = \"terminal\"\n                    elif self._options.get(\"notebook_app\") in [\"azureml\", \"azuremljupyternotebook\", \"azuremljupyterlab\"]:\n                        device_code_login_notification = \"terminal_reference\"\n                    else:\n                        device_code_login_notification = \"button\"\n\n                if (self._options.get(\"kernel_location\") == \"local\"\n                        or device_code_login_notification in [\"browser\", \"browser_reference\"]\n                        or (device_code_login_notification == \"popup_interaction\" and self._options.get(\"popup_interaction\") == \"webbrowser_open_at_kernel\")):\n                    # copy code to local clipboard\n                    try:\n                        pyperclip = Dependencies.get_module(\"pyperclip\", dont_throw=True)\n                        if pyperclip is not None:\n                            pyperclip.copy(device_code)\n                    except: # pylint: disable=bare-except\n                        pass\n            ...\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "Dependencies.get_module",
+        "pyperclip.copy"
+      ],
+      "api_sequence_with_args": [
+        "Dependencies.get_module(\"pyperclip\", dont_throw=True)",
+        "pyperclip.copy(device_code)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "Dependencies.get_module",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "pyperclip.copy",
+          "id": "copy_to_clipboard",
+          "description": "Copies specified text to system clipboard",
+          "first_id": "information_gathering",
+          "second_id": "input_monitoring",
+          "third_id": "clipboard_operations"
+        }
+      ],
+      "contextual_code": "if (self._options.get(\"kernel_location\") == \"local\"\n        or device_code_login_notification in [\"browser\", \"browser_reference\"]\n        or (device_code_login_notification == \"popup_interaction\" and self._options.get(\"popup_interaction\") == \"webbrowser_open_at_kernel\")):\n    # copy code to local clipboard\n    try:\n        pyperclip = Dependencies.get_module(\"pyperclip\", dont_throw=True)\n        if pyperclip is not None:\n            pyperclip.copy(device_code)\n    except: # pylint: disable=bare-except\n        pass"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "kqlmagiccustom-0.1.114.post26",
+      "total_matches": 2
+    }
+  }
+]

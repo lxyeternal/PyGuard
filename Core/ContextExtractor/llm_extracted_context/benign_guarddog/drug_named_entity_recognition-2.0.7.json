@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "drug_named_entity_recognition-2.0.7",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/drug_named_entity_recognition-2.0.7.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "06_optional_check_words_with_ai.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/drug_named_entity_recognition-2.0.7/drug_named_entity_recognition-2.0.7/harvesting_data_from_source/06_optional_check_words_with_ai.py",
+    "line_number": "68",
+    "type_description": "exfiltrate-sensitive-data",
+    "original_snippet": "response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data)",
+    "context_snippet": "import os\nimport re\nimport sys\nimport time\nimport traceback\nfrom tqdm import tqdm\nimport requests\n\nMODEL = 'gpt-3.5-turbo'\n\nwith open(\"words_to_check_with_ai.txt\", \"r\", encoding=\"utf-8\") as f:\n    words_to_check_with_ai = f.read().split(\"\\n\")\n\nheaders = {\n    'Content-Type': 'application/json',\n    'Authorization': 'Bearer ' + os.environ[\"OPENAI_API_KEY\"],\n}\n\nbot_responses = [\"\"] * len(words_to_check_with_ai)\n\nfor idx in tqdm(range(len(words_to_check_with_ai))):\n    q = words_to_check_with_ai[idx]\n    print(f\"Asking question: {idx+1}: {q}\")\n\n    starttime = time.time()\n\n    json_data = {\n        'model': MODEL,\n        'messages': [\n            {\"role\": \"user\", \"content\": f\"What is {q}?\\n\"},\n        ],\n    }\n    for attempt in range(3):\n        print(\"attempt calling GPT API:\", attempt)\n        try:\n            response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data)\n            r = response.json()[\"choices\"][0][\"message\"][\"content\"]\n            break\n        except:\n            print(\"Try again\")\n            traceback.print_exc()\n            time.sleep(10)\n    bot_responses[idx] = re.sub(r'\\s+', ' ', r)\n\n    with open(\"ai_responses.txt\", \"w\", encoding=\"utf-8\") as f:\n        for j in range(idx):\n            f.write(words_to_check_with_ai[j] + \"\\t\" + bot_responses[j] + \"\\n\")\n\n    endtime = time.time()\n\n    print(\"\\tReceived response: \", r)",
+    "hash_value": "0fd17513477a0276c8e8fe58faed2e50",
+    "detection_index": 1
+  }
+]

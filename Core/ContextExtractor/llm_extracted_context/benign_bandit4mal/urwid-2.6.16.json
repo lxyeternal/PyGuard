@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "urwid-2.6.16",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "test_main_loop.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urwid-2.6.16/urwid-2.6.16/tests/test_main_loop.py",
+    "line_number": "99",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "98\t            wr_w,\n99\t        ), concurrent.futures.ThreadPoolExecutor(\n100\t            max_workers=1,\n101\t        ) as executor, unittest.mock.patch(",
+    "context_snippet": "@unittest.skipIf(IS_WINDOWS, \"selectors for pipe are not supported on Windows\")\ndef test_watch_pipe(self):\n    \"\"\"Test watching pipe is stopped on explicit False only.\"\"\"\n    evt = threading.Event()  # We need thread synchronization\n    outcome: list[bytes] = []\n\n    def pipe_cb(data: bytes) -> typing.Any:\n        outcome.append(data)\n\n        if not evt.is_set():\n            evt.set()\n\n        if data == b\"false\":\n            return False\n        if data == b\"true\":\n            return True\n        if data == b\"null\":\n            return None\n        return object()\n\n    def pipe_writer(fd: int) -> None:\n        os.write(fd, b\"something\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"true\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"null\")\n        if evt.wait(0.1):\n            evt.clear()\n            os.write(fd, b\"false\")\n\n    with ClosingTemporaryFilesPair() as (\n        rd_r,\n        wr_r,\n    ), ClosingTemporaryFilesPair() as (\n        rd_w,\n        wr_w,\n    ), concurrent.futures.ThreadPoolExecutor(\n        max_workers=1,\n    ) as executor, unittest.mock.patch(\n        \"subprocess.Popen\",  # we want to be sure that nothing outside is called\n        autospec=True,\n    ):\n        evl = urwid.MainLoop(\n            urwid.SolidFill(),\n            screen=urwid.display.raw.Screen(input=rd_r, output=wr_w),  # We need screen which support mocked IO\n            handle_mouse=False,  # Less external calls - better\n        )\n        evl.set_alarm_in(1, stop_screen_cb)\n        pipe_fd = evl.watch_pipe(pipe_cb)\n        executor.submit(pipe_writer, pipe_fd)\n\n        evl.run()\n        self.assertEqual([b\"something\", b\"true\", b\"null\", b\"false\"], outcome)\n        not_removed = evl.remove_watch_pipe(pipe_fd)\n        self.assertFalse(not_removed)",
+    "hash_value": "b9cd6b3a60561dba5fe7719021351a3d"
+  },
+  {
+    "pyfile": "test_event_loops.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urwid-2.6.16/urwid-2.6.16/tests/test_event_loops.py",
+    "line_number": "293",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "292\t        def step2():\n293\t            out.append(rd.recv(2).decode(\"ascii\"))\n294",
+    "context_snippet": "def test_event_loop(self):\n    evl: urwid.EventLoop = self.evl\n    out = []\n    rd: socket.socket\n    wr: socket.socket\n\n    def step1():\n        out.append(\"writing\")\n        wr.send(b\"hi\")\n\n    def step2():\n        out.append(rd.recv(2).decode(\"ascii\"))\n        raise urwid.ExitMainLoop\n\n    with ClosingSocketPair() as (rd, wr):\n        _handle = evl.alarm(0, step1)\n        _handle = evl.watch_file(rd.fileno(), step2)\n\n        evl.run()\n\n    self.assertEqual(out, [\"writing\", \"hi\"])",
+    "hash_value": "fda493bd74b44c3a9b7654da13d5b799"
+  }
+]

@@ -1,0 +1,131 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import distutils\nfrom distutils.command.build import build as _build\nfrom setuptools.command.develop import develop as _develop\nfrom wheel.bdist_wheel import bdist_wheel as _bdist_wheel\nfrom setuptools import Distribution\nfrom setuptools import setup, Command\n\nimport os\n\n# Disable SourceLink during the build until it can read repo-format v1, #1613\nos.environ[\"EnableSourceControlManagerQueries\"] = \"false\"\n\nclass DotnetLib:\n    def __init__(self, name, path, **kwargs):\n        self.name = name\n        self.path = path\n        self.args = kwargs\n\nclass build_dotnet(Command):\n    \"\"\"Build command for dotnet-cli based builds\"\"\"\n\n    description = \"Build DLLs with dotnet-cli\"\n    user_options = [\n        (\"dotnet-config=\", None, \"dotnet build configuration\"),\n        (\n            \"inplace\",\n            \"i\",\n            \"ignore build-lib and put compiled extensions into the source \"\n            + \"directory alongside your pure Python modules\",\n        ),\n    ]\n\n    def initialize_options(self):\n        self.dotnet_config = None\n        self.build_lib = None\n        self.inplace = False\n\n    def finalize_options(self):\n        if self.dotnet_config is None:\n            self.dotnet_config = \"release\"\n\n        build = self.distribution.get_command_obj(\"build\")\n        build.ensure_finalized()\n        if self.inplace:\n            self.build_lib = \".\"\n        else:\n            self.build_lib = build.build_lib\n\n    def run(self):\n        dotnet_modules = self.distribution.dotnet_libs\n\n        for lib in dotnet_modules:\n            output = os.path.join(\n                os.path.abspath(self.build_lib), lib.args.pop(\"output\")\n            )\n            rename = lib.args.pop(\"rename\", {})\n\n            opts = sum(\n                [\n                    [\"--\" + name.replace(\"_\", \"-\"), value]\n                    for name, value in lib.args.items()\n                ],\n                [],\n            )\n\n            opts.extend([\"--configuration\", self.dotnet_config])\n            opts.extend([\"--output\", output])\n\n            self.announce(\"Running dotnet build...\", level=distutils.log.INFO)\n            self.spawn([\"dotnet\", \"build\", lib.path] + opts)\n\n            for k, v in rename.items():\n                source = os.path.join(output, k)\n                dest = os.path.join(output, v)\n\n                if os.path.isfile(source):\n                    try:\n                        os.remove(dest)\n                    except OSError:\n                        pass\n\n                    self.move_file(src=source, dst=dest, level=distutils.log.INFO)\n                else:\n                    self.warn(\n                        \"Can't find file to rename: {}, current dir: {}\".format(\n                            source, os.getcwd()\n                        )\n                    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ",
+        "os.path.abspath",
+        "os.path.join",
+        "dict.pop",
+        "dict.pop",
+        "os.path.join",
+        "os.path.join",
+        "os.path.isfile",
+        "os.remove",
+        "os.path.join",
+        "os.getcwd"
+      ],
+      "api_sequence_with_args": [
+        "os.environ[\"EnableSourceControlManagerQueries\"] = \"false\"",
+        "os.path.abspath(self.build_lib)",
+        "os.path.join(os.path.abspath(self.build_lib), lib.args.pop(\"output\"))",
+        "lib.args.pop(\"output\")",
+        "lib.args.pop(\"rename\", {})",
+        "os.path.join(output, k)",
+        "os.path.join(output, v)",
+        "os.path.isfile(source)",
+        "os.remove(dest)",
+        "os.path.join(output, v)",
+        "os.getcwd()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "dict.pop",
+          "id": "deserialize_from_json",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "dict.pop",
+          "id": "deserialize_from_json",
+          "description": "Deserializes Python object from bytes",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.getcwd",
+          "id": "get_working_dir",
+          "description": "Returns current working directory",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        }
+      ],
+      "contextual_code": "import os\n\n# Disable SourceLink during the build until it can read repo-format v1, #1613\nos.environ[\"EnableSourceControlManagerQueries\"] = \"false\"\n\nclass build_dotnet(Command):\n    def run(self):\n        dotnet_modules = self.distribution.dotnet_libs\n\n        for lib in dotnet_modules:\n            output = os.path.join(\n                os.path.abspath(self.build_lib), lib.args.pop(\"output\")\n            )\n            rename = lib.args.pop(\"rename\", {})\n\n            for k, v in rename.items():\n                source = os.path.join(output, k)\n                dest = os.path.join(output, v)\n\n                if os.path.isfile(source):\n                    try:\n                        os.remove(dest)\n                    except OSError:\n                        pass\n                else:\n                    self.warn(\n                        \"Can't find file to rename: {}, current dir: {}\".format(\n                            source, os.getcwd()\n                        )\n                    )"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pythonnet-3.0.5",
+      "total_matches": 1
+    }
+  }
+]

@@ -1,0 +1,372 @@
+[
+  {
+    "pyfile": "abc.py",
+    "code_snippet": "    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the channel.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return f\"https://discord.com/channels/{self.guild.id}/{self.id}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "@property\ndef jump_url(self) -> str:\n    \"\"\"Returns a URL that allows the client to jump to the channel.\n\n    .. versionadded:: 2.0\n    \"\"\"\n    return f\"https://discord.com/channels/{self.guild.id}/{self.id}\""
+    }
+  },
+  {
+    "pyfile": "application_role_connection.py",
+    "code_snippet": "class ApplicationRoleConnectionMetadata:\n    r\"\"\"Represents role connection metadata for a Discord application.\n\n    .. versionadded:: 2.4\n\n    Parameters\n    ----------\n    type: :class:`ApplicationRoleConnectionMetadataType`\n        The type of metadata value.\n    key: :class:`str`\n        The key for this metadata field.\n        May only be the ``a-z``, ``0-9``, or ``_`` characters, with a maximum of 50 characters.\n    name: :class:`str`\n        The name for this metadata field. Maximum 100 characters.\n    description: :class:`str`\n        The description for this metadata field. Maximum 200 characters.\n    name_localizations: Optional[Dict[:class:`str`, :class:`str`]]\n        The name localizations for this metadata field. The values of this should be ``\"locale\": \"name\"``.\n        See `here <https://discord.com/developers/docs/reference#locales>`_ for a list of valid locales.\n    description_localizations: Optional[Dict[:class:`str`, :class:`str`]]\n        The description localizations for this metadata field. The values of this should be ``\"locale\": \"name\"``.\n        See `here <https://discord.com/developers/docs/reference#locales>`_ for a list of valid locales.\n    \"\"\"\n\n    __slots__ = (\n        \"type\",\n        \"key\",\n        \"name\",\n        \"description\",\n        \"name_localizations\",\n        \"description_localizations\",\n    )\n\n    def __init__(\n        self,\n        *,\n        type: ApplicationRoleConnectionMetadataType,\n        key: str,\n        name: str,\n        description: str,\n        name_localizations: dict[str, str] = MISSING,\n        description_localizations: dict[str, str] = MISSING,\n    ):\n        self.type: ApplicationRoleConnectionMetadataType = type\n        self.key: str = key\n        self.name: str = name\n        self.name_localizations: dict[str, str] = name_localizations\n        self.description: str = description\n        self.description_localizations: dict[str, str] = description_localizations\n\n    def __repr__(self):\n        return (\n            \"<ApplicationRoleConnectionMetadata \"\n            f\"type={self.type!r} \"\n            f\"key={self.key!r} \"\n            f\"name={self.name!r} \"\n            f\"description={self.description!r} \"\n            f\"name_localizations={self.name_localizations!r} \"\n            f\"description_localizations={self.description_localizations!r}>\"\n        )\n\n    def __str__(self):\n        return self.name\n\n    @classmethod\n    def from_dict(\n        cls, data: ApplicationRoleConnectionMetadataPayload\n    ) -> ApplicationRoleConnectionMetadata:\n        return cls(\n            type=try_enum(ApplicationRoleConnectionMetadataType, data[\"type\"]),\n            key=data[\"key\"],\n            name=data[\"name\"],\n            description=data[\"description\"],\n            name_localizations=data.get(\"name_localizations\"),\n            description_localizations=data.get(\"description_localizations\"),\n        )\n\n    def to_dict(self) -> ApplicationRoleConnectionMetadataPayload:\n        data = {\n            \"type\": self.type.value,\n            \"key\": self.key,\n            \"name\": self.name,\n            \"description\": self.description,\n        }\n        if self.name_localizations is not MISSING:\n            data[\"name_localizations\"] = self.name_localizations\n        if self.description_localizations is not MISSING:\n            data[\"description_localizations\"] = self.description_localizations\n        return data\n\n# Relevant imports and dependencies\nfrom .enums import ApplicationRoleConnectionMetadataType, try_enum\nfrom .utils import MISSING\n\nif TYPE_CHECKING:\n    from .types.application_role_connection import (\n        ApplicationRoleConnectionMetadata as ApplicationRoleConnectionMetadataPayload,\n    )",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": ""
+    }
+  },
+  {
+    "pyfile": "automod.py",
+    "code_snippet": "class AutoModTriggerMetadata:\n    r\"\"\"Represents a rule's trigger metadata, defining additional data used to determine when a rule triggers.\n\n    Depending on the trigger type, different metadata attributes will be used:\n\n    +-----------------------------+--------------------------------------------------------------------------------+\n    |   Attribute                 |   Trigger Types                                                                |\n    +=============================+================================================================================+\n    | :attr:`keyword_filter`      | :attr:`AutoModTriggerType.keyword`                                             |\n    +-----------------------------+--------------------------------------------------------------------------------+\n    | :attr:`regex_patterns`      | :attr:`AutoModTriggerType.keyword`                                             |\n    +-----------------------------+--------------------------------------------------------------------------------+\n    | :attr:`presets`             | :attr:`AutoModTriggerType.keyword_preset`                                      |\n    +-----------------------------+--------------------------------------------------------------------------------+\n    | :attr:`allow_list`          | :attr:`AutoModTriggerType.keyword`\\, :attr:`AutoModTriggerType.keyword_preset` |\n    +-----------------------------+--------------------------------------------------------------------------------+\n    | :attr:`mention_total_limit` | :attr:`AutoModTriggerType.mention_spam`                                        |\n    +-----------------------------+--------------------------------------------------------------------------------+\n\n    Each attribute has limits that may change based on the trigger type.\n    See `here <https://discord.com/developers/docs/resources/auto-moderation#auto-moderation-rule-object-trigger-metadata-field-limits>`_\n    for information on attribute limits.\n\n    .. versionadded:: 2.0\n\n    Attributes\n    ----------\n    keyword_filter: List[:class:`str`]\n        A list of substrings to filter.\n\n    regex_patterns: List[:class:`str`]\n        A list of regex patterns to filter using Rust-flavored regex, which is not\n        fully compatible with regex syntax supported by the builtin `re` module.\n\n        .. versionadded:: 2.4\n\n    presets: List[:class:`AutoModKeywordPresetType`]\n        A list of preset keyword sets to filter.\n\n    allow_list: List[:class:`str`]\n        A list of substrings to allow, overriding keyword and regex matches.\n\n        .. versionadded:: 2.4\n\n    mention_total_limit: :class:`int`\n        The total number of unique role and user mentions allowed.\n\n        .. versionadded:: 2.4\n    \"\"\"\n\n    __slots__ = (\n        \"keyword_filter\",\n        \"regex_patterns\",\n        \"presets\",\n        \"allow_list\",\n        \"mention_total_limit\",\n    )\n\n    def __init__(\n        self,\n        keyword_filter: list[str] = MISSING,\n        regex_patterns: list[str] = MISSING,\n        presets: list[AutoModKeywordPresetType] = MISSING,\n        allow_list: list[str] = MISSING,\n        mention_total_limit: int = MISSING,\n    ):\n        self.keyword_filter = keyword_filter\n        self.regex_patterns = regex_patterns\n        self.presets = presets\n        self.allow_list = allow_list\n        self.mention_total_limit = mention_total_limit\n\n    def to_dict(self) -> dict:\n        data = {}\n\n        if self.keyword_filter is not MISSING:\n            data[\"keyword_filter\"] = self.keyword_filter\n\n        if self.regex_patterns is not MISSING:\n            data[\"regex_patterns\"] = self.regex_patterns\n\n        if self.presets is not MISSING:\n            data[\"presets\"] = [wordset.value for wordset in self.presets]\n\n        if self.allow_list is not MISSING:\n            data[\"allow_list\"] = self.allow_list\n\n        if self.mention_total_limit is not MISSING:\n            data[\"mention_total_limit\"] = self.mention_total_limit\n\n        return data\n\n    @classmethod\n    def from_dict(cls, data: AutoModTriggerMetadataPayload):\n        kwargs = {}\n\n        if (keyword_filter := data.get(\"keyword_filter\")) is not None:\n            kwargs[\"keyword_filter\"] = keyword_filter\n\n        if (regex_patterns := data.get(\"regex_patterns\")) is not None:\n            kwargs[\"regex_patterns\"] = regex_patterns\n\n        if (presets := data.get(\"presets\")) is not None:\n            kwargs[\"presets\"] = [\n                try_enum(AutoModKeywordPresetType, wordset) for wordset in presets\n            ]\n\n        if (allow_list := data.get(\"allow_list\")) is not None:\n            kwargs[\"allow_list\"] = allow_list\n\n        if (mention_total_limit := data.get(\"mention_total_limit\")) is not None:\n            kwargs[\"mention_total_limit\"] = mention_total_limit\n\n        return cls(**kwargs)\n\n    def __repr__(self) -> str:\n        repr_attrs = (\n            \"keyword_filter\",\n            \"regex_patterns\",\n            \"presets\",\n            \"allow_list\",\n            \"mention_total_limit\",\n        )\n        inner = []\n\n        for attr in repr_attrs:\n            if (value := getattr(self, attr)) is not MISSING:\n                inner.append(f\"{attr}={value}\")\n        inner = \" \".join(inner)\n\n        return f\"<AutoModTriggerMetadata {inner}>\"",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": ""
+    }
+  },
+  {
+    "pyfile": "channel.py",
+    "code_snippet": "class DMChannel(discord.abc.Messageable, Hashable):\n    \"\"\"Represents a Discord direct message channel.\n\n    .. container:: operations\n\n        .. describe:: x == y\n\n            Checks if two channels are equal.\n\n        .. describe:: x != y\n\n            Checks if two channels are not equal.\n\n        .. describe:: hash(x)\n\n            Returns the channel's hash.\n\n        .. describe:: str(x)\n\n            Returns a string representation of the channel\n\n    Attributes\n    ----------\n    recipient: Optional[:class:`User`]\n        The user you are participating with in the direct message channel.\n        If this channel is received through the gateway, the recipient information\n        may not be always available.\n    me: :class:`ClientUser`\n        The user presenting yourself.\n    id: :class:`int`\n        The direct message channel ID.\n    \"\"\"\n\n    __slots__ = (\"id\", \"recipient\", \"me\", \"_state\")\n\n    def __init__(\n        self, *, me: ClientUser, state: ConnectionState, data: DMChannelPayload\n    ):\n        self._state: ConnectionState = state\n        self.recipient: User | None = None\n        if r := data.get(\"recipients\"):\n            self.recipient = state.store_user(r[0])\n        self.me: ClientUser = me\n        self.id: int = int(data[\"id\"])\n\n    async def _get_channel(self):\n        return self\n\n    def __str__(self) -> str:\n        if self.recipient:\n            return f\"Direct Message with {self.recipient}\"\n        return \"Direct Message with Unknown User\"\n\n    def __repr__(self) -> str:\n        return f\"<DMChannel id={self.id} recipient={self.recipient!r}>\"\n\n    @classmethod\n    def _from_message(cls: type[DMC], state: ConnectionState, channel_id: int) -> DMC:\n        self: DMC = cls.__new__(cls)\n        self._state = state\n        self.id = channel_id\n        self.recipient = None\n        # state.user won't be None here\n        self.me = state.user  # type: ignore\n        return self\n\n    @property\n    def type(self) -> ChannelType:\n        \"\"\"The channel's Discord type.\"\"\"\n        return ChannelType.private\n\n    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the channel.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return f\"https://discord.com/channels/@me/{self.id}\"\n\n    @property\n    def created_at(self) -> datetime.datetime:\n        \"\"\"Returns the direct message channel's creation time in UTC.\"\"\"\n        return utils.snowflake_time(self.id)\n\n    def permissions_for(self, obj: Any = None, /) -> Permissions:\n        \"\"\"Handles permission resolution for a :class:`User`.\n\n        This function is there for compatibility with other channel types.\n\n        Actual direct messages do not really have the concept of permissions.\n\n        This returns all the Text related permissions set to ``True`` except:\n\n        - :attr:`~Permissions.send_tts_messages`: You cannot send TTS messages in a DM.\n        - :attr:`~Permissions.manage_messages`: You cannot delete others messages in a DM.\n\n        Parameters\n        ----------\n        obj: :class:`User`\n            The user to check permissions for. This parameter is ignored\n            but kept for compatibility with other ``permissions_for`` methods.\n\n        Returns\n        -------\n        :class:`Permissions`\n            The resolved permissions.\n        \"\"\"\n\n        base = Permissions.text()\n        base.read_messages = True\n        base.send_tts_messages = False\n        base.manage_messages = False\n        return base\n\n    def get_partial_message(self, message_id: int, /) -> PartialMessage:\n        \"\"\"Creates a :class:`PartialMessage` from the message ID.\n\n        This is useful if you want to work with a message and only have its ID without\n        doing an unnecessary API call.\n\n        .. versionadded:: 1.6\n\n        Parameters\n        ----------\n        message_id: :class:`int`\n            The message ID to create a partial message for.\n\n        Returns\n        -------\n        :class:`PartialMessage`\n            The partial message.\n        \"\"\"\n\n        from .message import PartialMessage\n\n        return PartialMessage(channel=self, id=message_id)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "utils.snowflake_time"
+      ],
+      "api_sequence_with_args": [
+        "utils.snowflake_time(self.id)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "utils.snowflake_time",
+          "id": "parse_datetime",
+          "description": "Parses string into datetime object using format",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        }
+      ],
+      "contextual_code": "@property\n    def created_at(self) -> datetime.datetime:\n        \"\"\"Returns the direct message channel's creation time in UTC.\"\"\"\n        return utils.snowflake_time(self.id)"
+    }
+  },
+  {
+    "pyfile": "client.py",
+    "code_snippet": "    @property\n    def store_url(self) -> str:\n        \"\"\":class:`str`: The URL that leads to the application's store page for monetization.\n\n        .. versionadded:: 2.6\n        \"\"\"\n        return f\"https://discord.com/application-directory/{self.application_id}/store\"\n\n    @property\n    def application_id(self) -> int | None:\n        \"\"\"The client's application ID.\n\n        If this is not passed via ``__init__`` then this is retrieved\n        through the gateway when an event contains the data. Usually\n        after :func:`~discord.on_connect` is called.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return self._connection.application_id\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._connection.application_id"
+      ],
+      "api_sequence_with_args": [
+        "self._connection.application_id"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._connection.application_id",
+          "id": "get_discord_intents",
+          "description": "Returns default Discord intents object",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_control"
+        }
+      ],
+      "contextual_code": "    @property\n    def application_id(self) -> int | None:\n        \"\"\"The client's application ID.\n\n        If this is not passed via ``__init__`` then this is retrieved\n        through the gateway when an event contains the data. Usually\n        after :func:`~discord.on_connect` is called.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return self._connection.application_id"
+    }
+  },
+  {
+    "pyfile": "core.py",
+    "code_snippet": "from ..utils import warn_deprecated\nfrom ..errors import InvalidArgument\nfrom ..enums import InteractionContextType\n\nclass ApplicationCommand(_BaseCommand, Generic[CogT, P, T]):\n    ...\n    def __init__(self, func: Callable, **kwargs) -> None:\n        ...\n        integration_types = getattr(\n            func, \"__integration_types__\", kwargs.get(\"integration_types\", None)\n        )\n        contexts = getattr(func, \"__contexts__\", kwargs.get(\"contexts\", None))\n        guild_only = getattr(func, \"__guild_only__\", kwargs.get(\"guild_only\", MISSING))\n        if guild_only is not MISSING:\n            warn_deprecated(\n                \"guild_only\",\n                \"contexts\",\n                \"2.6\",\n                reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\",\n            )\n        if contexts and guild_only:\n            raise InvalidArgument(\n                \"cannot pass both 'contexts' and 'guild_only' to ApplicationCommand\"\n            )\n        if self.guild_ids and (\n            (contexts is not None) or guild_only or integration_types\n        ):\n            raise InvalidArgument(\n                \"the 'contexts' and 'integration_types' parameters are not available for guild commands\"\n            )\n\n        if guild_only:\n            contexts = {InteractionContextType.guild}\n        self.contexts: set[InteractionContextType] | None = contexts\n        self.integration_types: set[IntegrationType] | None = integration_types\n    ...\n    @property\n    def guild_only(self) -> bool:\n        warn_deprecated(\n            \"guild_only\",\n            \"contexts\",\n            \"2.6\",\n            reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\",\n        )\n        return InteractionContextType.guild in self.contexts and len(self.contexts) == 1\n\n    @guild_only.setter\n    def guild_only(self, value: bool) -> None:\n        warn_deprecated(\n            \"guild_only\",\n            \"contexts\",\n            \"2.6\",\n            reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\",\n        )\n        if value:\n            self.contexts = {InteractionContextType.guild}\n        else:\n            self.contexts = {\n                InteractionContextType.guild,\n                InteractionContextType.bot_dm,\n                InteractionContextType.private_channel,\n            }\n\nclass SlashCommand(ApplicationCommand):\n    ...\n    name_localizations: dict[str, str] = kwargs.get(\n        \"name_localizations\", MISSING\n    )\n    _validate_names(self)\n    ...\n    description_localizations: dict[str, str] = kwargs.get(\n        \"description_localizations\", MISSING\n    )\n    _validate_descriptions(self)\n    ...\n    def to_dict(self) -> dict:\n        as_dict = {\n            \"name\": self.name,\n            \"description\": self.description,\n            \"options\": [o.to_dict() for o in self.options],\n        }\n        if self.name_localizations is not MISSING:\n            as_dict[\"name_localizations\"] = self.name_localizations\n        if self.description_localizations is not MISSING:\n            as_dict[\"description_localizations\"] = self.description_localizations\n        if self.is_subcommand:\n            as_dict[\"type\"] = SlashCommandOptionType.sub_command.value\n\n        if self.nsfw is not None:\n            as_dict[\"nsfw\"] = self.nsfw\n\n        if self.default_member_permissions is not None:\n            as_dict[\"default_member_permissions\"] = (\n                self.default_member_permissions.value\n            )\n\n        if not self.guild_ids and not self.is_subcommand:\n            as_dict[\"integration_types\"] = [it.value for it in self.integration_types]\n            as_dict[\"contexts\"] = [ctx.value for ctx in self.contexts]\n\n        return as_dict\n\nclass SlashCommandGroup(ApplicationCommand):\n    ...\n    name_localizations: dict[str, str] = kwargs.get(\n        \"name_localizations\", MISSING\n    )\n    description_localizations: dict[str, str] = kwargs.get(\n        \"description_localizations\", MISSING\n    )\n    ...\n    @property\n    def guild_only(self) -> bool:\n        warn_deprecated(\"guild_only\", \"contexts\", \"2.6\")\n        return InteractionContextType.guild in self.contexts and len(self.contexts) == 1\n\n    @guild_only.setter\n    def guild_only(self, value: bool) -> None:\n        warn_deprecated(\"guild_only\", \"contexts\", \"2.6\")\n        if value:\n            self.contexts = {InteractionContextType.guild}\n        else:\n            self.contexts = {\n                InteractionContextType.guild,\n                InteractionContextType.bot_dm,\n                InteractionContextType.private_channel,\n            }\n    ...\n    def to_dict(self) -> dict:\n        as_dict = {\n            \"name\": self.name,\n            \"description\": self.description,\n            \"options\": [c.to_dict() for c in self.subcommands],\n        }\n        if self.name_localizations is not MISSING:\n            as_dict[\"name_localizations\"] = self.name_localizations\n        if self.description_localizations is not MISSING:\n            as_dict[\"description_localizations\"] = self.description_localizations\n\n        if self.parent is not None:\n            as_dict[\"type\"] = self.input_type.value\n\n        if self.nsfw is not None:\n            as_dict[\"nsfw\"] = self.nsfw\n\n        if self.default_member_permissions is not None:\n            as_dict[\"default_member_permissions\"] = (\n                self.default_member_permissions.value\n            )\n\n        if not self.guild_ids and self.parent is None:\n            as_dict[\"integration_types\"] = [it.value for it in self.integration_types]\n            as_dict[\"contexts\"] = [ctx.value for ctx in self.contexts]\n\n        return as_dict\n\nclass ContextMenuCommand(ApplicationCommand):\n    ...\n    name_localizations: dict[str, str] = kwargs.get(\n        \"name_localizations\", MISSING\n    )\n    ...\n    def to_dict(self) -> dict[str, str | int]:\n        as_dict = {\n            \"name\": self.name,\n            \"description\": self.description,\n            \"type\": self.type,\n        }\n\n        if not self.guild_ids:\n            as_dict[\"integration_types\"] = [it.value for it in self.integration_types]\n            as_dict[\"contexts\"] = [ctx.value for ctx in self.contexts]\n\n        if self.nsfw is not None:\n            as_dict[\"nsfw\"] = self.nsfw\n\n        if self.default_member_permissions is not None:\n            as_dict[\"default_member_permissions\"] = (\n                self.default_member_permissions.value\n            )\n\n        if self.name_localizations:\n            as_dict[\"name_localizations\"] = self.name_localizations\n\n        return as_dict\n\ndocs = \"https://discord.com/developers/docs\"\nvalid_locales = [\n    \"da\",\n    \"de\",\n    \"en-GB\",\n    \"en-US\",\n    \"es-ES\",\n    \"fr\",\n    \"hr\",\n    \"it\",\n    \"lt\",\n    \"hu\",\n    \"nl\",\n    \"no\",\n    \"pl\",\n    \"pt-BR\",\n    \"ro\",\n    \"fi\",\n    \"sv-SE\",\n    \"vi\",\n    \"tr\",\n    \"cs\",\n    \"el\",\n    \"bg\",\n    \"ru\",\n    \"uk\",\n    \"hi\",\n    \"th\",\n    \"zh-CN\",\n    \"ja\",\n    \"zh-TW\",\n    \"ko\",\n]\n\n# Validation\ndef validate_chat_input_name(name: Any, locale: str | None = None):\n    # Must meet the regex ^[-_\\w\\d\\u0901-\\u097D\\u0E00-\\u0E7F]{1,32}$\n    if locale is not None and locale not in valid_locales:\n        raise ValidationError(\n            f\"Locale '{locale}' is not a valid locale, see {docs}/reference#locales for\"\n            \" list of supported locales.\"\n        )\n    error = None\n    if not isinstance(name, str):\n        error = TypeError(\n            f'Command names and options must be of type str. Received \"{name}\"'\n        )\n    elif not re.match(r\"^[-_\\w\\d\\u0901-\\u097D\\u0E00-\\u0E7F]{1,32}$\", name):\n        error = ValidationError(\n            r\"Command names and options must follow the regex\"\n            r' \"^[-_\\w\\d\\u0901-\\u097D\\u0E00-\\u0E7F]{1,32}$\". '\n            \"For more information, see\"\n            f\" {docs}/interactions/application-commands#application-command-object-\"\n            f'application-command-naming. Received \"{name}\"'\n        )\n    elif (\n        name.lower() != name\n    ):  # Can't use islower() as it fails if none of the chars can be lowered. See #512.\n        error = ValidationError(\n            f'Command names and options must be lowercase. Received \"{name}\"'\n        )\n\n    if error:\n        if locale:\n            error.args = (f\"{error.args[0]} in locale {locale}\",)\n        raise error\n\ndef validate_chat_input_description(description: Any, locale: str | None = None):\n    if locale is not None and locale not in valid_locales:\n        raise ValidationError(\n            f\"Locale '{locale}' is not a valid locale, see {docs}/reference#locales for\"\n            \" list of supported locales.\"\n        )\n    error = None\n    if not isinstance(description, str):\n        error = TypeError(\n            \"Command and option description must be of type str. Received\"\n            f' \"{description}\"'\n        )\n    elif not 1 <= len(description) <= 100:\n        error = ValidationError(\n            \"Command and option description must be 1-100 characters long. Received\"\n            f' \"{description}\"'\n        )\n\n    if error:\n        if locale:\n            error.args = (f\"{error.args[0]} in locale {locale}\",)\n        raise error\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "getattr",
+        "getattr",
+        "getattr",
+        "warn_deprecated",
+        "InvalidArgument",
+        "InvalidArgument",
+        "warn_deprecated",
+        "warn_deprecated",
+        "warn_deprecated",
+        "warn_deprecated",
+        "warn_deprecated",
+        "warn_deprecated",
+        "isinstance",
+        "re.match",
+        "isinstance"
+      ],
+      "api_sequence_with_args": [
+        "getattr(func, \"__integration_types__\", kwargs.get(\"integration_types\", None))",
+        "getattr(func, \"__contexts__\", kwargs.get(\"contexts\", None))",
+        "getattr(func, \"__guild_only\", kwargs.get(\"guild_only\", MISSING))",
+        "warn_deprecated(\"guild_only\", \"contexts\", \"2.6\", reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\")",
+        "InvalidArgument(\"cannot pass both 'contexts' and 'guild_only' to ApplicationCommand\")",
+        "InvalidArgument(\"the 'contexts' and 'integration_types' parameters are not available for guild commands\")",
+        "warn_deprecated(\"guild_only\", \"contexts\", \"2.6\", reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\")",
+        "warn_deprecated(\"guild_only\", \"contexts\", \"2.6\", reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\")",
+        "warn_deprecated(\"guild_only\", \"contexts\", \"2.6\")",
+        "warn_deprecated(\"guild_only\", \"contexts\", \"2.6\")",
+        "isinstance(name, str)",
+        "re.match(r\"^[-_\\w\\d\\u0901-\\u097D\\u0E00-\\u0E7F]{1,32}$\", name)",
+        "isinstance(description, str)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "warn_deprecated",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "InvalidArgument",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "InvalidArgument",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "warn_deprecated",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "warn_deprecated",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "warn_deprecated",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "warn_deprecated",
+          "id": "log_error",
+          "description": "Logs error message",
+          "first_id": "data_exfiltration",
+          "second_id": "data_collection_operations",
+          "third_id": "data_acquisition"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "re.match",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "from ..utils import warn_deprecated\nfrom ..errors import InvalidArgument\nfrom ..enums import InteractionContextType\n\nclass ApplicationCommand(_BaseCommand, Generic[CogT, P, T]):\n    def __init__(self, func: Callable, **kwargs) -> None:\n        integration_types = getattr(\n            func, \"__integration_types__\", kwargs.get(\"integration_types\", None)\n        )\n        contexts = getattr(func, \"__contexts__\", kwargs.get(\"contexts\", None))\n        guild_only = getattr(func, \"__guild_only\", kwargs.get(\"guild_only\", MISSING))\n        if guild_only is not MISSING:\n            warn_deprecated(\n                \"guild_only\",\n                \"contexts\",\n                \"2.6\",\n                reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\",\n            )\n        if contexts and guild_only:\n            raise InvalidArgument(\n                \"cannot pass both 'contexts' and 'guild_only' to ApplicationCommand\"\n            )\n        if self.guild_ids and (\n            (contexts is not None) or guild_only or integration_types\n        ):\n            raise InvalidArgument(\n                \"the 'contexts' and 'integration_types' parameters are not available for guild commands\"\n            )\n        if guild_only:\n            contexts = {InteractionContextType.guild}\n        self.contexts: set[InteractionContextType] | None = contexts\n        self.integration_types: set[IntegrationType] | None = integration_types\n    @property\n    def guild_only(self) -> bool:\n        warn_deprecated(\n            \"guild_only\",\n            \"contexts\",\n            \"2.6\",\n            reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\",\n        )\n        return InteractionContextType.guild in self.contexts and len(self.contexts) == 1\n    @guild_only.setter\n    def guild_only(self, value: bool) -> None:\n        warn_deprecated(\n            \"guild_only\",\n            \"contexts\",\n            \"2.6\",\n            reference=\"https://discord.com/developers/docs/change-log#userinstallable-apps-preview\",\n        )\n        if value:\n            self.contexts = {InteractionContextType.guild}\n        else:\n            self.contexts = {\n                InteractionContextType.guild,\n                InteractionContextType.bot_dm,\n                InteractionContextType.private_channel,\n            }\n\ndef validate_chat_input_name(name: Any, locale: str | None = None):\n    if locale is not None and locale not in valid_locales:\n        raise ValidationError(\n            f\"Locale '{locale}' is not a valid locale, see {docs}/reference#locales for\"\n            \" list of supported locales.\"\n        )\n    error = None\n    if not isinstance(name, str):\n        error = TypeError(\n            f'Command names and options must be of type str. Received \"{name}\"'\n        )\n    elif not re.match(r\"^[-_\\w\\d\\u0901-\\u097D\\u0E00-\\u0E7F]{1,32}$\", name):\n        error = ValidationError(\n            r\"Command names and options must follow the regex\"\n            r' \"^[-_\\w\\d\\u0901-\\u097D\\u0E00-\\u0E7F]{1,32}$\". '\n            \"For more information, see\"\n            f\" {docs}/interactions/application-commands#application-command-object-\"\n            f'application-command-naming. Received \"{name}\"'\n        )\n    elif (\n        name.lower() != name\n    ):\n        error = ValidationError(\n            f'Command names and options must be lowercase. Received \"{name}\"'\n        )\n    if error:\n        if locale:\n            error.args = (f\"{error.args[0]} in locale {locale}\",)\n        raise error\n\ndef validate_chat_input_description(description: Any, locale: str | None = None):\n    if locale is not None and locale not in valid_locales:\n        raise ValidationError(\n            f\"Locale '{locale}' is not a valid locale, see {docs}/reference#locales for\"\n            \" list of supported locales.\"\n        )\n    error = None\n    if not isinstance(description, str):\n        error = TypeError(\n            \"Command and option description must be of type str. Received\"\n            f' \"{description}\"'\n        )\n    elif not 1 <= len(description) <= 100:\n        error = ValidationError(\n            \"Command and option description must be 1-100 characters long. Received\"\n            f' \"{description}\"'\n        )\n    if error:\n        if locale:\n            error.args = (f\"{error.args[0]} in locale {locale}\",)\n        raise error"
+    }
+  },
+  {
+    "pyfile": "errors.py",
+    "code_snippet": "class PrivilegedIntentsRequired(ClientException):\n    \"\"\"Exception that's raised when the gateway is requesting privileged intents, but\n    they're not ticked in the developer page yet.\n\n    Go to https://discord.com/developers/applications/ and enable the intents\n    that are required. Currently, these are as follows:\n\n    - :attr:`Intents.members`\n    - :attr:`Intents.presences`\n    - :attr:`Intents.message_content`\n\n    Attributes\n    ----------\n    shard_id: Optional[:class:`int`]\n        The shard ID that got closed if applicable.\n    \"\"\"\n\n    def __init__(self, shard_id: int | None):\n        self.shard_id: int | None = shard_id\n        msg = (\n            \"Shard ID %s is requesting privileged intents that have not been explicitly\"\n            \" enabled in the developer portal. It is recommended to go to\"\n            \" https://discord.com/developers/applications/ and explicitly enable the\"\n            \" privileged intents within your application's page. If this is not\"\n            \" possible, then consider disabling the privileged intents instead.\"\n        )\n        super().__init__(msg % shard_id)\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "class PrivilegedIntentsRequired(ClientException):\n    def __init__(self, shard_id: int | None):\n        self.shard_id: int | None = shard_id\n        msg = (\n            \"Shard ID %s is requesting privileged intents that have not been explicitly\"\n            \" enabled in the developer portal. It is recommended to go to\"\n            \" https://discord.com/developers/applications/ and explicitly enable the\"\n            \" privileged intents within your application's page. If this is not\"\n            \" possible, then consider disabling the privileged intents instead.\"\n        )\n        super().__init__(msg % shard_id)"
+    }
+  },
+  {
+    "pyfile": "guild.py",
+    "code_snippet": "    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the guild.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return f\"https://discord.com/channels/{self.id}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "@property\ndef jump_url(self) -> str:\n    \"\"\"Returns a URL that allows the client to jump to the guild.\n\n    .. versionadded:: 2.0\n    \"\"\"\n    return f\"https://discord.com/channels/{self.id}\""
+    }
+  },
+  {
+    "pyfile": "http.py",
+    "code_snippet": "import logging\n\nAPI_VERSION: int = 10\n\n_log = logging.getLogger(__name__)\n\nclass Route:\n    def __init__(self, method: str, path: str, **parameters: Any) -> None:\n        self.path: str = path\n        self.method: str = method\n        url = self.base + self.path\n        if parameters:\n            url = url.format_map(\n                {\n                    k: _uriquote(v) if isinstance(v, str) else v\n                    for k, v in parameters.items()\n                }\n            )\n        self.url: str = url\n\n        # major parameters:\n        self.channel_id: Snowflake | None = parameters.get(\"channel_id\")\n        self.guild_id: Snowflake | None = parameters.get(\"guild_id\")\n        self.webhook_id: Snowflake | None = parameters.get(\"webhook_id\")\n        self.webhook_token: str | None = parameters.get(\"webhook_token\")\n\n    @property\n    def base(self) -> str:\n        return f\"https://discord.com/api/v{API_VERSION}\"\n\n    @property\n    def bucket(self) -> str:\n        # the bucket is just method + path w/ major parameters\n        return f\"{self.channel_id}:{self.guild_id}:{self.path}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "import logging\n\nAPI_VERSION: int = 10\n\n_log = logging.getLogger(__name__)\n\nclass Route:\n    def __init__(self, method: str, path: str, **parameters: Any) -> None:\n        self.path: str = path\n        self.method: str = method\n        url = self.base + self.path\n        if parameters:\n            url = url.format_map(\n                {\n                    k: _uriquote(v) if isinstance(v, str) else v\n                    for k, v in parameters.items()\n                }\n            )\n        self.url: str = url\n\n        # major parameters:\n        self.channel_id: Snowflake | None = parameters.get(\"channel_id\")\n        self.guild_id: Snowflake | None = parameters.get(\"guild_id\")\n        self.webhook_id: Snowflake | None = parameters.get(\"webhook_id\")\n        self.webhook_token: str | None = parameters.get(\"webhook_token\")\n\n    @property\n    def base(self) -> str:\n        return f\"https://discord.com/api/v{API_VERSION}\"\n\n    @property\n    def bucket(self) -> str:\n        # the bucket is just method + path w/ major parameters\n        return f\"{self.channel_id}:{self.guild_id}:{self.path}\""
+    }
+  },
+  {
+    "pyfile": "message.py",
+    "code_snippet": "def jump_url(self) -> str:\n    \"\"\"Returns a URL that allows the client to jump to the referenced message.\n\n    .. versionadded:: 1.7\n    \"\"\"\n    guild_id = self.guild_id if self.guild_id is not None else \"@me\"\n    return f\"https://discord.com/channels/{guild_id}/{self.channel_id}/{self.message_id}\"\n\n# Data dependencies:\n# - self.guild_id: set in __init__ and with_state\n# - self.channel_id: set in __init__ and with_state\n# - self.message_id: set in __init__ and with_state\n#\n# Class context:\nclass MessageReference:\n    ...\n    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the referenced message.\n\n        .. versionadded:: 1.7\n        \"\"\"\n        guild_id = self.guild_id if self.guild_id is not None else \"@me\"\n        return f\"https://discord.com/channels/{guild_id}/{self.channel_id}/{self.message_id}\"\n    ...\n\n# Helper: MessageReference.__init__\n    def __init__(\n        self,\n        *,\n        message_id: int,\n        channel_id: int,\n        guild_id: int | None = None,\n        fail_if_not_exists: bool = True,\n    ):\n        self._state: ConnectionState | None = None\n        self.resolved: Message | DeletedReferencedMessage | None = None\n        self.message_id: int | None = message_id\n        self.channel_id: int = channel_id\n        self.guild_id: int | None = guild_id\n        self.fail_if_not_exists: bool = fail_if_not_exists\n\n    @classmethod\n    def with_state(\n        cls: type[MR], state: ConnectionState, data: MessageReferencePayload\n    ) -> MR:\n        self = cls.__new__(cls)\n        self.message_id = utils._get_as_snowflake(data, \"message_id\")\n        self.channel_id = int(data.pop(\"channel_id\"))\n        self.guild_id = utils._get_as_snowflake(data, \"guild_id\")\n        self.fail_if_not_exists = data.get(\"fail_if_not_exists\", True)\n        self._state = state\n        self.resolved = None\n        return self\n\n# ---\n# Second flagged line (Line 1246):\n\n@property\ndef jump_url(self) -> str:\n    \"\"\"Returns a URL that allows the client to jump to this message.\"\"\"\n    guild_id = getattr(self.guild, \"id\", \"@me\")\n    return f\"https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}\"\n\n# Data dependencies:\n# - self.guild: set in __init__ (from channel.guild or state._get_guild)\n# - self.channel: set in __init__\n# - self.channel.id: channel object, has id\n# - self.id: set in __init__\n#\n# Class context:\nclass Message(Hashable):\n    ...\n    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to this message.\"\"\"\n        guild_id = getattr(self.guild, \"id\", \"@me\")\n        return f\"https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}\"\n    ...\n\n# Helper: Message.__init__\n    def __init__(\n        self,\n        *,\n        state: ConnectionState,\n        channel: MessageableChannel,\n        data: MessagePayload,\n    ):\n        self._state: ConnectionState = state\n        self.id: int = int(data[\"id\"])\n        ...\n        self.channel: MessageableChannel = channel\n        ...\n        try:\n            # if the channel doesn't have a guild attribute, we handle that\n            self.guild = channel.guild  # type: ignore\n        except AttributeError:\n            self.guild = state._get_guild(utils._get_as_snowflake(data, \"guild_id\"))\n        ...\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "def jump_url(self) -> str:\n    guild_id = self.guild_id if self.guild_id is not None else \"@me\"\n    return f\"https://discord.com/channels/{guild_id}/{self.channel_id}/{self.message_id}\"\n\nclass MessageReference:\n    @property\n    def jump_url(self) -> str:\n        guild_id = self.guild_id if self.guild_id is not None else \"@me\"\n        return f\"https://discord.com/channels/{guild_id}/{self.channel_id}/{self.message_id}\"\n\n    def __init__(self, *, message_id: int, channel_id: int, guild_id: int | None = None, fail_if_not_exists: bool = True):\n        self._state: ConnectionState | None = None\n        self.resolved: Message | DeletedReferencedMessage | None = None\n        self.message_id: int | None = message_id\n        self.channel_id: int = channel_id\n        self.guild_id: int | None = guild_id\n        self.fail_if_not_exists: bool = fail_if_not_exists\n\n    @classmethod\n    def with_state(cls: type[MR], state: ConnectionState, data: MessageReferencePayload) -> MR:\n        self = cls.__new__(cls)\n        self.message_id = utils._get_as_snowflake(data, \"message_id\")\n        self.channel_id = int(data.pop(\"channel_id\"))\n        self.guild_id = utils._get_as_snowflake(data, \"guild_id\")\n        self.fail_if_not_exists = data.get(\"fail_if_not_exists\", True)\n        self._state = state\n        self.resolved = None\n        return self\n\n@property\ndef jump_url(self) -> str:\n    guild_id = getattr(self.guild, \"id\", \"@me\")\n    return f\"https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}\"\n\nclass Message(Hashable):\n    @property\n    def jump_url(self) -> str:\n        guild_id = getattr(self.guild, \"id\", \"@me\")\n        return f\"https://discord.com/channels/{guild_id}/{self.channel.id}/{self.id}\"\n\n    def __init__(self, *, state: ConnectionState, channel: MessageableChannel, data: MessagePayload):\n        self._state: ConnectionState = state\n        self.id: int = int(data[\"id\"])\n        self.channel: MessageableChannel = channel\n        try:\n            self.guild = channel.guild  # type: ignore\n        except AttributeError:\n            self.guild = state._get_guild(utils._get_as_snowflake(data, \"guild_id\"))"
+    }
+  },
+  {
+    "pyfile": "monetization.py",
+    "code_snippet": "from .enums import EntitlementType, SKUType, try_enum\nfrom .flags import SKUFlags\nfrom .mixins import Hashable\nfrom .utils import MISSING, _get_as_snowflake, parse_time\n\nclass SKU(Hashable):\n    \"\"\"Represents a Discord SKU (stock-keeping unit).\n\n    .. versionadded:: 2.5\n\n    Attributes\n    ----------\n    id: :class:`int`\n        The SKU's ID.\n    type: :class:`SKUType`\n        The type of SKU.\n    application_id: :class:`int`\n        The ID of the application this SKU belongs to.\n    name: :class:`str`\n        The name of the SKU.\n    slug: :class:`str`\n        The SKU's slug.\n    flags: :class:`SKUFlags`\n        The SKU's flags.\n    \"\"\"\n\n    __slots__ = (\n        \"id\",\n        \"type\",\n        \"application_id\",\n        \"name\",\n        \"slug\",\n        \"flags\",\n    )\n\n    def __init__(self, *, data: SKUPayload) -> None:\n        self.id: int = int(data[\"id\"])\n        self.type: SKUType = try_enum(SKUType, data[\"type\"])\n        self.application_id: int = int(data[\"application_id\"])\n        self.name: str = data[\"name\"]\n        self.slug: str = data[\"slug\"]\n        self.flags: SKUFlags = SKUFlags._from_value(data[\"flags\"])\n\n    def __repr__(self) -> str:\n        return (\n            f\"<SKU id={self.id} name={self.name!r} application_id={self.application_id} \"\n            f\"slug={self.slug!r} flags={self.flags!r}>\"\n        )\n\n    def __str__(self) -> str:\n        return self.name\n\n    def __eq__(self, other: object) -> bool:\n        return isinstance(other, self.__class__) and other.id == self.id\n\n    @property\n    def url(self) -> str:\n        \"\"\":class:`str`: Returns the URL for the SKU.\"\"\"\n        return f\"https://discord.com/application-directory/{self.application_id}/store/{self.id}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": ""
+    }
+  },
+  {
+    "pyfile": "scheduled_events.py",
+    "code_snippet": "from . import utils\nfrom .enums import ScheduledEventLocationType\n\nclass ScheduledEvent(Hashable):\n    ...\n    @property\n    def url(self) -> str:\n        \"\"\"The url to reference the scheduled event.\"\"\"\n        return f\"https://discord.com/events/{self.guild.id}/{self.id}\"\n\n# Data dependencies:\n# - self.guild: Set in __init__ as self.guild = guild\n# - self.id: Set in __init__ as self.id = int(data.get(\"id\"))\n# - __init__ is called with (state, guild, creator, data)\n# - No external input is used in the URL, only internal IDs\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "from . import utils\nfrom .enums import ScheduledEventLocationType\n\nclass ScheduledEvent(Hashable):\n    ...\n    @property\n    def url(self) -> str:\n        \"\"\"The url to reference the scheduled event.\"\"\"\n        return f\"https://discord.com/events/{self.guild.id}/{self.id}\"\n\n# Data dependencies:\n# - self.guild: Set in __init__ as self.guild = guild\n# - self.id: Set in __init__ as self.id = int(data.get(\"id\"))\n# - __init__ is called with (state, guild, creator, data)\n# - No external input is used in the URL, only internal IDs"
+    }
+  },
+  {
+    "pyfile": "threads.py",
+    "code_snippet": "    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the thread.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return f\"https://discord.com/channels/{self.guild.id}/{self.id}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the thread.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return f\"https://discord.com/channels/{self.guild.id}/{self.id}\"\n"
+    }
+  },
+  {
+    "pyfile": "user.py",
+    "code_snippet": "    @property\n    def jump_url(self) -> str:\n        \"\"\"Returns a URL that allows the client to jump to the user.\n\n        .. versionadded:: 2.0\n        \"\"\"\n        return f\"https://discord.com/users/{self.id}\"\n\n    # Data dependencies:\n    # - self.id: Set in __init__ via self._update(data), which sets self.id = int(data[\"id\"]).\n    # - self: Instance of BaseUser or subclass (User, ClientUser).\n    #\n    # Relevant imports and global variables:\n    # - None directly used in this property, but class BaseUser is defined above, and self.id is always an int.\n    #\n    # No helper functions are called by this property.\n    #\n    # Full context for this property is the property itself and the class BaseUser's __init__/_update methods for data dependencies.\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "@property\ndef jump_url(self) -> str:\n    \"\"\"Returns a URL that allows the client to jump to the user.\n\n    .. versionadded:: 2.0\n    \"\"\"\n    return f\"https://discord.com/users/{self.id}\"\n\n# Data dependencies:\n# - self.id: Set in __init__ via self._update(data), which sets self.id = int(data[\"id\"]).\n# - self: Instance of BaseUser or subclass (User, ClientUser).\n#\n# No sensitive API calls are present in this property."
+    }
+  },
+  {
+    "pyfile": "async_.py",
+    "code_snippet": "    @property\n    def url(self) -> str:\n        \"\"\"Returns the webhook's url.\"\"\"\n        return f\"https://discord.com/api/webhooks/{self.id}/{self.token}\"\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "@property\ndef url(self) -> str:\n    \"\"\"Returns the webhook's url.\"\"\"\n    return f\"https://discord.com/api/webhooks/{self.id}/{self.token}\""
+    }
+  },
+  {
+    "pyfile": "sync.py",
+    "code_snippet": "    @property\n    def url(self) -> str:\n        \"\"\"Returns the webhook's url.\"\"\"\n        return f\"https://discord.com/api/webhooks/{self.id}/{self.token}\"\n\n# Data dependencies:\n# - self.id: Set in __init__ of BaseWebhook (superclass), from data['id']\n# - self.token: Set in __init__ of BaseWebhook (superclass), from data['token']\n#\n# Relevant imports and class context:\n# - class SyncWebhook(BaseWebhook):\n# - import re\n# - import logging\n# - from typing import TYPE_CHECKING, Any, Literal, overload\n# - from urllib.parse import quote as urlquote\n# - from .. import utils\n# - from ..http import Route\n# - from .async_ import BaseWebhook, _WebhookState, handle_message_parameters\n#\n# Helper: __init__\n    def __init__(\n        self,\n        data: WebhookPayload,\n        session: Session,\n        token: str | None = None,\n        state=None,\n    ):\n        super().__init__(data, token, state)\n        self.session = session\n",
+    "pattern_analysis": {
+      "api_sequence": [],
+      "api_sequence_with_args": [],
+      "mapped_sequence": [],
+      "contextual_code": "    @property\n    def url(self) -> str:\n        \"\"\"Returns the webhook's url.\"\"\"\n        return f\"https://discord.com/api/webhooks/{self.id}/{self.token}\"\n\n    def __init__(\n        self,\n        data: WebhookPayload,\n        session: Session,\n        token: str | None = None,\n        state=None,\n    ):\n        super().__init__(data, token, state)\n        self.session = session"
+    }
+  },
+  {
+    "pyfile": "widget.py",
+    "code_snippet": "    @property\n    def json_url(self) -> str:\n        \"\"\"The JSON URL of the widget.\"\"\"\n        return f\"https://discord.com/api/guilds/{self.id}/widget.json\"\n\n    @property\n    def invite_url(self) -> str:\n        \"\"\"The invite URL for the guild, if available.\"\"\"\n        return self._invite\n\n    async def fetch_invite(self, *, with_counts: bool = True) -> Invite:\n        \"\"\"|coro|\n\n        Retrieves an :class:`Invite` from the widget's invite URL.\n        This is the same as :meth:`Client.fetch_invite`; the invite\n        code is abstracted away.\n\n        Parameters\n        ----------\n        with_counts: :class:`bool`\n            Whether to include count information in the invite. This fills the\n            :attr:`Invite.approximate_member_count` and :attr:`Invite.approximate_presence_count`\n            fields.\n\n        Returns\n        -------\n        :class:`Invite`\n            The invite from the widget's invite URL.\n        \"\"\"\n        invite_id = resolve_invite(self._invite)\n        data = await self._state.http.get_invite(invite_id, with_counts=with_counts)\n        return Invite.from_incomplete(state=self._state, data=data)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "resolve_invite",
+        "_state.http.get_invite",
+        "Invite.from_incomplete"
+      ],
+      "api_sequence_with_args": [
+        "resolve_invite(self._invite)",
+        "self._state.http.get_invite(invite_id, with_counts=with_counts)",
+        "Invite.from_incomplete(state=self._state, data=data)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "resolve_invite",
+          "id": "check_discord_token",
+          "description": "Checks validity of Discord token",
+          "first_id": "third_party_platform_abuse",
+          "second_id": "discord_abuse",
+          "third_id": "discord_control"
+        },
+        {
+          "api_name": "_state.http.get_invite",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "Invite.from_incomplete",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "async def fetch_invite(self, *, with_counts: bool = True) -> Invite:\n    invite_id = resolve_invite(self._invite)\n    data = await self._state.http.get_invite(invite_id, with_counts=with_counts)\n    return Invite.from_incomplete(state=self._state, data=data)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "py_cord-2.6.1",
+      "total_matches": 31
+    }
+  }
+]

@@ -1,0 +1,481 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import contextlib\nimport html.parser\nimport io\nimport json\nimport multiprocessing\nimport os\nimport re\nimport subprocess\nimport sys\nimport tarfile\nimport zipfile\nfrom distutils import log\nfrom distutils.errors import DistutilsError\nfrom distutils.version import StrictVersion as Version\nfrom pathlib import Path\nfrom urllib.parse import urljoin\nfrom urllib.request import Request, urlcleanup, urlopen, urlretrieve\n\nclass build_ext(build_ext_orig):\n    ...\n    def prepare_static_build(self, build_platform):\n        self.openssl_version = os.environ.get('PYXMLSEC_OPENSSL_VERSION')\n        self.libiconv_version = os.environ.get('PYXMLSEC_LIBICONV_VERSION')\n        self.libxml2_version = os.environ.get('PYXMLSEC_LIBXML2_VERSION')\n        self.libxslt_version = os.environ.get('PYXMLSEC_LIBXSLT_VERSION')\n        self.zlib_version = os.environ.get('PYXMLSEC_ZLIB_VERSION')\n        self.xmlsec1_version = os.environ.get('PYXMLSEC_XMLSEC1_VERSION')\n\n        # fetch openssl\n        openssl_tar = next(self.libs_dir.glob('openssl*.tar.gz'), None)\n        if openssl_tar is None:\n            self.info('{:10}: {}'.format('OpenSSL', 'source tar not found, downloading ...'))\n            openssl_tar = self.libs_dir / 'openssl.tar.gz'\n            if self.openssl_version is None:\n                url = latest_openssl_release()\n                self.info('{:10}: {}'.format('OpenSSL', 'PYXMLSEC_OPENSSL_VERSION unset, downloading latest from {}'.format(url)))\n            else:\n                url = 'https://api.github.com/repos/openssl/openssl/tarball/openssl-{}'.format(self.openssl_version)\n                self.info('{:10}: {} {}'.format('OpenSSL', 'version', self.openssl_version))\n            urlretrieve(url, str(openssl_tar))\n\n        # fetch zlib\n        zlib_tar = next(self.libs_dir.glob('zlib*.tar.gz'), None)\n        if zlib_tar is None:\n            self.info('{:10}: {}'.format('zlib', 'source not found, downloading ...'))\n            zlib_tar = self.libs_dir / 'zlib.tar.gz'\n            if self.zlib_version is None:\n                url = latest_zlib_release()\n                self.info('{:10}: {}'.format('zlib', 'PYXMLSEC_ZLIB_VERSION unset, downloading latest from {}'.format(url)))\n            else:\n                url = 'https://zlib.net/fossils/zlib-{}.tar.gz'.format(self.zlib_version)\n                self.info(\n                    '{:10}: {}'.format('zlib', 'PYXMLSEC_ZLIB_VERSION={}, downloading from {}'.format(self.zlib_version, url))\n                )\n            urlretrieve(url, str(zlib_tar))\n\n        # fetch libiconv\n        libiconv_tar = next(self.libs_dir.glob('libiconv*.tar.gz'), None)\n        if libiconv_tar is None:\n            self.info('{:10}: {}'.format('libiconv', 'source not found, downloading ...'))\n            libiconv_tar = self.libs_dir / 'libiconv.tar.gz'\n            if self.libiconv_version is None:\n                url = latest_libiconv_release()\n                self.info('{:10}: {}'.format('zlib', 'PYXMLSEC_LIBICONV_VERSION unset, downloading latest from {}'.format(url)))\n            else:\n                url = 'https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{}.tar.gz'.format(self.libiconv_version)\n                self.info(\n                    '{:10}: {}'.format(\n                        'zlib', 'PYXMLSEC_LIBICONV_VERSION={}, downloading from {}'.format(self.libiconv_version, url)\n                    )\n                )\n            urlretrieve(url, str(libiconv_tar))\n\n        # fetch libxml2\n        libxml2_tar = next(self.libs_dir.glob('libxml2*.tar.xz'), None)\n        if libxml2_tar is None:\n            self.info('{:10}: {}'.format('libxml2', 'source tar not found, downloading ...'))\n            if self.libxml2_version is None:\n                url = latest_libxml2_release()\n                self.info('{:10}: {}'.format('libxml2', 'PYXMLSEC_LIBXML2_VERSION unset, downloading latest from {}'.format(url)))\n            else:\n                version_prefix, _ = self.libxml2_version.rsplit('.', 1)\n                url = 'https://download.gnome.org/sources/libxml2/{}/libxml2-{}.tar.xz'.format(\n                    version_prefix, self.libxml2_version\n                )\n                self.info(\n                    '{:10}: {}'.format(\n                        'libxml2', 'PYXMLSEC_LIBXML2_VERSION={}, downloading from {}'.format(self.libxml2_version, url)\n                    )\n                )\n            libxml2_tar = self.libs_dir / 'libxml2.tar.xz'\n            urlretrieve(url, str(libxml2_tar))\n\n        # fetch libxslt\n        libxslt_tar = next(self.libs_dir.glob('libxslt*.tar.gz'), None)\n        if libxslt_tar is None:\n            self.info('{:10}: {}'.format('libxslt', 'source tar not found, downloading ...'))\n            if self.libxslt_version is None:\n                url = latest_libxslt_release()\n                self.info('{:10}: {}'.format('libxslt', 'PYXMLSEC_LIBXSLT_VERSION unset, downloading latest from {}'.format(url)))\n            else:\n                version_prefix, _ = self.libxslt_version.rsplit('.', 1)\n                url = 'https://download.gnome.org/sources/libxslt/{}/libxslt-{}.tar.xz'.format(\n                    version_prefix, self.libxslt_version\n                )\n                self.info(\n                    '{:10}: {}'.format(\n                        'libxslt', 'PYXMLSEC_LIBXSLT_VERSION={}, downloading from {}'.format(self.libxslt_version, url)\n                    )\n                )\n            libxslt_tar = self.libs_dir / 'libxslt.tar.gz'\n            urlretrieve(url, str(libxslt_tar))\n\n        # fetch xmlsec1\n        xmlsec1_tar = next(self.libs_dir.glob('xmlsec1*.tar.gz'), None)\n        if xmlsec1_tar is None:\n            self.info('{:10}: {}'.format('xmlsec1', 'source tar not found, downloading ...'))\n            if self.xmlsec1_version is None:\n                url = latest_xmlsec_release()\n                self.info('{:10}: {}'.format('xmlsec1', 'PYXMLSEC_XMLSEC1_VERSION unset, downloading latest from {}'.format(url)))\n            else:\n                url = 'https://www.aleksey.com/xmlsec/download/xmlsec1-{}.tar.gz'.format(self.xmlsec1_version)\n                self.info(\n                    '{:10}: {}'.format(\n                        'xmlsec1', 'PYXMLSEC_XMLSEC1_VERSION={}, downloading from {}'.format(self.xmlsec1_version, url)\n                    )\n                )\n            xmlsec1_tar = self.libs_dir / 'xmlsec1.tar.gz'\n            urlretrieve(url, str(xmlsec1_tar))\n\n        for file in (openssl_tar, zlib_tar, libiconv_tar, libxml2_tar, libxslt_tar, xmlsec1_tar):\n            self.info('Unpacking {}'.format(file.name))\n            try:\n                with tarfile.open(str(file)) as tar:\n                    tar.extractall(path=str(self.build_libs_dir))\n            except EOFError:\n                raise DistutilsError('Bad {} downloaded; remove it and try again.'.format(file.name))\n\n        prefix_arg = '--prefix={}'.format(self.prefix_dir)\n\n        env = os.environ.copy()\n        cflags = []\n        if env.get('CFLAGS'):\n            cflags.append(env['CFLAGS'])\n        cflags.append('-fPIC')\n        ldflags = []\n        if env.get('LDFLAGS'):\n            ldflags.append(env['LDFLAGS'])\n\n        cross_compiling = False\n        if build_platform == 'darwin':\n            import platform\n\n            arch = self.plat_name.rsplit('-', 1)[1]\n            if arch != platform.machine() and arch in ('x86_64', 'arm64'):\n                self.info('Cross-compiling for {}'.format(arch))\n                cflags.append('-arch {}'.format(arch))\n                ldflags.append('-arch {}'.format(arch))\n                cross_compiling = CrossCompileInfo('darwin64', arch, 'cc')\n            major_version, minor_version = tuple(map(int, platform.mac_ver()[0].split('.')[:2]))\n            if major_version >= 11:\n                if 'MACOSX_DEPLOYMENT_TARGET' not in env:\n                    env['MACOSX_DEPLOYMENT_TARGET'] = \"11.0\"\n\n        env['CFLAGS'] = ' '.join(cflags)\n        env['LDFLAGS'] = ' '.join(ldflags)\n\n        self.info('Building OpenSSL')\n        openssl_dir = next(self.build_libs_dir.glob('openssl-*'))\n        openssl_config_cmd = [prefix_arg, 'no-shared', '-fPIC', '--libdir=lib']\n        if cross_compiling:\n            openssl_config_cmd.insert(0, './Configure')\n            openssl_config_cmd.append(cross_compiling.triplet)\n        else:\n            openssl_config_cmd.insert(0, './config')\n        subprocess.check_output(openssl_config_cmd, cwd=str(openssl_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(openssl_dir), env=env)\n        subprocess.check_output(\n            ['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install_sw'], cwd=str(openssl_dir), env=env\n        )\n\n        self.info('Building zlib')\n        zlib_dir = next(self.build_libs_dir.glob('zlib-*'))\n        subprocess.check_output(['./configure', prefix_arg], cwd=str(zlib_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(zlib_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(zlib_dir), env=env)\n\n        host_arg = \"\"\n        if cross_compiling:\n            host_arg = '--host={}'.format(cross_compiling.arch)\n\n        self.info('Building libiconv')\n        libiconv_dir = next(self.build_libs_dir.glob('libiconv-*'))\n        subprocess.check_output(\n            [\n                './configure',\n                prefix_arg,\n                '--disable-dependency-tracking',\n                '--disable-shared',\n                host_arg,\n            ],\n            cwd=str(libiconv_dir),\n            env=env,\n        )\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libiconv_dir), env=env)\n        subprocess.check_output(\n            ['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libiconv_dir), env=env\n        )\n\n        self.info('Building LibXML2')\n        libxml2_dir = next(self.build_libs_dir.glob('libxml2-*'))\n        subprocess.check_output(\n            [\n                './configure',\n                prefix_arg,\n                '--disable-dependency-tracking',\n                '--disable-shared',\n                '--without-lzma',\n                '--without-python',\n                '--with-iconv={}'.format(self.prefix_dir),\n                '--with-zlib={}'.format(self.prefix_dir),\n                host_arg,\n            ],\n            cwd=str(libxml2_dir),\n            env=env,\n        )\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libxml2_dir), env=env)\n        subprocess.check_output(\n            ['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libxml2_dir), env=env\n        )\n\n        self.info('Building libxslt')\n        libxslt_dir = next(self.build_libs_dir.glob('libxslt-*'))\n        subprocess.check_output(\n            [\n                './configure',\n                prefix_arg,\n                '--disable-dependency-tracking',\n                '--disable-shared',\n                '--without-python',\n                '--without-crypto',\n                '--with-libxml-prefix={}'.format(self.prefix_dir),\n                host_arg,\n            ],\n            cwd=str(libxslt_dir),\n            env=env,\n        )\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libxslt_dir), env=env)\n        subprocess.check_output(\n            ['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libxslt_dir), env=env\n        )\n\n        self.info('Building xmlsec1')\n        ldflags.append('-lpthread')\n        env['LDFLAGS'] = ' '.join(ldflags)\n        xmlsec1_dir = next(self.build_libs_dir.glob('xmlsec1-*'))\n        subprocess.check_output(\n            [\n                './configure',\n                prefix_arg,\n                '--disable-shared',\n                '--disable-gost',\n                '--enable-md5',\n                '--disable-crypto-dl',\n                '--enable-static=yes',\n                '--enable-shared=no',\n                '--enable-static-linking=yes',\n                '--with-default-crypto=openssl',\n                '--with-openssl={}'.format(self.prefix_dir),\n                '--with-libxml={}'.format(self.prefix_dir),\n                '--with-libxslt={}'.format(self.prefix_dir),\n                host_arg,\n            ],\n            cwd=str(xmlsec1_dir),\n            env=env,\n        )\n        subprocess.check_output(\n            ['make', '-j{}'.format(multiprocessing.cpu_count() + 1)]\n            + ['-I{}'.format(str(self.prefix_dir / 'include')), '-I{}'.format(str(self.prefix_dir / 'include' / 'libxml'))],\n            cwd=str(xmlsec1_dir),\n            env=env,\n        )\n        subprocess.check_output(\n            ['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(xmlsec1_dir), env=env\n        )\n\n        ext = self.ext_map['xmlsec']\n        ext.define_macros = [\n            ('__XMLSEC_FUNCTION__', '__func__'),\n            ('XMLSEC_NO_SIZE_T', None),\n            ('XMLSEC_NO_GOST', '1'),\n            ('XMLSEC_NO_GOST2012', '1'),\n            ('XMLSEC_NO_XKMS', '1'),\n            ('XMLSEC_CRYPTO', '\\\"openssl\\\"'),\n            ('XMLSEC_NO_CRYPTO_DYNAMIC_LOADING', '1'),\n            ('XMLSEC_CRYPTO_OPENSSL', '1'),\n            ('LIBXML_ICONV_ENABLED', 1),\n            ('LIBXML_STATIC', '1'),\n            ('LIBXSLT_STATIC', '1'),\n            ('XMLSEC_STATIC', '1'),\n            ('inline', '__inline'),\n            ('UNICODE', '1'),\n            ('_UNICODE', '1'),\n        ]\n\n        ext.include_dirs.append(str(self.prefix_dir / 'include'))\n        ext.include_dirs.extend([str(p.absolute()) for p in (self.prefix_dir / 'include').iterdir() if p.is_dir()])\n\n        ext.library_dirs = []\n        if build_platform == 'linux':\n            ext.libraries = ['m', 'rt']\n        extra_objects = [\n            'libxmlsec1.a',\n            'libxslt.a',\n            'libxml2.a',\n            'libz.a',\n            'libxmlsec1-openssl.a',\n            'libcrypto.a',\n            'libiconv.a',\n            'libxmlsec1.a',\n        ]\n        ext.extra_objects = [str(self.prefix_dir / 'lib' / o) for o in extra_objects]\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "os.environ.get",
+        "pathlib.Path.glob",
+        "pathlib.Path.glob",
+        "urllib.request.urlretrieve",
+        "pathlib.Path.glob",
+        "pathlib.Path.glob",
+        "urllib.request.urlretrieve",
+        "pathlib.Path.glob",
+        "pathlib.Path.glob",
+        "urllib.request.urlretrieve",
+        "pathlib.Path.glob",
+        "pathlib.Path.glob",
+        "urllib.request.urlretrieve",
+        "pathlib.Path.glob",
+        "pathlib.Path.glob",
+        "urllib.request.urlretrieve",
+        "tarfile.open",
+        "tarfile.TarFile.extractall",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output",
+        "multiprocessing.cpu_count",
+        "subprocess.check_output"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('PYXMLSEC_OPENSSL_VERSION')",
+        "os.environ.get('PYXMLSEC_LIBICONV_VERSION')",
+        "os.environ.get('PYXMLSEC_LIBXML2_VERSION')",
+        "os.environ.get('PYXMLSEC_LIBXSLT_VERSION')",
+        "os.environ.get('PYXMLSEC_ZLIB_VERSION')",
+        "os.environ.get('PYXMLSEC_XMLSEC1_VERSION')",
+        "self.libs_dir.glob('openssl*.tar.gz')",
+        "self.libs_dir.glob('zlib*.tar.gz')",
+        "urllib.request.urlretrieve(url, str(openssl_tar))",
+        "self.libs_dir.glob('libiconv*.tar.gz')",
+        "self.libs_dir.glob('libxml2*.tar.xz')",
+        "urllib.request.urlretrieve(url, str(zlib_tar))",
+        "self.libs_dir.glob('libxslt*.tar.gz')",
+        "self.libs_dir.glob('xmlsec1*.tar.gz')",
+        "urllib.request.urlretrieve(url, str(libiconv_tar))",
+        "self.libs_dir.glob('openssl*.tar.gz')",
+        "self.libs_dir.glob('zlib*.tar.gz')",
+        "urllib.request.urlretrieve(url, str(libxml2_tar))",
+        "self.libs_dir.glob('libiconv*.tar.gz')",
+        "self.libs_dir.glob('libxml2*.tar.xz')",
+        "urllib.request.urlretrieve(url, str(libxslt_tar))",
+        "tarfile.open(str(file))",
+        "tar.extractall(path=str(self.build_libs_dir))",
+        "subprocess.check_output(openssl_config_cmd, cwd=str(openssl_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(openssl_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install_sw'], cwd=str(openssl_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['./configure', prefix_arg], cwd=str(zlib_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(zlib_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(zlib_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output([...], cwd=str(libiconv_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libiconv_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libiconv_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output([...], cwd=str(libxml2_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libxml2_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libxml2_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output([...], cwd=str(libxslt_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libxslt_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libxslt_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output([...], cwd=str(xmlsec1_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output([...], cwd=str(xmlsec1_dir), env=env)",
+        "multiprocessing.cpu_count()",
+        "subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(xmlsec1_dir), env=env)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "urllib.request.urlretrieve",
+          "id": "download_file_url",
+          "description": "Downloads file from URL to specified local path",
+          "first_id": "network_file_transfer",
+          "second_id": "file_download",
+          "third_id": "url_file_acquisition"
+        },
+        {
+          "api_name": "tarfile.open",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "tarfile.TarFile.extractall",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        }
+      ],
+      "contextual_code": "import os\nimport tarfile\nimport subprocess\nimport multiprocessing\nfrom pathlib import Path\nfrom urllib.request import urlretrieve\n\nclass build_ext(build_ext_orig):\n    def prepare_static_build(self, build_platform):\n        self.openssl_version = os.environ.get('PYXMLSEC_OPENSSL_VERSION')\n        self.libiconv_version = os.environ.get('PYXMLSEC_LIBICONV_VERSION')\n        self.libxml2_version = os.environ.get('PYXMLSEC_LIBXML2_VERSION')\n        self.libxslt_version = os.environ.get('PYXMLSEC_LIBXSLT_VERSION')\n        self.zlib_version = os.environ.get('PYXMLSEC_ZLIB_VERSION')\n        self.xmlsec1_version = os.environ.get('PYXMLSEC_XMLSEC1_VERSION')\n\n        openssl_tar = next(self.libs_dir.glob('openssl*.tar.gz'), None)\n        if openssl_tar is None:\n            openssl_tar = self.libs_dir / 'openssl.tar.gz'\n            urlretrieve(url, str(openssl_tar))\n        zlib_tar = next(self.libs_dir.glob('zlib*.tar.gz'), None)\n        if zlib_tar is None:\n            zlib_tar = self.libs_dir / 'zlib.tar.gz'\n            urlretrieve(url, str(zlib_tar))\n        libiconv_tar = next(self.libs_dir.glob('libiconv*.tar.gz'), None)\n        if libiconv_tar is None:\n            libiconv_tar = self.libs_dir / 'libiconv.tar.gz'\n            urlretrieve(url, str(libiconv_tar))\n        libxml2_tar = next(self.libs_dir.glob('libxml2*.tar.xz'), None)\n        if libxml2_tar is None:\n            libxml2_tar = self.libs_dir / 'libxml2.tar.xz'\n            urlretrieve(url, str(libxml2_tar))\n        libxslt_tar = next(self.libs_dir.glob('libxslt*.tar.gz'), None)\n        if libxslt_tar is None:\n            libxslt_tar = self.libs_dir / 'libxslt.tar.gz'\n            urlretrieve(url, str(libxslt_tar))\n        xmlsec1_tar = next(self.libs_dir.glob('xmlsec1*.tar.gz'), None)\n        if xmlsec1_tar is None:\n            xmlsec1_tar = self.libs_dir / 'xmlsec1.tar.gz'\n            urlretrieve(url, str(xmlsec1_tar))\n\n        for file in (openssl_tar, zlib_tar, libiconv_tar, libxml2_tar, libxslt_tar, xmlsec1_tar):\n            with tarfile.open(str(file)) as tar:\n                tar.extractall(path=str(self.build_libs_dir))\n\n        subprocess.check_output(openssl_config_cmd, cwd=str(openssl_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(openssl_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install_sw'], cwd=str(openssl_dir), env=env)\n        subprocess.check_output(['./configure', prefix_arg], cwd=str(zlib_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(zlib_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(zlib_dir), env=env)\n        subprocess.check_output([...], cwd=str(libiconv_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libiconv_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libiconv_dir), env=env)\n        subprocess.check_output([...], cwd=str(libxml2_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libxml2_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libxml2_dir), env=env)\n        subprocess.check_output([...], cwd=str(libxslt_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1)], cwd=str(libxslt_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(libxslt_dir), env=env)\n        subprocess.check_output([...], cwd=str(xmlsec1_dir), env=env)\n        subprocess.check_output([...], cwd=str(xmlsec1_dir), env=env)\n        subprocess.check_output(['make', '-j{}'.format(multiprocessing.cpu_count() + 1), 'install'], cwd=str(xmlsec1_dir), env=env)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "xmlsec-1.3.15",
+      "total_matches": 18
+    }
+  }
+]

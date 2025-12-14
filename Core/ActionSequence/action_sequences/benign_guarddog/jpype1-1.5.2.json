@@ -1,0 +1,61 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "# 10+ lines before the flagged line, including relevant imports and variable assignments\n#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n# *****************************************************************************\n#\n#   Licensed under the Apache License, Version 2.0 (the \"License\");\n#   you may not use this file except in compliance with the License.\n#   You may obtain a copy of the License at\n#\n#       http://www.apache.org/licenses/LICENSE-2.0\n#\n#   Unless required by applicable law or agreed to in writing, software\n#   distributed under the License is distributed on an \"AS IS\" BASIS,\n#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n#   See the License for the specific language governing permissions and\n#   limitations under the License.\n#\n#   See NOTICE file for details.\n#\n# *****************************************************************************\nimport sys\nfrom pathlib import Path\n\nfrom setuptools import Extension\nfrom setuptools import setup\n\n# Add our setupext package to the path, and import it.\nsys.path.append(str(Path(__file__).parent))\nimport setupext\n\nif '--android' in sys.argv:\n    platform = 'android'\n    sys.argv.remove('--android')\nelse:\n    platform = sys.platform\n\n\njpypeLib = Extension(name='_jpype', **setupext.platform.Platform(\n    include_dirs=[Path('native', 'common', 'include'),\n                  Path('native', 'python', 'include'),\n                  Path('native', 'embedded', 'include')],\n    sources=sorted(\n        list(Path('native', 'common').glob('*.cpp')) +\n        list(Path('native', 'python').glob('*.cpp')) +\n        list(Path('native', 'embedded').glob('*.cpp'))\n    ),\n    platform=platform,\n))\njpypeJar = Extension(name=\"org.jpype\",\n                     sources=sorted(map(str, Path(\"native\", \"java\").glob(\"**/*.java\"))),\n                     language=\"java\",\n                     libraries=[\"lib/asm-8.0.1.jar\"]\n                     )\n\n\nsetup(\n    # Non-standard, and extension behaviour of setup() - project information\n    # should be put in pyproject.toml wherever possible. See also:\n    # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html#setuptools-specific-configuration\n    platforms=[\n        'Operating System :: Microsoft :: Windows',\n        'Operating System :: POSIX',\n        'Operating System :: Unix',\n        'Operating System :: MacOS',\n    ],\n    packages=['jpype', 'jpype._pyinstaller'],\n    package_dir={'jpype': 'jpype', },\n    package_data={'jpype': ['*.pyi']},\n    cmdclass={\n        'build_ext': setupext.build_ext.BuildExtCommand,\n        'develop': setupext.develop.Develop,\n        'test_java': setupext.test_java.TestJavaCommand,\n        'sdist': setupext.sdist.BuildSourceDistribution,\n    },\n    zip_safe=False,\n    ext_modules=[jpypeJar, jpypeLib, ],\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.path.append",
+        "Path.__file__",
+        "Path.parent",
+        "setuptools.setup"
+      ],
+      "api_sequence_with_args": [
+        "sys.path.append(str(Path(__file__).parent))",
+        "Path(__file__)",
+        "Path(__file__).parent",
+        "setuptools.setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.path.append",
+          "id": "insert_module_path",
+          "description": "Inserts directory at start of module search path",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "Path(__file__)",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.parent",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "setuptools.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "import sys\nfrom pathlib import Path\nfrom setuptools import Extension\nfrom setuptools import setup\n\n# Add our setupext package to the path, and import it.\nsys.path.append(str(Path(__file__).parent))\nimport setupext\n\nsetup(\n    platforms=[\n        'Operating System :: Microsoft :: Windows',\n        'Operating System :: POSIX',\n        'Operating System :: Unix',\n        'Operating System :: MacOS',\n    ],\n    packages=['jpype', 'jpype._pyinstaller'],\n    package_dir={'jpype': 'jpype', },\n    package_data={'jpype': ['*.pyi']},\n    cmdclass={\n        'build_ext': setupext.build_ext.BuildExtCommand,\n        'develop': setupext.develop.Develop,\n        'test_java': setupext.test_java.TestJavaCommand,\n        'sdist': setupext.sdist.BuildSourceDistribution,\n    },\n    zip_safe=False,\n    ext_modules=[jpypeJar, jpypeLib, ],\n)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "jpype1-1.5.2",
+      "total_matches": 1
+    }
+  }
+]

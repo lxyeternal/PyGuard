@@ -1,0 +1,39 @@
+[
+  {
+    "metadata": {
+      "package_name": "astronomer_providers-1.19.4",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/astronomer_providers-1.19.4.txt",
+      "total_matches": 6
+    }
+  },
+  {
+    "pyfile": "example_hive.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/astronomer_providers-1.19.4/astronomer_providers-1.19.4/astronomer/providers/apache/hive/example_dags/example_hive.py",
+    "line_number": "160",
+    "type_description": "shady-links",
+    "original_snippet": "current_docker_ip = get(\"https://api.ipify.org\").text",
+    "context_snippet": "def add_inbound_rule_for_security_group(task_instance: Any) -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n    from botocore.exceptions import ClientError\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    # Port HIVE_OPERATOR_INGRESS_PORT needs to be open for Impyla connectivity to Hive.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": HIVE_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                HIVE_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n    # Allow SSH traffic on port 22 and copy file to HDFS.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error",
+    "hash_value": "233d100eb7063bda6707b57ca80665a3",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "example_livy.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/astronomer_providers-1.19.4/astronomer_providers-1.19.4/astronomer/providers/apache/livy/example_dags/example_livy.py",
+    "line_number": "123",
+    "type_description": "shady-links",
+    "original_snippet": "current_docker_ip = get(\"https://api.ipify.org\").text",
+    "context_snippet": "def add_inbound_rule_for_security_group(task_instance: Any) -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n\n    current_docker_ip = get(\"https://api.ipify.org\").text\n    logging.info(\"Current ip address is: %s\", str(current_docker_ip))\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n\n    # Open port 'LIVY_OPERATOR_INGRESS_PORT'.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": LIVY_OPERATOR_INGRESS_PORT,\n                    \"ToPort\": LIVY_OPERATOR_INGRESS_PORT,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port %s already authorized. Error Message is: %s\",\n                LIVY_OPERATOR_INGRESS_PORT,\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error\n\n    # Open port 22 for downstream task 'ssh_and_copy_pifile_to_hdfs'.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(\n                key=\"cluster_response_master_security_group\", task_ids=[\"describe_created_cluster\"]\n            )[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error",
+    "hash_value": "92e005a02bf99189d13d9264d9502f9b",
+    "detection_index": 1
+  },
+  {
+    "pyfile": "example_sftp.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/astronomer_providers-1.19.4/astronomer_providers-1.19.4/astronomer/providers/sftp/example_dags/example_sftp.py",
+    "line_number": "132",
+    "type_description": "shady-links",
+    "original_snippet": "current_docker_ip = get(\"https://api.ipify.org\").text",
+    "context_snippet": "def add_inbound_rule_for_security_group(task_instance: \"TaskInstance\") -> None:\n    \"\"\"\n    Sets the inbound rule for the aws security group, based on\n    current ip address of the system.\n    \"\"\"\n    import boto3\n    from botocore.exceptions import ClientError\n\n    client = boto3.client(\"ec2\", **AWS_S3_CREDS)\n    current_docker_ip = get(\"https://api.ipify.org\").text\n\n    # Allow SSH traffic on port 22 and copy file to ec2 instance.\n    try:\n        client.authorize_security_group_ingress(\n            GroupId=task_instance.xcom_pull(key=INSTANCE_SECURITY_GROUP, task_ids=[\"create_ec2_instance\"])[0],\n            IpPermissions=[\n                {\n                    \"IpProtocol\": \"tcp\",\n                    \"FromPort\": 22,\n                    \"ToPort\": 22,\n                    \"IpRanges\": [{\"CidrIp\": str(current_docker_ip) + \"/32\"}],\n                }\n            ],\n        )\n    except ClientError as error:\n        if error.response.get(\"Error\", {}).get(\"Code\", \"\") == BOTO_DUPLICATE_PERMISSION_ERROR:\n            logging.error(\n                \"Ingress for port 22 already authorized. Error message is: %s\",\n                error.response[\"Error\"][\"Message\"],\n            )\n        else:\n            raise error",
+    "hash_value": "105356ca74ccbbe28269c6ddf68335ab",
+    "detection_index": 1
+  }
+]

@@ -1,0 +1,327 @@
+Run started:2025-04-12 17:09:51.788324
+
+Test results:
+>> Issue: [B823:ip_found] ip_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/__main__.py:102
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b823_ip_found.html
+101	        help="Uvicorn host [127.0.0.1]",
+102	    ) = "127.0.0.1",
+103	    port: arg(
+104	        short_option="-p",
+105	        help="Uvicorn port [8000]",
+106	    ) = 8000,
+107	    reload: arg(
+108	        short_option="-r",
+109	        help="Automatically reload uvicorn server when source changes [Don't reload]",
+110	    ) = False,
+111	    workers: arg(
+112	        short_option="-w", type=int, help="Number of uvicorn processes"
+113	    ) = None,
+114	    # Shared app config & uvicorn args
+115	    debug: arg(
+116	        short_option="-d",
+117	        type=bool,
+118	        help="Enable debug mode in both app and uvicorn; will *also* enable auto-reloading "
+119	        "(implies --reload) [Don't debug]",
+120	    ) = None,
+121	    # Info args (show and exit)
+122	    show_settings: arg(
+123	        short_option="-s",
+124	        mutual_exclusion_group="info",
+125	        help="Show app settings [Don't show settings]",
+126	    ) = False,
+127	    show_schema: arg(
+128	        short_option="-S",
+129	        mutual_exclusion_group="info",
+130	        help="Show OpenAPI schema and exit [Don't show schema]",
+131	    ) = False,
+132	):
+133	    """Create Dijkstar server app and run it with uvicorn.
+134	
+135	    For app config args (defined in the dijkstar.server.conf module),
+136	    command line args take precedence over environment variables, which
+137	    take precedence over variables specified in the env file.
+138	
+139	    """
+140	    try:
+141	        import uvicorn  # noqa: F401
+142	    except ImportError:
+143	        abort(
+144	            1, "Uvicorn not installed; was Dijkstar installed with the `server` extra?"
+145	        )
+146	
+147	    import yaml
+148	
+149	    if env_file is None:
+150	        default_env_file = pathlib.Path.cwd() / ".env"
+151	        if default_env_file.is_file():
+152	            env_file = default_env_file
+153	    else:
+154	        env_file = pathlib.Path(env_file)
+155	        if not env_file.exists():
+156	            raise FileNotFoundError(f"Env file does not exist: {env_file}")
+157	
+158	    reload = reload or debug
+159	
+160	    # XXX: This needs to be after args are fully initialized because of
+161	    #      the use of locals().
+162	    def add_to_environ(name, _locals=locals()):
+163	        value = _locals[name]
+164	        if value is not None:
+165	            os.environ[name.upper()] = str(value)
+166	
+167	    add_to_environ("env_file")
+168	    add_to_environ("debug")
+169	    add_to_environ("host")
+170	    add_to_environ("port")
+171	    add_to_environ("log_config_file")
+172	    add_to_environ("template_directory")
+173	    add_to_environ("log_level")
+174	    add_to_environ("graph_file")
+175	    add_to_environ("graph_file_type")
+176	    add_to_environ("read_only")
+177	    add_to_environ("node_serializer")
+178	    add_to_environ("node_deserializer")
+179	    add_to_environ("edge_serializer")
+180	    add_to_environ("edge_deserializer")
+181	    add_to_environ("cost_func")
+182	    add_to_environ("heuristic_func")
+183	
+184	    # XXX: Dijkstar server imports need to come after environ is set up
+185	    #      so settings will be initialized correctly.
+
+--------------------------------------------------
+>> Issue: [B814:read] os.read
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/graph.py:273
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b814_read.html
+272	        """Read graph using pickle."""
+273	        return cls._read(pickle.load, from_)
+274	
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/graph.py:277
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+276	        """Write graph using pickle."""
+277	        self._write(pickle.dump, to)
+278	
+
+--------------------------------------------------
+>> Issue: [B814:read] os.read
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/graph.py:290
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b814_read.html
+289	        """
+290	        return cls._read(marshal.load, from_)
+291	
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/graph.py:294
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+293	        """Write graph using marshal."""
+294	        self._write(marshal.dump, to)
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:48
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+47	        self,
+48	        base_url: str = "http://localhost:8000",
+49	        node_serializer: Callable[[Any], str] = json.dumps,
+50	        node_deserializer: Callable[[str], Any] = json.loads,
+51	        edge_serializer: Callable[[Any], str] = json.dumps,
+52	        edge_deserializer: Callable[[str], Any] = json.loads,
+53	    ):
+54	        base_url = base_url.rstrip("/")
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:89
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+88	        url = self._route_url(route_name, path)
+89	        response = requests.get(url, params, **kwargs)
+90	        return self._handle_response(response)
+
+--------------------------------------------------
+>> Issue: [B821:post] requests.post
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:95
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b821_post.html
+94	        url = self._route_url(route_name, path)
+95	        response = requests.post(url, data, json, **kwargs)
+96	        return self._handle_response(response)
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:101
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+100	        """Get graph info."""
+101	        return self._get("graph-info")
+102	
+
+--------------------------------------------------
+>> Issue: [B821:post] requests.post
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:115
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b821_post.html
+114	            data = None
+115	        return self._post("load-graph", data=data, headers=headers)
+116	
+
+--------------------------------------------------
+>> Issue: [B821:post] requests.post
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:120
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b821_post.html
+119	        """Reload graph from disk."""
+120	        return self._post("reload-graph")
+121	
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:125
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+124	        """Get node."""
+125	        data = self._get("get-node", f"{node}")
+126	        node_deserializer = self.node_deserializer
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:134
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+133	        """Get node."""
+134	        return self._get("get-edge", f"{u}/{v}")
+135	
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/client.py:171
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+170	            params["fields"] = ";".join(fields)
+171	        return self._get("find-path", f"{start_node}/{destination_node}", params)
+172	
+
+--------------------------------------------------
+>> Issue: [B823:ip_found] ip_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/conf.py:83
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b823_ip_found.html
+82	        "doc": "Server host",
+83	        "default": "127.0.0.1",
+84	    },
+85	    port={"doc": "Server port", "cast": int, "default": 8000},
+86	    log_config_file={
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/conf.py:87
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+86	    log_config_file={
+87	        "doc": "Path to Python logging config file (see "
+88	        "https://docs.python.org/3/library/logging.config.html)",
+89	        "cast": utils.abs_path,
+90	    },
+91	    log_level={
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:100
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+99	    settings = app.state.settings
+100	    content_type = request.headers.get("Content-Type")
+101	
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:108
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+107	        form_data = await request.form()
+108	        file_name = form_data.get("file_name")
+109	        file_type = form_data.get("file_type")
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:109
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+108	        file_name = form_data.get("file_name")
+109	        file_type = form_data.get("file_type")
+110	    elif content_type == "application/octet-stream":
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:290
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+289	
+290	    annex_nodes = query_params.get("annex_nodes")
+291	    if annex_nodes:
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:297
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+296	
+297	    annex_edges = query_params.get("annex_edges")
+298	    if annex_edges:
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:315
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+314	
+315	    cost_func = query_params.get("cost_func")
+316	    cost_func = utils.import_object(cost_func) or settings.cost_func
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:318
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+317	
+318	    heuristic_func = query_params.get("heuristic_func")
+319	    heuristic_func = utils.import_object(heuristic_func) or settings.heuristic_func
+
+--------------------------------------------------
+>> Issue: [B820:get] requests.get
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/dijkstar-3.0a6/dijkstar-3.0a6/src/dijkstar/server/endpoints.py:321
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b820_get.html
+320	
+321	    fields = (query_params.get("fields") or "").strip()
+322	    if fields:
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 1288
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 4.0
+		High: 20.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 24.0
+		High: 0.0
+Files skipped (0):

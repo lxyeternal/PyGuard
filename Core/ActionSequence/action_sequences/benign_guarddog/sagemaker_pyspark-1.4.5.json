@@ -1,0 +1,271 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport shutil\nimport subprocess\nimport sys\nfrom setuptools import setup\n\nVERSION_PATH = \"VERSION\"\nTEMP_PATH = \"deps\"\nJARS_TARGET = os.path.join(TEMP_PATH, \"jars\")\n\nin_sagemaker_sdk = os.path.isfile(\"../sagemaker-spark-sdk/build.sbt\")\n\ndef read(fname):\n    return open(os.path.join(os.path.dirname(__file__), fname)).read()\n\ndef read_version():\n    return read(VERSION_PATH).strip()\n\ntry:  # noqa\n    if in_sagemaker_sdk:\n        try:\n            shutil.copyfile(os.path.join(\"..\", VERSION_PATH), VERSION_PATH)\n        except OSError:\n            print(\"Could not copy VERSION file\")\n            exit(1)\n\n        try:\n            os.mkdir(TEMP_PATH)\n        except OSError:\n            print(\"Could not create dir {0}\".format(TEMP_PATH), file=sys.stderr)\n            exit(1)\n\n        p = subprocess.Popen(\n            \"sbt printClasspath\".split(),\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            cwd=\"../sagemaker-spark-sdk/\",\n        )\n\n        output, errors = p.communicate()\n\n        classpath = []\n        # Java Libraries to include.\n        java_libraries = [\"aws\", \"sagemaker\", \"hadoop\", \"htrace\"]\n        for line in output.decode(\"utf-8\").splitlines():\n            path = str(line.strip())\n            if path.endswith(\".jar\") and os.path.exists(path):\n                jar = os.path.basename(path).lower()\n                if any(lib in jar for lib in java_libraries):\n                    classpath.append(path)\n\n        os.mkdir(JARS_TARGET)\n        for jar in classpath:\n            target_path = os.path.join(JARS_TARGET, os.path.basename(jar))\n            if not os.path.exists(target_path):\n                shutil.copy(jar, target_path)\n\n        if len(classpath) == 0:\n            print(\"Failed to retrieve the jar classpath. Can't package\")\n            exit(-1)\n\n    else:\n        if not os.path.exists(JARS_TARGET):\n            print(\n                \"You need to be in the sagemaker-pyspark-sdk root folder to package\",\n                file=sys.stderr,\n            )\n            exit(-1)\n\n    setup(\n        name=\"sagemaker_pyspark\",\n        version=read_version(),\n        description=\"Amazon SageMaker PySpark Bindings\",\n        author=\"Amazon Web Services\",\n        url=\"https://github.com/aws/sagemaker-spark\",\n        license=\"Apache License 2.0\",\n        python_requires=\">= 3.7\",\n        zip_safe=False,\n        packages=[\n            \"sagemaker_pyspark\",\n            \"sagemaker_pyspark.algorithms\",\n            \"sagemaker_pyspark.transformation\",\n            \"sagemaker_pyspark.transformation.deserializers\",\n            \"sagemaker_pyspark.transformation.serializers\",\n            \"sagemaker_pyspark.jars\",\n            \"sagemaker_pyspark.licenses\",\n        ],\n        package_dir={\n            \"sagemaker_pyspark\": \"src/sagemaker_pyspark\",\n            \"sagemaker_pyspark.jars\": \"deps/jars\",\n            \"sagemaker_pyspark.licenses\": \"licenses\",\n        },\n        include_package_data=True,\n        package_data={\n            \"sagemaker_pyspark.jars\": [\"*.jar\"],\n            \"sagemaker_pyspark.licenses\": [\"*.txt\"],\n        },\n        scripts=[\"bin/sagemakerpyspark-jars\", \"bin/sagemakerpyspark-emr-jars\"],\n        install_requires=[\n            \"pyspark==3.3.0\",\n            \"numpy\",\n        ],\n    )\n\nfinally:\n    if in_sagemaker_sdk:\n        if os.path.exists(JARS_TARGET):\n            shutil.rmtree(JARS_TARGET)\n\n        if os.path.exists(TEMP_PATH):\n            os.rmdir(TEMP_PATH)\n\n        if os.path.exists(VERSION_PATH):\n            os.remove(VERSION_PATH)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.isfile",
+        "os.path.join",
+        "os.path.dirname",
+        "open",
+        "os.path.join",
+        "os.path.exists",
+        "shutil.copyfile",
+        "os.path.join",
+        "os.mkdir",
+        "subprocess.Popen",
+        "subprocess.Popen.communicate",
+        "os.path.exists",
+        "os.path.basename",
+        "os.path.exists",
+        "os.mkdir",
+        "os.path.join",
+        "os.path.basename",
+        "os.path.exists",
+        "shutil.copy",
+        "os.path.exists",
+        "os.path.exists",
+        "os.rmdir",
+        "os.path.exists",
+        "os.remove",
+        "setuptools.setup"
+      ],
+      "api_sequence_with_args": [
+        "os.path.isfile(\"../sagemaker-spark-sdk/build.sbt\")",
+        "os.path.join(TEMP_PATH, \"jars\")",
+        "os.path.dirname(__file__)",
+        "open(os.path.join(os.path.dirname(__file__), fname))",
+        "os.path.join(\"..\", VERSION_PATH)",
+        "os.path.exists(path)",
+        "shutil.copyfile(os.path.join(\"..\", VERSION_PATH), VERSION_PATH)",
+        "os.path.join(TEMP_PATH, \"jars\")",
+        "os.mkdir(TEMP_PATH)",
+        "subprocess.Popen(\"sbt printClasspath\".split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=\"../sagemaker-spark-sdk/\")",
+        "p.communicate()",
+        "os.path.exists(path)",
+        "os.path.basename(path)",
+        "os.path.exists(target_path)",
+        "os.mkdir(JARS_TARGET)",
+        "os.path.join(JARS_TARGET, os.path.basename(jar))",
+        "os.path.basename(jar)",
+        "os.path.exists(target_path)",
+        "shutil.copy(jar, target_path)",
+        "os.path.exists(JARS_TARGET)",
+        "os.path.exists(TEMP_PATH)",
+        "os.rmdir(TEMP_PATH)",
+        "os.path.exists(VERSION_PATH)",
+        "os.remove(VERSION_PATH)",
+        "setuptools.setup(...)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.isfile",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "subprocess.Popen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.Popen.communicate",
+          "id": "read_process_stdout",
+          "description": "Reads all bytes from process standard output",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.rmdir",
+          "id": "delete_directory",
+          "description": "Recursively deletes directory and its contents",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.remove",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "setuptools.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nimport subprocess\nimport sys\nfrom setuptools import setup\n\nVERSION_PATH = \"VERSION\"\nTEMP_PATH = \"deps\"\nJARS_TARGET = os.path.join(TEMP_PATH, \"jars\")\n\nin_sagemaker_sdk = os.path.isfile(\"../sagemaker-spark-sdk/build.sbt\")\n\ndef read(fname):\n    return open(os.path.join(os.path.dirname(__file__), fname)).read()\n\ndef read_version():\n    return read(VERSION_PATH).strip()\n\ntry:\n    if in_sagemaker_sdk:\n        try:\n            shutil.copyfile(os.path.join(\"..\", VERSION_PATH), VERSION_PATH)\n        except OSError:\n            exit(1)\n\n        try:\n            os.mkdir(TEMP_PATH)\n        except OSError:\n            exit(1)\n\n        p = subprocess.Popen(\n            \"sbt printClasspath\".split(),\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            cwd=\"../sagemaker-spark-sdk/\",\n        )\n        output, errors = p.communicate()\n\n        classpath = []\n        java_libraries = [\"aws\", \"sagemaker\", \"hadoop\", \"htrace\"]\n        for line in output.decode(\"utf-8\").splitlines():\n            path = str(line.strip())\n            if path.endswith(\".jar\") and os.path.exists(path):\n                jar = os.path.basename(path).lower()\n                if any(lib in jar for lib in java_libraries):\n                    classpath.append(path)\n\n        os.mkdir(JARS_TARGET)\n        for jar in classpath:\n            target_path = os.path.join(JARS_TARGET, os.path.basename(jar))\n            if not os.path.exists(target_path):\n                shutil.copy(jar, target_path)\n\n        if len(classpath) == 0:\n            exit(-1)\n    else:\n        if not os.path.exists(JARS_TARGET):\n            exit(-1)\n\n    setup(\n        name=\"sagemaker_pyspark\",\n        version=read_version(),\n        description=\"Amazon SageMaker PySpark Bindings\",\n        author=\"Amazon Web Services\",\n        url=\"https://github.com/aws/sagemaker-spark\",\n        license=\"Apache License 2.0\",\n        python_requires=\">= 3.7\",\n        zip_safe=False,\n        packages=[\n            \"sagemaker_pyspark\",\n            \"sagemaker_pyspark.algorithms\",\n            \"sagemaker_pyspark.transformation\",\n            \"sagemaker_pyspark.transformation.deserializers\",\n            \"sagemaker_pyspark.transformation.serializers\",\n            \"sagemaker_pyspark.jars\",\n            \"sagemaker_pyspark.licenses\",\n        ],\n        package_dir={\n            \"sagemaker_pyspark\": \"src/sagemaker_pyspark\",\n            \"sagemaker_pyspark.jars\": \"deps/jars\",\n            \"sagemaker_pyspark.licenses\": \"licenses\",\n        },\n        include_package_data=True,\n        package_data={\n            \"sagemaker_pyspark.jars\": [\"*.jar\"],\n            \"sagemaker_pyspark.licenses\": [\"*.txt\"],\n        },\n        scripts=[\"bin/sagemakerpyspark-jars\", \"bin/sagemakerpyspark-emr-jars\"],\n        install_requires=[\n            \"pyspark==3.3.0\",\n            \"numpy\",\n        ],\n    )\nfinally:\n    if in_sagemaker_sdk:\n        if os.path.exists(JARS_TARGET):\n            shutil.rmtree(JARS_TARGET)\n        if os.path.exists(TEMP_PATH):\n            os.rmdir(TEMP_PATH)\n        if os.path.exists(VERSION_PATH):\n            os.remove(VERSION_PATH)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "sagemaker_pyspark-1.4.5",
+      "total_matches": 1
+    }
+  }
+]

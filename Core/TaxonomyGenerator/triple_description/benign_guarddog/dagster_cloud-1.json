@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "package_name": "dagster_cloud-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/dagster_cloud-1.10.9.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "io_manager.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/dagster_cloud-1.10.9/dagster_cloud-1.10.9/dagster_cloud/serverless/io_manager.py",
+      "line_number": "35",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "import os\nimport requests\nECS_AGENT_IP = \"169.254.170.2\"\n\nclass PickledObjectServerlessIOManager(UPathIOManager):\n    def _refresh_boto_session(self) -> tuple[boto3.Session, datetime.datetime]:\n        # We have to do this whacky way to get credentials to ensure that we get iam role\n        # we assigned to the task. If we used the default boto behavior, it could get overriden\n        # when users set AWS env vars.\n        relative_uri = os.environ[\"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"]\n        aws_creds = requests.get(f\"http://{ECS_AGENT_IP}{relative_uri}\").json()\n        session = boto3.Session(\n            aws_access_key_id=aws_creds[\"AccessKeyId\"],\n            aws_secret_access_key=aws_creds[\"SecretAccessKey\"],\n            aws_session_token=aws_creds[\"Token\"],\n        )\n        expiration = parser.parse(aws_creds[\"Expiration\"])\n        return session, expiration  # pyright: ignore[reportReturnType]",
+      "hash_value": "74403c34f0a7f9dc109769fbbd6e55c0",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "import os\nimport requests\nECS_AGENT_IP = \"169.254.170.2\"\n\nclass PickledObjectServerlessIOManager(UPathIOManager):\n    def _refresh_boto_session(self) -> tuple[boto3.Session, datetime.datetime]:\n        # We have to do this whacky way to get credentials to ensure that we get iam role\n        # we assigned to the task. If we used the default boto behavior, it could get overriden\n        # when users set AWS env vars.\n        relative_uri = os.environ[\"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"]\n        aws_creds = requests.get(f\"http://{ECS_AGENT_IP}{relative_uri}\").json()\n        session = boto3.Session(\n            aws_access_key_id=aws_creds[\"AccessKeyId\"],\n            aws_secret_access_key=aws_creds[\"SecretAccessKey\"],\n            aws_session_token=aws_creds[\"Token\"],\n        )\n        expiration = parser.parse(aws_creds[\"Expiration\"])\n        return session, expiration  # pyright: ignore[reportReturnType]",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.__getitem__()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "requests.get()",
+              "action_description": "Sends HTTP GET request to URL",
+              "action_id": "open_url_get",
+              "object": "f\"http://{ECS_AGENT_IP}{relative_uri}\"",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "requests.Response.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

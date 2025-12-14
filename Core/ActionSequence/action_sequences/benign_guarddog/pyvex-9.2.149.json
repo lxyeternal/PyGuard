@@ -1,0 +1,211 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import glob\nimport multiprocessing\nimport os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nfrom distutils.command.build import build as st_build\nfrom distutils.util import get_platform\n\nfrom setuptools import setup\nfrom setuptools.command.develop import develop as st_develop\nfrom setuptools.command.sdist import sdist as st_sdist\nfrom setuptools.errors import LibError\n\nPROJECT_DIR = os.path.dirname(os.path.realpath(__file__))\nLIB_DIR = os.path.join(PROJECT_DIR, \"pyvex\", \"lib\")\nINCLUDE_DIR = os.path.join(PROJECT_DIR, \"pyvex\", \"include\")\n\nif sys.platform in (\"win32\", \"cygwin\"):\n    LIBRARY_FILE = \"pyvex.dll\"\n    STATIC_LIBRARY_FILE = \"pyvex.lib\"\nelif sys.platform == \"darwin\":\n    LIBRARY_FILE = \"libpyvex.dylib\"\n    STATIC_LIBRARY_FILE = \"libpyvex.a\"\nelse:\n    LIBRARY_FILE = \"libpyvex.so\"\n    STATIC_LIBRARY_FILE = \"libpyvex.a\"\n\nVEX_LIB_NAME = \"vex\"  # can also be vex-amd64-linux\nVEX_PATH = os.path.abspath(os.path.join(PROJECT_DIR, \"vex\"))\n\ndef _build_vex():\n    if len(os.listdir(VEX_PATH)) == 0:\n        raise LibError(\n            \"vex submodule not cloned correctly, aborting.\\nThis may be fixed with `git submodule update --init`\"\n        )\n\n    e = os.environ.copy()\n    e[\"MULTIARCH\"] = \"1\"\n    e[\"DEBUG\"] = \"1\"\n\n    if sys.platform == \"win32\":\n        cmd = [\"nmake\", \"/f\", \"Makefile-msvc\", \"all\"]\n    elif shutil.which(\"gmake\") is not None:\n        cmd = [\"gmake\", \"-f\", \"Makefile-gcc\", \"-j\", str(multiprocessing.cpu_count()), \"all\"]\n    else:\n        cmd = [\"make\", \"-f\", \"Makefile-gcc\", \"-j\", str(multiprocessing.cpu_count()), \"all\"]\n\n    try:\n        subprocess.run(cmd, cwd=VEX_PATH, env=e, check=True)\n    except FileNotFoundError as err:\n        raise LibError(\"Couldn't find \" + cmd[0] + \" in PATH\") from err\n    except subprocess.CalledProcessError as err:\n        raise LibError(\"Error while building libvex: \" + str(err)) from err\n\ndef _build_pyvex():\n    e = os.environ.copy()\n    e[\"VEX_LIB_PATH\"] = VEX_PATH\n    e[\"VEX_INCLUDE_PATH\"] = os.path.join(VEX_PATH, \"pub\")\n    e[\"VEX_LIB_FILE\"] = os.path.join(VEX_PATH, \"libvex.lib\")\n\n    if sys.platform == \"win32\":\n        cmd = [\"nmake\", \"/f\", \"Makefile-msvc\"]\n    elif shutil.which(\"gmake\") is not None:\n        cmd = [\"gmake\", \"-f\", \"Makefile\", \"-j\", str(multiprocessing.cpu_count())]\n    else:\n        cmd = [\"make\", \"-f\", \"Makefile\", \"-j\", str(multiprocessing.cpu_count())]\n\n    try:\n        subprocess.run(cmd, cwd=\"pyvex_c\", env=e, check=True)\n    except FileNotFoundError as err:\n        raise LibError(\"Couldn't find \" + cmd[0] + \" in PATH\") from err\n    except subprocess.CalledProcessError as err:\n        raise LibError(\"Error while building libpyvex: \" + str(err)) from err\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.dirname",
+        "os.path.realpath",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "os.path.abspath",
+        "os.path.join",
+        "os.listdir",
+        "os.environ.copy",
+        "shutil.which",
+        "multiprocessing.cpu_count",
+        "subprocess.run",
+        "os.environ.copy",
+        "os.path.join",
+        "os.path.join",
+        "os.path.join",
+        "shutil.which",
+        "multiprocessing.cpu_count",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "os.path.dirname(os.path.realpath(__file__))",
+        "os.path.realpath(__file__)",
+        "os.path.join(PROJECT_DIR, \"pyvex\", \"lib\")",
+        "os.path.join(PROJECT_DIR, \"pyvex\", \"include\")",
+        "os.path.join(PROJECT_DIR, \"vex\")",
+        "os.path.abspath(os.path.join(PROJECT_DIR, \"vex\"))",
+        "os.path.join(VEX_PATH, \"pub\")",
+        "os.listdir(VEX_PATH)",
+        "os.environ.copy()",
+        "shutil.which(\"gmake\")",
+        "multiprocessing.cpu_count()",
+        "subprocess.run(cmd, cwd=VEX_PATH, env=e, check=True)",
+        "os.environ.copy()",
+        "os.path.join(VEX_PATH, \"pub\")",
+        "os.path.join(VEX_PATH, \"libvex.lib\")",
+        "os.path.join(PROJECT_DIR, \"vex\")",
+        "shutil.which(\"gmake\")",
+        "multiprocessing.cpu_count()",
+        "subprocess.run(cmd, cwd=\"pyvex_c\", env=e, check=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.realpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.listdir",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.environ.copy",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "multiprocessing.cpu_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os\nimport shutil\nimport multiprocessing\nimport subprocess\nfrom setuptools.errors import LibError\n\nPROJECT_DIR = os.path.dirname(os.path.realpath(__file__))\nLIB_DIR = os.path.join(PROJECT_DIR, \"pyvex\", \"lib\")\nINCLUDE_DIR = os.path.join(PROJECT_DIR, \"pyvex\", \"include\")\nVEX_PATH = os.path.abspath(os.path.join(PROJECT_DIR, \"vex\"))\n\ndef _build_vex():\n    if len(os.listdir(VEX_PATH)) == 0:\n        raise LibError(\n            \"vex submodule not cloned correctly, aborting.\\nThis may be fixed with `git submodule update --init`\"\n        )\n\n    e = os.environ.copy()\n    e[\"MULTIARCH\"] = \"1\"\n    e[\"DEBUG\"] = \"1\"\n\n    if sys.platform == \"win32\":\n        cmd = [\"nmake\", \"/f\", \"Makefile-msvc\", \"all\"]\n    elif shutil.which(\"gmake\") is not None:\n        cmd = [\"gmake\", \"-f\", \"Makefile-gcc\", \"-j\", str(multiprocessing.cpu_count()), \"all\"]\n    else:\n        cmd = [\"make\", \"-f\", \"Makefile-gcc\", \"-j\", str(multiprocessing.cpu_count()), \"all\"]\n\n    try:\n        subprocess.run(cmd, cwd=VEX_PATH, env=e, check=True)\n    except FileNotFoundError as err:\n        raise LibError(\"Couldn't find \" + cmd[0] + \" in PATH\") from err\n    except subprocess.CalledProcessError as err:\n        raise LibError(\"Error while building libvex: \" + str(err)) from err\n\ndef _build_pyvex():\n    e = os.environ.copy()\n    e[\"VEX_LIB_PATH\"] = VEX_PATH\n    e[\"VEX_INCLUDE_PATH\"] = os.path.join(VEX_PATH, \"pub\")\n    e[\"VEX_LIB_FILE\"] = os.path.join(VEX_PATH, \"libvex.lib\")\n\n    if sys.platform == \"win32\":\n        cmd = [\"nmake\", \"/f\", \"Makefile-msvc\"]\n    elif shutil.which(\"gmake\") is not None:\n        cmd = [\"gmake\", \"-f\", \"Makefile\", \"-j\", str(multiprocessing.cpu_count())]\n    else:\n        cmd = [\"make\", \"-f\", \"Makefile\", \"-j\", str(multiprocessing.cpu_count())]\n\n    try:\n        subprocess.run(cmd, cwd=\"pyvex_c\", env=e, check=True)\n    except FileNotFoundError as err:\n        raise LibError(\"Couldn't find \" + cmd[0] + \" in PATH\") from err\n    except subprocess.CalledProcessError as err:\n        raise LibError(\"Error while building libpyvex: \" + str(err)) from err"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "pyvex-9.2.149",
+      "total_matches": 2
+    }
+  }
+]

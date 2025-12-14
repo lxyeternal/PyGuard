@@ -1,0 +1,214 @@
+[
+  {
+    "pyfile": "graphql.py",
+    "code_snippet": "import os\nimport requests\nfrom typing import Any\nfrom typing import Dict\nfrom typing import Optional\nfrom .result import FusionSQLResult\n\nAPI_URL = 'https://backend.singlestore.com/public'\n\ndef find_path(d: Dict[str, Any], path: str):\n    curr = d\n    keys = path.split('.')\n    for i, k in enumerate(keys):\n        if k in curr:\n            curr = curr[k]\n            if not isinstance(curr, dict):\n                break\n        else:\n            return False, None\n    if (i + 1) == len(keys):\n        return True, curr\n    return False, None\n\nclass GraphQueryField(object):\n    def __init__(self, path: str, dtype: int, include, converter):\n        self.path = path\n        self.dtype = dtype\n        self.include = [include] if isinstance(include, str) else include\n        self.include = [x for x in self.include if x]\n        self.converter = converter\n        self._sort_index = 0\n    def get_path(self, value: Any):\n        found, out = find_path(value, self.path)\n        if self.converter is not None:\n            return found, self.converter(out)\n        return found, out\n\nclass GraphQuery(object):\n    def __init__(self, api_token: str = '', api_url: str = API_URL) -> None:\n        self.api_token = api_token\n        self.api_url = api_url\n\n    @classmethod\n    def get_query(cls) -> str:\n        return cls.__doc__ or ''\n\n    @classmethod\n    def get_fields(cls):\n        attrs = [(k, v) for k, v in vars(cls).items() if isinstance(v, GraphQueryField)]\n        attrs = list(sorted(attrs, key=lambda x: x[1]._sort_index))\n        return attrs\n\n    def run(\n        self,\n        variables: Optional[Dict[str, Any]] = None,\n        *,\n        filter_expr: str = '',\n    ) -> FusionSQLResult:\n        \"\"\"\n        Run the query.\n\n        Parameters\n        ----------\n        variables : Dict[str, Any], optional\n            Dictionary of substitution parameters\n\n        Returns\n        -------\n        FusionSQLResult\n\n        \"\"\"\n        api_token = self.api_token or os.environ.get('SINGLESTOREDB_BACKEND_TOKEN')\n        res = requests.post(\n            self.api_url,\n            headers={\n                'Content-Type': 'application/json',\n                'Authorization': f'Bearer {api_token}',\n            },\n            json={\n                'query': type(self).get_query(),\n                'variables': variables or {},\n            },\n        )\n\n        if res.status_code != 200:\n            raise ValueError(f'an error occurred: {res.text}')\n\n        json = res.json()\n\n        if json['data']:\n            data = json['data'].popitem()[-1]\n            if isinstance(data, Dict):\n                data = [data]\n        else:\n            data = []\n\n        fres = FusionSQLResult()\n\n        rows = []\n        fields = type(self).get_fields()\n        for i, obj in enumerate(data):\n            row = []\n            for name, field in fields:\n                found, value = field.get_path(obj)\n                if found:\n                    if i == 0:\n                        fres.add_field(name, field.dtype)\n                    row.append(value)\n            rows.append(tuple(row))\n\n        fres.set_rows(rows)\n\n        return fres\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.environ.get",
+        "requests.post",
+        "requests.models.Response.status_code",
+        "requests.models.Response.text",
+        "requests.models.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "os.environ.get('SINGLESTOREDB_BACKEND_TOKEN')",
+        "requests.post(self.api_url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {api_token}'}, json={'query': type(self).get_query(), 'variables': variables or {}})",
+        "res.status_code",
+        "res.text",
+        "res.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post",
+          "description": "Sends HTTP POST request with data and parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "requests.models.Response.status_code",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.models.Response.text",
+          "id": "get_response_body",
+          "description": "Retrieves response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "import os\nimport requests\n\ndef run(self, variables: Optional[Dict[str, Any]] = None, *, filter_expr: str = '') -> FusionSQLResult:\n    api_token = self.api_token or os.environ.get('SINGLESTOREDB_BACKEND_TOKEN')\n    res = requests.post(\n        self.api_url,\n        headers={\n            'Content-Type': 'application/json',\n            'Authorization': f'Bearer {api_token}',\n        },\n        json={\n            'query': type(self).get_query(),\n            'variables': variables or {},\n        },\n    )\n\n    if res.status_code != 200:\n        raise ValueError(f'an error occurred: {res.text}')\n\n    json = res.json()"
+    }
+  },
+  {
+    "pyfile": "auth.py",
+    "code_snippet": "import platform\nimport webbrowser\nimport time\nimport threading\nimport urllib\nfrom http.server import BaseHTTPRequestHandler, HTTPServer\n\nfrom .config import get_option\n\ndef _listify(s: Optional[Union[str, List[str]]]) -> Optional[str]:\n    \"\"\"Return a list of strings in a comma-separated string.\"\"\"\n    if s is None:\n        return None\n    if not isinstance(s, str):\n        return ','.join(s)\n    return s\n\ndef get_jwt(\n    email: str, url: str = SSO_URL,\n    clusters: Optional[Union[str, List[str]]] = None,\n    databases: Optional[Union[str, List[str]]] = None,\n    timeout: int = 60, browser: Optional[Union[str, List[str]]] = None,\n) -> JSONWebToken:\n    \"\"\"\n    Retrieve a JWT token from the SingleStoreDB single-sign-on URL.\n\n    Parameters\n    ----------\n    email : str\n        EMail of the database user\n    url : str, optional\n        The URL of the single-sign-on token generator\n    clusters : str or list[str], optional\n        The name of the cluster being connected to\n    databases : str or list[str], optional\n        The name of the database being connected to\n    timeout : int, optional\n        Number of seconds to wait before timing out the authentication request\n    browser : str or list[str], optional\n        Browser to use instead of the default. This value can be any of the\n        names specified in Python's `webbrowser` module. This includes\n        'google-chrome', 'chrome', 'chromium', 'chromium-browser', 'firefox',\n        etc. Note that at the time of this writing, Safari was not\n        compatible. If a list of names is specified, each one tried until\n        a working browser is located.\n\n    Returns\n    -------\n    JSONWebToken\n\n    \"\"\"\n    token = []\n    error = []\n\n    class AuthServer(BaseHTTPRequestHandler):\n\n        def log_message(self, format: str, *args: Any) -> None:\n            return\n\n        def do_POST(self) -> None:\n            content_len = int(self.headers.get('Content-Length', 0))\n            post_body = self.rfile.read(content_len)\n\n            try:\n                out = JSONWebToken.from_token(post_body)\n            except Exception as exc:\n                self.send_response(400, exc.args[0])\n                self.send_header('Content-Type', 'text/plain')\n                self.end_headers()\n                error.append(exc)\n                return\n\n            token.append(out)\n\n            self.send_response(204)\n            self.send_header('Access-Control-Allow-Origin', '*')\n            self.send_header('Content-Type', 'text/plain')\n            self.end_headers()\n\n    server = None\n\n    try:\n        server = HTTPServer(('127.0.0.1', 0), AuthServer)\n        threading.Thread(target=server.serve_forever).start()\n\n        host = server.server_address[0]\n        if isinstance(host, bytes):\n            host = host.decode('utf-8')\n\n        query = urllib.parse.urlencode({\n            k: v for k, v in dict(\n                email=email,\n                returnTo=f'http://{host}:{server.server_address[1]}',\n                db=_listify(databases),\n                cluster=_listify(clusters),\n            ).items() if v is not None\n        })\n\n        if browser is None:\n            browser = get_option('sso_browser')\n\n        # On Mac, always specify a list of browsers to check because Safari\n        # is not compatible.\n        if browser is None and platform.platform().lower().startswith('mac'):\n            browser = [\n                'chrome', 'google-chrome', 'chromium',\n                'chromium-browser', 'firefox',\n            ]\n\n        if browser and isinstance(browser, str):\n            browser = [browser]\n\n        if browser:\n            exc: Optional[Exception] = None\n            for item in browser:\n                try:\n                    webbrowser.get(item).open(f'{url}?{query}')\n                    break\n                except webbrowser.Error as wexc:\n                    exc = wexc\n                    pass\n            if exc is not None:\n                raise RuntimeError(\n                    'Could not find compatible web browser for accessing JWT',\n                )\n        else:\n            webbrowser.open(f'{url}?{query}')\n\n        for i in range(timeout * 2):\n            if error:\n                raise error[0]\n            if token:\n                out = token[0]\n                out.url = url\n                out.clusters = clusters\n                out.databases = databases\n                out.timeout = timeout\n                return out\n            time.sleep(0.5)\n\n    finally:\n        if server is not None:\n            server.shutdown()\n\n    raise RuntimeError('Timeout waiting for token')",
+    "pattern_analysis": {
+      "api_sequence": [
+        "HTTPServer",
+        "threading.Thread",
+        "threading.Thread.start",
+        "server.server_address",
+        "server.server_address",
+        "urllib.parse.urlencode",
+        "get_option",
+        "platform.platform",
+        "webbrowser.get",
+        "webbrowser.get.open",
+        "webbrowser.open",
+        "time.sleep",
+        "server.shutdown"
+      ],
+      "api_sequence_with_args": [
+        "HTTPServer(('127.0.0.1', 0), AuthServer)",
+        "threading.Thread(target=server.serve_forever)",
+        "threading.Thread(target=server.serve_forever).start()",
+        "server.server_address[0]",
+        "server.server_address[1]",
+        "urllib.parse.urlencode({...})",
+        "get_option('sso_browser')",
+        "platform.platform()",
+        "webbrowser.get(item)",
+        "webbrowser.get(item).open(f'{url}?{query}')",
+        "webbrowser.open(f'{url}?{query}')",
+        "time.sleep(0.5)",
+        "server.shutdown()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "HTTPServer",
+          "id": "create_http_connection",
+          "description": "Creates HTTP connection to specified host",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_creation"
+        },
+        {
+          "api_name": "threading.Thread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "threading.Thread.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "server.server_address",
+          "id": "get_socket_local_addr",
+          "description": "Retrieves local address of the socket",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "server.server_address",
+          "id": "get_socket_local_addr",
+          "description": "Retrieves local address of the socket",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "urllib.parse.urlencode",
+          "id": "encode_url_query",
+          "description": "Encodes mapping object to URL query string",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_configuration"
+        },
+        {
+          "api_name": "get_option",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "platform.platform",
+          "id": "get_platform_info",
+          "description": "Retrieves platform information as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "webbrowser.get",
+          "id": "open_file_app",
+          "description": "Opens file with associated application",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "webbrowser.get.open",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "webbrowser.open",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "server.shutdown",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "from http.server import BaseHTTPRequestHandler, HTTPServer\nimport threading\nimport urllib\nimport platform\nimport webbrowser\nimport time\nfrom .config import get_option\n\ndef get_jwt(email, url=SSO_URL, clusters=None, databases=None, timeout=60, browser=None):\n    token = []\n    error = []\n\n    class AuthServer(BaseHTTPRequestHandler):\n        def log_message(self, format, *args):\n            return\n        def do_POST(self):\n            content_len = int(self.headers.get('Content-Length', 0))\n            post_body = self.rfile.read(content_len)\n            try:\n                out = JSONWebToken.from_token(post_body)\n            except Exception as exc:\n                self.send_response(400, exc.args[0])\n                self.send_header('Content-Type', 'text/plain')\n                self.end_headers()\n                error.append(exc)\n                return\n            token.append(out)\n            self.send_response(204)\n            self.send_header('Access-Control-Allow-Origin', '*')\n            self.send_header('Content-Type', 'text/plain')\n            self.end_headers()\n\n    server = None\n    try:\n        server = HTTPServer(('127.0.0.1', 0), AuthServer)\n        threading.Thread(target=server.serve_forever).start()\n        host = server.server_address[0]\n        if isinstance(host, bytes):\n            host = host.decode('utf-8')\n        query = urllib.parse.urlencode({\n            k: v for k, v in dict(\n                email=email,\n                returnTo=f'http://{host}:{server.server_address[1]}',\n                db=_listify(databases),\n                cluster=_listify(clusters),\n            ).items() if v is not None\n        })\n        if browser is None:\n            browser = get_option('sso_browser')\n        if browser is None and platform.platform().lower().startswith('mac'):\n            browser = [\n                'chrome', 'google-chrome', 'chromium',\n                'chromium-browser', 'firefox',\n            ]\n        if browser and isinstance(browser, str):\n            browser = [browser]\n        if browser:\n            exc = None\n            for item in browser:\n                try:\n                    webbrowser.get(item).open(f'{url}?{query}')\n                    break\n                except webbrowser.Error as wexc:\n                    exc = wexc\n                    pass\n            if exc is not None:\n                raise RuntimeError('Could not find compatible web browser for accessing JWT')\n        else:\n            webbrowser.open(f'{url}?{query}')\n        for i in range(timeout * 2):\n            if error:\n                raise error[0]\n            if token:\n                out = token[0]\n                out.url = url\n                out.clusters = clusters\n                out.databases = databases\n                out.timeout = timeout\n                return out\n            time.sleep(0.5)\n    finally:\n        if server is not None:\n            server.shutdown()"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "singlestoredb-1.12.4",
+      "total_matches": 2
+    }
+  }
+]

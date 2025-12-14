@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import sys\nfrom setuptools import setup, Extension\nfrom distutils.command.build_ext import build_ext\nfrom distutils.errors import (CCompilerError, DistutilsExecError,\n    DistutilsPlatformError)\n\nbuild_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)\nif sys.platform == 'win32' and sys.version_info > (2, 6):\n    # 2.6's distutils.msvc9compiler can raise an IOError when failing to\n    # find the compiler\n    build_errors += (IOError,)\n\nclass BuildError(Exception):\n    \"\"\"Raised if compiling extensions failed.\"\"\"\n\nclass optional_build_ext(build_ext):\n    \"\"\"build_ext implementation with optional C speedups.\"\"\"\n\n    def run(self):\n        try:\n            build_ext.run(self)\n        except DistutilsPlatformError:\n            raise BuildError()\n\n    def build_extension(self, ext):\n        try:\n            build_ext.build_extension(self, ext)\n        except build_errors as be:\n            raise BuildError(be)\n        except ValueError as ve:\n            # this can happen on Windows 64 bit, see Python issue 7511\n            if \"'path'\" in str(sys.exc_info()[1]): # works with Python 2 and 3\n                raise BuildError(ve)\n            raise\n\nVERSION = eval(open('cbor/VERSION.py','rb').read())\n\nsetup_options = dict(\n    name='cbor',\n    version=VERSION,\n    description='RFC 7049 - Concise Binary Object Representation',\n    long_description=\"\"\"\nAn implementation of RFC 7049 - Concise Binary Object Representation (CBOR).\n\nCBOR is comparable to JSON, has a superset of JSON's ability, but serializes to a binary format which is smaller and faster to generate and parse.\n\nThe two primary functions are cbor.loads() and cbor.dumps().\n\nThis library includes a C implementation which runs 3-5 times faster than the Python standard library's C-accelerated implementanion of JSON. This is also includes a 100% Python implementation.\n\"\"\",\n    author='Brian Olson',\n    author_email='bolson@bolson.org',\n    url='https://bitbucket.org/bodhisnarkva/cbor',\n    packages=['cbor'],\n    package_dir={'cbor':'cbor'},\n    ext_modules=[\n        Extension(\n            'cbor._cbor',\n            include_dirs=['c/'],\n            sources=['c/cbormodule.c'],\n            headers=['c/cbor.h'],\n        )\n    ],\n    license='Apache',\n    classifiers=[\n\t'Development Status :: 5 - Production/Stable',\n        'Intended Audience :: Developers',\n        'License :: OSI Approved :: Apache Software License',\n        'Operating System :: OS Independent',\n        'Programming Language :: Python :: 2.7',\n        'Programming Language :: Python :: 3.4',\n        'Programming Language :: Python :: 3.5',\n        'Programming Language :: C',\n        'Topic :: Software Development :: Libraries :: Python Modules',\n    ],\n    cmdclass={'build_ext': optional_build_ext},\n)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "open",
+        "eval",
+        "setuptools.setup"
+      ],
+      "api_sequence_with_args": [
+        "open('cbor/VERSION.py','rb')",
+        "eval(open('cbor/VERSION.py','rb').read())",
+        "setuptools.setup(**setup_options)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "eval",
+          "id": "eval_python_expr",
+          "description": "Evaluates string as Python expression",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "setuptools.setup",
+          "id": "configure_package_install",
+          "description": "Configures and initiates Python package installation",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "package_configuration"
+        }
+      ],
+      "contextual_code": "VERSION = eval(open('cbor/VERSION.py','rb').read())\n\nsetup_options = dict(\n    ...\n)\n\nsetuptools.setup(**setup_options)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "cbor-1.0.0",
+      "total_matches": 1
+    }
+  }
+]

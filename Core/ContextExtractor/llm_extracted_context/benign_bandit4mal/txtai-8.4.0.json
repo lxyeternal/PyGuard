@@ -1,0 +1,20 @@
+[
+  {
+    "metadata": {
+      "package_name": "txtai-8.4.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "microphone.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/txtai-8.4.0/txtai-8.4.0/src/python/txtai/pipeline/audio/microphone.py",
+    "line_number": "116",
+    "type_description": "B814:read",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "115\t            # Read chunk\n116\t            chunk, _ = stream.read(chunksize)\n117",
+    "context_snippet": "def listen(self, device):\n    \"\"\"\n    Listens for speech. Detected speech is converted to 32-bit floats for compatibility with\n    automatic speech recognition (ASR) pipelines.\n\n    This method blocks until speech is detected.\n\n    Args:\n        device: input device\n\n    Returns:\n        audio\n    \"\"\"\n\n    # Record in 100ms chunks\n    chunksize = self.rate // 10\n\n    # Open input stream\n    stream = sd.RawInputStream(device=device, samplerate=self.rate, channels=1, blocksize=chunksize, dtype=np.int16)\n\n    # Start the input stream\n    stream.start()\n\n    record, speech, nospeech, chunks = True, 0, 0, []\n    while record:\n        # Read chunk\n        chunk, _ = stream.read(chunksize)\n\n        # Detect speech using WebRTC VAD for audio chunk\n        detect = self.detect(chunk)\n        speech = speech + 1 if detect else speech\n        nospeech = 0 if detect else nospeech + 1\n\n        # Save chunk, if this is an active stream\n        if speech:\n            chunks.append(chunk)\n\n            # Pause limit has been reached, check if this audio should be accepted\n            if nospeech >= self.pause:\n                logger.debug(\"Audio detected and being analyzed\")\n                if speech >= self.active and self.isspeech(chunks[:-nospeech]):\n                    # Disable recording\n                    record = False\n                else:\n                    # Reset parameters and keep recording\n                    logger.debug(\"Speech not detected\")\n                    speech, nospeech, chunks = 0, 0, []\n\n    # Stop the input stream\n    stream.stop()\n\n    # Convert to float32 and return\n    audio = np.frombuffer(b\"\".join(chunks), np.int16)\n    return Signal.float32(audio)",
+    "hash_value": "c7fe64715342318f465d839a0a8afc4b"
+  }
+]

@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "package_name": "aws_sam_cli-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/aws_sam_cli-1.137.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "container.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/aws_sam_cli-1.137.0/aws_sam_cli-1.137.0/samcli/local/docker/container.py",
+      "line_number": "428",
+      "type_description": "B820:get",
+      "context_snippet": "    @retry(exc=requests.exceptions.RequestException, exc_raise=ContainerResponseException)\n    def wait_for_http_response(self, name, event, stdout) -> Tuple[Union[str, bytes], bool]:\n        # TODO(sriram-mv): `aws-lambda-rie` is in a mode where the function_name is always \"function\"\n        # NOTE(sriram-mv): There is a connection timeout set on the http call to `aws-lambda-rie`, however there is not\n        # a read time out for the response received from the server.\n\n        # generate a lock key with host-port combination which is unique per function\n        lock_key = f\"{self._container_host}-{self.rapid_port_host}\"\n        LOG.debug(\"Getting lock for the key %s\", lock_key)\n        with CONCURRENT_CALL_MANAGER_LOCK:\n            lock = CONCURRENT_CALL_MANAGER.get(lock_key)\n            if not lock:\n                lock = threading.Lock()\n                CONCURRENT_CALL_MANAGER[lock_key] = lock\n        LOG.debug(\"Waiting to retrieve the lock (%s) to start invocation\", lock_key)\n        with lock:\n            resp = requests.post(\n                self.URL.format(host=self._container_host, port=self.rapid_port_host, function_name=\"function\"),\n                data=event.encode(\"utf-8\"),\n                timeout=(self.RAPID_CONNECTION_TIMEOUT, None),\n            )\n\n        try:\n            # if response is an image then json.loads/dumps will throw a UnicodeDecodeError so return raw content\n            if resp.headers.get(\"Content-Type\") and \"image\" in resp.headers[\"Content-Type\"]:\n                return resp.content, True\n            return json.dumps(json.loads(resp.content), ensure_ascii=False), False\n        except json.JSONDecodeError:\n            LOG.debug(\"Failed to deserialize response from RIE, returning the raw response as is\")\n            return resp.content, False",
+      "hash_value": "5b76386bb7c8b9ec7d44d56a008c44ac",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    @retry(exc=requests.exceptions.RequestException, exc_raise=ContainerResponseException)\n    def wait_for_http_response(self, name, event, stdout) -> Tuple[Union[str, bytes], bool]:\n        # TODO(sriram-mv): `aws-lambda-rie` is in a mode where the function_name is always \"function\"\n        # NOTE(sriram-mv): There is a connection timeout set on the http call to `aws-lambda-rie`, however there is not\n        # a read time out for the response received from the server.\n\n        # generate a lock key with host-port combination which is unique per function\n        lock_key = f\"{self._container_host}-{self.rapid_port_host}\"\n        LOG.debug(\"Getting lock for the key %s\", lock_key)\n        with CONCURRENT_CALL_MANAGER_LOCK:\n            lock = CONCURRENT_CALL_MANAGER.get(lock_key)\n            if not lock:\n                lock = threading.Lock()\n                CONCURRENT_CALL_MANAGER[lock_key] = lock\n        LOG.debug(\"Waiting to retrieve the lock (%s) to start invocation\", lock_key)\n        with lock:\n            resp = requests.post(\n                self.URL.format(host=self._container_host, port=self.rapid_port_host, function_name=\"function\"),\n                data=event.encode(\"utf-8\"),\n                timeout=(self.RAPID_CONNECTION_TIMEOUT, None),\n            )\n\n        try:\n            # if response is an image then json.loads/dumps will throw a UnicodeDecodeError so return raw content\n            if resp.headers.get(\"Content-Type\") and \"image\" in resp.headers[\"Content-Type\"]:\n                return resp.content, True\n            return json.dumps(json.loads(resp.content), ensure_ascii=False), False\n        except json.JSONDecodeError:\n            LOG.debug(\"Failed to deserialize response from RIE, returning the raw response as is\")\n            return resp.content, False",
+          "triple_sequences": [
+            {
+              "action_api": "threading.Lock()",
+              "action_description": "Creates new thread to execute",
+              "action_id": "create_thread",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "concurrent_execution_preparation",
+              "intention_id": "concurrent_execution_preparation"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "self.URL.format(host=self._container_host, port=self.rapid_port_host, function_name=\"function\")",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "event.encode()",
+              "action_description": "Encodes string to bytes using default encoding",
+              "action_id": "encode_string_to_bytes",
+              "object": "event",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Encode string to bytes",
+              "intention_id": "encode_string_to_bytes"
+            },
+            {
+              "action_api": "resp.headers.get()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "Content-Type",
+              "object_description": "Content type string",
+              "object_id": "content_type",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "resp.content",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "resp.content",
+              "object_description": "HTTP response remote content",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "resp.content",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "json.dumps()",
+              "action_description": "Serializes Python object to JSON string",
+              "action_id": "serialize_to_json",
+              "object": "json.loads(resp.content)",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Serialize data",
+              "intention_id": "serialize_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

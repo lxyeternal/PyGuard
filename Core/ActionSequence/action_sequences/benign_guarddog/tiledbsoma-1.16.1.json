@@ -1,0 +1,211 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import ctypes\nimport os\nimport pathlib\nimport platform\nimport shutil\nimport subprocess\nimport sys\n\nimport setuptools.command.bdist_wheel\nimport setuptools.command.build_ext\n\n# ... (other code and imports above)\n\ndef libtiledbsoma_exists():\n    \"\"\"\n    Returns the path to the TileDB-SOMA library, if it exists.\n    :return: The path to the TileDB-SOMA library, or None.\n    \"\"\"\n    # Check if TileDB-SOMA is installed in user given path\n    dist_dirs = [tiledbsoma_dir / \"lib\"]\n    if sys.platform.startswith(\"linux\"):\n        dist_dirs.append(tiledbsoma_dir / \"lib64\")\n        dist_dirs.append(tiledbsoma_dir / \"lib\" / \"x86_64-linux-gnu\")\n    elif os.name == \"nt\":\n        dist_dirs.append(tiledbsoma_dir / \"bin\")\n\n    for lib_dir in dist_dirs:\n        full_lib_path = lib_dir / get_libtiledbsoma_library_name()\n        print(f\"Checking: {full_lib_path} exists: {full_lib_path.exists()}\")\n        if full_lib_path.exists():\n            return lib_dir\n\n    # Check to see if TileDB-SOMA is globally installed.\n    lib_name = get_libtiledbsoma_library_name()\n\n    try:\n        # Note: This is a relative path on Linux\n        # https://bugs.python.org/issue21042\n        if os.name == \"posix\" and sys.platform != \"darwin\":\n            path = find_libtiledbsoma_full_path_on_linux(lib_name)\n        else:\n            path = ctypes.CDLL(lib_name)\n        print(f\"Found globally installed {path}\")\n        return pathlib.Path(path).parents[0]\n    except Exception as e:\n        print(e)\n        return None\n\n\ndef find_or_build_package_data(setuptools_cmd):\n    # check if libtiledbsoma is installed\n    lib_dir = libtiledbsoma_exists()\n\n    # if not then build from source\n    if lib_dir is None:\n        # Note: The GitHub build process uses the contents of `bld` as a key\n        # to cache the native binaries. Using non-default options here will\n        # cause that cache to fall out of sync.\n        #\n        # See `.github/workflows/python-ci-single.yml` for configuration.\n        if os.name == \"nt\":\n            bld_command = [\"pwsh.exe\", \"./bld.ps1\"]\n            if tiledb_dir is not None:\n                bld_command.append(f\"TileDBLocation={tiledb_dir}\")\n            if no_tiledb_dep:\n                bld_command.append(\"RemoveTileDBDeprecated=ON\")\n\n        else:\n            bld_command = [\"./bld\"]\n            if tiledb_dir is not None:\n                bld_command.append(f\"--tiledb={tiledb_dir}\")\n            if no_tiledb_dep:\n                bld_command.append(\"--no-tiledb-deprecated=true\")\n\n        subprocess.run(bld_command, cwd=scripts_dir, check=True)\n\n        lib_dir = libtiledbsoma_exists()\n        assert lib_dir, \"error when building libtiledbsoma from source\"\n\n        # If we are building from source, then we are likely building wheels.\n        # Copy both the tiledbsoma and tiledb shared objects into the\n        # package dir so they can be found by package_data\n        package_data = []\n        src_dir = this_dir / \"src\" / \"tiledbsoma\"\n        for f in lib_dir.glob(\"*tiledbsoma.*\"):\n            if f.suffix != \".a\":  # skip static library\n                print(f\"  copying file {f} to {src_dir}\")\n                shutil.copy(f, src_dir)\n                package_data.append(f.name)\n        assert package_data, f\"tiledbsoma artifacts absent from {lib_dir}\"\n\n        if not tiledb_given:\n            for f in lib_dir.glob(\"*tiledb.*\"):\n                if f.suffix != \".a\":  # skip static library\n                    print(f\"  copying file {f} to {src_dir}\")\n                    shutil.copy(f, src_dir)\n                    package_data.append(f.name)\n                assert package_data, f\"tiledb artifacts absent from {lib_dir}\"\n\n        # Install shared libraries inside the Python module via package_data.\n        print(f\"  adding to package_data: {package_data}\")\n        setuptools_cmd.distribution.package_data[\"tiledbsoma\"] = package_data\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.platform.startswith",
+        "os.name",
+        "pathlib.Path.exists",
+        "pathlib.Path.exists",
+        "ctypes.CDLL",
+        "pathlib.Path",
+        "pathlib.Path.parents",
+        "os.name",
+        "sys.platform",
+        "find_libtiledbsoma_full_path_on_linux",
+        "ctypes.CDLL",
+        "pathlib.Path",
+        "pathlib.Path.parents",
+        "subprocess.run",
+        "libtiledbsoma_exists",
+        "pathlib.Path.glob",
+        "shutil.copy",
+        "pathlib.Path.glob",
+        "shutil.copy"
+      ],
+      "api_sequence_with_args": [
+        "sys.platform.startswith(\"linux\")",
+        "os.name",
+        "pathlib.Path.exists()",
+        "pathlib.Path.exists()",
+        "ctypes.CDLL(lib_name)",
+        "pathlib.Path(path)",
+        "pathlib.Path(path).parents[0]",
+        "os.name",
+        "sys.platform",
+        "find_libtiledbsoma_full_path_on_linux(lib_name)",
+        "ctypes.CDLL(lib_name)",
+        "pathlib.Path(path)",
+        "pathlib.Path(path).parents[0]",
+        "subprocess.run(bld_command, cwd=scripts_dir, check=True)",
+        "libtiledbsoma_exists()",
+        "lib_dir.glob(\"*tiledbsoma.*\")",
+        "shutil.copy(f, src_dir)",
+        "lib_dir.glob(\"*tiledb.*\")",
+        "shutil.copy(f, src_dir)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.platform.startswith",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.name",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "pathlib.Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "pathlib.Path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "ctypes.CDLL",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "pathlib.Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "pathlib.Path.parents",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.name",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "find_libtiledbsoma_full_path_on_linux",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "ctypes.CDLL",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "pathlib.Path",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "pathlib.Path.parents",
+          "id": "path_object_operations",
+          "description": "Path object and status operations (creating Path objects, retrieving file status)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "libtiledbsoma_exists",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "pathlib.Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "def libtiledbsoma_exists():\n    dist_dirs = [tiledbsoma_dir / \"lib\"]\n    if sys.platform.startswith(\"linux\"):\n        dist_dirs.append(tiledbsoma_dir / \"lib64\")\n        dist_dirs.append(tiledbsoma_dir / \"lib\" / \"x86_64-linux-gnu\")\n    elif os.name == \"nt\":\n        dist_dirs.append(tiledbsoma_dir / \"bin\")\n\n    for lib_dir in dist_dirs:\n        full_lib_path = lib_dir / get_libtiledbsoma_library_name()\n        print(f\"Checking: {full_lib_path} exists: {full_lib_path.exists()}\")\n        if full_lib_path.exists():\n            return lib_dir\n\n    lib_name = get_libtiledbsoma_library_name()\n    try:\n        if os.name == \"posix\" and sys.platform != \"darwin\":\n            path = find_libtiledbsoma_full_path_on_linux(lib_name)\n        else:\n            path = ctypes.CDLL(lib_name)\n        print(f\"Found globally installed {path}\")\n        return pathlib.Path(path).parents[0]\n    except Exception as e:\n        print(e)\n        return None\n\ndef find_or_build_package_data(setuptools_cmd):\n    lib_dir = libtiledbsoma_exists()\n    if lib_dir is None:\n        if os.name == \"nt\":\n            bld_command = [\"pwsh.exe\", \"./bld.ps1\"]\n            if tiledb_dir is not None:\n                bld_command.append(f\"TileDBLocation={tiledb_dir}\")\n            if no_tiledb_dep:\n                bld_command.append(\"RemoveTileDBDeprecated=ON\")\n        else:\n            bld_command = [\"./bld\"]\n            if tiledb_dir is not None:\n                bld_command.append(f\"--tiledb={tiledb_dir}\")\n            if no_tiledb_dep:\n                bld_command.append(\"--no-tiledb-deprecated=true\")\n        subprocess.run(bld_command, cwd=scripts_dir, check=True)\n        lib_dir = libtiledbsoma_exists()\n        assert lib_dir, \"error when building libtiledbsoma from source\"\n        package_data = []\n        src_dir = this_dir / \"src\" / \"tiledbsoma\"\n        for f in lib_dir.glob(\"*tiledbsoma.*\"):\n            if f.suffix != \".a\":\n                print(f\"  copying file {f} to {src_dir}\")\n                shutil.copy(f, src_dir)\n                package_data.append(f.name)\n        assert package_data, f\"tiledbsoma artifacts absent from {lib_dir}\"\n        if not tiledb_given:\n            for f in lib_dir.glob(\"*tiledb.*\"):\n                if f.suffix != \".a\":\n                    print(f\"  copying file {f} to {src_dir}\")\n                    shutil.copy(f, src_dir)\n                    package_data.append(f.name)\n                assert package_data, f\"tiledb artifacts absent from {lib_dir}\"\n        print(f\"  adding to package_data: {package_data}\")\n        setuptools_cmd.distribution.package_data[\"tiledbsoma\"] = package_data"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "tiledbsoma-1.16.1",
+      "total_matches": 1
+    }
+  }
+]

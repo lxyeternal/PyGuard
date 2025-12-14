@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "package_name": "matrix_synapse-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/matrix_synapse-1.128.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "well_known_resolver.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/synapse/http/federation/well_known_resolver.py",
+      "line_number": "188",
+      "type_description": "B825:request",
+      "context_snippet": "    async def _fetch_well_known(self, server_name: bytes) -> Tuple[bytes, float]:\n        \"\"\"Actually fetch and parse a .well-known, without checking the cache\n\n        Args:\n            server_name: name of the server, from the requested url\n\n        Raises:\n            _FetchWellKnownFailure if we fail to lookup a result\n\n        Returns:\n            The lookup result and cache period.\n        \"\"\"\n\n        had_valid_well_known = self._had_valid_well_known_cache.get(server_name, False)\n\n        # We do this in two steps to differentiate between possibly transient\n        # errors (e.g. can't connect to host, 503 response) and more permanent\n        # errors (such as getting a 404 response).\n        response, body = await self._make_well_known_request(\n            server_name, retry=had_valid_well_known\n        )\n\n        try:\n            if response.code != 200:\n                raise Exception(\"Non-200 response %s\" % (response.code,))\n\n            parsed_body = json_decoder.decode(body.decode(\"utf-8\"))\n            logger.info(\"Response from .well-known: %s\", parsed_body)\n\n            result = parsed_body[\"m.server\"].encode(\"ascii\")\n        except defer.CancelledError:\n            # Bail if we've been cancelled\n            raise\n        except Exception as e:\n            logger.info(\"Error parsing well-known for %s: %s\", server_name, e)\n            raise _FetchWellKnownFailure(temporary=False)\n\n        cache_period = _cache_period_from_headers(\n            response.headers, time_now=self._reactor.seconds\n        )\n        if cache_period is None:\n            cache_period = WELL_KNOWN_DEFAULT_CACHE_PERIOD\n            # add some randomness to the TTL to avoid a stampeding herd every 24 hours\n            # after startup\n            cache_period *= random.uniform(\n                1 - WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n                1 + WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n            )\n        else:\n            cache_period = min(cache_period, WELL_KNOWN_MAX_CACHE_PERIOD)\n            cache_period = max(cache_period, WELL_KNOWN_MIN_CACHE_PERIOD)\n\n        # We got a success, mark as such in the cache\n        self._had_valid_well_known_cache.set(\n            server_name,\n            bool(result),\n            cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID,\n        )\n\n        return result, cache_period",
+      "hash_value": "d887af8a3e54f29bb11c812eb62187dd",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "    async def _fetch_well_known(self, server_name: bytes) -> Tuple[bytes, float]:\n        \"\"\"Actually fetch and parse a .well-known, without checking the cache\n\n        Args:\n            server_name: name of the server, from the requested url\n\n        Raises:\n            _FetchWellKnownFailure if we fail to lookup a result\n\n        Returns:\n            The lookup result and cache period.\n        \"\"\"\n\n        had_valid_well_known = self._had_valid_well_known_cache.get(server_name, False)\n\n        # We do this in two steps to differentiate between possibly transient\n        # errors (e.g. can't connect to host, 503 response) and more permanent\n        # errors (such as getting a 404 response).\n        response, body = await self._make_well_known_request(\n            server_name, retry=had_valid_well_known\n        )\n\n        try:\n            if response.code != 200:\n                raise Exception(\"Non-200 response %s\" % (response.code,))\n\n            parsed_body = json_decoder.decode(body.decode(\"utf-8\"))\n            logger.info(\"Response from .well-known: %s\", parsed_body)\n\n            result = parsed_body[\"m.server\"].encode(\"ascii\")\n        except defer.CancelledError:\n            # Bail if we've been cancelled\n            raise\n        except Exception as e:\n            logger.info(\"Error parsing well-known for %s: %s\", server_name, e)\n            raise _FetchWellKnownFailure(temporary=False)\n\n        cache_period = _cache_period_from_headers(\n            response.headers, time_now=self._reactor.seconds\n        )\n        if cache_period is None:\n            cache_period = WELL_KNOWN_DEFAULT_CACHE_PERIOD\n            # add some randomness to the TTL to avoid a stampeding herd every 24 hours\n            # after startup\n            cache_period *= random.uniform(\n                1 - WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n                1 + WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n            )\n        else:\n            cache_period = min(cache_period, WELL_KNOWN_MAX_CACHE_PERIOD)\n            cache_period = max(cache_period, WELL_KNOWN_MIN_CACHE_PERIOD)\n\n        # We got a success, mark as such in the cache\n        self._had_valid_well_known_cache.set(\n            server_name,\n            bool(result),\n            cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID,\n        )\n\n        return result, cache_period",
+          "triple_sequences": [
+            {
+              "action_api": "self._had_valid_well_known_cache.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "server_name, False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "self._make_well_known_request()",
+              "action_description": "Sends HTTP request",
+              "action_id": "send_http_request",
+              "object": "server_name, retry=had_valid_well_known",
+              "object_description": "External domain",
+              "object_id": "external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "body.decode()",
+              "action_description": "Decodes bytes using default codec",
+              "action_id": "decode_bytes_default",
+              "object": "\"utf-8\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Decode bytes to string",
+              "intention_id": "decode_bytes_to_string"
+            },
+            {
+              "action_api": "json_decoder.decode()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "body.decode(\"utf-8\")",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "logger.info()",
+              "action_description": "Process HTTP response content",
+              "action_id": "process_http_response",
+              "object": "\"Response from .well-known: %s\", parsed_body",
+              "object_description": "HTTP response remote content",
+              "object_id": "http_response_remote_content",
+              "intention_description": "Access remote data",
+              "intention_id": "access_remote_data"
+            },
+            {
+              "action_api": "parsed_body[\"m.server\"].encode()",
+              "action_description": "Encodes string to bytes using default encoding",
+              "action_id": "encode_string_to_bytes",
+              "object": "\"ascii\"",
+              "object_description": "Character encoding type",
+              "object_id": "character_encoding_type",
+              "intention_description": "Encode string to bytes",
+              "intention_id": "encode_string_to_bytes"
+            },
+            {
+              "action_api": "_cache_period_from_headers()",
+              "action_description": "Retrieves HTTP response status code",
+              "action_id": "get_http_status",
+              "object": "response.headers, time_now=self._reactor.seconds",
+              "object_description": "HTTP headers",
+              "object_id": "http_headers",
+              "intention_description": "Extract structured file data",
+              "intention_id": "extract_structured_file_data"
+            },
+            {
+              "action_api": "random.uniform()",
+              "action_description": "Generate random number",
+              "action_id": "generate_random_number",
+              "object": "1 - WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER, 1 + WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER",
+              "object_description": "Delay interval value",
+              "object_id": "delay_interval",
+              "intention_description": "Generate random number",
+              "intention_id": "generate_random_number"
+            },
+            {
+              "action_api": "self._had_valid_well_known_cache.set()",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "server_name, bool(result), cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Add registry value for startup",
+              "intention_id": "add_startup_registry_entry"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

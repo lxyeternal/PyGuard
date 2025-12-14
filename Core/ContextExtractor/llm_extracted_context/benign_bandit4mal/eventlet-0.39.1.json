@@ -1,0 +1,53 @@
+[
+  {
+    "metadata": {
+      "package_name": "eventlet-0.39.1",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "wsgi_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/wsgi_test.py",
+    "line_number": "1581",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1580\t        self.site.application = wsgi_app\n1581\t        sock = eventlet.connect(self.server_addr)\n1582\t        sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n')",
+    "context_snippet": "def test_007_get_arg(self):\n    # define a new handler that does a get_arg as well as a read_body\n    def new_app(env, start_response):\n        body = bytes_to_str(env['wsgi.input'].read())\n        a = parse.parse_qs(body).get('a', [1])[0]\n        start_response('200 OK', [('Content-type', 'text/plain')])\n        return [('a is %s, body is %s' % (a, body)).encode()]\n\n    self.site.application = new_app\n    sock = eventlet.connect(self.server_addr)\n    request = b'\\r\\n'.join((\n        b'POST / HTTP/1.0',\n        b'Host: localhost',\n        b'Content-Length: 3',\n        b'',\n        b'a=a'))\n    sock.sendall(request)\n\n    # send some junk after the actual request\n    sock.sendall(b'01234567890123456789')\n    result = read_http(sock)\n    self.assertEqual(result.body, b'a is a, body is a=a')",
+    "hash_value": "284c9f85d95c4da044c987f3536a402e"
+  },
+  {
+    "pyfile": "greenio_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/greenio_test.py",
+    "line_number": "531",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "530\t        def reader(s):\n531\t            s.recv(1)\n532",
+    "context_snippet": "def test_raised_multiple_readers(self):\n    debug.hub_prevent_multiple_readers(True)\n\n    def handle(sock, addr):\n        sock.recv(1)\n        sock.sendall(b\"a\")\n        raise eventlet.StopServe()\n\n    listener = eventlet.listen(('127.0.0.1', 0))\n    eventlet.spawn(eventlet.serve, listener, handle)\n\n    def reader(s):\n        s.recv(1)\n\n    s = eventlet.connect(('127.0.0.1', listener.getsockname()[1]))\n    a = eventlet.spawn(reader, s)\n    eventlet.sleep(0)\n    self.assertRaises(RuntimeError, s.recv, 1)\n    s.sendall(b'b')\n    a.wait()",
+    "hash_value": "291fbab0024970663222c94e5a62b6b1"
+  },
+  {
+    "pyfile": "greenio_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/greenio_test.py",
+    "line_number": "603",
+    "type_description": "B809:recv",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "602\t        try:\n603\t            client.recv(1)\n604\t            assert False",
+    "context_snippet": "def test_zero_timeout_and_back(self):\n    listen = eventlet.listen(('', 0))\n    # Keep reference to server side of socket\n    server = eventlet.spawn(listen.accept)\n    client = eventlet.connect(listen.getsockname())\n\n    client.settimeout(0.05)\n    # Now must raise socket.timeout\n    self.assertRaises(socket.timeout, client.recv, 1)\n\n    client.settimeout(0)\n    # Now must raise socket.error with EAGAIN\n    try:\n        client.recv(1)\n        assert False\n    except OSError as e:\n        assert get_errno(e) == errno.EAGAIN\n\n    client.settimeout(0.05)\n    # Now socket.timeout again\n    self.assertRaises(socket.timeout, client.recv, 1)\n    server.wait()",
+    "hash_value": "0a56ccb675929812a5a60fd0c287bda6"
+  },
+  {
+    "pyfile": "wsgi_test.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/eventlet-0.39.1/eventlet-0.39.1/tests/wsgi_test.py",
+    "line_number": "1910",
+    "type_description": "B806:sendall",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "1909\t        sock = eventlet.connect(self.server_addr)\n1910\t        sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nx-ANY_k: one\\r\\nx-ANY_k: two\\r\\n\\r\\n')\n1911\t        result = read_http(sock)",
+    "context_snippet": "def test_headers_raw(self):\n    def app(environ, start_response):\n        start_response('200 OK', [])\n        return [b'\\n'.join('{}: {}'.format(*kv).encode() for kv in environ['headers_raw'])]\n\n    self.spawn_server(site=app)\n    sock = eventlet.connect(self.server_addr)\n    sock.sendall(b'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nx-ANY_k: one\\r\\nx-ANY_k: two\\r\\n\\r\\n')\n    result = read_http(sock)\n    sock.close()\n    assert result.status == 'HTTP/1.1 200 OK'\n    assert result.body == b'Host: localhost\\nx-ANY_k: one\\nx-ANY_k: two'",
+    "hash_value": "f5d6045868b8b60d27d087fe43f881e5"
+  }
+]

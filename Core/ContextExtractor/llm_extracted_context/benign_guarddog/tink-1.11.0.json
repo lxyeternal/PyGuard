@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "tink-1.11.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/tink-1.11.0.txt",
+      "total_matches": 2
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/tink-1.11.0/tink-1.11.0/setup.py",
+    "line_number": "145",
+    "type_description": "code-execution",
+    "original_snippet": "self.spawn([self.bazel_command, 'clean', '--expunge'])",
+    "context_snippet": "class BuildBazelExtension(build_ext.build_ext):\n  \"\"\"A command that runs Bazel to build a C/C++ extension.\"\"\"\n\n  def __init__(self, dist: str) -> None:\n    super().__init__(dist)\n    self.bazel_command = _get_bazel_command()\n\n  def run(self) -> None:\n    for ext in self.extensions:\n      self.bazel_build(ext)\n    build_ext.build_ext.run(self)\n\n  def bazel_build(self, ext: str) -> None:\n    if not os.path.exists(self.build_temp):\n      os.makedirs(self.build_temp)\n\n    # Ensure no artifacts from previous builds are reused (i.e. from builds\n    # using a different Python version).\n    self.spawn([self.bazel_command, 'clean', '--expunge'])\n\n    bazel_startup_args = []\n    bazel_build_args = [\n        'build',\n        ext.bazel_target,\n        '--compilation_mode=' + ('dbg' if self.debug else 'opt'),\n    ]\n\n    target_arch = os.getenv('TARGET_ARCH', '')\n    target_os = os.getenv('TARGET_OS', '')\n    if target_arch and target_os:\n      bazel_build_args += [f'--config={target_os}_{target_arch}']\n\n    lib_extension = '.so'\n    if platform.system() == 'Windows':\n      # Required to build protobuf. See\n      # https://github.com/protocolbuffers/protobuf/issues/12947\n      bazel_startup_args += [r'--output_base=C:\\O']\n      # Needed by pybind11_bazel.\n      os.environ['PYTHON_BIN_PATH'] = sys.executable\n      os.environ['PYTHON_LIB_PATH'] = os.path.join(sys.exec_prefix, 'lib')\n      lib_extension = '.pyd'\n\n    if 'TINK_PYTHON_BAZEL_REMOTE_CACHE_GCS_BUCKET_URL' in os.environ:\n      if 'TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH' not in os.environ:\n        raise ValueError(\n            'TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH must be set.'\n        )\n      remote_cache_gcs_bucket_url = os.environ[\n          'TINK_PYTHON_BAZEL_REMOTE_CACHE_GCS_BUCKET_URL'\n      ]\n      remote_cache_gcs_service_key_path = os.path.abspath(\n          os.environ['TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH']\n      )\n      bazel_build_args += [\n          f'--remote_cache={remote_cache_gcs_bucket_url}',\n          f'--google_credentials={remote_cache_gcs_service_key_path}',\n      ]\n\n    # Run build command.\n    self.spawn([self.bazel_command] + bazel_startup_args + bazel_build_args)\n\n    ext_bazel_bin_path = os.path.join(\n        'bazel-bin', ext.relpath, ext.target_name + lib_extension\n    )\n    ext_dest_path = self.get_ext_fullpath(ext.name)\n    ext_dest_dir = os.path.dirname(ext_dest_path)\n    if not os.path.exists(ext_dest_dir):\n      os.makedirs(ext_dest_dir)\n    shutil.copyfile(ext_bazel_bin_path, ext_dest_path)\n\n# Helper function used in __init__\ndef _get_bazel_command() -> str:\n  \"\"\"Finds the bazel command.\"\"\"\n  if shutil.which('bazelisk'):\n    return 'bazelisk'\n  elif shutil.which('bazel'):\n    return 'bazel'\n  raise FileNotFoundError(\n      'Could not find bazel executable. Please install '\n      'bazel to compile the Tink Python package.'\n  )",
+    "hash_value": "fc0c9f45dd5bd0b8fc1a4b062c598c0b",
+    "detection_index": 1
+  }
+]

@@ -1,0 +1,298 @@
+[
+  {
+    "metadata": {
+      "package_name": "chromadb-1.0.4",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_cross_version_persist.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/chromadb-1.0.4/chromadb-1.0.4/chromadb/test/property/test_cross_version_persist.py",
+    "line_number": "301",
+    "type_description": "B812:system",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "300\t    system.start()\n301\t    client = ClientCreator.from_system(system)\n302\t    coll = client.get_collection(",
+    "code_snippet": "def test_cycle_versions(\n    version_settings: Tuple[str, Settings],\n    collection_strategy: strategies.Collection,\n    embeddings_strategy: strategies.RecordSet,\n) -> None:\n    # Test backwards compatibility\n    # For the current version, ensure that we can load a collection from\n    # the previous versions\n    version, settings = version_settings\n    # The strategies can generate metadatas of malformed inputs. Other tests\n    # will error check and cover these cases to make sure they error. Here we\n    # just convert them to valid values since the error cases are already tested\n    if embeddings_strategy[\"metadatas\"] == {}:\n        embeddings_strategy[\"metadatas\"] = None\n    if embeddings_strategy[\"metadatas\"] is not None and isinstance(\n        embeddings_strategy[\"metadatas\"], list\n    ):\n        embeddings_strategy[\"metadatas\"] = [\n            m if m is None or len(m) > 0 else None\n            for m in embeddings_strategy[\"metadatas\"]\n        ]\n\n    patch_for_version(version, collection_strategy, embeddings_strategy, settings)\n\n    # Can't pickle a function, and we won't need them\n    collection_strategy.embedding_function = None\n    collection_strategy.known_metadata_keys = {}\n\n    # Run the task in a separate process to avoid polluting the current process\n    # with the old version. Using spawn instead of fork to avoid sharing the\n    # current process memory which would cause the old version to be loaded\n    ctx = multiprocessing.get_context(\"spawn\")\n    conn1, conn2 = multiprocessing.Pipe()\n    p = ctx.Process(\n        target=persist_generated_data_with_old_version,\n        args=(version, settings, collection_strategy, embeddings_strategy, conn2),\n    )\n    p.start()\n    p.join()\n\n    if conn1.poll():\n        e = conn1.recv()\n        raise e\n\n    p.close()\n\n    # Switch to the current version (local working directory) and check the invariants\n    # are preserved for the collection\n    system = config.System(settings)\n    system.start()\n    client = ClientCreator.from_system(system)\n    coll = client.get_collection(\n        name=collection_strategy.name,\n        embedding_function=not_implemented_ef(),  # type: ignore\n    )\n\n    embeddings_queue = system.instance(SqliteDB)\n\n    # Automatic pruning should be disabled since embeddings_queue is non-empty\n    if packaging_version.Version(version) < packaging_version.Version(\n        \"0.5.7\"\n    ):  # (automatic pruning is enabled by default in 0.5.7 and later)\n        assert (\n            embeddings_queue.config.get_parameter(\"automatically_purge\").value is False\n        )\n\n    # Update to True so log_size_below_max() invariant will pass\n    embeddings_queue.set_config(\n        EmbeddingsQueueConfigurationInternal(\n            [ConfigurationParameter(\"automatically_purge\", True)]\n        )\n    )\n\n    # Should be able to clean log immediately after updating\n\n    # 07/29/24: the max_seq_id for vector segments was moved from the pickled metadata file to SQLite.\n    # Cleaning the log is dependent on vector segments migrating their max_seq_id from the pickled metadata file to SQLite.\n    # Vector segments migrate this field automatically on init, but at this point the segment has not been loaded yet.\n    if \"CHROMA_RUST_BINDINGS_TEST_ONLY\" in os.environ:\n        # Trigger log purge in Rust impl\n        invariants.count(coll, embeddings_strategy)\n    else:\n        trigger_vector_segments_max_seq_id_migration(\n            embeddings_queue, system.instance(SegmentManager)\n        )\n        embeddings_queue.purge_log(coll.id)\n    invariants.log_size_below_max(system, [coll], True)\n\n    # Should be able to add embeddings\n    coll.add(**embeddings_strategy)  # type: ignore\n\n    invariants.count(coll, embeddings_strategy)\n    invariants.metadatas_match(coll, embeddings_strategy)\n    invariants.documents_match(coll, embeddings_strategy)\n    invariants.ids_match(coll, embeddings_strategy)\n    invariants.ann_accuracy(coll, embeddings_strategy)\n    invariants.log_size_below_max(system, [coll], True)\n\n    # Shutdown system\n    system.stop()",
+    "pattern_analysis": {
+      "api_sequence": [
+        "multiprocessing.get_context",
+        "multiprocessing.Pipe",
+        "multiprocessing.context.Process",
+        "multiprocessing.context.Process.start",
+        "multiprocessing.context.Process.join",
+        "multiprocessing.connection.Connection.poll",
+        "multiprocessing.connection.Connection.recv",
+        "multiprocessing.context.Process.close",
+        "config.System",
+        "config.System.start",
+        "ClientCreator.from_system",
+        "client.get_collection",
+        "system.instance",
+        "os.environ",
+        "invariants.count",
+        "trigger_vector_segments_max_seq_id_migration",
+        "system.instance",
+        "embeddings_queue.purge_log",
+        "invariants.log_size_below_max",
+        "coll.add",
+        "invariants.count",
+        "invariants.metadatas_match",
+        "invariants.documents_match",
+        "invariants.ids_match",
+        "invariants.ann_accuracy",
+        "invariants.log_size_below_max",
+        "system.stop"
+      ],
+      "api_sequence_with_args": [
+        "multiprocessing.get_context('spawn')",
+        "multiprocessing.Pipe()",
+        "multiprocessing.context.Process(target=persist_generated_data_with_old_version, args=(version, settings, collection_strategy, embeddings_strategy, conn2))",
+        "multiprocessing.context.Process.start()",
+        "multiprocessing.context.Process.join()",
+        "multiprocessing.connection.Connection.poll()",
+        "multiprocessing.connection.Connection.recv()",
+        "multiprocessing.context.Process.close()",
+        "config.System(settings)",
+        "config.System.start()",
+        "ClientCreator.from_system(system)",
+        "client.get_collection(name=collection_strategy.name, embedding_function=not_implemented_ef())",
+        "system.instance(SqliteDB)",
+        "os.environ",
+        "invariants.count(coll, embeddings_strategy)",
+        "trigger_vector_segments_max_seq_id_migration(embeddings_queue, system.instance(SegmentManager))",
+        "system.instance(SegmentManager)",
+        "embeddings_queue.purge_log(coll.id)",
+        "invariants.log_size_below_max(system, [coll], True)",
+        "coll.add(**embeddings_strategy)",
+        "invariants.count(coll, embeddings_strategy)",
+        "invariants.metadatas_match(coll, embeddings_strategy)",
+        "invariants.documents_match(coll, embeddings_strategy)",
+        "invariants.ids_match(coll, embeddings_strategy)",
+        "invariants.ann_accuracy(coll, embeddings_strategy)",
+        "invariants.log_size_below_max(system, [coll], True)",
+        "system.stop()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "multiprocessing.get_context",
+          "id": "create_child_process",
+          "description": "Creates child process by duplicating current process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "multiprocessing.Pipe",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "multiprocessing.context.Process",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "multiprocessing.context.Process.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "multiprocessing.context.Process.join",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "multiprocessing.connection.Connection.poll",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "multiprocessing.connection.Connection.recv",
+          "id": "receive_socket_data",
+          "description": "Receives data from socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "multiprocessing.context.Process.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "config.System",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "config.System.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "ClientCreator.from_system",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "client.get_collection",
+          "id": "open_sqlite_db",
+          "description": "Opens SQLite database file",
+          "first_id": "persistence_stealth",
+          "second_id": "data_storage",
+          "third_id": "database_operations"
+        },
+        {
+          "api_name": "system.instance",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "invariants.count",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "trigger_vector_segments_max_seq_id_migration",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "system.instance",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "embeddings_queue.purge_log",
+          "id": "delete_file",
+          "description": "Deletes specified file from filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        },
+        {
+          "api_name": "invariants.log_size_below_max",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "coll.add",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "invariants.count",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "invariants.metadatas_match",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "invariants.documents_match",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "invariants.ids_match",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "invariants.ann_accuracy",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "invariants.log_size_below_max",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "system.stop",
+          "id": "terminate_process",
+          "description": "Terminates the process",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        }
+      ],
+      "contextual_code": "ctx = multiprocessing.get_context(\"spawn\")\nconn1, conn2 = multiprocessing.Pipe()\np = ctx.Process(\n    target=persist_generated_data_with_old_version,\n    args=(version, settings, collection_strategy, embeddings_strategy, conn2),\n)\np.start()\np.join()\nif conn1.poll():\n    e = conn1.recv()\n    raise e\np.close()\nsystem = config.System(settings)\nsystem.start()\nclient = ClientCreator.from_system(system)\ncoll = client.get_collection(\n    name=collection_strategy.name,\n    embedding_function=not_implemented_ef(),\n)\nembeddings_queue = system.instance(SqliteDB)\nif packaging_version.Version(version) < packaging_version.Version(\"0.5.7\"):\n    assert (\n        embeddings_queue.config.get_parameter(\"automatically_purge\").value is False\n    )\nembeddings_queue.set_config(\n    EmbeddingsQueueConfigurationInternal(\n        [ConfigurationParameter(\"automatically_purge\", True)]\n    )\n)\nif \"CHROMA_RUST_BINDINGS_TEST_ONLY\" in os.environ:\n    invariants.count(coll, embeddings_strategy)\nelse:\n    trigger_vector_segments_max_seq_id_migration(\n        embeddings_queue, system.instance(SegmentManager)\n    )\n    embeddings_queue.purge_log(coll.id)\ninvariants.log_size_below_max(system, [coll], True)\ncoll.add(**embeddings_strategy)\ninvariants.count(coll, embeddings_strategy)\ninvariants.metadatas_match(coll, embeddings_strategy)\ninvariants.documents_match(coll, embeddings_strategy)\ninvariants.ids_match(coll, embeddings_strategy)\ninvariants.ann_accuracy(coll, embeddings_strategy)\ninvariants.log_size_below_max(system, [coll], True)\nsystem.stop()"
+    }
+  }
+]

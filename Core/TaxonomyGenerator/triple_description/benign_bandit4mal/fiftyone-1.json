@@ -1,0 +1,346 @@
+{
+  "metadata": {
+    "package_name": "fiftyone-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/fiftyone-1.4.1.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "cvat.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/fiftyone-1.4.1/fiftyone-1.4.1/fiftyone/utils/cvat.py",
+      "line_number": "5184",
+      "type_description": "B820:get",
+      "context_snippet": "def _build_cvat_schema(\n    self, label_schema, occluded_attr=None, group_id_attr=None\n):\n    cvat_schema = {}\n    assign_scalar_attrs = {}\n    occluded_attrs = defaultdict(dict)\n    group_id_attrs = defaultdict(dict)\n    label_field_classes = defaultdict(dict)\n\n    _class_label_fields = {}\n    _duplicate_classes = set()\n    _prev_field_classes = set()\n\n    for label_field, label_info in label_schema.items():\n        _field_classes = set()\n        label_type = label_info.get(\"type\", None)\n        is_existing_field = label_info.get(\"existing_field\", False)\n        classes = label_info[\"classes\"]\n        (\n            attributes,\n            occluded_attr_name,\n            group_id_attr_name,\n        ) = self._to_cvat_attributes(label_info[\"attributes\"])\n        if occluded_attr_name is None and occluded_attr is not None:\n            occluded_attr_name = occluded_attr\n            label_schema[label_field][\"attributes\"][occluded_attr] = {}\n\n        if group_id_attr_name is None and group_id_attr is not None:\n            group_id_attr_name = group_id_attr\n            label_schema[label_field][\"attributes\"][group_id_attr] = {}\n\n        # Must track label IDs for existing label fields\n        if is_existing_field and label_type != \"scalar\":\n            if \"label_id\" in attributes:\n                raise ValueError(\n                    \"Label field '%s' attribute schema cannot use \"\n                    \"reserved name 'label_id'\" % label_field\n                )\n\n            attributes[\"label_id\"] = {\n                \"name\": \"label_id\",\n                \"input_type\": \"text\",\n                \"mutable\": True,\n                \"values\": [],\n            }\n\n        if label_type == \"scalar\":\n            # True: scalars are annotated as tag attributes\n            # False: scalars are annotated as tag labels\n            assign_scalar_attrs[label_field] = not bool(classes)\n        else:\n            assign_scalar_attrs[label_field] = None\n\n        if not classes:\n            classes = [label_field]\n\n            if not attributes:\n                attributes[\"value\"] = {\n                    \"name\": \"value\",\n                    \"input_type\": \"text\",\n                    \"mutable\": True,\n                    \"values\": [],\n                }\n\n        # Handle class name clashes and global attributes\n        for _class in classes:\n            if etau.is_str(_class):\n                _classes = [_class]\n            else:\n                _classes = _class[\"classes\"]\n\n            for name in _classes:\n                # If two label fields share a class name, we must append\n                # `label_field` to all instances of `name` to disambiguate\n                if (\n                    name in _prev_field_classes\n                    and name not in _duplicate_classes\n                ):\n                    _duplicate_classes.add(name)\n\n                    prev_field = _class_label_fields[name]\n\n                    new_name = \"%s_%s\" % (name, prev_field)\n                    cvat_schema[new_name] = cvat_schema.pop(name)\n\n                    label_field_classes[prev_field][name] = new_name\n\n                    if name in occluded_attrs[label_field]:\n                        attr_name = occluded_attrs[label_field].pop(name)\n                        occluded_attrs[label_field][new_name] = attr_name\n\n                    if name in group_id_attrs[label_field]:\n                        attr_name = group_id_attrs[label_field].pop(name)\n                        group_id_attrs[label_field][new_name] = attr_name\n\n                _field_classes.add(name)\n\n                if name in _duplicate_classes:\n                    new_name = \"%s_%s\" % (name, label_field)\n                    label_field_classes[label_field][name] = new_name\n                    name = new_name\n                else:\n                    _class_label_fields[name] = label_field\n                    label_field_classes[label_field][name] = name\n\n                if len(name) > 64:\n                    raise ValueError(\n                        \"Class name '%s' exceeds 64 character limit\" % name\n                    )\n\n                cvat_schema[name] = deepcopy(attributes)\n                if occluded_attr_name is not None:\n                    occluded_attrs[label_field][name] = occluded_attr_name\n\n                if group_id_attr_name is not None:\n                    group_id_attrs[label_field][name] = group_id_attr_name\n\n        _prev_field_classes |= _field_classes\n\n        # Class-specific attributes\n        for _class in classes:\n            if etau.is_str(_class):\n                continue\n\n            _classes = _class[\"classes\"]\n            (\n                _attrs,\n                _occluded_attr_name,\n                _group_id_attr_name,\n            ) = self._to_cvat_attributes(_class[\"attributes\"])\n            if _occluded_attr_name is None and occluded_attr is not None:\n                _occluded_attr_name = occluded_attr\n\n            if _group_id_attr_name is None and group_id_attr is not None:\n                _group_id_attr_name = group_id_attr\n\n            if \"label_id\" in _attrs:\n                raise ValueError(\n                    \"Label field '%s' attribute schema cannot use \"\n                    \"reserved name 'label_id'\" % label_field\n                )\n\n            for name in _classes:\n                if name in _duplicate_classes:\n                    name = \"%s_%s\" % (name, label_field)\n\n                if len(name) > 64:\n                    raise ValueError(\n                        \"Class name '%s' exceeds 64 character limit\" % name\n                    )\n\n                cvat_schema[name].update(_attrs)\n                if _occluded_attr_name is not None:\n                    occluded_attrs[label_field][name] = _occluded_attr_name\n\n                if _group_id_attr_name is not None:\n                    group_id_attrs[label_field][name] = _group_id_attr_name\n\n    return (\n        cvat_schema,\n        assign_scalar_attrs,\n        dict(occluded_attrs),\n        dict(group_id_attrs),\n        dict(label_field_classes),\n    )",
+      "hash_value": "6bd6b9207a22fbcf422016e055566338",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def _build_cvat_schema(\n    self, label_schema, occluded_attr=None, group_id_attr=None\n):\n    cvat_schema = {}\n    assign_scalar_attrs = {}\n    occluded_attrs = defaultdict(dict)\n    group_id_attrs = defaultdict(dict)\n    label_field_classes = defaultdict(dict)\n\n    _class_label_fields = {}\n    _duplicate_classes = set()\n    _prev_field_classes = set()\n\n    for label_field, label_info in label_schema.items():\n        _field_classes = set()\n        label_type = label_info.get(\"type\", None)\n        is_existing_field = label_info.get(\"existing_field\", False)\n        classes = label_info[\"classes\"]\n        (\n            attributes,\n            occluded_attr_name,\n            group_id_attr_name,\n        ) = self._to_cvat_attributes(label_info[\"attributes\"])\n        if occluded_attr_name is None and occluded_attr is not None:\n            occluded_attr_name = occluded_attr\n            label_schema[label_field][\"attributes\"][occluded_attr] = {}\n\n        if group_id_attr_name is None and group_id_attr is not None:\n            group_id_attr_name = group_id_attr\n            label_schema[label_field][\"attributes\"][group_id_attr] = {}\n\n        # Must track label IDs for existing label fields\n        if is_existing_field and label_type != \"scalar\":\n            if \"label_id\" in attributes:\n                raise ValueError(\n                    \"Label field '%s' attribute schema cannot use \"\n                    \"reserved name 'label_id'\" % label_field\n                )\n\n            attributes[\"label_id\"] = {\n                \"name\": \"label_id\",\n                \"input_type\": \"text\",\n                \"mutable\": True,\n                \"values\": [],\n            }\n\n        if label_type == \"scalar\":\n            # True: scalars are annotated as tag attributes\n            # False: scalars are annotated as tag labels\n            assign_scalar_attrs[label_field] = not bool(classes)\n        else:\n            assign_scalar_attrs[label_field] = None\n\n        if not classes:\n            classes = [label_field]\n\n            if not attributes:\n                attributes[\"value\"] = {\n                    \"name\": \"value\",\n                    \"input_type\": \"text\",\n                    \"mutable\": True,\n                    \"values\": [],\n                }\n\n        # Handle class name clashes and global attributes\n        for _class in classes:\n            if etau.is_str(_class):\n                _classes = [_class]\n            else:\n                _classes = _class[\"classes\"]\n\n            for name in _classes:\n                # If two label fields share a class name, we must append\n                # `label_field` to all instances of `name` to disambiguate\n                if (\n                    name in _prev_field_classes\n                    and name not in _duplicate_classes\n                ):\n                    _duplicate_classes.add(name)\n\n                    prev_field = _class_label_fields[name]\n\n                    new_name = \"%s_%s\" % (name, prev_field)\n                    cvat_schema[new_name] = cvat_schema.pop(name)\n\n                    label_field_classes[prev_field][name] = new_name\n\n                    if name in occluded_attrs[label_field]:\n                        attr_name = occluded_attrs[label_field].pop(name)\n                        occluded_attrs[label_field][new_name] = attr_name\n\n                    if name in group_id_attrs[label_field]:\n                        attr_name = group_id_attrs[label_field].pop(name)\n                        group_id_attrs[label_field][new_name] = attr_name\n\n                _field_classes.add(name)\n\n                if name in _duplicate_classes:\n                    new_name = \"%s_%s\" % (name, label_field)\n                    label_field_classes[label_field][name] = new_name\n                    name = new_name\n                else:\n                    _class_label_fields[name] = label_field\n                    label_field_classes[label_field][name] = name\n\n                if len(name) > 64:\n                    raise ValueError(\n                        \"Class name '%s' exceeds 64 character limit\" % name\n                    )\n\n                cvat_schema[name] = deepcopy(attributes)\n                if occluded_attr_name is not None:\n                    occluded_attrs[label_field][name] = occluded_attr_name\n\n                if group_id_attr_name is not None:\n                    group_id_attrs[label_field][name] = group_id_attr_name\n\n        _prev_field_classes |= _field_classes\n\n        # Class-specific attributes\n        for _class in classes:\n            if etau.is_str(_class):\n                continue\n\n            _classes = _class[\"classes\"]\n            (\n                _attrs,\n                _occluded_attr_name,\n                _group_id_attr_name,\n            ) = self._to_cvat_attributes(_class[\"attributes\"])\n            if _occluded_attr_name is None and occluded_attr is not None:\n                _occluded_attr_name = occluded_attr\n\n            if _group_id_attr_name is None and group_id_attr is not None:\n                _group_id_attr_name = group_id_attr\n\n            if \"label_id\" in _attrs:\n                raise ValueError(\n                    \"Label field '%s' attribute schema cannot use \"\n                    \"reserved name 'label_id'\" % label_field\n                )\n\n            for name in _classes:\n                if name in _duplicate_classes:\n                    name = \"%s_%s\" % (name, label_field)\n\n                if len(name) > 64:\n                    raise ValueError(\n                        \"Class name '%s' exceeds 64 character limit\" % name\n                    )\n\n                cvat_schema[name].update(_attrs)\n                if _occluded_attr_name is not None:\n                    occluded_attrs[label_field][name] = _occluded_attr_name\n\n                if _group_id_attr_name is not None:\n                    group_id_attrs[label_field][name] = _group_id_attr_name\n\n    return (\n        cvat_schema,\n        assign_scalar_attrs,\n        dict(occluded_attrs),\n        dict(group_id_attrs),\n        dict(label_field_classes),\n    )",
+          "triple_sequences": [
+            {
+              "action_api": "label_info.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"type\", None",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "label_info.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"existing_field\", False",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Access configuration value",
+              "intention_id": "access_configuration_value"
+            },
+            {
+              "action_api": "self._to_cvat_attributes()",
+              "action_description": "Executes Python code string",
+              "action_id": "exec_python_code",
+              "object": "label_info[\"attributes\"]",
+              "object_description": "Browser data",
+              "object_id": "browser_data",
+              "intention_description": "Prepare data processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "label_schema[label_field][\"attributes\"][occluded_attr] = {}",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "label_schema[label_field][\"attributes\"][group_id_attr] = {}",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "raise ValueError",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "\"Label field '%s' attribute schema cannot use reserved name 'label_id'\" % label_field",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "attributes[\"label_id\"] = {\"name\": \"label_id\", \"input_type\": \"text\", \"mutable\": True, \"values\": []}",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "assign_scalar_attrs[label_field] = not bool(classes)",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "assign_scalar_attrs[label_field] = None",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "attributes[\"value\"] = {\"name\": \"value\", \"input_type\": \"text\", \"mutable\": True, \"values\": []}",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "etau.is_str()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "_class",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare character processing",
+              "intention_id": "prepare_character_processing"
+            },
+            {
+              "action_api": "raise ValueError",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "\"Class name '%s' exceeds 64 character limit\" % name",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "cvat_schema.pop()",
+              "action_description": "Deletes specified file from filesystem",
+              "action_id": "delete_file",
+              "object": "name",
+              "object_description": "Local file or directory name",
+              "object_id": "local_file_or_directory_name",
+              "intention_description": "Delete file",
+              "intention_id": "delete_file"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "cvat_schema[new_name] = cvat_schema.pop(name)",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "label_field_classes[prev_field][name] = new_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "occluded_attrs[label_field][new_name] = attr_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "group_id_attrs[label_field][new_name] = attr_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "label_field_classes[label_field][name] = new_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "_class_label_fields[name] = label_field",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "label_field_classes[label_field][name] = name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "cvat_schema[name] = deepcopy(attributes)",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "occluded_attrs[label_field][name] = occluded_attr_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "group_id_attrs[label_field][name] = group_id_attr_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "label_field_classes[label_field][name] = name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "raise ValueError",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "\"Label field '%s' attribute schema cannot use reserved name 'label_id'\" % label_field",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "raise ValueError",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "\"Class name '%s' exceeds 64 character limit\" % name",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "cvat_schema[name].update()",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "_attrs",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "occluded_attrs[label_field][name] = _occluded_attr_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "setitem",
+              "action_description": "Sets value for registry key",
+              "action_id": "set_registry_value",
+              "object": "group_id_attrs[label_field][name] = _group_id_attr_name",
+              "object_description": "Registry value",
+              "object_id": "registry_value",
+              "intention_description": "Modify file attributes",
+              "intention_id": "modify_file_attributes"
+            },
+            {
+              "action_api": "dict()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "occluded_attrs",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "dict()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "group_id_attrs",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            },
+            {
+              "action_api": "dict()",
+              "action_description": "Creates directory, ignoring if it already exists",
+              "action_id": "create_directory",
+              "object": "label_field_classes",
+              "object_description": "Custom directory",
+              "object_id": "custom_directory",
+              "intention_description": "Ensure directory exists",
+              "intention_id": "ensure_directory_exists"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

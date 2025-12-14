@@ -1,0 +1,42 @@
+[
+  {
+    "metadata": {
+      "package_name": "matrix_synapse-1.128.0",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "well_known_resolver.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/synapse/http/federation/well_known_resolver.py",
+    "line_number": "188",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "187\t        # errors (such as getting a 404 response).\n188\t        response, body = await self._make_well_known_request(\n189\t            server_name, retry=had_valid_well_known\n190\t        )",
+    "context_snippet": "    async def _fetch_well_known(self, server_name: bytes) -> Tuple[bytes, float]:\n        \"\"\"Actually fetch and parse a .well-known, without checking the cache\n\n        Args:\n            server_name: name of the server, from the requested url\n\n        Raises:\n            _FetchWellKnownFailure if we fail to lookup a result\n\n        Returns:\n            The lookup result and cache period.\n        \"\"\"\n\n        had_valid_well_known = self._had_valid_well_known_cache.get(server_name, False)\n\n        # We do this in two steps to differentiate between possibly transient\n        # errors (e.g. can't connect to host, 503 response) and more permanent\n        # errors (such as getting a 404 response).\n        response, body = await self._make_well_known_request(\n            server_name, retry=had_valid_well_known\n        )\n\n        try:\n            if response.code != 200:\n                raise Exception(\"Non-200 response %s\" % (response.code,))\n\n            parsed_body = json_decoder.decode(body.decode(\"utf-8\"))\n            logger.info(\"Response from .well-known: %s\", parsed_body)\n\n            result = parsed_body[\"m.server\"].encode(\"ascii\")\n        except defer.CancelledError:\n            # Bail if we've been cancelled\n            raise\n        except Exception as e:\n            logger.info(\"Error parsing well-known for %s: %s\", server_name, e)\n            raise _FetchWellKnownFailure(temporary=False)\n\n        cache_period = _cache_period_from_headers(\n            response.headers, time_now=self._reactor.seconds\n        )\n        if cache_period is None:\n            cache_period = WELL_KNOWN_DEFAULT_CACHE_PERIOD\n            # add some randomness to the TTL to avoid a stampeding herd every 24 hours\n            # after startup\n            cache_period *= random.uniform(\n                1 - WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n                1 + WELL_KNOWN_DEFAULT_CACHE_PERIOD_JITTER,\n            )\n        else:\n            cache_period = min(cache_period, WELL_KNOWN_MAX_CACHE_PERIOD)\n            cache_period = max(cache_period, WELL_KNOWN_MIN_CACHE_PERIOD)\n\n        # We got a success, mark as such in the cache\n        self._had_valid_well_known_cache.set(\n            server_name,\n            bool(result),\n            cache_period + WELL_KNOWN_REMEMBER_DOMAIN_HAD_VALID,\n        )\n\n        return result, cache_period",
+    "hash_value": "d887af8a3e54f29bb11c812eb62187dd"
+  },
+  {
+    "pyfile": "test_user.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/tests/rest/admin/test_user.py",
+    "line_number": "5221",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "5220\n5221\t        channel = self.make_request(\n5222\t            \"GET\", f\"rooms/{self.rm2}/messages?limit=50\", access_token=self.admin_tok\n5223\t        )",
+    "context_snippet": "    def test_redact_messages_specific_rooms(self) -> None:\n        \"\"\"\n        Test that request to redact events in specified rooms user is member of is successful\n        \"\"\"\n\n        originals = []\n        for rm in [self.rm1, self.rm2, self.rm3]:\n            join = self.helper.join(rm, self.bad_user, tok=self.bad_user_tok)\n            originals.append(join[\"event_id\"])\n            for i in range(15):\n                event = {\"body\": f\"hello{i}\", \"msgtype\": \"m.text\"}\n                res = self.helper.send_event(\n                    rm, \"m.room.message\", event, tok=self.bad_user_tok\n                )\n                originals.append(res[\"event_id\"])\n\n        # redact messages in rooms 1 and 3\n        channel = self.make_request(\n            \"POST\",\n            f\"/_synapse/admin/v1/user/{self.bad_user}/redact\",\n            content={\"rooms\": [self.rm1, self.rm3]},\n            access_token=self.admin_tok,\n        )\n        self.assertEqual(channel.code, 200)\n\n        # messages in requested rooms are redacted\n        for rm in [self.rm1, self.rm3]:\n            filter = json.dumps({\"types\": [EventTypes.Redaction]})\n            channel = self.make_request(\n                \"GET\",\n                f\"rooms/{rm}/messages?filter={filter}&limit=50\",\n                access_token=self.admin_tok,\n            )\n            self.assertEqual(channel.code, 200)\n\n            matches = []\n            for event in channel.json_body[\"chunk\"]:\n                for event_id in originals:\n                    if (\n                        event[\"type\"] == \"m.room.redaction\"\n                        and event[\"redacts\"] == event_id\n                    ):\n                        matches.append((event_id, event))\n            # we redacted 16 messages\n            self.assertEqual(len(matches), 16)\n\n        channel = self.make_request(\n            \"GET\", f\"rooms/{self.rm2}/messages?limit=50\", access_token=self.admin_tok\n        )\n        self.assertEqual(channel.code, 200)\n\n        # messages in remaining room are not\n        for event in channel.json_body[\"chunk\"]:\n            if event[\"type\"] == \"m.room.redaction\":\n                self.fail(\"found redaction in room 2\")",
+    "hash_value": "8b3c4a18421dd36207050740262a45f3"
+  },
+  {
+    "pyfile": "test_user.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/matrix_synapse-1.128.0/matrix_synapse-1.128.0/tests/rest/admin/test_user.py",
+    "line_number": "4986",
+    "type_description": "B825:request",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4985\t        fake_user = \"@bums:other\"\n4986\t        channel = self.make_request(\n4987\t            \"POST\", self.url(fake_user), access_token=self.admin_user_tok\n4988\t        )",
+    "context_snippet": "def test_error_cases(self) -> None:\n    fake_user = \"@bums:other\"\n    channel = self.make_request(\n        \"POST\", self.url(fake_user), access_token=self.admin_user_tok\n    )\n    # Fail: user doesn't exist\n    self.assertEqual(404, channel.code, msg=channel.json_body)\n\n    channel = self.make_request(\n        \"POST\", self.url(self.other_user), access_token=self.admin_user_tok\n    )\n    # Fail: user exists, but has no master cross-signing key\n    self.assertEqual(404, channel.code, msg=channel.json_body)",
+    "hash_value": "aa678a255800d42ef5bff8c107fbb2ed"
+  }
+]

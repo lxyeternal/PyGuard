@@ -1,0 +1,41 @@
+[
+  {
+    "pyfile": "addresses.py",
+    "code_snippet": "import logging\nimport requests\nimport typeguard\n\nlogger = logging.getLogger(__name__)\n\n@typeguard.typechecked\ndef address_by_query(timeout: float = 30) -> str:\n    \"\"\"Finds an address for the local host by querying ipify. This may\n       return an unusable value when the host is behind NAT, or when the\n       internet-facing address is not reachable from workers.\n       Parameters:\n       -----------\n\n       timeout : float\n          Timeout for the request in seconds. Default: 30s\n    \"\"\"\n    logger.debug(\"Finding address by querying remote service\")\n    response = requests.get('https://api.ipify.org', timeout=timeout)\n\n    if response.status_code == 200:\n        addr = response.text\n        logger.debug(\"Address found: {}\".format(addr))\n        return addr\n    else:\n        raise RuntimeError(\"Remote service returned unexpected HTTP status code {}\".format(response.status_code))\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "logging.getLogger",
+        "logger.debug",
+        "requests.get",
+        "response.status_code",
+        "response.text",
+        "logger.debug"
+      ],
+      "api_sequence_with_args": [
+        "logging.getLogger(__name__)",
+        "logger.debug(\"Finding address by querying remote service\")",
+        "requests.get('https://api.ipify.org', timeout=timeout)",
+        "response.status_code",
+        "response.text",
+        "logger.debug(\"Address found: {}\".format(addr))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.get",
+          "id": "send_http_get",
+          "description": "Sends HTTP GET request with parameters and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        }
+      ],
+      "contextual_code": "import logging\nimport requests\n\nlogger = logging.getLogger(__name__)\n\ndef address_by_query(timeout: float = 30) -> str:\n    logger.debug(\"Finding address by querying remote service\")\n    response = requests.get('https://api.ipify.org', timeout=timeout)\n\n    if response.status_code == 200:\n        addr = response.text\n        logger.debug(\"Address found: {}\".format(addr))\n        return addr\n    else:\n        raise RuntimeError(\"Remote service returned unexpected HTTP status code {}\".format(response.status_code))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "parsl-2025.4.7",
+      "total_matches": 1
+    }
+  }
+]

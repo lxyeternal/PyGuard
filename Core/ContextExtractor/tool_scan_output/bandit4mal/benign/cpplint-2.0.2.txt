@@ -1,0 +1,626 @@
+Run started:2025-04-12 17:08:17.239208
+
+Test results:
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:66
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+65	
+66	_USAGE = """
+67	Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]
+68	                   [--filter=-x,+y,...]
+69	                   [--counting=total|toplevel|detailed] [--root=subdir]
+70	                   [--repository=path]
+71	                   [--linelength=digits] [--headers=x,y,...]
+72	                   [--recursive]
+73	                   [--exclude=path]
+74	                   [--extensions=hpp,cpp,...]
+75	                   [--includeorder=default|standardcfirst]
+76	                   [--config=filename]
+77	                   [--quiet]
+78	                   [--version]
+79	        <file> [file] ...
+80	
+81	  Style checker for C/C++ source files.
+82	  This is a fork of the Google style checker with minor extensions.
+83	
+84	  The style guidelines this tries to follow are those in
+85	    https://google.github.io/styleguide/cppguide.html
+86	
+87	  Every problem is given a confidence score from 1-5, with 5 meaning we are
+88	  certain of the problem, and 1 meaning it could be a legitimate construct.
+89	  This will miss some errors, and is not a substitute for a code review.
+90	
+91	  To suppress false-positive errors of certain categories, add a
+92	  'NOLINT(category[, category...])' comment to the line.  NOLINT or NOLINT(*)
+93	  suppresses errors of all categories on that line. To suppress categories
+94	  on the next line use NOLINTNEXTLINE instead of NOLINT. To suppress errors in
+95	  a block of code 'NOLINTBEGIN(category[, category...])' comment to a line at
+96	  the start of the block and to end the block add a comment with 'NOLINTEND'.
+97	  NOLINT blocks are inclusive so any statements on the same line as a BEGIN
+98	  or END will have the error suppression applied.
+99	
+100	  The files passed in will be linted; at least one file must be provided.
+101	  Default linted extensions are %s.
+102	  Other file types will be ignored.
+103	  Change the extensions with the --extensions flag.
+104	
+105	  Flags:
+106	
+107	    output=emacs|eclipse|vs7|junit|sed|gsed
+108	      By default, the output is formatted to ease emacs parsing.  Visual Studio
+109	      compatible output (vs7) may also be used.  Further support exists for
+110	      eclipse (eclipse), and JUnit (junit). XML parsers such as those used
+111	      in Jenkins and Bamboo may also be used.
+112	      The sed format outputs sed commands that should fix some of the errors.
+113	      Note that this requires gnu sed. If that is installed as gsed on your
+114	      system (common e.g. on macOS with homebrew) you can use the gsed output
+115	      format. Sed commands are written to stdout, not stderr, so you should be
+116	      able to pipe output straight to a shell to run the fixes.
+117	
+118	    verbose=#
+119	      Specify a number 0-5 to restrict errors to certain verbosity levels.
+120	      Errors with lower verbosity levels have lower confidence and are more
+121	      likely to be false positives.
+122	
+123	    quiet
+124	      Don't print anything if no errors are found.
+125	
+126	    filter=-x,+y,...
+127	      Specify a comma-separated list of category-filters to apply: only
+128	      error messages whose category names pass the filters will be printed.
+129	      (Category names are printed with the message and look like
+130	      "[whitespace/indent]".)  Filters are evaluated left to right.
+131	      "-FOO" means "do not print categories that start with FOO".
+132	      "+FOO" means "do print categories that start with FOO".
+133	
+134	      Examples: --filter=-whitespace,+whitespace/braces
+135	                --filter=-whitespace,-runtime/printf,+runtime/printf_format
+136	                --filter=-,+build/include_what_you_use
+137	
+138	      To see a list of all the categories used in cpplint, pass no arg:
+139	         --filter=
+140	
+141	      Filters can directly be limited to files and also line numbers. The
+142	      syntax is category:file:line , where line is optional. The filter limitation
+143	      works for both + and - and can be combined with ordinary filters:
+144	
+145	      Examples: --filter=-whitespace:foo.h,+whitespace/braces:foo.h
+146	                --filter=-whitespace,-runtime/printf:foo.h:14,+runtime/printf_format:foo.h
+147	                --filter=-,+build/include_what_you_use:foo.h:321
+148	
+149	    counting=total|toplevel|detailed
+150	      The total number of errors found is always printed. If
+151	      'toplevel' is provided, then the count of errors in each of
+152	      the top-level categories like 'build' and 'whitespace' will
+153	      also be printed. If 'detailed' is provided, then a count
+154	      is provided for each category like 'legal/copyright'.
+155	
+156	    repository=path
+157	      The top level directory of the repository, used to derive the header
+158	      guard CPP variable. By default, this is determined by searching for a
+159	      path that contains .git, .hg, or .svn. When this flag is specified, the
+160	      given path is used instead. This option allows the header guard CPP
+161	      variable to remain consistent even if members of a team have different
+162	      repository root directories (such as when checking out a subdirectory
+163	      with SVN). In addition, users of non-mainstream version control systems
+164	      can use this flag to ensure readable header guard CPP variables.
+165	
+166	      Examples:
+167	        Assuming that Alice checks out ProjectName and Bob checks out
+168	        ProjectName/trunk and trunk contains src/chrome/ui/browser.h, then
+169	        with no --repository flag, the header guard CPP variable will be:
+170	
+171	        Alice => TRUNK_SRC_CHROME_BROWSER_UI_BROWSER_H_
+172	        Bob   => SRC_CHROME_BROWSER_UI_BROWSER_H_
+173	
+174	        If Alice uses the --repository=trunk flag and Bob omits the flag or
+175	        uses --repository=. then the header guard CPP variable will be:
+176	
+177	        Alice => SRC_CHROME_BROWSER_UI_BROWSER_H_
+178	        Bob   => SRC_CHROME_BROWSER_UI_BROWSER_H_
+179	
+180	    root=subdir
+181	      The root directory used for deriving header guard CPP variable.
+182	      This directory is relative to the top level directory of the repository
+183	      which by default is determined by searching for a directory that contains
+184	      .git, .hg, or .svn but can also be controlled with the --repository flag.
+185	      If the specified directory does not exist, this flag is ignored.
+186	
+187	      Examples:
+188	        Assuming that src is the top level directory of the repository (and
+189	        cwd=top/src), the header guard CPP variables for
+190	        src/chrome/browser/ui/browser.h are:
+191	
+192	        No flag => CHROME_BROWSER_UI_BROWSER_H_
+193	        --root=chrome => BROWSER_UI_BROWSER_H_
+194	        --root=chrome/browser => UI_BROWSER_H_
+195	        --root=.. => SRC_CHROME_BROWSER_UI_BROWSER_H_
+196	
+197	    linelength=digits
+198	      This is the allowed line length for the project. The default value is
+199	      80 characters.
+200	
+201	      Examples:
+202	        --linelength=120
+203	
+204	    recursive
+205	      Search for files to lint recursively. Each directory given in the list
+206	      of files to be linted is replaced by all files that descend from that
+207	      directory. Files with extensions not in the valid extensions list are
+208	      excluded.
+209	
+210	    exclude=path
+211	      Exclude the given path from the list of files to be linted. Relative
+212	      paths are evaluated relative to the current directory and shell globbing
+213	      is performed. This flag can be provided multiple times to exclude
+214	      multiple files.
+215	
+216	      Examples:
+217	        --exclude=one.cc
+218	        --exclude=src/*.cc
+219	        --exclude=src/*.cc --exclude=test/*.cc
+220	
+221	    extensions=extension,extension,...
+222	      The allowed file extensions that cpplint will check
+223	
+224	      Examples:
+225	        --extensions=%s
+226	
+227	    includeorder=default|standardcfirst
+228	      For the build/include_order rule, the default is to blindly assume angle
+229	      bracket includes with file extension are c-system-headers (default),
+230	      even knowing this will have false classifications.
+231	      The default is established at google.
+232	      standardcfirst means to instead use an allow-list of known c headers and
+233	      treat all others as separate group of "other system headers". The C headers
+234	      included are those of the C-standard lib and closely related ones.
+235	
+236	    config=filename
+237	      Search for config files with the specified name instead of CPPLINT.cfg
+238	
+239	    headers=x,y,...
+240	      The header extensions that cpplint will treat as .h in checks. Values are
+241	      automatically added to --extensions list.
+242	     (by default, only files with extensions %s will be assumed to be headers)
+243	
+244	      Examples:
+245	        --headers=%s
+246	        --headers=hpp,hxx
+247	        --headers=hpp
+248	
+249	    cpplint.py supports per-directory configurations specified in CPPLINT.cfg
+250	    files. CPPLINT.cfg file can contain a number of key=value pairs.
+251	    Currently the following options are supported:
+252	
+253	      set noparent
+254	      filter=+filter1,-filter2,...
+255	      exclude_files=regex
+256	      linelength=80
+257	      root=subdir
+258	      headers=x,y,...
+259	
+260	    "set noparent" option prevents cpplint from traversing directory tree
+261	    upwards looking for more .cfg files in parent directories. This option
+262	    is usually placed in the top-level project directory.
+263	
+264	    The "filter" option is similar in function to --filter flag. It specifies
+265	    message filters in addition to the |_DEFAULT_FILTERS| and those specified
+266	    through --filter command-line flag.
+267	
+268	    "exclude_files" allows to specify a regular expression to be matched against
+269	    a file name. If the expression matches, the file is skipped and not run
+270	    through the linter.
+271	
+272	    "linelength" allows to specify the allowed line length for the project.
+273	
+274	    The "root" option is similar in function to the --root flag (see example
+275	    above). Paths are relative to the directory of the CPPLINT.cfg.
+276	
+277	    The "headers" option is similar in function to the --headers flag
+278	    (see example above).
+279	
+280	    CPPLINT.cfg has an effect on files in the same directory and all
+281	    sub-directories, unless overridden by a nested configuration file.
+282	
+283	      Example file:
+284	        filter=-build/include_order,+build/include_alpha
+285	        exclude_files=.*\\.cc
+286	
+287	    The above example disables build/include_order warning and enables
+288	    build/include_alpha as well as excludes all .cc from being
+289	    processed by linter, in the current directory (where the .cfg
+290	    file is located) and all sub-directories.
+291	"""
+292	
+293	# We categorize each error message we print.  Here are the categories.
+294	# We want an explicit list so we can list them all in cpplint --filter=.
+295	# If you add a new error message with a new category, add it to the list
+296	# here!  cpplint_unittest.py should tell you if you forget to do this.
+297	_ERROR_CATEGORIES = [
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:1500
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+1499	        if not _quiet and self.output_format not in _MACHINE_OUTPUTS:
+1500	            sys.stdout.write(message)
+1501	
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:1506
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+1505	        else:
+1506	            sys.stderr.write(message)
+1507	
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:1873
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+1872	        elif _cpplint_state.output_format == "eclipse":
+1873	            sys.stderr.write(
+1874	                f"{filename}:{linenum}: warning: {message}  [{category}] [{confidence}]\n"
+1875	            )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:1880
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+1879	            if message in _SED_FIXUPS:
+1880	                sys.stdout.write(
+1881	                    f"{_cpplint_state.output_format} -i"
+1882	                    f" '{linenum}{_SED_FIXUPS[message]}' {filename}"
+1883	                    f" # {message}  [{category}] [{confidence}]\n"
+1884	                )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:1886
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+1885	            else:
+1886	                sys.stderr.write(
+1887	                    f'# {filename}:{linenum}:  "{message}"  [{category}] [{confidence}]\n'
+1888	                )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:1891
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+1890	            final_message = f"{filename}:{linenum}:  {message}  [{category}] [{confidence}]\n"
+1891	            sys.stderr.write(final_message)
+1892	
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:2518
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+2517	        if _root_debug:
+2518	            sys.stderr.write(
+2519	                f"\n_root fixup, _root = '{_root}',"
+2520	                f" repository name = '{fileinfo.RepositoryName()}'\n"
+2521	            )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:2526
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+2525	            if _root_debug:
+2526	                sys.stderr.write("_root unspecified\n")
+2527	            return file_path_from_root
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:2541
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+2540	        if _root_debug:
+2541	            sys.stderr.write(
+2542	                ("_root lstrip (maybe_path=%s, file_path_from_root=%s," + " _root=%s)\n")
+2543	                % (maybe_path, file_path_from_root, _root)
+2544	            )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:2557
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+2556	        if _root_debug:
+2557	            sys.stderr.write(
+2558	                ("_root prepend (maybe_path=%s, full_path=%s, " + "root_abspath=%s)\n")
+2559	                % (maybe_path, full_path, root_abspath)
+2560	            )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:2566
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+2565	        if _root_debug:
+2566	            sys.stderr.write(f"_root ignore, returning {file_path_from_root}\n")
+2567	
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:6110
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+6109	            4,
+6110	            "Do not use unnamed namespaces in header files.  See "
+6111	            "https://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#Namespaces"
+6112	            " for more information.",
+6113	        )
+6114	
+6115	
+6116	def CheckGlobalStatic(filename, clean_lines, linenum, error):
+
+--------------------------------------------------
+>> Issue: [B814:read] os.read
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7551
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b814_read.html
+7550	        if filename == "-":
+7551	            lines = sys.stdin.read().split("\n")
+7552	        else:
+
+--------------------------------------------------
+>> Issue: [B814:read] os.read
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7554
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b814_read.html
+7553	            with codecs.open(filename, "r", "utf8", "replace") as target_file:
+7554	                lines = target_file.read().split("\n")
+7555	
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7619
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+7618	    """
+7619	    sys.stderr.write(
+7620	        _USAGE
+7621	        % (
+7622	            sorted(GetAllExtensions()),
+7623	            ",".join(sorted(GetAllExtensions())),
+7624	            sorted(GetHeaderExtensions()),
+7625	            ",".join(sorted(GetHeaderExtensions())),
+7626	        )
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7636
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+7635	def PrintVersion():
+7636	    sys.stdout.write("Cpplint fork (https://github.com/cpplint/cpplint)\n")
+7637	    sys.stdout.write("cpplint " + __VERSION__ + "\n")
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7636
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+7635	def PrintVersion():
+7636	    sys.stdout.write("Cpplint fork (https://github.com/cpplint/cpplint)\n")
+7637	    sys.stdout.write("cpplint " + __VERSION__ + "\n")
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7637
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+7636	    sys.stdout.write("Cpplint fork (https://github.com/cpplint/cpplint)\n")
+7637	    sys.stdout.write("cpplint " + __VERSION__ + "\n")
+7638	    sys.stdout.write("Python " + sys.version + "\n")
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7638
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+7637	    sys.stdout.write("cpplint " + __VERSION__ + "\n")
+7638	    sys.stdout.write("Python " + sys.version + "\n")
+7639	    sys.exit(0)
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7647
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+7646	    """
+7647	    sys.stderr.write("".join(f"  {cat}\n" for cat in _ERROR_CATEGORIES))
+7648	    sys.exit(0)
+
+--------------------------------------------------
+>> Issue: [B815:write] os.write
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint.py:7875
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b815_write.html
+7874	        if _cpplint_state.output_format == "junit":
+7875	            sys.stderr.write(_cpplint_state.FormatJUnitXML())
+7876	
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_clitest.py:113
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+112	            # pass
+113	            shutil.rmtree(cls._root)
+114	
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:466
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+465	        )
+466	        self.TestLint("// http://g" + ("o" * 100) + "gle.com/", "")
+467	        self.TestLint("//   https://g" + ("o" * 100) + "gle.com/", "")
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:467
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+466	        self.TestLint("// http://g" + ("o" * 100) + "gle.com/", "")
+467	        self.TestLint("//   https://g" + ("o" * 100) + "gle.com/", "")
+468	        self.TestLint(
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:469
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+468	        self.TestLint(
+469	            "//   https://g" + ("o" * 60) + "gle.com/ and some comments",
+470	            "Lines should be <= 80 characters long  [whitespace/line_length] [2]",
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:472
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+471	        )
+472	        self.TestLint("// Read https://g" + ("o" * 60) + "gle.com/", "")
+473	        self.TestLint("// $Id: g" + ("o" * 80) + "gle.cc#1 $", "")
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:4812
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+4811	            os.chdir(working_dir)
+4812	            shutil.rmtree(temp_dir)
+4813	
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:4830
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+4829	            os.chdir(working_dir)
+4830	            shutil.rmtree(temp_dir)
+4831	            cpplint._hpp_headers = set()
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:4885
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+4884	            os.chdir(working_dir)
+4885	            shutil.rmtree(temp_dir)
+4886	
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5107
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+5106	            "namespace {",
+5107	            "Do not use unnamed namespaces in header files.  See"
+5108	            " https://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#Namespaces"
+5109	            " for more information.  [build/namespaces_headers] [4]",
+5110	        )
+5111	        # namespace registration macros are OK.
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5455
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+5454	        finally:
+5455	            shutil.rmtree(temp_directory)
+5456	
+
+--------------------------------------------------
+>> Issue: [B812:system] os.system
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5561
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b812_system.html
+5560	
+5561	            if platform.system() == "Windows":
+5562	                test_directory = test_directory.replace("\\", "/")
+
+--------------------------------------------------
+>> Issue: [B817:system] platform.system
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5561
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b817_system.html
+5560	
+5561	            if platform.system() == "Windows":
+5562	                test_directory = test_directory.replace("\\", "/")
+
+--------------------------------------------------
+>> Issue: [B308:blacklist] platform.system
+   Severity: Medium   Confidence: High
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5561
+   More Info: https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b308-platform-system
+5560	
+5561	            if platform.system() == "Windows":
+5562	                test_directory = test_directory.replace("\\", "/")
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5614
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+5613	            os.chdir(cur_dir)
+5614	            shutil.rmtree(temp_directory)
+5615	
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5680
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+5679	            os.chdir(current_directory)
+5680	            shutil.rmtree(temp_directory)
+5681	            shutil.rmtree(temp_directory2)
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:5681
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+5680	            shutil.rmtree(temp_directory)
+5681	            shutil.rmtree(temp_directory2)
+5682	            cpplint._repository = None
+
+--------------------------------------------------
+>> Issue: [B836:rmtree] shutil.rmtree
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/cpplint-2.0.2/cpplint-2.0.2/cpplint_unittest.py:7144
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b836_rmtree.html
+7143	    def tearDown(self):
+7144	        shutil.rmtree(self.temp_dir)
+7145	
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 11972
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 9.0
+		High: 30.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 38.0
+		High: 1.0
+Files skipped (0):

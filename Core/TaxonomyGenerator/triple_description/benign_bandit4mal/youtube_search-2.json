@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "package_name": "youtube_search-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/youtube_search-2.1.2-py3-none-any.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "__init__.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/youtube_search-2.1.2-py3-none-any/youtube_search/__init__.py",
+      "line_number": "41",
+      "type_description": "B820:get",
+      "context_snippet": "import requests\nimport urllib.parse\nimport json\n\n\nclass YoutubeSearch:\n    def __init__(self, search_terms: str, max_results=None):\n        self.search_terms = search_terms\n        self.max_results = max_results\n        self.videos = self._search()\n\n    def _search(self):\n        encoded_search = urllib.parse.quote_plus(self.search_terms)\n        BASE_URL = \"https://youtube.com\"\n        url = f\"{BASE_URL}/results?search_query={encoded_search}\"\n        response = requests.get(url).text\n        while \"ytInitialData\" not in response:\n            response = requests.get(url).text\n        results = self._parse_html(response)\n        if self.max_results is not None and len(results) > self.max_results:\n            return results[: self.max_results]\n        return results\n\n    def _parse_html(self, response):\n        results = []\n        start = (\n            response.index(\"ytInitialData\")\n            + len(\"ytInitialData\")\n            + 3\n        )\n        end = response.index(\"};\", start) + 1\n        json_str = response[start:end]\n        data = json.loads(json_str)\n\n        for contents in data[\"contents\"][\"twoColumnSearchResultsRenderer\"][\"primaryContents\"][\"sectionListRenderer\"][\"contents\"]:\n            for video in contents[\"itemSectionRenderer\"][\"contents\"]:\n                res = {}\n                if \"videoRenderer\" in video.keys():\n                    video_data = video.get(\"videoRenderer\", {})\n                    res[\"id\"] = video_data.get(\"videoId\", None)\n                    res[\"thumbnails\"] = [thumb.get(\"url\", None) for thumb in video_data.get(\"thumbnail\", {}).get(\"thumbnails\", [{}]) ]\n                    res[\"title\"] = video_data.get(\"title\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"long_desc\"] = video_data.get(\"descriptionSnippet\", {}).get(\"runs\", [{}])[0].get(\"text\", None)\n                    res[\"channel\"] = video_data.get(\"longBylineText\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"duration\"] = video_data.get(\"lengthText\", {}).get(\"simpleText\", 0)\n                    res[\"views\"] = video_data.get(\"viewCountText\", {}).get(\"simpleText\", 0)\n                    res[\"publish_time\"] = video_data.get(\"publishedTimeText\", {}).get(\"simpleText\", 0)\n                    res[\"url_suffix\"] = video_data.get(\"navigationEndpoint\", {}).get(\"commandMetadata\", {}).get(\"webCommandMetadata\", {}).get(\"url\", None)\n                    results.append(res)\n\n            if results:\n                return results\n        return results",
+      "hash_value": "646f6423833c5c7fa4fdf4f7a473744d",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "import requests\nimport urllib.parse\nimport json\n\n\nclass YoutubeSearch:\n    def __init__(self, search_terms: str, max_results=None):\n        self.search_terms = search_terms\n        self.max_results = max_results\n        self.videos = self._search()\n\n    def _search(self):\n        encoded_search = urllib.parse.quote_plus(self.search_terms)\n        BASE_URL = \"https://youtube.com\"\n        url = f\"{BASE_URL}/results?search_query={encoded_search}\"\n        response = requests.get(url).text\n        while \"ytInitialData\" not in response:\n            response = requests.get(url).text\n        results = self._parse_html(response)\n        if self.max_results is not None and len(results) > self.max_results:\n            return results[: self.max_results]\n        return results\n\n    def _parse_html(self, response):\n        results = []\n        start = (\n            response.index(\"ytInitialData\")\n            + len(\"ytInitialData\")\n            + 3\n        )\n        end = response.index(\"};\", start) + 1\n        json_str = response[start:end]\n        data = json.loads(json_str)\n\n        for contents in data[\"contents\"][\"twoColumnSearchResultsRenderer\"][\"primaryContents\"][\"sectionListRenderer\"][\"contents\"]:\n            for video in contents[\"itemSectionRenderer\"][\"contents\"]:\n                res = {}\n                if \"videoRenderer\" in video.keys():\n                    video_data = video.get(\"videoRenderer\", {})\n                    res[\"id\"] = video_data.get(\"videoId\", None)\n                    res[\"thumbnails\"] = [thumb.get(\"url\", None) for thumb in video_data.get(\"thumbnail\", {}).get(\"thumbnails\", [{}]) ]\n                    res[\"title\"] = video_data.get(\"title\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"long_desc\"] = video_data.get(\"descriptionSnippet\", {}).get(\"runs\", [{}])[0].get(\"text\", None)\n                    res[\"channel\"] = video_data.get(\"longBylineText\", {}).get(\"runs\", [[{}]])[0].get(\"text\", None)\n                    res[\"duration\"] = video_data.get(\"lengthText\", {}).get(\"simpleText\", 0)\n                    res[\"views\"] = video_data.get(\"viewCountText\", {}).get(\"simpleText\", 0)\n                    res[\"publish_time\"] = video_data.get(\"publishedTimeText\", {}).get(\"simpleText\", 0)\n                    res[\"url_suffix\"] = video_data.get(\"navigationEndpoint\", {}).get(\"commandMetadata\", {}).get(\"webCommandMetadata\", {}).get(\"url\", None)\n                    results.append(res)\n\n            if results:\n                return results\n        return results",
+          "triple_sequences": [
+            {
+              "action_api": "urllib.parse.quote_plus()",
+              "action_description": "Percent-encodes bytes for use in URL",
+              "action_id": "percent_encode_url",
+              "object": "self.search_terms",
+              "object_description": "String containing environment data",
+              "object_id": "string_environment_data",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "requests.get()",
+              "action_description": "Sends HTTP GET request to URL",
+              "action_id": "open_url_get",
+              "object": "f\"{BASE_URL}/results?search_query={encoded_search}\"",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "requests.get()",
+              "action_description": "Sends HTTP GET request to URL",
+              "action_id": "open_url_get",
+              "object": "f\"{BASE_URL}/results?search_query={encoded_search}\"",
+              "object_description": "URL string",
+              "object_id": "url_string",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "json.loads()",
+              "action_description": "Deserializes JSON string to Python object",
+              "action_id": "deserialize_from_json",
+              "object": "json_str",
+              "object_description": "JSON string",
+              "object_id": "json_string",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

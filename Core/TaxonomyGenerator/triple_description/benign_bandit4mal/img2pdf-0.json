@@ -1,0 +1,176 @@
+{
+  "metadata": {
+    "package_name": "img2pdf-0",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign_bandit4mal/img2pdf-0.6.0.json",
+    "dataset_type": "benign_bandit4mal"
+  },
+  "code_files": [
+    {
+      "pyfile": "img2pdf_test.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/img2pdf-0.6.0/img2pdf-0.6.0/src/img2pdf_test.py",
+      "line_number": "349",
+      "type_description": "B815:write",
+      "context_snippet": "def write_png(data, path, bitdepth, colortype, palette=None, iccp=None):\n    with open(str(path), \"wb\") as f:\n        f.write(b\"\\x89PNG\\r\\n\\x1A\\n\")\n        # PNG image type        Colour type Allowed bit depths\n        # Greyscale             0           1, 2, 4, 8, 16\n        # Truecolour            2           8, 16\n        # Indexed-colour        3           1, 2, 4, 8\n        # Greyscale with alpha  4           8, 16\n        # Truecolour with alpha 6           8, 16\n        block = b\"IHDR\" + struct.pack(\n            \">IIBBBBB\",\n            data.shape[1],  # width\n            data.shape[0],  # height\n            bitdepth,  # bitdepth\n            colortype,  # colortype\n            0,  # compression\n            0,  # filtertype\n            0,  # interlaced\n        )\n        f.write(\n            struct.pack(\">I\", len(block) - 4)\n            + block\n            + struct.pack(\">I\", zlib.crc32(block))\n        )\n        if iccp is not None:\n            with open(iccp, \"rb\") as infh:\n                iccdata = infh.read()\n            block = b\"iCCP\"\n            block += b\"icc\\0\"  # arbitrary profile name\n            block += b\"\\0\"  # compression method (deflate)\n            block += zlib.compress(iccdata)\n            f.write(\n                struct.pack(\">I\", len(block) - 4)\n                + block\n                + struct.pack(\">I\", zlib.crc32(block))\n            )\n        if palette is not None:\n            block = b\"PLTE\"\n            for col in palette:\n                block += struct.pack(\">BBB\", col[0], col[1], col[2])\n            f.write(\n                struct.pack(\">I\", len(block) - 4)\n                + block\n                + struct.pack(\">I\", zlib.crc32(block))\n            )\n        raw = b\"\"\n        for y in range(data.shape[0]):\n            raw += b\"\\0\"\n            if bitdepth == 16:\n                raw += data[y].astype(\">u2\").tobytes()\n            elif bitdepth == 8:\n                raw += data[y].astype(\">u1\").tobytes()\n            elif bitdepth in [4, 2, 1]:\n                valsperbyte = 8 // bitdepth\n                for x in range(0, data.shape[1], valsperbyte):\n                    val = 0\n                    for j in range(valsperbyte):\n                        if x + j >= data.shape[1]:\n                            break\n                        val |= (data[y, x + j].astype(\">u2\") & (2**bitdepth - 1)) << (\n                            (valsperbyte - j - 1) * bitdepth\n                        )\n                    raw += struct.pack(\">B\", val)\n            else:\n                raise Exception()\n        compressed = compress(raw)\n        block = b\"IDAT\" + compressed\n        f.write(\n            struct.pack(\">I\", len(compressed))\n            + block\n            + struct.pack(\">I\", zlib.crc32(block))\n        )\n        block = b\"IEND\"\n        f.write(struct.pack(\">I\", 0) + block + struct.pack(\">I\", zlib.crc32(block)))\n",
+      "hash_value": "bcf896f8ae882c972b0ef4117da9ee8f",
+      "severity": "High",
+      "confidence": "Medium",
+      "code_snippets": [
+        {
+          "snippet": "def write_png(data, path, bitdepth, colortype, palette=None, iccp=None):\n    with open(str(path), \"wb\") as f:\n        f.write(b\"\\x89PNG\\r\\n\\x1A\\n\")\n        # PNG image type        Colour type Allowed bit depths\n        # Greyscale             0           1, 2, 4, 8, 16\n        # Truecolour            2           8, 16\n        # Indexed-colour        3           1, 2, 4, 8\n        # Greyscale with alpha  4           8, 16\n        # Truecolour with alpha 6           8, 16\n        block = b\"IHDR\" + struct.pack(\n            \">IIBBBBB\",\n            data.shape[1],  # width\n            data.shape[0],  # height\n            bitdepth,  # bitdepth\n            colortype,  # colortype\n            0,  # compression\n            0,  # filtertype\n            0,  # interlaced\n        )\n        f.write(\n            struct.pack(\">I\", len(block) - 4)\n            + block\n            + struct.pack(\">I\", zlib.crc32(block))\n        )\n        if iccp is not None:\n            with open(iccp, \"rb\") as infh:\n                iccdata = infh.read()\n            block = b\"iCCP\"\n            block += b\"icc\\0\"  # arbitrary profile name\n            block += b\"\\0\"  # compression method (deflate)\n            block += zlib.compress(iccdata)\n            f.write(\n                struct.pack(\">I\", len(block) - 4)\n                + block\n                + struct.pack(\">I\", zlib.crc32(block))\n            )\n        if palette is not None:\n            block = b\"PLTE\"\n            for col in palette:\n                block += struct.pack(\">BBB\", col[0], col[1], col[2])\n            f.write(\n                struct.pack(\">I\", len(block) - 4)\n                + block\n                + struct.pack(\">I\", zlib.crc32(block))\n            )\n        raw = b\"\"\n        for y in range(data.shape[0]):\n            raw += b\"\\0\"\n            if bitdepth == 16:\n                raw += data[y].astype(\">u2\").tobytes()\n            elif bitdepth == 8:\n                raw += data[y].astype(\">u1\").tobytes()\n            elif bitdepth in [4, 2, 1]:\n                valsperbyte = 8 // bitdepth\n                for x in range(0, data.shape[1], valsperbyte):\n                    val = 0\n                    for j in range(valsperbyte):\n                        if x + j >= data.shape[1]:\n                            break\n                        val |= (data[y, x + j].astype(\">u2\") & (2**bitdepth - 1)) << (\n                            (valsperbyte - j - 1) * bitdepth\n                        )\n                    raw += struct.pack(\">B\", val)\n            else:\n                raise Exception()\n        compressed = compress(raw)\n        block = b\"IDAT\" + compressed\n        f.write(\n            struct.pack(\">I\", len(compressed))\n            + block\n            + struct.pack(\">I\", zlib.crc32(block))\n        )\n        block = b\"IEND\"\n        f.write(struct.pack(\">I\", 0) + block + struct.pack(\">I\", zlib.crc32(block)))\n",
+          "triple_sequences": [
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "str(path), \"wb\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for writing",
+              "intention_id": "open_file_writing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "b\"\\x89PNG\\r\\n\\x1A\\n\"",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "struct.pack()",
+              "action_description": "Packs values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "\">IIBBBBB\", data.shape[1], data.shape[0], bitdepth, colortype, 0, 0, 0",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "zlib.crc32()",
+              "action_description": "Creates CRC32 hash object",
+              "action_id": "create_md5_hash",
+              "object": "block",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "struct.pack(...) + block + struct.pack(...)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "open()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "iccp, \"rb\"",
+              "object_description": "File path",
+              "object_id": "file_path",
+              "intention_description": "Open file for reading",
+              "intention_id": "open_file_reading"
+            },
+            {
+              "action_api": "infh.read()",
+              "action_description": "File opening operations for reading (normal reading, binary reading)",
+              "action_id": "basic_read_operations",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Read file content",
+              "intention_id": "read_file_content"
+            },
+            {
+              "action_api": "zlib.compress()",
+              "action_description": "Compresses data using zlib compression",
+              "action_id": "compress_data_zlib",
+              "object": "iccdata",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Compress data",
+              "intention_id": "compress_data"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "struct.pack(...) + block + struct.pack(...)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "struct.pack()",
+              "action_description": "Packs values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "\">BBB\", col[0], col[1], col[2]",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "struct.pack(...) + block + struct.pack(...)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            },
+            {
+              "action_api": "data[y].astype().tobytes()",
+              "action_description": "Creates bytes object from encoded string",
+              "action_id": "create_bytes_encoded",
+              "object": "data[y].astype(\">u2\") or data[y].astype(\">u1\")",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "struct.pack()",
+              "action_description": "Packs values into bytes using specified format",
+              "action_id": "pack_values",
+              "object": "\">B\", val",
+              "object_description": "Encoded string to bytes",
+              "object_id": "encoded_string_bytes",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "compress()",
+              "action_description": "Compresses data using zlib compression",
+              "action_id": "compress_data_zlib",
+              "object": "raw",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Compress data",
+              "intention_id": "compress_data"
+            },
+            {
+              "action_api": "f.write()",
+              "action_description": "File opening operations for writing (normal writing, binary writing)",
+              "action_id": "basic_write_operations",
+              "object": "struct.pack(...) + block + struct.pack(...)",
+              "object_description": "File text",
+              "object_id": "file_text",
+              "intention_description": "Write file content",
+              "intention_id": "write_file_content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

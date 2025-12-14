@@ -1,0 +1,201 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport platform\nimport posixpath\nimport shutil\nimport subprocess\nimport sys\nfrom typing import Any, List, Mapping\n\n\ndef _get_bazel_command() -> str:\n  \"\"\"Finds the bazel command.\"\"\"\n  if shutil.which('bazelisk'):\n    return 'bazelisk'\n  elif shutil.which('bazel'):\n    return 'bazel'\n  raise FileNotFoundError(\n      'Could not find bazel executable. Please install '\n      'bazel to compile the Tink Python package.'\n  )\n\nclass BazelExtension(setuptools.Extension):\n  \"\"\"A C/C++ extension that is defined as a Bazel BUILD target.\"\"\"\n\n  def __init__(self, bazel_target: str, target_name: str = '') -> None:\n    self.bazel_target = bazel_target\n    self.relpath, self.target_name = posixpath.relpath(\n        bazel_target, '//'\n    ).split(':')\n    if target_name:\n      self.target_name = target_name\n    ext_name = os.path.join(\n        self.relpath.replace(posixpath.sep, os.path.sep), self.target_name\n    )\n    setuptools.Extension.__init__(self, ext_name, sources=[])\n\nclass BuildBazelExtension(build_ext.build_ext):\n  \"\"\"A command that runs Bazel to build a C/C++ extension.\"\"\"\n\n  def __init__(self, dist: str) -> None:\n    super().__init__(dist)\n    self.bazel_command = _get_bazel_command()\n\n  def run(self) -> None:\n    for ext in self.extensions:\n      self.bazel_build(ext)\n    build_ext.build_ext.run(self)\n\n  def bazel_build(self, ext: str) -> None:\n    if not os.path.exists(self.build_temp):\n      os.makedirs(self.build_temp)\n\n    # Ensure no artifacts from previous builds are reused (i.e. from builds\n    # using a different Python version).\n    self.spawn([self.bazel_command, 'clean', '--expunge'])\n\n    bazel_startup_args = []\n    bazel_build_args = [\n        'build',\n        ext.bazel_target,\n        '--compilation_mode=' + ('dbg' if self.debug else 'opt'),\n    ]\n\n    target_arch = os.getenv('TARGET_ARCH', '')\n    target_os = os.getenv('TARGET_OS', '')\n    if target_arch and target_os:\n      bazel_build_args += [f'--config={target_os}_{target_arch}']\n\n    lib_extension = '.so'\n    if platform.system() == 'Windows':\n      # Required to build protobuf. See\n      # https://github.com/protocolbuffers/protobuf/issues/12947\n      bazel_startup_args += [r'--output_base=C:\\O']\n      # Needed by pybind11_bazel.\n      os.environ['PYTHON_BIN_PATH'] = sys.executable\n      os.environ['PYTHON_LIB_PATH'] = os.path.join(sys.exec_prefix, 'lib')\n      lib_extension = '.pyd'\n\n    if 'TINK_PYTHON_BAZEL_REMOTE_CACHE_GCS_BUCKET_URL' in os.environ:\n      if 'TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH' not in os.environ:\n        raise ValueError(\n            'TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH must be set.'\n        )\n      remote_cache_gcs_bucket_url = os.environ[\n          'TINK_PYTHON_BAZEL_REMOTE_CACHE_GCS_BUCKET_URL'\n      ]\n      remote_cache_gcs_service_key_path = os.path.abspath(\n          os.environ['TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH']\n      )\n      bazel_build_args += [\n          f'--remote_cache={remote_cache_gcs_bucket_url}',\n          f'--google_credentials={remote_cache_gcs_service_key_path}',\n      ]\n\n    # Run build command.\n    self.spawn([self.bazel_command] + bazel_startup_args + bazel_build_args)\n\n    ext_bazel_bin_path = os.path.join(\n        'bazel-bin', ext.relpath, ext.target_name + lib_extension\n    )\n    ext_dest_path = self.get_ext_fullpath(ext.name)\n    ext_dest_dir = os.path.dirname(ext_dest_path)\n    if not os.path.exists(ext_dest_dir):\n      os.makedirs(ext_dest_dir)\n    shutil.copyfile(ext_bazel_bin_path, ext_dest_path)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "shutil.which",
+        "shutil.which",
+        "os.path.exists",
+        "os.makedirs",
+        "self.spawn",
+        "os.getenv",
+        "os.getenv",
+        "platform.system",
+        "os.environ.__setitem__",
+        "os.environ.__setitem__",
+        "os.path.abspath",
+        "self.spawn",
+        "os.path.join",
+        "self.get_ext_fullpath",
+        "os.path.dirname",
+        "os.path.exists",
+        "os.makedirs",
+        "shutil.copyfile"
+      ],
+      "api_sequence_with_args": [
+        "shutil.which('bazelisk')",
+        "shutil.which('bazel')",
+        "os.path.exists(self.build_temp)",
+        "os.makedirs(self.build_temp)",
+        "self.spawn([self.bazel_command, 'clean', '--expunge'])",
+        "os.getenv('TARGET_ARCH', '')",
+        "os.getenv('TARGET_OS', '')",
+        "platform.system()",
+        "os.environ.__setitem__('PYTHON_BIN_PATH', sys.executable)",
+        "os.environ.__setitem__('PYTHON_LIB_PATH', os.path.join(sys.exec_prefix, 'lib'))",
+        "os.path.abspath(os.environ['TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH'])",
+        "self.spawn([self.bazel_command] + bazel_startup_args + bazel_build_args)",
+        "os.path.join('bazel-bin', ext.relpath, ext.target_name + lib_extension)",
+        "self.get_ext_fullpath(ext.name)",
+        "os.path.dirname(ext_dest_path)",
+        "os.path.exists(ext_dest_dir)",
+        "os.makedirs(ext_dest_dir)",
+        "shutil.copyfile(ext_bazel_bin_path, ext_dest_path)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "shutil.which",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "self.spawn",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.getenv",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "os.environ.__setitem__",
+          "id": "set_env_var",
+          "description": "Sets value of environment variable",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "os.environ.__setitem__",
+          "id": "set_env_var",
+          "description": "Sets value of environment variable",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.spawn",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "self.get_ext_fullpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copyfile",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "def _get_bazel_command() -> str:\n  if shutil.which('bazelisk'):\n    return 'bazelisk'\n  elif shutil.which('bazel'):\n    return 'bazel'\n  raise FileNotFoundError(\n      'Could not find bazel executable. Please install '\n      'bazel to compile the Tink Python package.'\n  )\n\nclass BuildBazelExtension(build_ext.build_ext):\n  def __init__(self, dist: str) -> None:\n    super().__init__(dist)\n    self.bazel_command = _get_bazel_command()\n\n  def bazel_build(self, ext: str) -> None:\n    if not os.path.exists(self.build_temp):\n      os.makedirs(self.build_temp)\n    self.spawn([self.bazel_command, 'clean', '--expunge'])\n    target_arch = os.getenv('TARGET_ARCH', '')\n    target_os = os.getenv('TARGET_OS', '')\n    if platform.system() == 'Windows':\n      os.environ['PYTHON_BIN_PATH'] = sys.executable\n      os.environ['PYTHON_LIB_PATH'] = os.path.join(sys.exec_prefix, 'lib')\n    if 'TINK_PYTHON_BAZEL_REMOTE_CACHE_GCS_BUCKET_URL' in os.environ:\n      remote_cache_gcs_service_key_path = os.path.abspath(\n          os.environ['TINK_PYTHON_BAZEL_REMOTE_CACHE_SERVICE_KEY_PATH']\n      )\n    self.spawn([self.bazel_command] + bazel_startup_args + bazel_build_args)\n    ext_bazel_bin_path = os.path.join(\n        'bazel-bin', ext.relpath, ext.target_name + lib_extension\n    )\n    ext_dest_path = self.get_ext_fullpath(ext.name)\n    ext_dest_dir = os.path.dirname(ext_dest_path)\n    if not os.path.exists(ext_dest_dir):\n      os.makedirs(ext_dest_dir)\n    shutil.copyfile(ext_bazel_bin_path, ext_dest_path)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "tink-1.11.0",
+      "total_matches": 2
+    }
+  }
+]

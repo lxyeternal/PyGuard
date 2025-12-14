@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "package_name": "singlestoredb-1",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/singlestoredb-1.12.4.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "graphql.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/singlestoredb-1.12.4/singlestoredb-1.12.4/singlestoredb/fusion/graphql.py",
+      "line_number": "173",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "import os\nimport requests\nfrom .result import FusionSQLResult\n\nAPI_URL = 'https://backend.singlestore.com/public'\n\nclass GraphQuery(object):\n    def __init__(\n        self,\n        api_token: str = '',\n        api_url: str = API_URL,\n    ) -> None:\n        self.api_token = api_token\n        self.api_url = api_url\n\n    def run(\n        self,\n        variables: Optional[Dict[str, Any]] = None,\n        *,\n        filter_expr: str = '',\n    ) -> FusionSQLResult:\n        api_token = self.api_token or os.environ.get('SINGLESTOREDB_BACKEND_TOKEN')\n        res = requests.post(\n            self.api_url,\n            headers={\n                'Content-Type': 'application/json',\n                'Authorization': f'Bearer {api_token}',\n            },\n            json={\n                'query': type(self).get_query(),\n                'variables': variables or {},\n            },\n        )\n        if res.status_code != 200:\n            raise ValueError(f'an error occurred: {res.text}')\n        json = res.json()\n        if json['data']:\n            data = json['data'].popitem()[-1]\n            if isinstance(data, Dict):\n                data = [data]\n        else:\n            data = []\n        fres = FusionSQLResult()\n        rows = []\n        fields = type(self).get_fields()\n        for i, obj in enumerate(data):\n            row = []\n            for name, field in fields:\n                found, value = field.get_path(obj)\n                if found:\n                    if i == 0:\n                        fres.add_field(name, field.dtype)\n                    row.append(value)\n            rows.append(tuple(row))\n        fres.set_rows(rows)\n        return fres",
+      "hash_value": "f4397f6add80e404858ab6ba6fb7de43",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "import os\nimport requests\nfrom .result import FusionSQLResult\n\nAPI_URL = 'https://backend.singlestore.com/public'\n\nclass GraphQuery(object):\n    def __init__(\n        self,\n        api_token: str = '',\n        api_url: str = API_URL,\n    ) -> None:\n        self.api_token = api_token\n        self.api_url = api_url\n\n    def run(\n        self,\n        variables: Optional[Dict[str, Any]] = None,\n        *,\n        filter_expr: str = '',\n    ) -> FusionSQLResult:\n        api_token = self.api_token or os.environ.get('SINGLESTOREDB_BACKEND_TOKEN')\n        res = requests.post(\n            self.api_url,\n            headers={\n                'Content-Type': 'application/json',\n                'Authorization': f'Bearer {api_token}',\n            },\n            json={\n                'query': type(self).get_query(),\n                'variables': variables or {},\n            },\n        )\n        if res.status_code != 200:\n            raise ValueError(f'an error occurred: {res.text}')\n        json = res.json()\n        if json['data']:\n            data = json['data'].popitem()[-1]\n            if isinstance(data, Dict):\n                data = [data]\n        else:\n            data = []\n        fres = FusionSQLResult()\n        rows = []\n        fields = type(self).get_fields()\n        for i, obj in enumerate(data):\n            row = []\n            for name, field in fields:\n                found, value = field.get_path(obj)\n                if found:\n                    if i == 0:\n                        fres.add_field(name, field.dtype)\n                    row.append(value)\n            rows.append(tuple(row))\n        fres.set_rows(rows)\n        return fres",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "SINGLESTOREDB_BACKEND_TOKEN",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "requests.post()",
+              "action_description": "Opens URL with POST data",
+              "action_id": "open_url_post",
+              "object": "self.api_url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {api_token}'}, json={'query': type(self).get_query(), 'variables': variables or {}}",
+              "object_description": "API endpoint",
+              "object_id": "api_endpoint",
+              "intention_description": "Transmit encoded data via HTTP POST",
+              "intention_id": "transmit_data_http_post"
+            },
+            {
+              "action_api": "res.status_code",
+              "action_description": "Retrieves HTTP response status code",
+              "action_id": "get_http_status",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare URL for HTTP request",
+              "intention_id": "prepare_url_http_request"
+            },
+            {
+              "action_api": "res.json()",
+              "action_description": "Deserializes JSON response body to Python object",
+              "action_id": "deserialize_json_response",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Parse JSON data",
+              "intention_id": "parse_json_data"
+            },
+            {
+              "action_api": "isinstance()",
+              "action_description": "Checks if object is instance of specified type",
+              "action_id": "check_instance_type",
+              "object": "data, Dict",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "FusionSQLResult()",
+              "action_description": "Instantiates FusionSQLResult class",
+              "action_id": "init_grabber_class",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "type(self).get_fields()",
+              "action_description": "Retrieves attribute value",
+              "action_id": "access_attribute_value",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "field.get_path()",
+              "action_description": "Retrieves attribute value",
+              "action_id": "access_attribute_value",
+              "object": "obj",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "fres.add_field()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "name, field.dtype",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            },
+            {
+              "action_api": "fres.set_rows()",
+              "action_description": "Sets attribute on builtins object",
+              "action_id": "set_builtin_attr",
+              "object": "rows",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Prepare data for further processing",
+              "intention_id": "prepare_data_processing"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

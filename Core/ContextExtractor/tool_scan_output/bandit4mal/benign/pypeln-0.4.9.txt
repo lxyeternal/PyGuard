@@ -1,0 +1,68 @@
+Run started:2025-04-12 13:04:12.906007
+
+Test results:
+>> Issue: [B838:process] multiprocessing.Process
+   Severity: High   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/pypeln-0.4.9/pypeln-0.4.9/pypeln/process/worker.py:240
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b838_process.html
+239	        else:
+240	            t = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
+241	        t.daemon = True
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/pypeln-0.4.9/pypeln-0.4.9/setup.py:29
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+28	    'description': '',
+29	    'long_description': '# Pypeln\n\n[![Coverage](https://img.shields.io/codecov/c/github/cgarciae/pypeln?color=%2334D058)](https://codecov.io/gh/cgarciae/pypeln)\n\n-----------------\n\n_Pypeln (pronounced as "pypeline") is a simple yet powerful Python library for creating concurrent data pipelines._\n\n#### Main Features\n\n* **Simple**: Pypeln was designed to solve _medium_ data tasks that require parallelism and concurrency where using frameworks like Spark or Dask feels exaggerated or unnatural.\n* **Easy-to-use**: Pypeln exposes a familiar functional API compatible with regular Python code.\n* **Flexible**: Pypeln enables you to build pipelines using Processes, Threads and asyncio.Tasks via the exact same API.\n* **Fine-grained Control**: Pypeln allows you to have control over the memory and cpu resources used at each stage of your pipelines.\n\nFor more information take a look at the [Documentation](https://cgarciae.github.io/pypeln).\n\n![diagram](https://github.com/cgarciae/pypeln/blob/master/docs/images/diagram.png?raw=true)\n\n## Installation\n\nInstall Pypeln using pip:\n```bash\npip install pypeln\n```\n\n## Basic Usage\nWith Pypeln you can easily create multi-stage data pipelines using 3 type of workers:\n\n### Processes\nYou can create a pipeline based on [multiprocessing.Process](https://docs.python.org/3.4/library/multiprocessing.html#multiprocessing.Process) workers by using the `process` module:\n\n```python\nimport pypeln as pl\nimport time\nfrom random import random\n\ndef slow_add1(x):\n    time.sleep(random()) # <= some slow computation\n    return x + 1\n\ndef slow_gt3(x):\n    time.sleep(random()) # <= some slow computation\n    return x > 3\n\ndata = range(10) # [0, 1, 2, ..., 9] \n\nstage = pl.process.map(slow_add1, data, workers=3, maxsize=4)\nstage = pl.process.filter(slow_gt3, stage, workers=2)\n\ndata = list(stage) # e.g. [5, 6, 9, 4, 8, 10, 7]\n```\nAt each stage the you can specify the numbers of `workers`. The `maxsize` parameter limits the maximum amount of elements that the stage can hold simultaneously.\n\n### Threads\nYou can create a pipeline based on [threading.Thread](https://docs.python.org/3/library/threading.html#threading.Thread) workers by using the `thread` module:\n```python\nimport pypeln as pl\nimport time\nfrom random import random\n\ndef slow_add1(x):\n    time.sleep(random()) # <= some slow computation\n    return x + 1\n\ndef slow_gt3(x):\n    time.sleep(random()) # <= some slow computation\n    return x > 3\n\ndata = range(10) # [0, 1, 2, ..., 9] \n\nstage = pl.thread.map(slow_add1, data, workers=3, maxsize=4)\nstage = pl.thread.filter(slow_gt3, stage, workers=2)\n\ndata = list(stage) # e.g. [5, 6, 9, 4, 8, 10, 7]\n```\nHere we have the exact same situation as in the previous case except that the worker are Threads.\n\n### Tasks\nYou can create a pipeline based on [asyncio.Task](https://docs.python.org/3.4/library/asyncio-task.html#asyncio.Task) workers by using the `task` module:\n```python\nimport pypeln as pl\nimport asyncio\nfrom random import random\n\nasync def slow_add1(x):\n    await asyncio.sleep(random()) # <= some slow computation\n    return x + 1\n\nasync def slow_gt3(x):\n    await asyncio.sleep(random()) # <= some slow computation\n    return x > 3\n\ndata = range(10) # [0, 1, 2, ..., 9] \n\nstage = pl.task.map(slow_add1, data, workers=3, maxsize=4)\nstage = pl.task.filter(slow_gt3, stage, workers=2)\n\ndata = list(stage) # e.g. [5, 6, 9, 4, 8, 10, 7]\n```\nConceptually similar but everything is running in a single thread and Task workers are created dynamically. If the code is running inside an async task can use `await` on the stage instead to avoid blocking:\n\n```python\nimport pypeln as pl\nimport asyncio\nfrom random import random\n\nasync def slow_add1(x):\n    await asyncio.sleep(random()) # <= some slow computation\n    return x + 1\n\nasync def slow_gt3(x):\n    await asyncio.sleep(random()) # <= some slow computation\n    return x > 3\n\n\ndef main():\n    data = range(10) # [0, 1, 2, ..., 9] \n\n    stage = pl.task.map(slow_add1, data, workers=3, maxsize=4)\n    stage = pl.task.filter(slow_gt3, stage, workers=2)\n\n    data = await stage # e.g. [5, 6, 9, 4, 8, 10, 7]\n\nasyncio.run(main())\n```\n### Sync\nThe `sync` module implements all operations using synchronous generators. This module is useful for debugging or when you don\'t need to perform heavy CPU or IO tasks but still want to retain element order information that certain functions like `pl.*.ordered` rely on.\n\n```python\nimport pypeln as pl\nimport time\nfrom random import random\n\ndef slow_add1(x):\n    return x + 1\n\ndef slow_gt3(x):\n    return x > 3\n\ndata = range(10) # [0, 1, 2, ..., 9] \n\nstage = pl.sync.map(slow_add1, data, workers=3, maxsize=4)\nstage = pl.sync.filter(slow_gt3, stage, workers=2)\n\ndata = list(stage) # [4, 5, 6, 7, 8, 9, 10]\n```\nCommon arguments such as `workers` and `maxsize` are accepted by this module\'s functions for API compatibility purposes but are ignored.\n\n## Mixed Pipelines\nYou can create pipelines using different worker types such that each type is the best for its given task so you can get the maximum performance out of your code:\n```python\ndata = get_iterable()\ndata = pl.task.map(f1, data, workers=100)\ndata = pl.thread.flat_map(f2, data, workers=10)\ndata = filter(f3, data)\ndata = pl.process.map(f4, data, workers=5, maxsize=200)\n```\nNotice that here we even used a regular python `filter`, since stages are iterables Pypeln integrates smoothly with any python code, just be aware of how each stage behaves.\n\n\n## Pipe Operator\nIn the spirit of being a true pipeline library, Pypeln also lets you create your pipelines using the pipe `|` operator:\n\n```python\ndata = (\n    range(10)\n    | pl.process.map(slow_add1, workers=3, maxsize=4)\n    | pl.process.filter(slow_gt3, workers=2)\n    | list\n)\n```\n\n## Run Tests\nA sample script is provided to run the tests in a container (either Docker or Podman is supported), to run tests:\n\n```bash\n$ bash scripts/run-tests.sh\n```\n\nThis script can also receive a python version to check test against, i.e\n\n```bash\n$ bash scripts/run-tests.sh 3.7\n```\n\n\n## Related Stuff\n* [Making an Unlimited Number of Requests with Python aiohttp + pypeln](https://medium.com/@cgarciae/making-an-infinite-number-of-requests-with-python-aiohttp-pypeln-3a552b97dc95)\n* [Process Pools](https://docs.python.org/3.4/library/multiprocessing.html?highlight=process#module-multiprocessing.pool)\n* [Making 100 million requests with Python aiohttp](https://www.artificialworlds.net/blog/2017/06/12/making-100-million-requests-with-python-aiohttp/)\n* [Python multiprocessing Queue memory management](https://stackoverflow.com/questions/52286527/python-multiprocessing-queue-memory-management/52286686#52286686)\n* [joblib](https://joblib.readthedocs.io/en/latest/)\n* [mpipe](https://vmlaker.github.io/mpipe/)\n\n## Contributors\n* [cgarciae](https://github.com/cgarciae)\n* [Davidnet](https://github.com/Davidnet)\n\n## License\nMIT',
+30	    'author': 'Cristian Garcia',
+31	    'author_email': 'cgarcia.e88@gmail.com',
+32	    'maintainer': None,
+33	    'maintainer_email': None,
+34	    'url': 'https://cgarciae.github.io/pypeln',
+35	    'packages': packages,
+36	    'package_data': package_data,
+37	    'install_requires': install_requires,
+38	    'extras_require': extras_require,
+39	    'python_requires': '>=3.6.2,<4.0',
+40	}
+41	
+42	
+43	setup(**setup_kwargs)
+
+--------------------------------------------------
+>> Issue: [B824:url_found] url_found
+   Severity: Medium   Confidence: Medium
+   Location: /home/blue/PyPIAgent/Dataset/study/unzip_benign/pypeln-0.4.9/pypeln-0.4.9/setup.py:34
+   More Info: https://bandit.readthedocs.io/en/latest/plugins/b824_url_found.html
+33	    'maintainer_email': None,
+34	    'url': 'https://cgarciae.github.io/pypeln',
+35	    'packages': packages,
+36	    'package_data': package_data,
+37	    'install_requires': install_requires,
+38	    'extras_require': extras_require,
+39	    'python_requires': '>=3.6.2,<4.0',
+40	}
+41	
+42	
+43	setup(**setup_kwargs)
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 8095
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 2.0
+		High: 1.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 3.0
+		High: 0.0
+Files skipped (0):

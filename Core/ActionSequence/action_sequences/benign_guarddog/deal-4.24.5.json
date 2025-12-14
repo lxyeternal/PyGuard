@@ -1,0 +1,94 @@
+[
+  {
+    "pyfile": "_contract.py",
+    "code_snippet": "import builtins\nfrom typing import Union\n\nclass Contract:\n    args: tuple[ast.expr | astroid.NodeNG, ...]\n    kwargs: tuple[ast.keyword | astroid.Keyword, ...]\n    category: Category\n    func_args: ast.arguments\n    context: dict[str, ast.stmt]\n    line: int\n\n    ...\n\n    @cached_property\n    def exceptions(self) -> list[Union[str, type[BaseException]]]:\n        from ._extractors import get_name\n\n        excs = []\n        for expr in self.args:\n            name = get_name(expr)\n            if not name:\n                continue\n            exc = getattr(builtins, name, name)\n            excs.append(exc)\n        return excs\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.getattr"
+      ],
+      "api_sequence_with_args": [
+        "builtins.getattr(builtins, name, name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "import builtins\n\nclass Contract:\n    ...\n    @cached_property\n    def exceptions(self) -> list[Union[str, type[BaseException]]]:\n        from ._extractors import get_name\n\n        excs = []\n        for expr in self.args:\n            name = get_name(expr)\n            if not name:\n                continue\n            exc = getattr(builtins, name, name)\n            excs.append(exc)\n        return excs"
+    }
+  },
+  {
+    "pyfile": "exceptions.py",
+    "code_snippet": "import builtins\nfrom .common import get_name, TOKENS, Token\n\n@get_exceptions.register(*TOKENS.RAISE)\ndef handle_raise(expr: ast.Raise, **kwargs) -> Token | None:\n    if expr.exc is None:\n        return None\n    name = get_name(expr.exc)\n    if not name:\n        # raised a value, too tricky\n        if not isinstance(expr.exc, TOKENS.CALL):\n            return None\n        # raised an instance of an exception\n        name = get_name(expr.exc.func)\n        if not name or name[0].islower():\n            return None\n    exc = getattr(builtins, name, name)\n    return Token(value=exc, line=expr.exc.lineno, col=expr.exc.col_offset)\n\n# Helper function used by handle_raise\nfrom .common import get_name\n\n# ---\n\ndef _exceptions_from_stubs(expr: astroid.Call, stubs: StubsManager) -> Iterator[Token]:\n    for value in infer(expr=expr.func):\n        if type(value) is not astroid.FunctionDef:\n            continue\n        module_name, func_name = get_full_name(expr=value)\n        stub = get_stub(module_name=module_name, expr=value, stubs=stubs)\n        if stub is None:\n            continue\n        names = stub.get(func=func_name, contract=Category.RAISES)\n        for name in names:\n            name = getattr(builtins, name, name)\n            yield Token(value=name)\n\n# Helper functions used by _exceptions_from_stubs\nfrom .common import infer, get_full_name, get_stub\nfrom .._contract import Category\nfrom .._stub import StubsManager\n\n# ---\n\ndef _exceptions_from_func(expr: ast.Call | astroid.Call) -> Iterator[Token]:\n    if astroid is None:  # pragma: no-astroid\n        return\n    for value in infer(expr.func):\n        if type(value) is not astroid.FunctionDef:\n            continue\n\n        # recursively infer exceptions from the function body\n        for error in get_exceptions(body=value.body, dive=False):\n            yield Token(value=error.value)\n\n        # get explicitly specified exceptions from `@deal.raises`\n        name: str | None\n        for contract in get_contracts(value):\n            if contract.name != 'raises':\n                continue\n            for arg in contract.args:\n                name = get_name(arg)\n                if name is None:\n                    continue\n                name = getattr(builtins, name, name)\n                yield Token(value=name)\n\n        # get exceptions from the docstring\n        name: str\n        if value.doc_node is not None:\n            for name in _excs_from_doc(value.doc_node.value):\n                name = getattr(builtins, name, name)\n                yield Token(value=name)\n    return None\n\n# Helper functions used by _exceptions_from_func\nfrom .common import infer, get_name\nfrom .contracts import get_contracts\nfrom .common import get_exceptions\n\ndef _excs_from_doc(doc: str) -> Iterator[str]:\n    if docstring_parser is not None:\n        parsed = docstring_parser.parse(doc)\n        for exc_info in parsed.raises:\n            if exc_info.type_name:\n                yield exc_info.type_name\n        return\n\n    google_section = ''\n    numpy_section = ''\n    google_section_indent = 4\n    numpy_section_indent = 0\n    lines = cleandoc(doc).splitlines() + ['']\n    for line, next_line in zip(lines, lines[1:]):\n        words = line.split()\n        if not words:\n            continue\n        indent = _get_indent(line)\n        is_numpy_header = _is_header_highlight(next_line)\n\n        # sphinx and epydoc docstring\n        if len(words) >= 2 and words[0] in (':raises', '@raise'):\n            yield words[1].rstrip(':')\n            continue\n\n        # google docstring\n        if REX_GOOGLE_SECTION.fullmatch(line) and not is_numpy_header:\n            google_section = line.strip().rstrip(':').lower()\n            google_section_indent = _get_indent(next_line)\n            continue\n        if google_section == 'raises' and indent == google_section_indent:\n            yield words[0].rstrip(':')\n            continue\n\n        # numpy docstring\n        next_line = next_line.strip()\n        if is_numpy_header:\n            numpy_section = line.strip().rstrip(':').lower()\n            continue\n        if _is_header_highlight(line):\n            numpy_section_indent = _get_indent(next_line)\n            continue\n        if numpy_section == 'raises' and indent == numpy_section_indent:\n            yield line.rstrip()\n\n# Helper functions used by _excs_from_doc\nfrom inspect import cleandoc\nimport re\nREX_GOOGLE_SECTION = re.compile(r'[A-Z][a-z]+:\\s*')\n\ndef _get_indent(line: str) -> int:\n    return len(line) - len(line.lstrip())\n\ndef _is_header_highlight(line: str) -> bool:\n    line = line.strip()\n    return len(set(line)) == 1 and line[0] in '-+'\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "builtins.getattr",
+        "builtins.isinstance",
+        "builtins.getattr",
+        "builtins.getattr",
+        "builtins.getattr"
+      ],
+      "api_sequence_with_args": [
+        "builtins.getattr(builtins, name, name)",
+        "builtins.isinstance(expr.exc, TOKENS.CALL)",
+        "builtins.getattr(builtins, name, name)",
+        "builtins.getattr(builtins, name, name)",
+        "builtins.getattr(builtins, name, name)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "builtins.getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "builtins.isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "builtins.getattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "import builtins\n\n@get_exceptions.register(*TOKENS.RAISE)\ndef handle_raise(expr: ast.Raise, **kwargs) -> Token | None:\n    if expr.exc is None:\n        return None\n    name = get_name(expr.exc)\n    if not name:\n        # raised a value, too tricky\n        if not isinstance(expr.exc, TOKENS.CALL):\n            return None\n        # raised an instance of an exception\n        name = get_name(expr.exc.func)\n        if not name or name[0].islower():\n            return None\n    exc = getattr(builtins, name, name)\n    return Token(value=exc, line=expr.exc.lineno, col=expr.exc.col_offset)\n\n\ndef _exceptions_from_stubs(expr: astroid.Call, stubs: StubsManager) -> Iterator[Token]:\n    for value in infer(expr=expr.func):\n        if type(value) is not astroid.FunctionDef:\n            continue\n        module_name, func_name = get_full_name(expr=value)\n        stub = get_stub(module_name=module_name, expr=value, stubs=stubs)\n        if stub is None:\n            continue\n        names = stub.get(func=func_name, contract=Category.RAISES)\n        for name in names:\n            name = getattr(builtins, name, name)\n            yield Token(value=name)\n\n\ndef _exceptions_from_func(expr: ast.Call | astroid.Call) -> Iterator[Token]:\n    if astroid is None:  # pragma: no-astroid\n        return\n    for value in infer(expr.func):\n        if type(value) is not astroid.FunctionDef:\n            continue\n\n        # recursively infer exceptions from the function body\n        for error in get_exceptions(body=value.body, dive=False):\n            yield Token(value=error.value)\n\n        # get explicitly specified exceptions from `@deal.raises`\n        name: str | None\n        for contract in get_contracts(value):\n            if contract.name != 'raises':\n                continue\n            for arg in contract.args:\n                name = get_name(arg)\n                if name is None:\n                    continue\n                name = getattr(builtins, name, name)\n                yield Token(value=name)\n\n        # get exceptions from the docstring\n        name: str\n        if value.doc_node is not None:\n            for name in _excs_from_doc(value.doc_node.value):\n                name = getattr(builtins, name, name)\n                yield Token(value=name)\n    return None"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "deal-4.24.5",
+      "total_matches": 5
+    }
+  }
+]

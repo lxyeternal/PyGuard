@@ -1,0 +1,165 @@
+{
+  "metadata": {
+    "package_name": "urllib3_future-2",
+    "original_json_path": "/home2/blue/Documents/PyPIAgent/Codes/code_contexral/codesnippets/benign/urllib3_future-2.12.917.json",
+    "dataset_type": "benign"
+  },
+  "code_files": [
+    {
+      "pyfile": "noxfile.py",
+      "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/urllib3_future-2.12.917/urllib3_future-2.12.917/noxfile.py",
+      "line_number": "143",
+      "type_description": "exfiltrate-sensitive-data",
+      "context_snippet": "from urllib.error import HTTPError, URLError\nfrom urllib.request import Request, urlopen\nfrom http.client import RemoteDisconnected\nfrom socket import timeout as SocketTimeout\nimport time\n\n@contextlib.contextmanager\ndef traefik_boot(\n    session: nox.Session, *args: str\n) -> typing.Generator[None, None, None]:\n    ...\n    traefik_ipv4 = os.environ.get(\"TRAEFIK_HTTPBIN_IPV4\", \"127.0.0.1\")\n    ...\n    try:\n        session.log(\"Attempt to start Traefik with go-httpbin[...]\")\n        ...\n        dc_process.wait()\n    except OSError as e:\n        session.warn(\n            f\"Traefik server cannot be run due to an error with containers: {e}\"\n        )\n    else:\n        session.log(\"Traefik server is starting[...]\")\n\n        i = 0\n\n        while True:\n            if i >= 120:\n                if not dc_v1_legacy:\n                    subprocess.Popen(\n                        [\n                            \"docker\",\n                            \"compose\",\n                            \"-f\",\n                            \"docker-compose.win.yaml\",\n                            \"logs\",\n                            \"--tail=128\",\n                        ]\n                    )\n\n                raise TimeoutError(\n                    \"Error while waiting for the Traefik server (timeout/readiness)\"\n                )\n\n            try:\n                r = urlopen(\n                    Request(\n                        f\"http://{traefik_ipv4}:8888/get\",\n                        headers={\"Host\": \"httpbin.local\"},\n                    ),\n                    timeout=1.0,\n                )\n            except (\n                HTTPError,\n                URLError,\n                RemoteDisconnected,\n                TimeoutError,\n                SocketTimeout,\n                ConnectionError,\n            ) as e:\n                i += 1\n                time.sleep(1)\n                session.log(f\"Waiting for the Traefik server: {e}...\")\n                continue\n\n            if int(r.status) == 200:\n                break\n\n        session.log(\"Traefik server is ready to accept connections[...]\")\n        external_stack_started = True\n\n    yield\n\n    if external_stack_started:\n        if dc_v1_legacy:\n            dc_process = subprocess.Popen([\"docker-compose\", \"stop\"])\n        else:\n            dc_process = subprocess.Popen([\"docker\", \"compose\", \"stop\"])\n\n        dc_process.wait()",
+      "hash_value": "19a1de7ae57593e61c853640772e4547",
+      "detection_index": 1,
+      "code_snippets": [
+        {
+          "snippet": "from urllib.error import HTTPError, URLError\nfrom urllib.request import Request, urlopen\nfrom http.client import RemoteDisconnected\nfrom socket import timeout as SocketTimeout\nimport time\n\n@contextlib.contextmanager\ndef traefik_boot(\n    session: nox.Session, *args: str\n) -> typing.Generator[None, None, None]:\n    ...\n    traefik_ipv4 = os.environ.get(\"TRAEFIK_HTTPBIN_IPV4\", \"127.0.0.1\")\n    ...\n    try:\n        session.log(\"Attempt to start Traefik with go-httpbin[...]\")\n        ...\n        dc_process.wait()\n    except OSError as e:\n        session.warn(\n            f\"Traefik server cannot be run due to an error with containers: {e}\"\n        )\n    else:\n        session.log(\"Traefik server is starting[...]\")\n\n        i = 0\n\n        while True:\n            if i >= 120:\n                if not dc_v1_legacy:\n                    subprocess.Popen(\n                        [\n                            \"docker\",\n                            \"compose\",\n                            \"-f\",\n                            \"docker-compose.win.yaml\",\n                            \"logs\",\n                            \"--tail=128\",\n                        ]\n                    )\n\n                raise TimeoutError(\n                    \"Error while waiting for the Traefik server (timeout/readiness)\"\n                )\n\n            try:\n                r = urlopen(\n                    Request(\n                        f\"http://{traefik_ipv4}:8888/get\",\n                        headers={\"Host\": \"httpbin.local\"},\n                    ),\n                    timeout=1.0,\n                )\n            except (\n                HTTPError,\n                URLError,\n                RemoteDisconnected,\n                TimeoutError,\n                SocketTimeout,\n                ConnectionError,\n            ) as e:\n                i += 1\n                time.sleep(1)\n                session.log(f\"Waiting for the Traefik server: {e}...\")\n                continue\n\n            if int(r.status) == 200:\n                break\n\n        session.log(\"Traefik server is ready to accept connections[...]\")\n        external_stack_started = True\n\n    yield\n\n    if external_stack_started:\n        if dc_v1_legacy:\n            dc_process = subprocess.Popen([\"docker-compose\", \"stop\"])\n        else:\n            dc_process = subprocess.Popen([\"docker\", \"compose\", \"stop\"])\n\n        dc_process.wait()",
+          "triple_sequences": [
+            {
+              "action_api": "os.environ.get()",
+              "action_description": "Retrieves value of environment variable",
+              "action_id": "get_env_var",
+              "object": "\"TRAEFIK_HTTPBIN_IPV4\"",
+              "object_description": "Environment variable",
+              "object_id": "environment_variable",
+              "intention_description": "Collect environment variable",
+              "intention_id": "collect_environment_variable"
+            },
+            {
+              "action_api": "session.log()",
+              "action_description": "Writes log message to file or console",
+              "action_id": "write_file_content",
+              "object": "\"Attempt to start Traefik with go-httpbin[...]\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "dc_process.wait()",
+              "action_description": "Waits for process to complete execution",
+              "action_id": "wait_process_completion",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            },
+            {
+              "action_api": "session.warn()",
+              "action_description": "Writes log message to file or console",
+              "action_id": "write_file_content",
+              "object": "f\"Traefik server cannot be run due to an error with containers: {e}\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "subprocess.Popen()",
+              "action_description": "Spawns new process to execute command without shell access",
+              "action_id": "spawn_process_no_shell",
+              "object": "[\"docker\", \"compose\", \"-f\", \"docker-compose.win.yaml\", \"logs\", \"--tail=128\"]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "raise TimeoutError",
+              "action_description": "Raises HTTPError if response status code indicates error",
+              "action_id": "raise_http_error",
+              "object": "\"Error while waiting for the Traefik server (timeout/readiness)\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Stop execution on invalid input",
+              "intention_id": "stop_execution_invalid_input"
+            },
+            {
+              "action_api": "urlopen()",
+              "action_description": "Opens URL with GET parameters",
+              "action_id": "open_url_get",
+              "object": "Request(f\"http://{traefik_ipv4}:8888/get\", headers={\"Host\": \"httpbin.local\"})",
+              "object_description": "Request object for external domain",
+              "object_id": "request_external_domain",
+              "intention_description": "Download remote content",
+              "intention_id": "download_remote_content"
+            },
+            {
+              "action_api": "time.sleep()",
+              "action_description": "Suspends execution",
+              "action_id": "suspend_execution",
+              "object": "1",
+              "object_description": "Delay duration in seconds",
+              "object_id": "delay_duration",
+              "intention_description": "Pause execution",
+              "intention_id": "pause_execution"
+            },
+            {
+              "action_api": "session.log()",
+              "action_description": "Writes log message to file or console",
+              "action_id": "write_file_content",
+              "object": "f\"Waiting for the Traefik server: {e}...\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "int(r.status)",
+              "action_description": "Retrieves HTTP response status code",
+              "action_id": "get_http_status",
+              "object": "r.status",
+              "object_description": "Status code",
+              "object_id": "status_code",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "session.log()",
+              "action_description": "Writes log message to file or console",
+              "action_id": "write_file_content",
+              "object": "\"Traefik server is ready to accept connections[...]\"",
+              "object_description": "Error message text",
+              "object_id": "error_message",
+              "intention_description": "Access attribute value",
+              "intention_id": "access_attribute_value"
+            },
+            {
+              "action_api": "subprocess.Popen()",
+              "action_description": "Spawns new process to execute command without shell access",
+              "action_id": "spawn_process_no_shell",
+              "object": "[\"docker-compose\", \"stop\"]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "subprocess.Popen()",
+              "action_description": "Spawns new process to execute command without shell access",
+              "action_id": "spawn_process_no_shell",
+              "object": "[\"docker\", \"compose\", \"stop\"]",
+              "object_description": "Shell command",
+              "object_id": "shell_command",
+              "intention_description": "Execute command",
+              "intention_id": "execute_command"
+            },
+            {
+              "action_api": "dc_process.wait()",
+              "action_description": "Waits for process to complete execution",
+              "action_id": "wait_process_completion",
+              "object": "",
+              "object_description": "",
+              "object_id": "",
+              "intention_description": "Wait for events",
+              "intention_id": "wait_for_events"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

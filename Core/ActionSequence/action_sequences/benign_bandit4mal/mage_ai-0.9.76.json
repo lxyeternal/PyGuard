@@ -1,0 +1,250 @@
+[
+  {
+    "metadata": {
+      "package_name": "mage_ai-0.9.76",
+      "total_matches": 3,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "azure_devops.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/mage_ai-0.9.76/mage_ai-0.9.76/mage_ai/data_preparation/git/clients/azure_devops.py",
+    "line_number": "105",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "104\t            url=pr.get('url'),\n105\t            user=pr.get('createdBy', {}).get('displayName'),\n106\t        )",
+    "code_snippet": "def create_pull_request(\n    self,\n    repository_name: str,\n    base_branch: str,\n    body: str,\n    compare_branch: str,\n    title: str,\n):\n    project_name, repository_name = repository_name.split('/')\n    data = {\n        'title': title,\n        'description': body,\n        'sourceRefName': compare_branch,\n        'targetRefName': base_branch,\n    }\n\n    resp = requests.post(\n        f'https://dev.azure.com/{self.organization}/{project_name}/_apis/git/repositories/{repository_name}/pullrequests?api-version=7.1-preview.1',  # noqa: E501\n        headers={\n            'Accept': 'application/json',\n            'Authorization': f'Bearer {self.access_token}',\n            'Content-Type': 'application/json',\n        },\n        data=json.dumps(data),\n        timeout=10,\n    )\n\n    resp.raise_for_status()\n    pr = resp.json()\n    return dict(\n        body=pr.get('description'),\n        created_at=pr.get('creationDate'),\n        id=pr.get('pullRequestId'),\n        is_merged=pr.get('status') == 'completed',\n        merged=pr.get('status') == 'completed',\n        state=pr.get('status'),\n        title=pr.get('title'),\n        url=pr.get('url'),\n        user=pr.get('createdBy', {}).get('displayName'),\n    )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "requests.post",
+        "json.dumps",
+        "requests.models.Response.raise_for_status",
+        "requests.models.Response.json"
+      ],
+      "api_sequence_with_args": [
+        "requests.post(f'https://dev.azure.com/{self.organization}/{project_name}/_apis/git/repositories/{repository_name}/pullrequests?api-version=7.1-preview.1', headers={'Accept': 'application/json', 'Authorization': f'Bearer {self.access_token}', 'Content-Type': 'application/json'}, data=json.dumps(data), timeout=10)",
+        "json.dumps(data)",
+        "resp.raise_for_status()",
+        "resp.json()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "requests.post",
+          "id": "send_http_post_timeout",
+          "description": "Sends HTTP POST request with data and timeout",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "json.dumps",
+          "id": "serialize_to_json",
+          "description": "Serializes Python object to JSON string",
+          "first_id": "data_transformation_processing",
+          "second_id": "data_encoding",
+          "third_id": "specific_format_encoding"
+        },
+        {
+          "api_name": "requests.models.Response.raise_for_status",
+          "id": "raise_http_error",
+          "description": "Raises HTTPError if response status code indicates error",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "requests.models.Response.json",
+          "id": "deserialize_json_response",
+          "description": "Deserializes JSON response body to Python object",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def create_pull_request(self, repository_name: str, base_branch: str, body: str, compare_branch: str, title: str):\n    project_name, repository_name = repository_name.split('/')\n    data = {\n        'title': title,\n        'description': body,\n        'sourceRefName': compare_branch,\n        'targetRefName': base_branch,\n    }\n\n    resp = requests.post(\n        f'https://dev.azure.com/{self.organization}/{project_name}/_apis/git/repositories/{repository_name}/pullrequests?api-version=7.1-preview.1',\n        headers={\n            'Accept': 'application/json',\n            'Authorization': f'Bearer {self.access_token}',\n            'Content-Type': 'application/json',\n        },\n        data=json.dumps(data),\n        timeout=10,\n    )\n\n    resp.raise_for_status()\n    pr = resp.json()\n    return dict(\n        body=pr.get('description'),\n        created_at=pr.get('creationDate'),\n        id=pr.get('pullRequestId'),\n        is_merged=pr.get('status') == 'completed',\n        merged=pr.get('status') == 'completed',\n        state=pr.get('status'),\n        title=pr.get('title'),\n        url=pr.get('url'),\n        user=pr.get('createdBy', {}).get('displayName'),\n    )"
+    }
+  },
+  {
+    "pyfile": "integration_pipeline.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/mage_ai-0.9.76/mage_ai-0.9.76/mage_ai/data_preparation/models/pipelines/integration_pipeline.py",
+    "line_number": "172",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "171\t            with open(file_path, 'w') as f:\n172\t                f.write(json.dumps(dict(bookmarks={})))\n173",
+    "code_snippet": "def destination_state_file_path(self, stream: str, destination_table: str) -> str:\n    stream_dir = f'{self.destination_dir}/{clean_name(stream)}'\n    file_path = f'{stream_dir}/{clean_name(destination_table)}_state'\n\n    os.makedirs(stream_dir, exist_ok=True)\n\n    if not os.path.exists(file_path):\n        with open(file_path, 'w') as f:\n            f.write(json.dumps(dict(bookmarks={})))\n\n    return file_path",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.makedirs",
+        "os.path.exists",
+        "open",
+        "json.dumps",
+        "dict"
+      ],
+      "api_sequence_with_args": [
+        "os.makedirs(stream_dir, exist_ok=True)",
+        "os.path.exists(file_path)",
+        "open(file_path, 'w')",
+        "json.dumps(dict(bookmarks={}))",
+        "dict(bookmarks={})"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def destination_state_file_path(self, stream: str, destination_table: str) -> str:\n    stream_dir = f'{self.destination_dir}/{clean_name(stream)}'\n    file_path = f'{stream_dir}/{clean_name(destination_table)}_state'\n\n    os.makedirs(stream_dir, exist_ok=True)\n\n    if not os.path.exists(file_path):\n        with open(file_path, 'w') as f:\n            f.write(json.dumps(dict(bookmarks={})))\n\n    return file_path"
+    }
+  },
+  {
+    "pyfile": "models.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/mage_ai-0.9.76/mage_ai-0.9.76/mage_ai/kernels/magic/kernels/models.py",
+    "line_number": "43",
+    "type_description": "B840:executor",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "42\t    def __initialize_kernel(self, num_processes: Optional[int] = None) -> None:\n43\t        self.executor = ThreadPoolExecutor()\n44\t        self.num_processes = num_processes or DEFAULT_NUM_PROCESSES",
+    "code_snippet": "from concurrent.futures import ThreadPoolExecutor\nfrom typing import Optional\n\nDEFAULT_NUM_PROCESSES = 1\n\nclass Kernel:\n    def __initialize_kernel(self, num_processes: Optional[int] = None) -> None:\n        self.executor = ThreadPoolExecutor()\n        self.num_processes = num_processes or DEFAULT_NUM_PROCESSES\n\n        # These need to go before starting the thread.\n        self.pool = Pool(processes=self.num_processes)\n        self.context_manager = SyncManager()\n        self.context_manager.start()\n\n        self.read_queue = cast(Queue, self.context_manager.Queue())\n\n        # Track active processes\n        self.processes: List[Process] = []\n\n        self.shared_dict = self.context_manager.dict()\n        self.shared_list = self.context_manager.list()\n        self.lock = self.context_manager.Lock()\n\n        self.stop_event = Event()\n        self.stop_event_pool = AsyncEvent()\n\n        # Initialize a queue using the SyncManager so that it can be serialized and deserialized\n        # or else it will throw an error when trying to pass it to a process.\n        # Thread to read and forward results from read queue to write queue.\n        self.reader_thread = ReaderThread(\n            args=(self.read_queue, self.write_queue, self.stop_event), start=True\n        )",
+    "pattern_analysis": {
+      "api_sequence": [
+        "concurrent.futures.ThreadPoolExecutor",
+        "Pool",
+        "SyncManager",
+        "SyncManager.start",
+        "SyncManager.Queue",
+        "SyncManager.dict",
+        "SyncManager.list",
+        "SyncManager.Lock",
+        "Event",
+        "AsyncEvent",
+        "ReaderThread"
+      ],
+      "api_sequence_with_args": [
+        "concurrent.futures.ThreadPoolExecutor()",
+        "Pool(processes=self.num_processes)",
+        "SyncManager()",
+        "SyncManager.start()",
+        "SyncManager.Queue()",
+        "SyncManager.dict()",
+        "SyncManager.list()",
+        "SyncManager.Lock()",
+        "Event()",
+        "AsyncEvent()",
+        "ReaderThread(args=(self.read_queue, self.write_queue, self.stop_event), start=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "concurrent.futures.ThreadPoolExecutor",
+          "id": "init_thread_pool",
+          "description": "Initializes thread pool executor with specified worker count",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "Pool",
+          "id": "init_thread_pool",
+          "description": "Initializes thread pool executor with specified worker count",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_pool_management"
+        },
+        {
+          "api_name": "SyncManager",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "SyncManager.start",
+          "id": "start_thread",
+          "description": "Starts thread execution",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_control"
+        },
+        {
+          "api_name": "SyncManager.Queue",
+          "id": "create_temp_dir",
+          "description": "Creates temporary directory and returns its path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "SyncManager.dict",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "SyncManager.list",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "SyncManager.Lock",
+          "id": "init_parent_class",
+          "description": "Initializes parent class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "Event",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "AsyncEvent",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        },
+        {
+          "api_name": "ReaderThread",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        }
+      ],
+      "contextual_code": "from concurrent.futures import ThreadPoolExecutor\nfrom typing import Optional\n\nDEFAULT_NUM_PROCESSES = 1\n\nclass Kernel:\n    def __initialize_kernel(self, num_processes: Optional[int] = None) -> None:\n        self.executor = ThreadPoolExecutor()\n        self.num_processes = num_processes or DEFAULT_NUM_PROCESSES\n\n        self.pool = Pool(processes=self.num_processes)\n        self.context_manager = SyncManager()\n        self.context_manager.start()\n\n        self.read_queue = cast(Queue, self.context_manager.Queue())\n\n        self.processes: List[Process] = []\n\n        self.shared_dict = self.context_manager.dict()\n        self.shared_list = self.context_manager.list()\n        self.lock = self.context_manager.Lock()\n\n        self.stop_event = Event()\n        self.stop_event_pool = AsyncEvent()\n\n        self.reader_thread = ReaderThread(\n            args=(self.read_queue, self.write_queue, self.stop_event), start=True\n        )"
+    }
+  }
+]

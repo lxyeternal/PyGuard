@@ -1,0 +1,31 @@
+[
+  {
+    "metadata": {
+      "package_name": "edx_enterprise-5.12.4-py3-none-any",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "enterprise_customer_sso_configuration.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/edx_enterprise-5.12.4-py3-none-any/enterprise/api/v1/views/enterprise_customer_sso_configuration.py",
+    "line_number": "236",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "235\t            try:\n236\t                enterprise_customer = EnterpriseCustomer.objects.get(uuid=requesting_user_customer)\n237\t            except EnterpriseCustomer.DoesNotExist:",
+    "context_snippet": "    @permission_required(\n        'enterprise.can_access_admin_dashboard',\n        fn=lambda request, *args, **kwargs: get_customer_from_request(request)\n    )\n    def create(self, request, *args, **kwargs):\n        # Force the enterprise customer to be the one associated with the user\n        request_data = fetch_request_data_from_request(request)\n        requesting_user_customer = request_data.get('enterprise_customer')\n        if requesting_user_customer:\n            try:\n                enterprise_customer = EnterpriseCustomer.objects.get(uuid=requesting_user_customer)\n            except EnterpriseCustomer.DoesNotExist:\n                return Response(status=HTTP_403_FORBIDDEN)\n            try:\n                if not check_user_part_of_customer(request.user, enterprise_customer):\n                    return Response(status=HTTP_403_FORBIDDEN)\n            except EnterpriseCustomerInactiveException:\n                return Response(status=HTTP_403_FORBIDDEN)\n            request_data['enterprise_customer'] = enterprise_customer\n        else:\n            return Response({'error': BAD_CUSTOMER_ERROR}, status=HTTP_400_BAD_REQUEST)\n\n        # Parse the request data to see if the metadata url or xml has changed and update the entity id if so\n        sso_config_metadata_xml = None\n        if request_metadata_url := request_data.get('metadata_url'):\n            # If the metadata url has changed, we need to update the metadata xml\n            try:\n                sso_config_metadata_xml = get_metadata_xml_from_url(request_metadata_url)\n            except (SsoConfigurationApiError, requests.exceptions.SSLError) as e:\n                LOGGER.error(f'{BAD_IDP_METADATA_URL}{e}')\n                return Response({'error': f'{BAD_IDP_METADATA_URL} {e}'}, status=HTTP_400_BAD_REQUEST)\n            request_data['metadata_xml'] = sso_config_metadata_xml\n        if sso_config_metadata_xml or (sso_config_metadata_xml := request_data.get('metadata_xml')):\n            try:\n                entity_id = fetch_entity_id_from_metadata_xml(sso_config_metadata_xml)\n            except (EntityIdNotFoundError) as e:\n                LOGGER.error(f'{CONFIG_UPDATE_ERROR}{e}')\n                return Response({'error': f'{CONFIG_UPDATE_ERROR} {e}'}, status=HTTP_400_BAD_REQUEST)\n\n            request_data['entity_id'] = entity_id\n\n        try:\n            with transaction.atomic():\n                new_record = EnterpriseCustomerSsoConfiguration.objects.create(**request_data)\n                sp_metadata_url = new_record.submit_for_configuration()\n        except (TypeError, SsoOrchestratorClientError) as e:\n            LOGGER.error(f'{CONFIG_CREATE_ERROR} {e}')\n            return Response({'error': f'{CONFIG_CREATE_ERROR} {e}'}, status=HTTP_400_BAD_REQUEST)\n\n        return Response({'record': new_record.pk, 'sp_metadata_url': sp_metadata_url}, status=HTTP_201_CREATED)",
+    "hash_value": "f2781ab1d792c139133fd8106c5f8dc0"
+  },
+  {
+    "pyfile": "discovery.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/edx_enterprise-5.12.4-py3-none-any/enterprise/api_client/discovery.py",
+    "line_number": "89",
+    "type_description": "B820:get",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "88\t        \"\"\"\n89\t        results = response.get('results', [])\n90",
+    "context_snippet": "def traverse_pagination(self, response, api_url, content_filter_query, query_params):\n    \"\"\"\n    Traverse a paginated API response and extracts and concatenates \"results\" returned by API.\n\n    Arguments:\n        response (dict): API response object.\n        api_url (str): API endpoint path.\n        content_filter_query (dict): query parameters used to filter catalog results.\n        query_params (dict): query parameters used to paginate results.\n\n    Returns:\n        list: all the results returned by the API.\n    \"\"\"\n    results = response.get('results', [])\n\n    page = 1\n    while response.get('next'):\n        page += 1\n        response = self.client.post(api_url, data=content_filter_query, params=dict(query_params, page=page))\n        response.raise_for_status()\n        response = response.json()\n        results += response.get('results', [])\n\n    return results",
+    "hash_value": "47c0f291c92dbc3caa2d428604611caa"
+  }
+]

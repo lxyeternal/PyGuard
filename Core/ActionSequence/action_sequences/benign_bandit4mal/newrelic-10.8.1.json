@@ -1,0 +1,581 @@
+[
+  {
+    "metadata": {
+      "package_name": "newrelic-10.8.1",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "environment.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/newrelic-10.8.1/newrelic-10.8.1/newrelic/core/environment.py",
+    "line_number": "49",
+    "type_description": "B817:system",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "48\t    env.append((\"Arch\", platform.machine()))\n49\t    env.append((\"OS\", platform.system()))\n50\t    env.append((\"OS version\", platform.release()))",
+    "code_snippet": "def environment_settings():\n    \"\"\"Returns an array of arrays of environment settings\"\"\"\n    env = []\n\n    # Agent information.\n\n    env.append((\"Agent Version\", \".\".join(map(str, newrelic.version_info))))\n\n    # System information.\n\n    env.append((\"Arch\", platform.machine()))\n    env.append((\"OS\", platform.system()))\n    env.append((\"OS version\", platform.release()))\n\n    env.append((\"Total Physical Memory (MB)\", total_physical_memory()))\n    env.append((\"Logical Processors\", logical_processor_count()))\n\n    physical_processor_packages, physical_cores = physical_processor_count()\n\n    # Report this attribute only if it has a valid value.\n\n    if physical_processor_packages:\n        env.append((\"Physical Processor Packages\", physical_processor_packages))\n\n    # Report this attribute only if it has a valid value.\n\n    if physical_cores:\n        env.append((\"Physical Cores\", physical_cores))\n\n    # Python information.\n\n    env.append((\"Python Program Name\", sys.argv[0]))\n\n    env.append((\"Python Executable\", sys.executable))\n\n    env.append((\"Python Home\", os.environ.get(\"PYTHONHOME\", \"\")))\n    env.append((\"Python Path\", os.environ.get(\"PYTHONPATH\", \"\")))\n\n    env.append((\"Python Prefix\", sys.prefix))\n    env.append((\"Python Exec Prefix\", sys.exec_prefix))\n\n    env.append((\"Python Runtime\", \".\".join(platform.python_version_tuple())))\n\n    env.append((\"Python Implementation\", platform.python_implementation()))\n    env.append((\"Python Version\", sys.version))\n\n    env.append((\"Python Platform\", sys.platform))\n\n    env.append((\"Python Max Unicode\", sys.maxunicode))\n\n    # Extensions information.\n\n    extensions = []\n\n    if \"newrelic.core._thread_utilization\" in sys.modules:\n        extensions.append(\"newrelic.core._thread_utilization\")\n\n    env.append((\"Compiled Extensions\", \", \".join(extensions)))\n\n    # Dispatcher information.\n\n    dispatcher = []\n\n    # Find the first dispatcher module that's been loaded and report that as the dispatcher.\n    # If possible, also report the dispatcher's version and any other environment information.\n    if not dispatcher and \"mod_wsgi\" in sys.modules:\n        mod_wsgi = sys.modules[\"mod_wsgi\"]\n        if hasattr(mod_wsgi, \"process_group\"):\n            if mod_wsgi.process_group == \"\":\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (embedded)\"))\n            else:\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (daemon)\"))\n            env.append((\"Apache/mod_wsgi Process Group\", mod_wsgi.process_group))\n        else:\n            dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi\"))\n        if hasattr(mod_wsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", str(mod_wsgi.version)))\n        if hasattr(mod_wsgi, \"application_group\"):\n            env.append((\"Apache/mod_wsgi Application Group\", mod_wsgi.application_group))\n\n    if not dispatcher and \"uwsgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uWSGI\"))\n        uwsgi = sys.modules[\"uwsgi\"]\n        if hasattr(uwsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", uwsgi.version))\n\n    if not dispatcher and \"flup.server.fcgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (threaded)\"))\n\n    if not dispatcher and \"flup.server.fcgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (prefork)\"))\n\n    if not dispatcher and \"flup.server.scgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (threaded)\"))\n\n    if not dispatcher and \"flup.server.scgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (prefork)\"))\n\n    if not dispatcher and \"flup.server.ajp\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (threaded)\"))\n\n    if not dispatcher and \"flup.server.ajp_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (forking)\"))\n\n    if not dispatcher and \"flup.server.cgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/cgi\"))\n\n    if not dispatcher and \"gunicorn\" in sys.modules:\n        if \"gunicorn.workers.ggevent\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (gevent)\"))\n        elif \"gunicorn.workers.geventlet\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (eventlet)\"))\n        elif \"uvicorn.workers\" in sys.modules or \"uvicorn_worker\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (uvicorn)\"))\n            uvicorn = sys.modules.get(\"uvicorn\")\n            if hasattr(uvicorn, \"__version__\"):\n                dispatcher.append((\"Worker Version\", uvicorn.__version__))\n        else:\n            dispatcher.append((\"Dispatcher\", \"gunicorn\"))\n\n        gunicorn = sys.modules[\"gunicorn\"]\n        if hasattr(gunicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", gunicorn.__version__))\n\n    if not dispatcher and \"uvicorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uvicorn\"))\n        uvicorn = sys.modules[\"uvicorn\"]\n\n        if hasattr(uvicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", uvicorn.__version__))\n\n    if not dispatcher and \"hypercorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"hypercorn\"))\n        hypercorn = sys.modules[\"hypercorn\"]\n\n        if hasattr(hypercorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", hypercorn.__version__))\n        else:\n            try:\n                dispatcher.append((\"Dispatcher Version\", get_package_version(\"hypercorn\")))\n            except Exception:\n                pass\n\n    if not dispatcher and \"daphne\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"daphne\"))\n        daphne = sys.modules[\"daphne\"]\n\n        if hasattr(daphne, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", daphne.__version__))\n\n    if not dispatcher and \"tornado\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"tornado\"))\n        tornado = sys.modules[\"tornado\"]\n        if hasattr(tornado, \"version_info\"):\n            dispatcher.append((\"Dispatcher Version\", str(tornado.version_info)))\n\n    env.extend(dispatcher)\n\n    return env",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.machine",
+        "platform.system",
+        "platform.release",
+        "total_physical_memory",
+        "logical_processor_count",
+        "physical_processor_count",
+        "sys.argv",
+        "sys.executable",
+        "os.environ.get",
+        "os.environ.get",
+        "sys.prefix",
+        "sys.exec_prefix",
+        "platform.python_version_tuple",
+        "platform.python_implementation",
+        "sys.version",
+        "sys.platform",
+        "sys.maxunicode",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules",
+        "sys.modules.get",
+        "hasattr",
+        "hasattr",
+        "hasattr",
+        "hasattr",
+        "hasattr",
+        "hasattr",
+        "hasattr",
+        "hasattr"
+      ],
+      "api_sequence_with_args": [
+        "platform.machine()",
+        "platform.system()",
+        "platform.release()",
+        "total_physical_memory()",
+        "logical_processor_count()",
+        "physical_processor_count()",
+        "sys.argv[0]",
+        "sys.executable",
+        "os.environ.get(\"PYTHONHOME\", \"\")",
+        "os.environ.get(\"PYTHONPATH\", \"\")",
+        "sys.prefix",
+        "sys.exec_prefix",
+        "platform.python_version_tuple()",
+        "platform.python_implementation()",
+        "sys.version",
+        "sys.platform",
+        "sys.maxunicode",
+        "\"newrelic.core._thread_utilization\" in sys.modules",
+        "\"mod_wsgi\" in sys.modules",
+        "\"uwsgi\" in sys.modules",
+        "\"flup.server.fcgi\" in sys.modules",
+        "\"flup.server.fcgi_fork\" in sys.modules",
+        "\"flup.server.scgi\" in sys.modules",
+        "\"flup.server.scgi_fork\" in sys.modules",
+        "\"flup.server.ajp\" in sys.modules",
+        "\"flup.server.ajp_fork\" in sys.modules",
+        "\"flup.server.cgi\" in sys.modules",
+        "\"gunicorn\" in sys.modules",
+        "\"uvicorn\" in sys.modules",
+        "\"hypercorn\" in sys.modules",
+        "\"daphne\" in sys.modules",
+        "\"tornado\" in sys.modules",
+        "sys.modules.get(\"uvicorn\")",
+        "hasattr(mod_wsgi, \"process_group\")",
+        "hasattr(mod_wsgi, \"version\")",
+        "hasattr(mod_wsgi, \"application_group\")",
+        "hasattr(uwsgi, \"version\")",
+        "hasattr(uvicorn, \"__version__\")",
+        "hasattr(gunicorn, \"__version__\")",
+        "hasattr(hypercorn, \"__version__\")",
+        "hasattr(daphne, \"__version__\")",
+        "hasattr(tornado, \"version_info\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.machine",
+          "id": "get_machine_type",
+          "description": "Retrieves machine type, e.g., 'x86_64'",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "platform.release",
+          "id": "get_os_release",
+          "description": "Retrieves operating system release version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "total_physical_memory",
+          "id": "get_virtual_memory",
+          "description": "Retrieves system virtual memory statistics",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "logical_processor_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "physical_processor_count",
+          "id": "get_processor_name",
+          "description": "Retrieves processor name as string",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "hardware_information"
+        },
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.executable",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.environ.get",
+          "id": "get_env_var",
+          "description": "Retrieves value of environment variable",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "sys.prefix",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.exec_prefix",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "platform.python_version_tuple",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "platform.python_implementation",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.version",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.platform",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.maxunicode",
+          "id": "get_python_version",
+          "description": "Retrieves Python interpreter version",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "sys.modules.get",
+          "id": "import_dynamic",
+          "description": "Dynamically imports specified module",
+          "first_id": "code_execution",
+          "second_id": "module_management",
+          "third_id": "module_importing"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "hasattr",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "def environment_settings():\n    env = []\n    env.append((\"Agent Version\", \".\".join(map(str, newrelic.version_info))))\n    env.append((\"Arch\", platform.machine()))\n    env.append((\"OS\", platform.system()))\n    env.append((\"OS version\", platform.release()))\n    env.append((\"Total Physical Memory (MB)\", total_physical_memory()))\n    env.append((\"Logical Processors\", logical_processor_count()))\n    physical_processor_packages, physical_cores = physical_processor_count()\n    if physical_processor_packages:\n        env.append((\"Physical Processor Packages\", physical_processor_packages))\n    if physical_cores:\n        env.append((\"Physical Cores\", physical_cores))\n    env.append((\"Python Program Name\", sys.argv[0]))\n    env.append((\"Python Executable\", sys.executable))\n    env.append((\"Python Home\", os.environ.get(\"PYTHONHOME\", \"\")))\n    env.append((\"Python Path\", os.environ.get(\"PYTHONPATH\", \"\")))\n    env.append((\"Python Prefix\", sys.prefix))\n    env.append((\"Python Exec Prefix\", sys.exec_prefix))\n    env.append((\"Python Runtime\", \".\".join(platform.python_version_tuple())))\n    env.append((\"Python Implementation\", platform.python_implementation()))\n    env.append((\"Python Version\", sys.version))\n    env.append((\"Python Platform\", sys.platform))\n    env.append((\"Python Max Unicode\", sys.maxunicode))\n    extensions = []\n    if \"newrelic.core._thread_utilization\" in sys.modules:\n        extensions.append(\"newrelic.core._thread_utilization\")\n    env.append((\"Compiled Extensions\", \", \".join(extensions)))\n    dispatcher = []\n    if not dispatcher and \"mod_wsgi\" in sys.modules:\n        mod_wsgi = sys.modules[\"mod_wsgi\"]\n        if hasattr(mod_wsgi, \"process_group\"):\n            if mod_wsgi.process_group == \"\":\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (embedded)\"))\n            else:\n                dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi (daemon)\"))\n            env.append((\"Apache/mod_wsgi Process Group\", mod_wsgi.process_group))\n        else:\n            dispatcher.append((\"Dispatcher\", \"Apache/mod_wsgi\"))\n        if hasattr(mod_wsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", str(mod_wsgi.version)))\n        if hasattr(mod_wsgi, \"application_group\"):\n            env.append((\"Apache/mod_wsgi Application Group\", mod_wsgi.application_group))\n    if not dispatcher and \"uwsgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uWSGI\"))\n        uwsgi = sys.modules[\"uwsgi\"]\n        if hasattr(uwsgi, \"version\"):\n            dispatcher.append((\"Dispatcher Version\", uwsgi.version))\n    if not dispatcher and \"flup.server.fcgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (threaded)\"))\n    if not dispatcher and \"flup.server.fcgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/fastcgi (prefork)\"))\n    if not dispatcher and \"flup.server.scgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (threaded)\"))\n    if not dispatcher and \"flup.server.scgi_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/scgi (prefork)\"))\n    if not dispatcher and \"flup.server.ajp\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (threaded)\"))\n    if not dispatcher and \"flup.server.ajp_fork\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/ajp (forking)\"))\n    if not dispatcher and \"flup.server.cgi\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"flup/cgi\"))\n    if not dispatcher and \"gunicorn\" in sys.modules:\n        if \"gunicorn.workers.ggevent\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (gevent)\"))\n        elif \"gunicorn.workers.geventlet\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (eventlet)\"))\n        elif \"uvicorn.workers\" in sys.modules or \"uvicorn_worker\" in sys.modules:\n            dispatcher.append((\"Dispatcher\", \"gunicorn (uvicorn)\"))\n            uvicorn = sys.modules.get(\"uvicorn\")\n            if hasattr(uvicorn, \"__version__\"):\n                dispatcher.append((\"Worker Version\", uvicorn.__version__))\n        else:\n            dispatcher.append((\"Dispatcher\", \"gunicorn\"))\n        gunicorn = sys.modules[\"gunicorn\"]\n        if hasattr(gunicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", gunicorn.__version__))\n    if not dispatcher and \"uvicorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"uvicorn\"))\n        uvicorn = sys.modules[\"uvicorn\"]\n        if hasattr(uvicorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", uvicorn.__version__))\n    if not dispatcher and \"hypercorn\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"hypercorn\"))\n        hypercorn = sys.modules[\"hypercorn\"]\n        if hasattr(hypercorn, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", hypercorn.__version__))\n        else:\n            try:\n                dispatcher.append((\"Dispatcher Version\", get_package_version(\"hypercorn\")))\n            except Exception:\n                pass\n    if not dispatcher and \"daphne\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"daphne\"))\n        daphne = sys.modules[\"daphne\"]\n        if hasattr(daphne, \"__version__\"):\n            dispatcher.append((\"Dispatcher Version\", daphne.__version__))\n    if not dispatcher and \"tornado\" in sys.modules:\n        dispatcher.append((\"Dispatcher\", \"tornado\"))\n        tornado = sys.modules[\"tornado\"]\n        if hasattr(tornado, \"version_info\"):\n            dispatcher.append((\"Dispatcher Version\", str(tornado.version_info)))\n    env.extend(dispatcher)\n    return env"
+    }
+  },
+  {
+    "pyfile": "test_asgi_app.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/newrelic-10.8.1/newrelic-10.8.1/tests/adapter_gunicorn/test_asgi_app.py",
+    "line_number": "62",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "61\t                    s.connect((\"127.0.0.1\", PORT))\n62\t                    s.close()\n63\t                    break",
+    "code_snippet": "@pytest.mark.parametrize(\"nr_enabled\", (True, False))\ndef test_asgi_app(nr_enabled):\n    nr_admin = os.path.join(os.environ[\"TOX_ENV_DIR\"], \"bin\", \"newrelic-admin\")\n    gunicorn = os.path.join(os.environ[\"TOX_ENV_DIR\"], \"bin\", \"gunicorn\")\n\n    PORT = get_open_port()\n    cmd = [gunicorn, \"-b\", f\"127.0.0.1:{PORT}\", \"--worker-class\", \"worker.AsgiWorker\", \"asgi_app:Application\"]\n\n    if nr_enabled:\n        env = {\n            \"NEW_RELIC_ENABLED\": \"true\",\n            \"NEW_RELIC_HOST\": \"staging-collector.newrelic.com\",\n            \"NEW_RELIC_APP_NAME\": \"Python Agent Test (gunicorn)\",\n            \"NEW_RELIC_CONFIG_FILE\": \"config.ini\",\n            \"NEW_RELIC_LOG\": \"stderr\",\n            \"NEW_RELIC_LOG_LEVEL\": \"debug\",\n            \"NEW_RELIC_STARTUP_TIMEOUT\": \"10.0\",\n            \"NEW_RELIC_SHUTDOWN_TIMEOUT\": \"10.0\",\n        }\n        new_cmd = [nr_admin, \"run-program\"]\n        new_cmd.extend(cmd)\n        cmd = new_cmd\n    else:\n        env = {}\n\n    # Restart the server if it dies during testing\n    for _ in range(5):\n        with TerminatingPopen(cmd, env=env):\n            for _ in range(50):\n                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n                try:\n                    s.connect((\"127.0.0.1\", PORT))\n                    s.close()\n                    break\n                except socket.error:\n                    pass\n\n                time.sleep(0.1)\n            else:\n                continue\n            with urlopen(f\"http://127.0.0.1:{PORT}\") as resp:\n                assert resp.getcode() == 200\n                assert resp.read() == b\"PONG\"\n\n        # test passed\n        break\n    else:\n        raise AssertionError(\"Gunicorn test did not run\")",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.join",
+        "os.environ.__getitem__",
+        "os.path.join",
+        "os.environ.__getitem__",
+        "get_open_port",
+        "TerminatingPopen",
+        "socket.socket",
+        "socket.socket.connect",
+        "socket.socket.close",
+        "time.sleep",
+        "urlopen",
+        "urlopen.__enter__",
+        "urlopen.getcode",
+        "urlopen.read"
+      ],
+      "api_sequence_with_args": [
+        "os.path.join(os.environ[\"TOX_ENV_DIR\"], \"bin\", \"newrelic-admin\")",
+        "os.environ[\"TOX_ENV_DIR\"]",
+        "os.path.join(os.environ[\"TOX_ENV_DIR\"], \"bin\", \"gunicorn\")",
+        "os.environ[\"TOX_ENV_DIR\"]",
+        "get_open_port()",
+        "TerminatingPopen(cmd, env=env)",
+        "socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
+        "socket.socket.connect((\"127.0.0.1\", PORT))",
+        "socket.socket.close()",
+        "time.sleep(0.1)",
+        "urlopen(f\"http://127.0.0.1:{PORT}\")",
+        "urlopen(f\"http://127.0.0.1:{PORT}\").__enter__()",
+        "urlopen(f\"http://127.0.0.1:{PORT}\").getcode()",
+        "urlopen(f\"http://127.0.0.1:{PORT}\").read()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.environ.__getitem__",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "get_open_port",
+          "id": "get_open_port",
+          "description": "No direct match in taxonomy; closest is 'get_open_port' (if present), otherwise omit from mapped_sequence",
+          "first_id": "",
+          "second_id": "",
+          "third_id": ""
+        },
+        {
+          "api_name": "TerminatingPopen",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "socket.socket",
+          "id": "create_socket",
+          "description": "Creates new socket object",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "socket_creation"
+        },
+        {
+          "api_name": "socket.socket.connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "socket.socket.close",
+          "id": "close_socket",
+          "description": "Closes the socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "time.sleep",
+          "id": "suspend_execution",
+          "description": "Suspends execution for specified seconds",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "time_operations"
+        },
+        {
+          "api_name": "urlopen",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "urlopen.__enter__",
+          "id": "open_url_get",
+          "description": "Opens URL with GET parameters",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "request_sending"
+        },
+        {
+          "api_name": "urlopen.getcode",
+          "id": "get_http_status",
+          "description": "Retrieves HTTP response status code",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        },
+        {
+          "api_name": "urlopen.read",
+          "id": "read_response_body",
+          "description": "Reads response body from HTTP response",
+          "first_id": "basic_network_operations",
+          "second_id": "http_requests",
+          "third_id": "response_processing"
+        }
+      ],
+      "contextual_code": "def test_asgi_app(nr_enabled):\n    nr_admin = os.path.join(os.environ[\"TOX_ENV_DIR\"], \"bin\", \"newrelic-admin\")\n    gunicorn = os.path.join(os.environ[\"TOX_ENV_DIR\"], \"bin\", \"gunicorn\")\n\n    PORT = get_open_port()\n    cmd = [gunicorn, \"-b\", f\"127.0.0.1:{PORT}\", \"--worker-class\", \"worker.AsgiWorker\", \"asgi_app:Application\"]\n\n    if nr_enabled:\n        env = { ... }\n        new_cmd = [nr_admin, \"run-program\"]\n        new_cmd.extend(cmd)\n        cmd = new_cmd\n    else:\n        env = {}\n\n    for _ in range(5):\n        with TerminatingPopen(cmd, env=env):\n            for _ in range(50):\n                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n                try:\n                    s.connect((\"127.0.0.1\", PORT))\n                    s.close()\n                    break\n                except socket.error:\n                    pass\n                time.sleep(0.1)\n            else:\n                continue\n            with urlopen(f\"http://127.0.0.1:{PORT}\") as resp:\n                assert resp.getcode() == 200\n                assert resp.read() == b\"PONG\""
+    }
+  }
+]

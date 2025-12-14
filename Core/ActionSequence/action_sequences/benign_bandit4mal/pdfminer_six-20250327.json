@@ -1,0 +1,204 @@
+[
+  {
+    "metadata": {
+      "package_name": "pdfminer_six-20250327",
+      "total_matches": 2,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "dumppdf.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pdfminer_six-20250327/pdfminer_six-20250327/tools/dumppdf.py",
+    "line_number": "236",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "235\t        out = open(path, \"wb\")\n236\t        out.write(fileobj.get_data())\n237\t        out.close()",
+    "code_snippet": "def extractembedded(fname: str, password: str, extractdir: str) -> None:\n    def extract1(objid: int, obj: Dict[str, Any]) -> None:\n        filename = os.path.basename(obj.get(\"UF\") or cast(bytes, obj.get(\"F\")).decode())\n        fileref = obj[\"EF\"].get(\"UF\") or obj[\"EF\"].get(\"F\")\n        fileobj = doc.getobj(fileref.objid)\n        if not isinstance(fileobj, PDFStream):\n            error_msg = (\n                \"unable to process PDF: reference for %r is not a \"\n                \"PDFStream\" % filename\n            )\n            raise PDFValueError(error_msg)\n        if fileobj.get(\"Type\") is not LITERAL_EMBEDDEDFILE:\n            raise PDFValueError(\n                \"unable to process PDF: reference for %r \"\n                \"is not an EmbeddedFile\" % (filename),\n            )\n        path = os.path.join(extractdir, \"%.6d-%s\" % (objid, filename))\n        if os.path.exists(path):\n            raise PDFIOError(\"file exists: %r\" % path)\n        print(\"extracting: %r\" % path)\n        os.makedirs(os.path.dirname(path), exist_ok=True)\n        out = open(path, \"wb\")\n        out.write(fileobj.get_data())\n        out.close()\n\n    with open(fname, \"rb\") as fp:\n        parser = PDFParser(fp)\n        doc = PDFDocument(parser, password)\n        extracted_objids = set()\n        for xref in doc.xrefs:\n            for objid in xref.get_objids():\n                obj = doc.getobj(objid)\n                if (\n                    objid not in extracted_objids\n                    and isinstance(obj, dict)\n                    and obj.get(\"Type\") is LITERAL_FILESPEC\n                ):\n                    extracted_objids.add(objid)\n                    extract1(objid, obj)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.basename",
+        "os.path.join",
+        "os.path.exists",
+        "os.makedirs",
+        "os.path.dirname",
+        "open",
+        "open.write",
+        "open.close",
+        "open",
+        "PDFParser",
+        "PDFDocument"
+      ],
+      "api_sequence_with_args": [
+        "os.path.basename(obj.get(\"UF\") or cast(bytes, obj.get(\"F\")).decode())",
+        "os.path.join(extractdir, \"%.6d-%s\" % (objid, filename))",
+        "os.path.exists(path)",
+        "os.makedirs(os.path.dirname(path), exist_ok=True)",
+        "os.path.dirname(path)",
+        "open(path, \"wb\")",
+        "out.write(fileobj.get_data())",
+        "out.close()",
+        "open(fname, \"rb\")",
+        "PDFParser(fp)",
+        "PDFDocument(parser, password)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.basename",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "os.makedirs",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_write_operations",
+          "description": "Basic file opening operations for writing (normal writing, binary writing)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "open.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "open.close",
+          "id": "close_file",
+          "description": "Closes the opened file",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_closing"
+        },
+        {
+          "api_name": "open",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def extractembedded(fname: str, password: str, extractdir: str) -> None:\n    def extract1(objid: int, obj: Dict[str, Any]) -> None:\n        filename = os.path.basename(obj.get(\"UF\") or cast(bytes, obj.get(\"F\")).decode())\n        path = os.path.join(extractdir, \"%.6d-%s\" % (objid, filename))\n        if os.path.exists(path):\n            raise PDFIOError(\"file exists: %r\" % path)\n        os.makedirs(os.path.dirname(path), exist_ok=True)\n        out = open(path, \"wb\")\n        out.write(fileobj.get_data())\n        out.close()\n\n    with open(fname, \"rb\") as fp:\n        parser = PDFParser(fp)\n        doc = PDFDocument(parser, password)\n        # ... rest of code omitted for brevity"
+    }
+  },
+  {
+    "pyfile": "dumppdf.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pdfminer_six-20250327/pdfminer_six-20250327/tools/dumppdf.py",
+    "line_number": "45",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "44\t    if isinstance(obj, dict):\n45\t        out.write('<dict size=\"%d\">\\n' % len(obj))\n46\t        for k, v in obj.items():",
+    "code_snippet": "def dumpxml(out: TextIO, obj: object, codec: Optional[str] = None) -> None:\n    if obj is None:\n        out.write(\"<null />\")\n        return\n\n    if isinstance(obj, dict):\n        out.write('<dict size=\"%d\">\\n' % len(obj))\n        for k, v in obj.items():\n            out.write(\"<key>%s</key>\\n\" % k)\n            out.write(\"<value>\")\n            dumpxml(out, v)\n            out.write(\"</value>\\n\")\n        out.write(\"</dict>\")\n        return\n\n    if isinstance(obj, list):\n        out.write('<list size=\"%d\">\\n' % len(obj))\n        for v in obj:\n            dumpxml(out, v)\n            out.write(\"\\n\")\n        out.write(\"</list>\")\n        return\n\n    if isinstance(obj, (str, bytes)):\n        out.write('<string size=\"%d\">%s</string>' % (len(obj), escape(obj)))\n        return\n\n    if isinstance(obj, PDFStream):\n        if codec == \"raw\":\n            # Bug: writing bytes to text I/O. This will raise TypeError.\n            out.write(obj.get_rawdata())  # type: ignore [arg-type]\n        elif codec == \"binary\":\n            # Bug: writing bytes to text I/O. This will raise TypeError.\n            out.write(obj.get_data())  # type: ignore [arg-type]\n        else:\n            out.write(\"<stream>\\n<props>\\n\")\n            dumpxml(out, obj.attrs)\n            out.write(\"\\n</props>\\n\")\n            if codec == \"text\":\n                data = obj.get_data()\n                out.write('<data size=\"%d\">%s</data>\\n' % (len(data), escape(data)))\n            out.write(\"</stream>\")\n        return\n\n    if isinstance(obj, PDFObjRef):\n        out.write('<ref id=\"%d\" />' % obj.objid)\n        return\n\n    if isinstance(obj, PSKeyword):\n        # Likely bug: obj.name is bytes, not str\n        out.write(\"<keyword>%s</keyword>\" % obj.name)  # type: ignore [str-bytes-safe]\n        return\n\n    if isinstance(obj, PSLiteral):\n        # Likely bug: obj.name may be bytes, not str\n        out.write(\"<literal>%s</literal>\" % obj.name)  # type: ignore [str-bytes-safe]\n        return\n\n    if isnumber(obj):\n        out.write(\"<number>%s</number>\" % obj)\n        return\n\n    raise PDFTypeError(obj)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "TextIO.write",
+        "dict.items",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write",
+        "TextIO.write"
+      ],
+      "api_sequence_with_args": [
+        "out.write(\"<null />\")",
+        "obj.items()",
+        "out.write('<dict size=\"%d\">\\n' % len(obj))",
+        "out.write(\"<key>%s</key>\\n\" % k)",
+        "out.write(\"<value>\")",
+        "out.write(\"</value>\\n\")",
+        "out.write(\"</dict>\")",
+        "out.write('<list size=\"%d\">\\n' % len(obj))",
+        "out.write(\"\\n\")",
+        "out.write(\"</list>\")",
+        "out.write('<string size=\"%d\">%s</string>' % (len(obj), escape(obj)))",
+        "out.write(obj.get_rawdata())",
+        "out.write(obj.get_data())",
+        "out.write(\"<stream>\\n<props>\\n\")",
+        "out.write(\"\\n</props>\\n\")",
+        "out.write('<data size=\"%d\">%s</data>\\n' % (len(data), escape(data)))",
+        "out.write(\"</stream>\")",
+        "out.write('<ref id=\"%d\" />' % obj.objid)",
+        "out.write(\"<keyword>%s</keyword>\" % obj.name)",
+        "out.write(\"<literal>%s</literal>\" % obj.name)",
+        "out.write(\"<number>%s</number>\" % obj)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "TextIO.write",
+          "id": "basic_file_writing",
+          "description": "Writing data to files (strings or bytes)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_writing"
+        },
+        {
+          "api_name": "dict.items",
+          "id": "basic_read_operations",
+          "description": "ic file opening operations for reading (normal reading, binary reading)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        }
+      ],
+      "contextual_code": "def dumpxml(out: TextIO, obj: object, codec: Optional[str] = None) -> None:\n    if obj is None:\n        out.write(\"<null />\")\n        return\n\n    if isinstance(obj, dict):\n        out.write('<dict size=\"%d\">\\n' % len(obj))\n        for k, v in obj.items():\n            out.write(\"<key>%s</key>\\n\" % k)\n            out.write(\"<value>\")\n            dumpxml(out, v)\n            out.write(\"</value>\\n\")\n        out.write(\"</dict>\")\n        return\n\n    if isinstance(obj, list):\n        out.write('<list size=\"%d\">\\n' % len(obj))\n        for v in obj:\n            dumpxml(out, v)\n            out.write(\"\\n\")\n        out.write(\"</list>\")\n        return\n\n    if isinstance(obj, (str, bytes)):\n        out.write('<string size=\"%d\">%s</string>' % (len(obj), escape(obj)))\n        return\n\n    if isinstance(obj, PDFStream):\n        if codec == \"raw\":\n            out.write(obj.get_rawdata())\n        elif codec == \"binary\":\n            out.write(obj.get_data())\n        else:\n            out.write(\"<stream>\\n<props>\\n\")\n            dumpxml(out, obj.attrs)\n            out.write(\"\\n</props>\\n\")\n            if codec == \"text\":\n                data = obj.get_data()\n                out.write('<data size=\"%d\">%s</data>\\n' % (len(data), escape(data)))\n            out.write(\"</stream>\")\n        return\n\n    if isinstance(obj, PDFObjRef):\n        out.write('<ref id=\"%d\" />' % obj.objid)\n        return\n\n    if isinstance(obj, PSKeyword):\n        out.write(\"<keyword>%s</keyword>\" % obj.name)\n        return\n\n    if isinstance(obj, PSLiteral):\n        out.write(\"<literal>%s</literal>\" % obj.name)\n        return\n\n    if isnumber(obj):\n        out.write(\"<number>%s</number>\" % obj)\n        return\n\n    raise PDFTypeError(obj)"
+    }
+  }
+]

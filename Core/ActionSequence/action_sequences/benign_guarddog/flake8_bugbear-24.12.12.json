@@ -1,0 +1,51 @@
+[
+  {
+    "pyfile": "bugbear.py",
+    "code_snippet": "def _check_redundant_excepthandlers(names: Sequence[str], node, in_trystar):\n    # See if any of the given exception names could be removed, e.g. from:\n    #    (MyError, MyError)  # duplicate names\n    #    (MyError, BaseException)  # everything derives from the Base\n    #    (Exception, TypeError)  # builtins where one subclasses another\n    #    (IOError, OSError)  # IOError is an alias of OSError since Python3.3\n    # but note that other cases are impractical to handle from the AST.\n    # We expect this is mostly useful for users who do not have the\n    # builtin exception hierarchy memorised, and include a 'shadowed'\n    # subtype without realising that it's redundant.\n    good = sorted(set(names), key=names.index)\n    if \"BaseException\" in good:\n        good = [\"BaseException\"]\n    # Remove redundant exceptions that the automatic system either handles\n    # poorly (usually aliases) or can't be checked (e.g. it's not an\n    # built-in exception).\n    for primary, equivalents in B014_REDUNDANT_EXCEPTIONS.items():\n        if primary in good:\n            good = [g for g in good if g not in equivalents]\n\n    for name, other in itertools.permutations(tuple(good), 2):\n        if _typesafe_issubclass(\n            getattr(builtins, name, type), getattr(builtins, other, ())\n        ):\n            if name in good:\n                good.remove(name)\n    if good != names:\n        desc = good[0] if len(good) == 1 else \"({})\".format(\", \".join(good))\n        as_ = \" as \" + node.name if node.name is not None else \"\"\n        return B014(\n            node.lineno,\n            node.col_offset,\n            vars=(\", \".join(names), as_, desc, in_trystar),\n        )\n    return None\n\n# Data dependencies and helpers:\nimport builtins\nimport itertools\nfrom typing import Sequence\n\n# Used in the function:\ndef _typesafe_issubclass(cls, class_or_tuple):\n    try:\n        return issubclass(cls, class_or_tuple)\n    except TypeError:\n        # User code specifies a type that is not a type in our current run. Might be\n        # their error, might be a difference in our environments. We don't know so we\n        # ignore this\n        return False\n\n# Constant used:\nB014_REDUNDANT_EXCEPTIONS = {\n    \"OSError\": {\n        # All of these are actually aliases of OSError since Python 3.3\n        \"IOError\",\n        \"EnvironmentError\",\n        \"WindowsError\",\n        \"mmap.error\",\n        \"socket.error\",\n        \"select.error\",\n    },\n    \"ValueError\": {\n        \"binascii.Error\",\n    },\n}\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "getattr",
+        "getattr",
+        "issubclass"
+      ],
+      "api_sequence_with_args": [
+        "getattr(builtins, name, type)",
+        "getattr(builtins, other, ())",
+        "issubclass(cls, class_or_tuple)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "issubclass",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        }
+      ],
+      "contextual_code": "import builtins\nimport itertools\nfrom typing import Sequence\n\ndef _typesafe_issubclass(cls, class_or_tuple):\n    try:\n        return issubclass(cls, class_or_tuple)\n    except TypeError:\n        return False\n\ndef _check_redundant_excepthandlers(names: Sequence[str], node, in_trystar):\n    good = sorted(set(names), key=names.index)\n    if \"BaseException\" in good:\n        good = [\"BaseException\"]\n    for primary, equivalents in B014_REDUNDANT_EXCEPTIONS.items():\n        if primary in good:\n            good = [g for g in good if g not in equivalents]\n    for name, other in itertools.permutations(tuple(good), 2):\n        if _typesafe_issubclass(\n            getattr(builtins, name, type), getattr(builtins, other, ())\n        ):\n            if name in good:\n                good.remove(name)\n    if good != names:\n        desc = good[0] if len(good) == 1 else \"({})\".format(\", \".join(good))\n        as_ = \" as \" + node.name if node.name is not None else \"\"\n        return B014(\n            node.lineno,\n            node.col_offset,\n            vars=(\", \".join(names), as_, desc, in_trystar),\n        )\n    return None"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "flake8_bugbear-24.12.12",
+      "total_matches": 1
+    }
+  }
+]

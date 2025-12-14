@@ -1,0 +1,19 @@
+[
+  {
+    "metadata": {
+      "package_name": "pyorc-0.10.0",
+      "report_path": "/home2/blue/Documents/PyPIAgent/Codes/tool_detect/detect_output/study/guarddog/benign/pyorc-0.10.0.txt",
+      "total_matches": 1
+    }
+  },
+  {
+    "pyfile": "setup.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/pyorc-0.10.0/pyorc-0.10.0/setup.py",
+    "line_number": "168",
+    "type_description": "code-execution",
+    "original_snippet": "subprocess.check_call([\"make\", j_flag, \"package\"], cwd=build_dir, env=env)",
+    "context_snippet": "import os\nimport subprocess\n\nclass BuildExt(build_ext):\n    ...\n    def _get_build_envs() -> dict:\n        env = os.environ.copy()\n        if sys.platform != \"win32\":\n            env[\"CFLAGS\"] = \"-fPIC\"\n            env[\"CXXFLAGS\"] = \"-fPIC\"\n        return env\n\n    def _build_with_cmake(self) -> str:\n        build_type = \"DEBUG\" if self.debug else \"RELEASE\"\n        cmake_args = [\n            f\"-DCMAKE_BUILD_TYPE={build_type}\",\n            \"-DBUILD_JAVA=OFF\",\n            \"-DBUILD_LIBHDFSPP=OFF\",\n            \"-DCMAKE_POSITION_INDEPENDENT_CODE=ON\",\n        ]\n        if sys.platform == \"win32\":\n            cmake_args.append(\"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded\")\n        if not self.debug or sys.platform == \"win32\":\n            cmake_args.append(\"-DBUILD_TOOLS=OFF\")\n            cmake_args.append(\"-DBUILD_CPP_TESTS=OFF\")\n        env = self._get_build_envs()\n        build_dir = os.path.join(\n            self.output_dir, \"orc-{ver}\".format(ver=self.orc_version), \"build\"\n        )\n        if not os.path.exists(build_dir):\n            os.makedirs(build_dir)\n        logging.info(\"Build libraries with cmake\")\n        cmake_cmd = [\"cmake\", \"..\"] + cmake_args\n        logging.info(\"Cmake command: %s\" % cmake_cmd)\n        subprocess.check_call(cmake_cmd, cwd=build_dir, env=env)\n        if sys.platform == \"win32\":\n            subprocess.check_call(\n                [\n                    \"cmake\",\n                    \"--build\",\n                    \".\",\n                    \"--config\",\n                    build_type,\n                    \"--target\",\n                    \"PACKAGE\",\n                ],\n                cwd=build_dir,\n                env=env,\n            )\n        else:\n            j_flag = f\"-j{os.cpu_count() or 1}\"\n            subprocess.check_call([\"make\", j_flag, \"package\"], cwd=build_dir, env=env)\n        return build_dir",
+    "hash_value": "3930bd4dc67d278361c153d85a053d99",
+    "detection_index": 1
+  }
+]

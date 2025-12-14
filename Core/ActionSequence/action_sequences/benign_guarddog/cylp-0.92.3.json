@@ -1,0 +1,102 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport sys\nimport platform\nfrom os.path import join, abspath, dirname\nimport numpy\nfrom subprocess import check_output\n\n# ... (previous code omitted for brevity)\n\ntry:\n    if len(sys.argv) > 1 and (sys.argv[1] == \"sdist\" or sys.argv[1] == \"egg_info\"):\n        # Do not need CoinDir\n        pass\n    else:\n        CoinDir = os.environ['COIN_INSTALL_DIR']\nexcept:\n    # If user didn't supply location, then try pkg-config\n    try:\n        for p in ['cbc','cgl','osi-clp','clp','osi','coinutils']:\n            flags = (check_output(['pkg-config', '--libs', p])\n                     .strip().decode('utf-8'))\n            for flag in flags.split():\n                if flag.startswith('-l') and flag[2:] not in libs:\n                    libs.append(flag[2:]) \n                if flag.startswith('-L') and flag[2:] not in libDirs:\n                    libDirs.append(flag[2:]) \n            flags = (check_output(['pkg-config', '--cflags', p])\n                     .strip().decode('utf-8'))\n            for flag in flags.split():\n                if flag.startswith('-I') and flag[2:] not in incDirs:\n                    incDirs.append(flag[2:]) \n    except:\n        # If pkg-config fails, then look for an installed Cbc\n        try:\n            location = dirname(\n                check_output(['which', 'cbc']).strip()).decode('utf-8')\n            CoinDir = abspath(join(location, \"..\"))\n        except:\n            #Otherwise, raise an exception\n            raise Exception('''\n            Could not find location of COIN installation.\n            Please ensure that either \n            * COIN_INSTALL_DIR is set to the location of the installation,\n            * PKG_CONFIG_PATH points to the location of the .pc files, or\n            * The cbc executable is in your executable path and is installed\n            at the same location as the libraries. \n            ''')\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "sys.argv",
+        "os.environ",
+        "subprocess.check_output",
+        "subprocess.check_output",
+        "subprocess.check_output",
+        "os.path.dirname",
+        "subprocess.check_output",
+        "os.path.abspath",
+        "os.path.join"
+      ],
+      "api_sequence_with_args": [
+        "sys.argv",
+        "os.environ['COIN_INSTALL_DIR']",
+        "subprocess.check_output(['pkg-config', '--libs', p])",
+        "subprocess.check_output(['pkg-config', '--cflags', p])",
+        "subprocess.check_output(['which', 'cbc'])",
+        "os.path.dirname(check_output(['which', 'cbc']).strip())",
+        "os.path.abspath(os.path.join(location, \"..\"))",
+        "os.path.join(location, \"..\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "sys.argv",
+          "id": "get_cmd_args",
+          "description": "Retrieves command-line arguments passed to script",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "os.environ",
+          "id": "get_env_vars",
+          "description": "Retrieves environment variables mapping",
+          "first_id": "system_operations",
+          "second_id": "system_environment_operations",
+          "third_id": "environment_information"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "subprocess.check_output",
+          "id": "execute_shell_command",
+          "description": "Executes shell command",
+          "first_id": "command_control_communications",
+          "second_id": "command_execution",
+          "third_id": "command_sending"
+        },
+        {
+          "api_name": "os.path.dirname",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.abspath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        }
+      ],
+      "contextual_code": "try:\n    if len(sys.argv) > 1 and (sys.argv[1] == \"sdist\" or sys.argv[1] == \"egg_info\"):\n        pass\n    else:\n        CoinDir = os.environ['COIN_INSTALL_DIR']\nexcept:\n    try:\n        for p in ['cbc','cgl','osi-clp','clp','osi','coinutils']:\n            flags = (check_output(['pkg-config', '--libs', p])\n                     .strip().decode('utf-8'))\n            for flag in flags.split():\n                if flag.startswith('-l') and flag[2:] not in libs:\n                    libs.append(flag[2:]) \n                if flag.startswith('-L') and flag[2:] not in libDirs:\n                    libDirs.append(flag[2:]) \n            flags = (check_output(['pkg-config', '--cflags', p])\n                     .strip().decode('utf-8'))\n            for flag in flags.split():\n                if flag.startswith('-I') and flag[2:] not in incDirs:\n                    incDirs.append(flag[2:]) \n    except:\n        try:\n            location = dirname(\n                check_output(['which', 'cbc']).strip()).decode('utf-8')\n            CoinDir = abspath(join(location, \"..\"))\n        except:\n            raise Exception('''\n            Could not find location of COIN installation.\n            Please ensure that either \n            * COIN_INSTALL_DIR is set to the location of the installation,\n            * PKG_CONFIG_PATH points to the location of the .pc files, or\n            * The cbc executable is in your executable path and is installed\n            at the same location as the libraries. \n            ''')"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "cylp-0.92.3",
+      "total_matches": 1
+    }
+  }
+]

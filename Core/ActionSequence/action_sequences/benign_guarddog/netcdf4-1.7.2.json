@@ -1,0 +1,111 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os, sys, subprocess, glob\nimport os.path as osp\nimport pathlib\nimport shutil\nimport configparser\nfrom setuptools import setup, Extension\nfrom setuptools.dist import Distribution\nfrom typing import List\n\nopen_kwargs = {'encoding': 'utf-8'}\n\n# ... (other code omitted for brevity)\n\nsetup_cfg = 'setup.cfg'\n# contents of setup.cfg will override env vars, unless\n# USE_SETUPCFG evaluates to False.\nncconfig = None\nuse_ncconfig = None\nif USE_SETUPCFG and os.path.exists(setup_cfg):\n    print('reading from setup.cfg...')\n    config = configparser.ConfigParser()\n    config.read(setup_cfg)\n    HDF5_dir = config.get(\"directories\", \"HDF5_dir\", fallback=HDF5_dir)\n    HDF5_libdir = config.get(\"directories\", \"HDF5_libdir\", fallback=HDF5_libdir)\n    HDF5_incdir = config.get(\"directories\", \"HDF5_incdir\", fallback=HDF5_incdir)\n    netCDF4_dir = config.get(\"directories\", \"netCDF4_dir\", fallback=netCDF4_dir)\n    netCDF4_libdir = config.get(\"directories\", \"netCDF4_libdir\", fallback=netCDF4_libdir)\n    netCDF4_incdir = config.get(\"directories\", \"netCDF4_incdir\", fallback=netCDF4_incdir)\n    szip_dir = config.get(\"directories\", \"szip_dir\", fallback=szip_dir)\n    szip_libdir = config.get(\"directories\", \"szip_libdir\", fallback=szip_libdir)\n    szip_incdir = config.get(\"directories\", \"szip_incdir\", fallback=szip_incdir)\n    hdf4_dir = config.get(\"directories\", \"hdf4_dir\", fallback=hdf4_dir)\n    hdf4_libdir = config.get(\"directories\", \"hdf4_libdir\", fallback=hdf4_libdir)\n    hdf4_incdir = config.get(\"directories\", \"hdf4_incdir\", fallback=hdf4_incdir)\n    jpeg_dir = config.get(\"directories\", \"jpeg_dir\", fallback=jpeg_dir)\n    jpeg_libdir = config.get(\"directories\", \"jpeg_libdir\", fallback=jpeg_libdir)\n    jpeg_incdir = config.get(\"directories\", \"jpeg_incdir\", fallback=jpeg_incdir)\n    curl_dir = config.get(\"directories\", \"curl_dir\", fallback=curl_dir)\n    curl_libdir = config.get(\"directories\", \"curl_libdir\", fallback=curl_libdir)\n    curl_incdir = config.get(\"directories\", \"curl_incdir\", fallback=curl_incdir)\n    mpi_incdir = config.get(\"directories\",\"mpi_incdir\", fallback=mpi_incdir)\n    use_ncconfig = config.getboolean(\"options\", \"use_ncconfig\", fallback=use_ncconfig)\n    ncconfig = config.get(\"options\", \"ncconfig\", fallback=ncconfig)\n\ntry:\n    if ncconfig is None:\n        if netCDF4_dir is not None:\n            ncconfig = os.path.join(netCDF4_dir, 'bin/nc-config')\n        else:  # otherwise, just hope it's in the users PATH.\n            ncconfig = 'nc-config'\n    HAS_NCCONFIG = subprocess.call([ncconfig, '--libs']) == 0\nexcept OSError:\n    HAS_NCCONFIG = False\n\n# make sure USE_NCCONFIG from environment takes\n# precedence over use_ncconfig from setup.cfg (issue #341).\nif use_ncconfig and not USE_NCCONFIG:\n    USE_NCCONFIG = use_ncconfig\nelif not USE_NCCONFIG:\n    # if nc-config exists, and USE_NCCONFIG not set, try to use it.\n    USE_NCCONFIG = HAS_NCCONFIG\n\ntry:\n    HAS_PKG_CONFIG = subprocess.call(['pkg-config', '--libs', 'hdf5']) == 0\nexcept OSError:\n    HAS_PKG_CONFIG = False\n\n\ndef config_flags(command: List[str], flag: str) -> list:\n    \"\"\"Pull out specific flags from a config command (pkg-config or nc-config)\"\"\"\n    flags = subprocess.run(command, capture_output=True, text=True)\n    return [arg[2:] for arg in flags.stdout.split() if arg.startswith(flag)]\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "os.path.exists",
+        "configparser.ConfigParser",
+        "configparser.ConfigParser.read",
+        "configparser.ConfigParser.get",
+        "configparser.ConfigParser.getboolean",
+        "os.path.join",
+        "subprocess.call",
+        "subprocess.call",
+        "subprocess.run"
+      ],
+      "api_sequence_with_args": [
+        "os.path.exists(setup_cfg)",
+        "configparser.ConfigParser()",
+        "configparser.ConfigParser.read(setup_cfg)",
+        "configparser.ConfigParser.get(\"directories\", \"HDF5_dir\", fallback=HDF5_dir)",
+        "configparser.ConfigParser.getboolean(\"options\", \"use_ncconfig\", fallback=use_ncconfig)",
+        "os.path.join(netCDF4_dir, 'bin/nc-config')",
+        "subprocess.call([ncconfig, '--libs'])",
+        "subprocess.call(['pkg-config', '--libs', 'hdf5'])",
+        "subprocess.run(command, capture_output=True, text=True)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "os.path.exists",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "configparser.ConfigParser",
+          "id": "init_config_class",
+          "description": "Initializes Config class with provided arguments",
+          "first_id": "code_execution",
+          "second_id": "object_initialization",
+          "third_id": "class_initialization"
+        },
+        {
+          "api_name": "configparser.ConfigParser.read",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "configparser.ConfigParser.get",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "configparser.ConfigParser.getboolean",
+          "id": "basic_file_reading",
+          "description": "Reading content from files (by lines or entire content)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_reading"
+        },
+        {
+          "api_name": "os.path.join",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.call",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        }
+      ],
+      "contextual_code": "import os, sys, subprocess, glob\nimport os.path as osp\nimport configparser\n\nsetup_cfg = 'setup.cfg'\nncconfig = None\nuse_ncconfig = None\nif USE_SETUPCFG and os.path.exists(setup_cfg):\n    config = configparser.ConfigParser()\n    config.read(setup_cfg)\n    HDF5_dir = config.get(\"directories\", \"HDF5_dir\", fallback=HDF5_dir)\n    # ... (other config.get calls omitted for brevity)\n    use_ncconfig = config.getboolean(\"options\", \"use_ncconfig\", fallback=use_ncconfig)\n    ncconfig = config.get(\"options\", \"ncconfig\", fallback=ncconfig)\n\ntry:\n    if ncconfig is None:\n        if netCDF4_dir is not None:\n            ncconfig = os.path.join(netCDF4_dir, 'bin/nc-config')\n        else:\n            ncconfig = 'nc-config'\n    HAS_NCCONFIG = subprocess.call([ncconfig, '--libs']) == 0\nexcept OSError:\n    HAS_NCCONFIG = False\n\ntry:\n    HAS_PKG_CONFIG = subprocess.call(['pkg-config', '--libs', 'hdf5']) == 0\nexcept OSError:\n    HAS_PKG_CONFIG = False\n\ndef config_flags(command: List[str], flag: str) -> list:\n    flags = subprocess.run(command, capture_output=True, text=True)\n    return [arg[2:] for arg in flags.stdout.split() if arg.startswith(flag)]"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "netcdf4-1.7.2",
+      "total_matches": 2
+    }
+  }
+]

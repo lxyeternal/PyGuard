@@ -1,0 +1,53 @@
+[
+  {
+    "metadata": {
+      "package_name": "twisted-24.11.0",
+      "total_matches": 4,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "test_httpauth.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/twisted-24.11.0/twisted-24.11.0/src/twisted/web/test/test_httpauth.py",
+    "line_number": "413",
+    "type_description": "B802:b64encode",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "412\t        return self._invalidAuthorizationTest(\n413\t            b\"Basic \" + b64encode(self.username + b\":bar\")\n414\t        )",
+    "context_snippet": "def test_getChildWithDefaultUnauthorizedPassword(self):\n    \"\"\"\n    Resource traversal which enouncters an L{HTTPAuthSessionWrapper}\n    results in an L{UnauthorizedResource} when the request has an\n    I{Authorization} header with a user which exists and the wrong\n    password.\n    \"\"\"\n    return self._invalidAuthorizationTest(\n        b\"Basic \" + b64encode(self.username + b\":bar\")\n    )",
+    "hash_value": "28e06ea89b5a0bb91314f4f048c50eb5"
+  },
+  {
+    "pyfile": "tcp.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/twisted-24.11.0/twisted-24.11.0/src/twisted/internet/tcp.py",
+    "line_number": "176",
+    "type_description": "B807:close",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "175\t        try:\n176\t            skt.close()\n177\t        except OSError:",
+    "context_snippet": "class _SocketCloser:\n    \"\"\"\n    @ivar _shouldShutdown: Set to C{True} if C{shutdown} should be called\n        before calling C{close} on the underlying socket.\n    @type _shouldShutdown: C{bool}\n    \"\"\"\n\n    _shouldShutdown = True\n\n    def _closeSocket(self, orderly):\n        # The call to shutdown() before close() isn't really necessary, because\n        # we set FD_CLOEXEC now, which will ensure this is the only process\n        # holding the FD, thus ensuring close() really will shutdown the TCP\n        # socket. However, do it anyways, just to be safe.\n        skt = self.socket\n        try:\n            if orderly:\n                if self._shouldShutdown:\n                    skt.shutdown(2)\n            else:\n                # Set SO_LINGER to 1,0 which, by convention, causes a\n                # connection reset to be sent when close is called,\n                # instead of the standard FIN shutdown sequence.\n                self.socket.setsockopt(\n                    socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(\"ii\", 1, 0)\n                )\n\n        except OSError:\n            pass\n        try:\n            skt.close()\n        except OSError:\n            pass",
+    "hash_value": "3ef541b4351ff072045a40b775ec860c"
+  },
+  {
+    "pyfile": "test_endpoints.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/twisted-24.11.0/twisted-24.11.0/src/twisted/internet/test/test_endpoints.py",
+    "line_number": "2469",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "2468\t        )\n2469\t        deferred = endpoint.connect(Factory.forProtocol(Protocol))\n2470\t        err = self.failureResultOf(deferred, ValueError)",
+    "context_snippet": "class HostnameEndpointIDNATests(unittest.SynchronousTestCase):\n    \"\"\"\n    Tests for L{HostnameEndpoint}'s constructor's encoding behavior.\n    \"\"\"\n\n    sampleIDNAText = \"b\\xfccher.ch\"\n    sampleIDNABytes = b\"xn--bcher-kva.ch\"\n\n    def test_idnaHostnameText(self):\n        \"\"\"\n        A L{HostnameEndpoint} constructed with text will contain an\n        IDNA-encoded bytes representation of that text.\n        \"\"\"\n        endpoint = endpoints.HostnameEndpoint(\n            deterministicResolvingReactor(MemoryReactor(), [\"127.0.0.1\"]),\n            self.sampleIDNAText,\n            80,\n        )\n        self.assertEqual(endpoint._hostBytes, self.sampleIDNABytes)\n        self.assertEqual(endpoint._hostText, self.sampleIDNAText)\n\n    def test_idnaHostnameBytes(self):\n        \"\"\"\n        A L{HostnameEndpoint} constructed with bytes will contain an\n        IDNA-decoded textual representation of those bytes.\n        \"\"\"\n        endpoint = endpoints.HostnameEndpoint(\n            deterministicResolvingReactor(MemoryReactor(), [\"127.0.0.1\"]),\n            self.sampleIDNAText,\n            80,\n        )\n        self.assertEqual(endpoint._hostBytes, self.sampleIDNABytes)\n        self.assertEqual(endpoint._hostText, self.sampleIDNAText)\n\n    def test_nonNormalizedText(self) -> None:\n        \"\"\"\n        A L{HostnameEndpoint} constructed with NFD-normalized text will store\n        the NFC-normalized version of that text.\n        \"\"\"\n        endpoint = endpoints.HostnameEndpoint(\n            deterministicResolvingReactor(MemoryReactor(), [\"127.0.0.1\"]),\n            normalize(\"NFD\", self.sampleIDNAText),\n            80,\n        )\n        self.assertEqual(endpoint._hostBytes, self.sampleIDNABytes)\n        self.assertEqual(endpoint._hostText, self.sampleIDNAText)\n\n    def test_deferBadEncodingToConnect(self):\n        \"\"\"\n        Since any client of L{IStreamClientEndpoint} needs to handle Deferred\n        failures from C{connect}, L{HostnameEndpoint}'s constructor will not\n        raise exceptions when given bad host names, instead deferring to\n        returning a failing L{Deferred} from C{connect}.\n        \"\"\"\n        endpoint = endpoints.HostnameEndpoint(\n            deterministicResolvingReactor(MemoryReactor(), [\"127.0.0.1\"]),\n            b\"\\xff-garbage-\\xff\",\n            80,\n        )\n        deferred = endpoint.connect(Factory.forProtocol(Protocol))\n        err = self.failureResultOf(deferred, ValueError)\n        self.assertIn(\"\\\\xff-garbage-\\\\xff\", str(err))\n        endpoint = endpoints.HostnameEndpoint(\n            deterministicResolvingReactor(MemoryReactor(), [\"127.0.0.1\"]),\n            \"\\u2ff0-garbage-\\u2ff0\",\n            80,\n        )\n        deferred = endpoint.connect(Factory())\n        err = self.failureResultOf(deferred, ValueError)\n        self.assertIn(\"\\\\u2ff0-garbage-\\\\u2ff0\", str(err))",
+    "hash_value": "9635e2bb7464394ed7941f3c8384e5a2"
+  },
+  {
+    "pyfile": "test_tcp.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/twisted-24.11.0/twisted-24.11.0/src/twisted/internet/test/test_tcp.py",
+    "line_number": "885",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "884\t        def clientConnectionLost(connector, reason):\n885\t            connector.connect()\n886",
+    "context_snippet": "def test_reconnect(self):\n    \"\"\"\n    Calling L{IConnector.connect} in C{Factory.clientConnectionLost} causes\n    a new connection attempt to be made.\n    \"\"\"\n    serverFactory = ClosingFactory()\n    reactor = self.buildReactor()\n    tcpPort = reactor.listenTCP(0, serverFactory, interface=self.interface)\n    serverFactory.port = tcpPort\n    portNumber = tcpPort.getHost().port\n\n    clientFactory = MyClientFactory()\n\n    def clientConnectionLost(connector, reason):\n        connector.connect()\n\n    clientFactory.clientConnectionLost = clientConnectionLost\n    reactor.connectTCP(self.interface, portNumber, clientFactory)\n\n    protocolMadeAndClosed = []\n\n    def reconnectFailed(ignored):\n        p = clientFactory.lastProtocol\n        protocolMadeAndClosed.append((p.made, p.closed))\n        reactor.stop()\n\n    clientFactory.failDeferred.addCallback(reconnectFailed)\n\n    self.runReactor(reactor)\n\n    clientFactory.reason.trap(ConnectionRefusedError)\n    self.assertEqual(protocolMadeAndClosed, [(1, 1)])",
+    "hash_value": "6adae284be2b270023c302865f12cf36"
+  }
+]

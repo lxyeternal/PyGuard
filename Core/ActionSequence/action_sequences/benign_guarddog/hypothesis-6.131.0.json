@@ -1,0 +1,194 @@
+[
+  {
+    "pyfile": "ghostwriter.py",
+    "code_snippet": "import builtins\nimport re\n\n\ndef _exceptions_from_docstring(doc: str) -> tuple[type[Exception], ...]:\n    \"\"\"Return a tuple of exceptions that the docstring says may be raised.\n\n    Note that we ignore non-builtin exception types for simplicity, as this is\n    used directly in _write_call() and passing import sets around would be really\n    really annoying.\n    \"\"\"\n    # TODO: it would be great to handle Google- and Numpy-style docstrings\n    #       (e.g. by using the Napoleon Sphinx extension)\n    assert isinstance(doc, str), doc\n    raises = []\n    for excname in re.compile(r\"\\:raises\\s+(\\w+)\\:\", re.MULTILINE).findall(doc):\n        exc_type = getattr(builtins, excname, None)\n        if isinstance(exc_type, type) and issubclass(exc_type, Exception):\n            raises.append(exc_type)\n    return tuple(_dedupe_exceptions(tuple(raises)))\n\n\ndef _type_from_doc_fragment(token: str) -> Optional[type]:\n    # Special cases for \"integer\" and for numpy array-like and dtype\n    if token == \"integer\":\n        return int\n    if \"numpy\" in sys.modules:\n        if re.fullmatch(r\"[Aa]rray[-_ ]?like\", token):\n            return sys.modules[\"numpy\"].ndarray\n        elif token == \"dtype\":\n            return sys.modules[\"numpy\"].dtype\n    # Natural-language syntax, e.g. \"sequence of integers\"\n    coll_match = re.fullmatch(r\"(\\w+) of (\\w+)\", token)\n    if coll_match is not None:\n        coll_token, elem_token = coll_match.groups()\n        elems = _type_from_doc_fragment(elem_token)\n        if elems is None and elem_token.endswith(\"s\"):\n            elems = _type_from_doc_fragment(elem_token[:-1])\n        if elems is not None and coll_token in (\"list\", \"sequence\", \"collection\"):\n            return list[elems]  # type: ignore\n        # This might be e.g. \"array-like of float\"; arrays is better than nothing\n        # even if we can't conveniently pass a generic type around.\n        return _type_from_doc_fragment(coll_token)\n    # Check either builtins, or the module for a dotted name\n    if \".\" not in token:\n        return getattr(builtins, token, None)\n    mod, name = token.rsplit(\".\", maxsplit=1)\n    return getattr(sys.modules.get(mod, None), name, None)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "re.compile",
+        "re.compile.findall",
+        "getattr",
+        "isinstance",
+        "issubclass",
+        "tuple",
+        "getattr",
+        "re.fullmatch",
+        "getattr",
+        "getattr"
+      ],
+      "api_sequence_with_args": [
+        "re.compile(r\"\\:raises\\s+(\\w+)\\:\", re.MULTILINE)",
+        "re.compile(r\"\\:raises\\s+(\\w+)\\:\", re.MULTILINE).findall(doc)",
+        "getattr(builtins, excname, None)",
+        "isinstance(exc_type, type)",
+        "issubclass(exc_type, Exception)",
+        "tuple(_dedupe_exceptions(tuple(raises)))",
+        "getattr(builtins, token, None)",
+        "re.fullmatch(r\"(\\w+) of (\\w+)\", token)",
+        "getattr(sys.modules.get(mod, None), name, None)",
+        "getattr(builtins, token, None)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "re.compile",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "re.compile.findall",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "isinstance",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "issubclass",
+          "id": "check_instance_type",
+          "description": "Checks if object is instance of specified type",
+          "first_id": "utility_functions",
+          "second_id": "logging_exception_handling",
+          "third_id": "exception_checking"
+        },
+        {
+          "api_name": "tuple",
+          "id": "apply_lambda_to_lists",
+          "description": "Applies lambda function to elements of two lists",
+          "first_id": "data_transformation_processing",
+          "second_id": "function_application",
+          "third_id": "lambda_application"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "re.fullmatch",
+          "id": "compile_regex",
+          "description": "Compiles regular expression pattern",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "code_compilation"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "import builtins\nimport re\n\ndef _exceptions_from_docstring(doc: str) -> tuple[type[Exception], ...]:\n    assert isinstance(doc, str), doc\n    raises = []\n    for excname in re.compile(r\"\\:raises\\s+(\\w+)\\:\", re.MULTILINE).findall(doc):\n        exc_type = getattr(builtins, excname, None)\n        if isinstance(exc_type, type) and issubclass(exc_type, Exception):\n            raises.append(exc_type)\n    return tuple(_dedupe_exceptions(tuple(raises)))\n\ndef _type_from_doc_fragment(token: str) -> Optional[type]:\n    if token == \"integer\":\n        return int\n    if \"numpy\" in sys.modules:\n        if re.fullmatch(r\"[Aa]rray[-_ ]?like\", token):\n            return sys.modules[\"numpy\"].ndarray\n        elif token == \"dtype\":\n            return sys.modules[\"numpy\"].dtype\n    coll_match = re.fullmatch(r\"(\\w+) of (\\w+)\", token)\n    if coll_match is not None:\n        coll_token, elem_token = coll_match.groups()\n        elems = _type_from_doc_fragment(elem_token)\n        if elems is None and elem_token.endswith(\"s\"):\n            elems = _type_from_doc_fragment(elem_token[:-1])\n        if elems is not None and coll_token in (\"list\", \"sequence\", \"collection\"):\n            return list[elems]  # type: ignore\n        return _type_from_doc_fragment(coll_token)\n    if \".\" not in token:\n        return getattr(builtins, token, None)\n    mod, name = token.rsplit(\".\", maxsplit=1)\n    return getattr(sys.modules.get(mod, None), name, None)"
+    }
+  },
+  {
+    "pyfile": "types.py",
+    "code_snippet": "import builtins\nimport typing\nfrom hypothesis import strategies as st\nfrom hypothesis.errors import ResolutionFailed\nfrom hypothesis.strategies._internal.strategies import OneOfStrategy\nfrom hypothesis.strategies._internal.lazy import unwrap_strategies\nfrom hypothesis.internal.reflection import get_pretty_function_description\nfrom hypothesis.internal.compat import PYPY, BaseExceptionGroup, ExceptionGroup\nfrom hypothesis.internal.conjecture.utils import many as conjecture_utils_many\nfrom hypothesis.internal.filtering import max_len, min_len\nfrom functools import partial\nimport operator\nimport sys\nimport collections\nimport os\nimport re\nimport io\nimport datetime\nimport decimal\nimport fractions\nimport numbers\nimport random\nimport warnings\nimport zoneinfo\nfrom pathlib import PurePath\nfrom types import FunctionType\nfrom typing import TYPE_CHECKING, Any, get_args, get_origin\n\n# ... (other code omitted for brevity)\n\n@register(type)\n@register(\"Type\")\n@register(\"Type\", module=typing_extensions)\ndef resolve_Type(thing):\n    if getattr(thing, \"__args__\", None) is None or get_args(thing) == ():\n        return _fallback_type_strategy\n    args = (thing.__args__[0],)\n    if is_a_union(args[0]):\n        args = args[0].__args__\n    # Duplicate check from from_type here - only paying when needed.\n    args = list(args)\n    for i, a in enumerate(args):\n        if type(a) in (typing.ForwardRef, str):\n            try:\n                args[i] = getattr(builtins, getattr(a, \"__forward_arg__\", a))\n            except AttributeError:\n                raise ResolutionFailed(\n                    f\"Cannot find the type referenced by {thing} - try using \"\n                    f\"st.register_type_strategy({thing}, st.from_type(...))\"\n                ) from None\n    return st.sampled_from(sorted(args, key=type_sorting_key))\n\n# ... (other code omitted for brevity)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "getattr",
+        "builtins.__getattribute__",
+        "getattr",
+        "builtins.__getattribute__",
+        "getattr",
+        "builtins.__getattribute__"
+      ],
+      "api_sequence_with_args": [
+        "getattr(thing, \"__args__\", None)",
+        "builtins.__getattribute__(thing, \"__args__\")",
+        "get_args(thing)",
+        "builtins.__getattribute__(thing, \"__args__\")",
+        "getattr(a, \"__forward_arg__\", a)",
+        "builtins.__getattribute__(a, \"__forward_arg__\")"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins.__getattribute__",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "get_args",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins.__getattribute__",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "getattr",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        },
+        {
+          "api_name": "builtins.__getattribute__",
+          "id": "get_global_symbols",
+          "description": "Retrieves global symbol table as dictionary",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "user_information"
+        }
+      ],
+      "contextual_code": "@register(type)\n@register(\"Type\")\n@register(\"Type\", module=typing_extensions)\ndef resolve_Type(thing):\n    if getattr(thing, \"__args__\", None) is None or get_args(thing) == ():\n        return _fallback_type_strategy\n    args = (thing.__args__[0],)\n    if is_a_union(args[0]):\n        args = args[0].__args__\n    args = list(args)\n    for i, a in enumerate(args):\n        if type(a) in (typing.ForwardRef, str):\n            try:\n                args[i] = getattr(builtins, getattr(a, \"__forward_arg__\", a))\n            except AttributeError:\n                raise ResolutionFailed(\n                    f\"Cannot find the type referenced by {thing} - try using \"\n                    f\"st.register_type_strategy({thing}, st.from_type(...))\"\n                ) from None\n    return st.sampled_from(sorted(args, key=type_sorting_key))"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "hypothesis-6.131.0",
+      "total_matches": 4
+    }
+  }
+]

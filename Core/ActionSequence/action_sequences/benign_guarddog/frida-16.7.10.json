@@ -1,0 +1,91 @@
+[
+  {
+    "pyfile": "setup.py",
+    "code_snippet": "import os\nimport platform\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\nfrom setuptools.command.build_ext import build_ext\n\nSOURCE_ROOT = Path(__file__).resolve().parent\n\nclass FridaDemandBuiltExt(build_ext):\n    def build_extension(self, ext):\n        make = SOURCE_ROOT / \"make.bat\" if platform.system() == \"Windows\" else \"make\"\n        subprocess.run([make], check=True)\n\n        outputs = [entry for entry in (SOURCE_ROOT / \"build\" / \"frida\" / \"_frida\").glob(\"_frida.*\") if entry.is_file()]\n        assert len(outputs) == 1\n        target = self.get_ext_fullpath(ext.name)\n        Path(target).parent.mkdir(parents=True, exist_ok=True)\n        shutil.copy(outputs[0], target)\n",
+    "pattern_analysis": {
+      "api_sequence": [
+        "platform.system",
+        "subprocess.run",
+        "Path.glob",
+        "Path.is_file",
+        "FridaDemandBuiltExt.get_ext_fullpath",
+        "Path.parent.mkdir",
+        "shutil.copy"
+      ],
+      "api_sequence_with_args": [
+        "platform.system()",
+        "subprocess.run([make], check=True)",
+        "Path.glob('_frida.*')",
+        "Path.is_file()",
+        "FridaDemandBuiltExt.get_ext_fullpath(ext.name)",
+        "Path.parent.mkdir(parents=True, exist_ok=True)",
+        "shutil.copy(outputs[0], target)"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "platform.system",
+          "id": "get_os_id",
+          "description": "Retrieves operating system identifier",
+          "first_id": "information_gathering",
+          "second_id": "system_information_collection",
+          "third_id": "os_information"
+        },
+        {
+          "api_name": "subprocess.run",
+          "id": "spawn_process_no_shell",
+          "description": "Spawns new process to execute command without shell access",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_creation"
+        },
+        {
+          "api_name": "Path.glob",
+          "id": "list_files_directories",
+          "description": "Lists files and directories in specified path",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "Path.is_file",
+          "id": "check_file_is_file",
+          "description": "Checks if specified path exists and is a file",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "FridaDemandBuiltExt.get_ext_fullpath",
+          "id": "path_string_operations",
+          "description": "Basic path string operations (getting absolute path, base name, parent directory, splitting and joining paths)",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_path_operations"
+        },
+        {
+          "api_name": "Path.parent.mkdir",
+          "id": "create_directory",
+          "description": "Creates directory, ignoring if it already exists",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "directory_operations"
+        },
+        {
+          "api_name": "shutil.copy",
+          "id": "copy_file",
+          "description": "Copies file to destination, preserving metadata",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_transfer"
+        }
+      ],
+      "contextual_code": "import os\nimport platform\nimport shutil\nimport subprocess\nfrom pathlib import Path\n\nSOURCE_ROOT = Path(__file__).resolve().parent\n\nclass FridaDemandBuiltExt(build_ext):\n    def build_extension(self, ext):\n        make = SOURCE_ROOT / \"make.bat\" if platform.system() == \"Windows\" else \"make\"\n        subprocess.run([make], check=True)\n\n        outputs = [entry for entry in (SOURCE_ROOT / \"build\" / \"frida\" / \"_frida\").glob(\"_frida.*\") if entry.is_file()]\n        assert len(outputs) == 1\n        target = self.get_ext_fullpath(ext.name)\n        Path(target).parent.mkdir(parents=True, exist_ok=True)\n        shutil.copy(outputs[0], target)"
+    }
+  },
+  {
+    "metadata": {
+      "package_name": "frida-16.7.10",
+      "total_matches": 1
+    }
+  }
+]

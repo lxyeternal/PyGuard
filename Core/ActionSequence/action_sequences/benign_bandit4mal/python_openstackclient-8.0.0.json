@@ -1,0 +1,88 @@
+[
+  {
+    "metadata": {
+      "package_name": "python_openstackclient-8.0.0",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:39"
+    }
+  },
+  {
+    "pyfile": "server.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/python_openstackclient-8.0.0/python_openstackclient-8.0.0/openstackclient/compute/v2/server.py",
+    "line_number": "4258",
+    "type_description": "B815:write",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "4257\n4258\t                self.app.stdout.write(_('Complete\\n'))\n4259\t        elif parsed_args.confirm:",
+    "code_snippet": "class RebootServer(command.Command):\n    _description = _(\"Perform a hard or soft server reboot\")\n\n    def get_parser(self, prog_name):\n        parser = super().get_parser(prog_name)\n        parser.add_argument(\n            'server',\n            metavar='<server>',\n            help=_('Server (name or ID)'),\n        )\n        group = parser.add_mutually_exclusive_group()\n        group.add_argument(\n            '--hard',\n            dest='reboot_type',\n            action='store_const',\n            const='HARD',\n            default='SOFT',\n            help=_('Perform a hard reboot'),\n        )\n        group.add_argument(\n            '--soft',\n            dest='reboot_type',\n            action='store_const',\n            const='SOFT',\n            default='SOFT',\n            help=_('Perform a soft reboot'),\n        )\n        parser.add_argument(\n            '--wait',\n            action='store_true',\n            help=_('Wait for reboot to complete'),\n        )\n        return parser\n\n    def take_action(self, parsed_args):\n        def _show_progress(progress):\n            if progress:\n                self.app.stdout.write(f'\\rProgress: {progress}')\n                self.app.stdout.flush()\n\n        compute_client = self.app.client_manager.compute\n        server_id = compute_client.find_server(\n            parsed_args.server,\n            ignore_missing=False,\n        ).id\n        compute_client.reboot_server(server_id, parsed_args.reboot_type)\n\n        if parsed_args.wait:\n            # We use osc-lib's wait_for_status since that allows for a callback\n            if utils.wait_for_status(\n                compute_client.get_server,\n                server_id,\n                callback=_show_progress,\n            ):\n                self.app.stdout.write(_('Complete\\n'))\n            else:\n                msg = _('Error rebooting server: %s') % server_id\n                raise exceptions.CommandError(msg)",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self.app.stdout.write",
+        "self.app.stdout.flush",
+        "self.app.client_manager.compute.find_server",
+        "self.app.client_manager.compute.reboot_server",
+        "utils.wait_for_status",
+        "self.app.stdout.write"
+      ],
+      "api_sequence_with_args": [
+        "self.app.stdout.write(f'\\rProgress: {progress}')",
+        "self.app.stdout.flush()",
+        "self.app.client_manager.compute.find_server(parsed_args.server, ignore_missing=False)",
+        "self.app.client_manager.compute.reboot_server(server_id, parsed_args.reboot_type)",
+        "utils.wait_for_status(compute_client.get_server, server_id, callback=_show_progress)",
+        "self.app.stdout.write(_('Complete\\n'))"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self.app.stdout.write",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "self.app.stdout.flush",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        },
+        {
+          "api_name": "self.app.client_manager.compute.find_server",
+          "id": "get_process_info",
+          "description": "Retrieves process information as dictionary",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_information"
+        },
+        {
+          "api_name": "self.app.client_manager.compute.reboot_server",
+          "id": "exec_python_code",
+          "description": "Dynamically executes Python code string",
+          "first_id": "code_execution",
+          "second_id": "code_evaluation_execution",
+          "third_id": "string_execution"
+        },
+        {
+          "api_name": "utils.wait_for_status",
+          "id": "wait_process_completion",
+          "description": "Waits for process to complete execution",
+          "first_id": "system_operations",
+          "second_id": "process_management",
+          "third_id": "process_control"
+        },
+        {
+          "api_name": "self.app.stdout.write",
+          "id": "get_stdout_stream",
+          "description": "Retrieves standard output stream object",
+          "first_id": "persistence_stealth",
+          "second_id": "user_interaction",
+          "third_id": "interface_control"
+        }
+      ],
+      "contextual_code": "def _show_progress(progress):\n    if progress:\n        self.app.stdout.write(f'\\rProgress: {progress}')\n        self.app.stdout.flush()\n\ncompute_client = self.app.client_manager.compute\nserver_id = compute_client.find_server(\n    parsed_args.server,\n    ignore_missing=False,\n).id\ncompute_client.reboot_server(server_id, parsed_args.reboot_type)\n\nif parsed_args.wait:\n    if utils.wait_for_status(\n        compute_client.get_server,\n        server_id,\n        callback=_show_progress,\n    ):\n        self.app.stdout.write(_('Complete\\n'))"
+    }
+  }
+]

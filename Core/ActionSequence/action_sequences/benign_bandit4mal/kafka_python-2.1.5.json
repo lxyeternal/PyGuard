@@ -1,0 +1,98 @@
+[
+  {
+    "metadata": {
+      "package_name": "kafka_python-2.1.5",
+      "total_matches": 1,
+      "processing_date": "2025-05-18 01:49:40"
+    }
+  },
+  {
+    "pyfile": "client_async.py",
+    "full_path": "/home2/blue/Documents/PyPIAgent/Dataset/study/unzip_benign/kafka_python-2.1.5/kafka_python-2.1.5/kafka/client_async.py",
+    "line_number": "607",
+    "type_description": "B804:connect",
+    "severity": "High",
+    "confidence": "Medium",
+    "original_snippet": "606\t        if not conn or not self._can_send_request(node_id):\n607\t            self.maybe_connect(node_id, wakeup=wakeup)\n608\t            return Future().failure(Errors.NodeNotReadyError(node_id))",
+    "code_snippet": "def send(self, node_id, request, wakeup=True, request_timeout_ms=None):\n    \"\"\"Send a request to a specific node. Bytes are placed on an\n    internal per-connection send-queue. Actual network I/O will be\n    triggered in a subsequent call to .poll()\n\n    Arguments:\n        node_id (int): destination node\n        request (Struct): request object (not-encoded)\n\n    Keyword Arguments:\n        wakeup (bool, optional): optional flag to disable thread-wakeup.\n        request_timeout_ms (int, optional): Provide custom timeout in milliseconds.\n            If response is not processed before timeout, client will fail the\n            request and close the connection.\n            Default: None (uses value from client configuration)\n\n    Raises:\n        AssertionError: if node_id is not in current cluster metadata\n\n    Returns:\n        Future: resolves to Response struct or Error\n    \"\"\"\n    conn = self._conns.get(node_id)\n    if not conn or not self._can_send_request(node_id):\n        self.maybe_connect(node_id, wakeup=wakeup)\n        return Future().failure(Errors.NodeNotReadyError(node_id))\n\n    # conn.send will queue the request internally\n    # we will need to call send_pending_requests()\n    # to trigger network I/O\n    future = conn.send(request, blocking=False, request_timeout_ms=request_timeout_ms)\n    if not future.is_done:\n        self._sending.add(conn)\n\n    # Wakeup signal is useful in case another thread is\n    # blocked waiting for incoming network traffic while holding\n    # the client lock in poll().\n    if wakeup:\n        self.wakeup()\n\n    return future",
+    "pattern_analysis": {
+      "api_sequence": [
+        "self._conns.get",
+        "self._can_send_request",
+        "self.maybe_connect",
+        "Future.failure",
+        "conn.send",
+        "self._sending.add",
+        "self.wakeup"
+      ],
+      "api_sequence_with_args": [
+        "self._conns.get(node_id)",
+        "self._can_send_request(node_id)",
+        "self.maybe_connect(node_id, wakeup=wakeup)",
+        "Future().failure(Errors.NodeNotReadyError(node_id))",
+        "conn.send(request, blocking=False, request_timeout_ms=request_timeout_ms)",
+        "self._sending.add(conn)",
+        "self.wakeup()"
+      ],
+      "mapped_sequence": [
+        {
+          "api_name": "self._conns.get",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "self._can_send_request",
+          "id": "check_path_exists",
+          "description": "Checks if specified path exists in filesystem",
+          "first_id": "file_operations",
+          "second_id": "file_management",
+          "third_id": "file_checking"
+        },
+        {
+          "api_name": "self.maybe_connect",
+          "id": "establish_tcp_connection",
+          "description": "Establishes TCP connection to specified address",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "connection_management"
+        },
+        {
+          "api_name": "Future.failure",
+          "id": "error_handling_operations",
+          "description": "File opening operations with error handling (ignore errors, custom error handling, etc.)",
+          "first_id": "file_operations",
+          "second_id": "file_reading_writing",
+          "third_id": "file_opening"
+        },
+        {
+          "api_name": "conn.send",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self._sending.add",
+          "id": "send_socket_data",
+          "description": "Sends data over socket connection",
+          "first_id": "basic_network_operations",
+          "second_id": "socket_communication",
+          "third_id": "data_transmission"
+        },
+        {
+          "api_name": "self.wakeup",
+          "id": "create_thread",
+          "description": "Creates new thread to execute target function",
+          "first_id": "system_operations",
+          "second_id": "thread_management",
+          "third_id": "thread_creation"
+        }
+      ],
+      "contextual_code": "def send(self, node_id, request, wakeup=True, request_timeout_ms=None):\n    conn = self._conns.get(node_id)\n    if not conn or not self._can_send_request(node_id):\n        self.maybe_connect(node_id, wakeup=wakeup)\n        return Future().failure(Errors.NodeNotReadyError(node_id))\n\n    future = conn.send(request, blocking=False, request_timeout_ms=request_timeout_ms)\n    if not future.is_done:\n        self._sending.add(conn)\n\n    if wakeup:\n        self.wakeup()\n\n    return future"
+    }
+  }
+]
