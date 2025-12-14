@@ -1,0 +1,88 @@
+# Code Context Extraction Prompt
+
+## Task Description
+As a code analysis expert, extract the complete context for each flagged code segment separately. For each flagged line in the Detection information section, provide its individual surrounding context including control flow and data dependencies.
+
+## CODE TO ANALYZE
+```
+{CODE}
+```
+
+## Context Extraction Rules
+1. For EACH detection point in the Detection information section:
+   - Extract the context for that specific line separately
+   - Do NOT combine contexts from different detection points
+   - Each detection point should have its own separate context
+
+2. If the flagged line is within a function:
+   - Extract the entire function definition including decorators
+   - Include any relevant imports or global variables used by the function
+   - Include any helper functions called by this function
+
+3. If the flagged line is outside a function:
+   - Extract the immediate block of code (at least 10 lines before and after if available)
+   - Include any conditional statements controlling the execution
+   - Include any variable declarations or assignments used by the flagged line
+   - Include any imports relevant to the flagged line
+
+4. For data dependencies:
+   - Trace all variables used in the flagged line to their declaration points
+   - Include any functions that manipulate these variables
+   - Include constants or configuration values referenced
+
+## Output Format
+Your response must be a valid JSON array, where each object corresponds to one detection point:
+
+```json
+[
+  {
+    "detection_line": "86",
+    "detection_type": "code-execution", 
+    "extracted_context": "def run_or_exit(cmd):\n    if os.system(cmd) == 0: return\n    log.error(\"command {!r} failed\".format(cmd))\n    raise SystemExit(1)"
+  },
+  {
+    "detection_line": "91", 
+    "detection_type": "code-execution",
+    "extracted_context": "def run_or_warn(cmd):\n    if os.system(cmd) == 0: return\n    log.warning(\"command {!r} failed\".format(cmd))"
+  }
+]
+```
+
+## IMPORTANT
+- You MUST extract ONE context per detection point
+- Each context should focus ONLY on the specific line mentioned
+- Your response must be valid JSON (an array of objects)
+- Do not include any explanatory text outside the JSON
+- Include line numbers and detection types in your response
+
+## Example
+Tool detection output:
+
+Detection information:
+- Match 1 (Line 86): code-execution: found 1 source code match
+  if os.system(cmd) == 0: return
+- Match 2 (Line 91): code-execution: found 1 source code match
+  if os.system(cmd) == 0: return
+
+Source code:
+...Complete Code...
+
+Expected response:
+```json
+[
+  {
+    "detection_line": "86",
+    "detection_type": "code-execution", 
+    "extracted_context": "def run_or_exit(cmd):\n    if os.system(cmd) == 0: return\n    log.error(\"command {!r} failed\".format(cmd))\n    raise SystemExit(1)"
+  },
+  {
+    "detection_line": "91", 
+    "detection_type": "code-execution",
+    "extracted_context": "def run_or_warn(cmd):\n    if os.system(cmd) == 0: return\n    log.warning(\"command {!r} failed\".format(cmd))"
+  }
+]
+
+if there not any malicious code snippets in Py file. You need output this.
+```json
+[]
+```

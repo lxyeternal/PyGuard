@@ -1,0 +1,71 @@
+# Code Context Extraction Prompt
+
+## Task Description
+As a code analysis expert, extract the complete context for the flagged code segment. For the flagged line in the Detection information section, provide its surrounding context including control flow and data dependencies.
+
+## CODE TO ANALYZE
+```
+{CODE}
+```
+
+## Context Extraction Rules
+1. For the detection point in the Detection information section:
+   - Extract the context for that specific line
+   - Focus only on this single detection point
+
+2. If the flagged line is within a function:
+   - Extract the entire function definition including decorators
+   - Include any relevant imports or global variables used by the function
+   - Include any helper functions called by this function
+
+3. If the flagged line is outside a function (global code):
+   - Extract the complete block of global code containing the flagged line
+   - Include all control flow structures (if/else, loops, try/except) that contain or affect the flagged line
+   - Include all variable declarations, assignments, and imports that the flagged line depends on
+   - Include any function or class definitions that the flagged line calls or references
+   - If possible, include at least 10 lines before and after the flagged line to provide sufficient context
+   - Make sure to capture the full execution path that leads to the flagged line
+
+4. For data dependencies:
+   - Trace all variables used in the flagged line to their declaration points
+   - Include any functions that manipulate these variables
+   - Include constants or configuration values referenced
+
+## Output Format
+Your response must be a valid JSON object with exactly one field:
+
+```json
+{
+  "extracted_context": "def run_or_warn(cmd):\n    if os.system(cmd) == 0: return\n    log.warning(\"command {!r} failed\".format(cmd))"
+}
+```
+
+## IMPORTANT
+- You MUST extract ONE context for the single detection point
+- Your response must be valid JSON (a single object with one field)
+- Do not include any explanatory text outside the JSON
+- Do not include line numbers or detection types in your response
+
+## Example
+Tool detection output:
+
+Detection information:
+- Match (Line 91): code-execution: found 1 source code match
+  if os.system(cmd) == 0: return
+
+Source code:
+...完整代码...
+
+Expected response:
+```json
+{
+  "extracted_context": "def run_or_warn(cmd):\n    if os.system(cmd) == 0: return\n    log.warning(\"command {!r} failed\".format(cmd))"
+}
+```
+
+if there not any malicious code snippets in Py file. You need output this.
+```json
+{
+  "extracted_context": ""
+}
+```

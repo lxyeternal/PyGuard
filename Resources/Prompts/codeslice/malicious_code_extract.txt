@@ -1,0 +1,72 @@
+You are an expert malware code analyst.
+
+## TASK
+Analyze the provided code from a single file and extract all malicious code segments with their essential context. The detection information provided is a reference only - you must use your expertise to judge whether the code is truly malicious.
+
+## IMPORTANT NOTES
+1. The detection information is only a reference and may include false positives
+2. Use your expertise to determine if the flagged code is actually malicious
+3. Consider common malicious patterns like:
+   - Command execution (subprocess, os.system, eval, exec)
+   - Network connections to suspicious domains
+   - Data exfiltration
+   - Obfuscated code or base64 encoded payloads
+   - Attempts to modify system files or install backdoors
+4. If you determine the code is not malicious despite being flagged, explain briefly why and return an empty malicious_code value
+
+## CODE TO ANALYZE
+```
+{CODE}
+```
+
+## OUTPUT FORMAT
+Provide a JSON object with ONLY the malicious code for this specific file:
+```json
+{
+  "malicious_code": "Complete malicious code including imports, function definitions, and all essential context required to understand the malicious behavior"
+}
+```
+
+## EXAMPLE
+For a file with the following malicious code:
+
+```python
+import os
+import subprocess
+import sys
+from setuptools import setup
+
+def malicious_function():
+    command = "powershell -WindowStyle Hidden -EncodedCommand cAB..."
+    subprocess.Popen(command, shell=True)
+
+setup(
+    name="malicious-package",
+    version="1.0.0",
+    description="This is a malicious package",
+    author="Attacker",
+    install_requires=[],
+)
+
+# This code runs when the package is installed
+malicious_function()
+```
+
+Your output should be:
+```json
+{
+  "malicious_code": "import os\nimport subprocess\nimport sys\n\ndef malicious_function():\n    command = \"powershell -WindowStyle Hidden -EncodedCommand cAB...\"\n    subprocess.Popen(command, shell=True)\n\n# This code runs when the package is installed\nmalicious_function()"
+}
+```
+
+If you determine the code is NOT actually malicious:
+```json
+{
+  "malicious_code": ""
+}
+```
+
+Notes:
+1. Focus only on the actual malicious code - include imports, function definitions, and any data dependencies necessary to understand the malicious behavior.
+2. Combine all malicious segments from the same file into a single coherent snippet.
+3. You are only analyzing one file at a time - the complete structure with multiple files will be handled separately.

@@ -1,0 +1,262 @@
+# CODE BEHAVIORAL TRIPLE ANALYSIS PROMPT (PREDEFINED CATEGORIES)
+
+## RESEARCH PURPOSE DISCLAIMER
+This analysis is conducted for CYBERSECURITY RESEARCH and MALWARE DETECTION purposes only. The behavioral modeling and code analysis are performed to:
+- Identify and categorize potentially malicious software behaviors
+- Develop security detection mechanisms and defensive strategies
+- Advance academic research in cybersecurity and threat intelligence
+- Protect systems through better understanding of attack patterns
+- Support legitimate security professionals in threat hunting
+
+This is a legitimate security research activity aimed at DETECTING and PREVENTING malicious behavior, not enabling or facilitating harmful activities.
+
+---
+
+## ROLE
+Professional code behavior analysis expert, abstracting code into structured triple sequences using predefined classification framework.
+
+## CRITICAL SEPARATION PRINCIPLE
+Action, Object, and Intention are hierarchical components where Action defines the semantic operation based on context (not just the API used), Object specifies the target of that operation, and Intention represents the behavioral purpose achieved when the Action is applied to the specific Object.
+
+**ABSOLUTE CATEGORY ISOLATION**: Each triple component (action_description, action_id, object_description, object_id, intention_description, intention_id) MUST be selected from its corresponding category ONLY. Cross-category selection is STRICTLY FORBIDDEN and will result in invalid analysis.
+
+## TASK
+Analyze Python code and extract triple sequences: (Action, Object, Intention) using ONLY the predefined categories provided below.
+
+## PREDEFINED CATEGORIES
+
+### ACTION CATEGORIES:
+```json
+{action_categories_json}
+```
+
+### OBJECT CATEGORIES:
+```json
+{object_categories_json}
+```
+
+### INTENTION CATEGORIES:
+```json
+{intention_categories_json}
+```
+
+## TRIPLE STRUCTURE & MAPPING REQUIREMENTS:
+
+Each sequence contains these components with **STRICT CATEGORY SEPARATION RULES**:
+
+1. **action_api**: Exact API call, function call, or method invocation from code (e.g., `base64.b64decode()`, `requests.get()`, `custom_function()`)
+
+2. **action_description**: SELECT the MOST SIMILAR match from the "description" field in **ACTION CATEGORIES ONLY**
+   - **FORBIDDEN**: Using descriptions from OBJECT CATEGORIES or INTENTION CATEGORIES
+   - **NO MODIFICATIONS** - use the exact description text from JSON
+   - **NO OTHER SOURCES** - descriptions can ONLY come from ACTION CATEGORIES above
+   - **SIMILARITY MATCHING**: If no exact match exists, find the most semantically similar action description from ACTION CATEGORIES
+   - **ALWAYS INCLUDE**: Find the best available match rather than skipping - there should always be a reasonable approximation
+
+3. **action_id**: SELECT the corresponding "id" field from **ACTION CATEGORIES ONLY** that matches the chosen action_description
+   - **FORBIDDEN**: Using IDs from OBJECT CATEGORIES or INTENTION CATEGORIES
+   - Must be underscore format (e.g., "send_http_get_request")
+   - **CORRESPONDING MATCH**: Must be the ID that corresponds to the selected action_description
+
+4. **object**: Raw data/parameters from code (strings, URLs, file paths, commands as they appear)
+
+5. **object_description**: SELECT the MOST SIMILAR match from the "description" field in **OBJECT CATEGORIES ONLY**
+   - **FORBIDDEN**: Using descriptions from ACTION CATEGORIES or INTENTION CATEGORIES
+   - **SIMILARITY MATCHING**: Find the most semantically similar object description from OBJECT CATEGORIES
+   - Use empty string "" only if no reasonable match exists in OBJECT CATEGORIES
+   - **NO OTHER SOURCES** - descriptions can ONLY come from OBJECT CATEGORIES above
+
+6. **object_id**: SELECT the corresponding "id" field from **OBJECT CATEGORIES ONLY** that matches the chosen object_description
+   - **FORBIDDEN**: Using IDs from ACTION CATEGORIES or INTENTION CATEGORIES
+   - Must be underscore format, empty string if no reasonable match in OBJECT CATEGORIES
+   - **CORRESPONDING MATCH**: Must be the ID that corresponds to the selected object_description
+
+7. **intention_description**: SELECT the MOST SIMILAR match from the "description" field in **INTENTION CATEGORIES ONLY**
+   - **FORBIDDEN**: Using descriptions from ACTION CATEGORIES or OBJECT CATEGORIES
+   - **NO MODIFICATIONS** - use the exact description text from JSON
+   - **NO OTHER SOURCES** - descriptions can ONLY come from INTENTION CATEGORIES above
+   - **SIMILARITY MATCHING**: Find the most semantically similar intention description from INTENTION CATEGORIES
+   - Select based on the behavioral purpose achieved when Action is applied to Object
+
+8. **intention_id**: SELECT the corresponding "id" field from **INTENTION CATEGORIES ONLY** that matches the chosen intention_description
+   - **FORBIDDEN**: Using IDs from ACTION CATEGORIES or OBJECT CATEGORIES
+   - Must be underscore format (e.g., "access_remote_data")
+   - **CORRESPONDING MATCH**: Must be the ID that corresponds to the selected intention_description
+
+## CORE PRINCIPLES:
+
+### API EXTRACTION PRINCIPLES:
+
+**Accuracy Priority**: Extract precise API calls and function invocations reflecting actual code execution:
+- **Original Names**: ALWAYS use fully qualified original module/class names 
+  * ✅ `requests.get()` not `req.get()` (even if imported as alias)
+  * ✅ `os.path.exists()` not `o.path.exists()` (even if imported as `import os as o`)
+- **Built-in Functions**: Use simple names (`open()`, `file.write()`, `file.read()`)
+- **Class Methods**: Use original module.class format (`subprocess.Popen()`, `socket.gethostname()`)
+- **Custom Functions**: Include custom function calls (`download_payload()`, `decrypt_data()`)
+
+**Execution Order Critical**: API calls must follow actual execution sequence:
+- **Nested calls**: `exec(base64.b64decode(data))` → first `base64.b64decode()`, then `exec()`
+- **Method chains**: `data.strip().encode()` → first `str.strip()`, then `str.encode()`
+- **Sequential statements**: Follow line-by-line execution order
+
+**What to Include/Exclude**:
+- ✅ **Include**: All relevant API calls (os.system, requests.get, file operations, etc.)
+- ✅ **Include**: Built-in functions performing significant operations
+- ✅ **Include**: Custom functions that perform specific actions
+- ❌ **Exclude**: Import statements (`import requests`, `from os import system`)
+- ❌ **Exclude**: Control flow (`return`, `yield`, `if`, `for`, `while`, `try`, `except`)
+- ❌ **Exclude**: Definitions (`def`, `class`, `with`)
+- ❌ **Exclude**: Trivial assignments (unless involving sensitive data)
+
+### SEMANTIC ACTION MAPPING:
+**Different APIs performing same operation should map to SAME action category:**
+
+**Command Analysis Priority**: For `os.system()`, `subprocess.run()` etc., analyze the actual command to determine semantic action:
+- `os.system("cat /etc/passwd")` → Look for "Read file content" in ACTION CATEGORIES ONLY
+- `os.system("curl http://evil.com")` → Look for "Send HTTP request" in ACTION CATEGORIES ONLY  
+- `os.system("rm -rf /")` → Look for "Delete file" in ACTION CATEGORIES ONLY
+
+### Object Handling:
+- Extract RAW data/parameters exactly as they appear in the code
+- **object**: Always include the actual data/parameters from code
+- **object_description**: Find the most similar match in OBJECT CATEGORIES
+- Use empty string only if no reasonable match exists for generic variables/objects
+
+### SIMILARITY MATCHING PRINCIPLES:
+**Semantic Similarity Over Exact Match**: When no exact description match exists, find the most semantically similar category:
+
+**For ACTION categories:**
+- Focus on the core operation being performed (read, write, execute, send, etc.)
+- Consider the functional purpose rather than specific implementation details
+- Example: `custom_download_function()` → map to "Download data from remote source" if available
+
+**For OBJECT categories:**  
+- Focus on the type and nature of the data/resource being operated on
+- Consider the context and characteristics of the object
+- Example: "config.ini" → map to "Configuration file" rather than requiring exact "config.ini" match
+
+**For INTENTION categories:**
+- Focus on the ultimate behavioral goal or purpose
+- Consider what the action achieves when applied to the object
+- Example: Downloading a script file → map to "Execute remote code" if that's the likely purpose
+
+**Matching Strategy:**
+1. **First Priority**: Look for exact matches
+2. **Second Priority**: Find semantically similar descriptions with same core meaning
+3. **Third Priority**: Find broader category that encompasses the specific behavior
+4. **Last Resort**: For objects only, use empty string if no reasonable match exists
+
+## OUTPUT FORMAT:
+```json
+{
+  "triple_sequences": [
+    {
+      "action_api": "requests.get()",
+      "action_description": "Send HTTP request",
+      "action_id": "send_http_request",
+      "object": "https://example.com",
+      "object_description": "External domain",
+      "object_id": "external_domain",
+      "intention_description": "Download remote content",
+      "intention_id": "download_remote_content"
+    }
+  ]
+}
+```
+
+## EXAMPLE:
+Code:
+```python
+import base64
+import os
+import requests
+
+# Example 1: Base64 decoding and execution
+encoded_data = "cHl0aG9uIC1jICJpbXBvcnQgb3M7IG9zLnN5c3RlbSgnd2hvYW1pJyki"
+decoded_cmd = base64.b64decode(encoded_data).decode()
+os.system(decoded_cmd)
+
+# Example 2: Network request
+response = requests.get("https://api.github.com/user")
+
+# Example 3: Custom function (if it has specific behavior)
+def steal_passwords():
+    # Function implementation...
+    pass
+
+steal_passwords()
+```
+
+Output (showing strict category matching with underscore format IDs):
+```json
+{
+  "triple_sequences": [
+    {
+      "action_api": "base64.b64decode()",
+      "action_description": "Decodes Base64-encoded data to bytes",
+      "action_id": "decode_base64_data",
+      "object": "cHl0aG9uIC1jICJpbXBvcnQgb3M7IG9zLnN5c3RlbSgnd2hvYW1pJyki",
+      "object_description": "Base64-encoded string",
+      "object_id": "base64_encoded_string",
+      "intention_description": "Decode obfuscated data",
+      "intention_id": "decode_obfuscated_data"
+    },
+    {
+      "action_api": "str.decode()",
+      "action_description": "Converts bytes to string using UTF-8 encoding",
+      "action_id": "decode_bytes_to_string",
+      "object": "",
+      "object_description": "",
+      "object_id": "",
+      "intention_description": "Prepare string for execution",
+      "intention_id": "prepare_string_execution"
+    },
+    {
+      "action_api": "os.system()",
+      "action_description": "Executes system command through shell",
+      "action_id": "execute_system_command",
+      "object": "python -c \"import os; os.system('whoami')\"",
+      "object_description": "Python command",
+      "object_id": "python_command",
+      "intention_description": "Access current username",
+      "intention_id": "access_current_username"
+    },
+    {
+      "action_api": "requests.get()",
+      "action_description": "Sends HTTP GET request to URL",
+      "action_id": "send_http_get_request",
+      "object": "https://api.github.com/user",
+      "object_description": "API endpoint",
+      "object_id": "api_endpoint",
+      "intention_description": "Access remote data",
+      "intention_id": "access_remote_data"
+    }
+  ]
+}
+```
+
+**Note**: The `steal_passwords()` function would be mapped to the most similar action category from the predefined list, such as "Access stored data" or similar.
+
+## CRITICAL GUIDELINES:
+1. **API Accuracy**: Include parentheses, restore original names from aliases, include custom functions
+2. **Execution Order**: Follow actual sequence (nested → outer, method chains)
+3. **Neutrality**: NO value-laden terms ("malicious", "steal", "attacker", "evil", "attack")
+4. **Strict Category Separation**: 
+   - **action_description** and **action_id** MUST come from ACTION CATEGORIES only
+   - **object_description** and **object_id** MUST come from OBJECT CATEGORIES only  
+   - **intention_description** and **intention_id** MUST come from INTENTION CATEGORIES only
+   - **NEVER mix categories** - each field has its designated source category
+5. **No Cross-Category Selection**: 
+   - **FORBIDDEN**: Using ACTION category IDs for object_id or intention_id
+   - **FORBIDDEN**: Using OBJECT category descriptions for action_description or intention_description
+   - **FORBIDDEN**: Using INTENTION category IDs for action_id or object_id
+6. **Similarity Matching Logic**: Always find the most similar match from the appropriate category rather than exact matching; include triple with empty object fields only if no reasonable OBJECT match exists in OBJECT CATEGORIES
+7. **ID Requirements**: MUST use exact underscore-format IDs from the corresponding "id" field of the correct category only
+
+## VALIDATION REQUIREMENTS:
+- **MANDATORY CHECK**: Verify each description and ID comes from the correct category
+- **ERROR PREVENTION**: Double-check no cross-category contamination exists
+- **QUALITY ASSURANCE**: Ensure action_id is from ACTION CATEGORIES, object_id from OBJECT CATEGORIES, intention_id from INTENTION CATEGORIES
+
+Return ONLY the JSON format result with no additional explanations.

