@@ -333,7 +333,6 @@ class LLMAgent:
                      frequency_penalty: float = None,
                      presence_penalty: float = None,
                      response_format: Optional[Dict] = None,
-                     seed: int = None,
                      reasoning_effort: str = None,
                      extract_json: bool = None) -> str:
         max_tokens = max_tokens or self.config.get("default_max_tokens", 16000)
@@ -341,7 +340,6 @@ class LLMAgent:
         top_p = top_p if top_p is not None else self.config.get("default_top_p", 0.3)
         frequency_penalty = frequency_penalty if frequency_penalty is not None else self.config.get("default_frequency_penalty", 0)
         presence_penalty = presence_penalty if presence_penalty is not None else self.config.get("default_presence_penalty", 0)
-        seed = seed if seed is not None else self.config.get("default_seed", 42)
         reasoning_effort = reasoning_effort or self.config.get("default_reasoning_effort", "medium")
         extract_json = extract_json if extract_json is not None else self.config.get("default_extract_json", True)
 
@@ -357,16 +355,16 @@ class LLMAgent:
 
         if self.query_type == "azure":
             result = self._azure_query(messages, max_tokens, temperature, top_p,
-                                     frequency_penalty, presence_penalty, response_format, seed, reasoning_effort)
+                                     frequency_penalty, presence_penalty, response_format, reasoning_effort)
         elif self.query_type == "ollama":
             result = self._ollama_query(messages, max_tokens, temperature, top_p,
-                                      frequency_penalty, presence_penalty, response_format, seed, reasoning_effort)
+                                      frequency_penalty, presence_penalty, response_format, reasoning_effort)
         elif self.query_type == "openai":
             result = self._openai_query(messages, max_tokens, temperature, top_p,
-                                      frequency_penalty, presence_penalty, response_format, seed, reasoning_effort)
+                                      frequency_penalty, presence_penalty, response_format, reasoning_effort)
         elif self.query_type == "custom_openai":
             result = self._custom_openai_query(messages, max_tokens, temperature, top_p,
-                                             frequency_penalty, presence_penalty, response_format, seed, reasoning_effort)
+                                             frequency_penalty, presence_penalty, response_format, reasoning_effort)
         else:
             raise ValueError(f"Unknown query type: {self.query_type}")
 
@@ -410,7 +408,7 @@ class LLMAgent:
 
 
     def _azure_query(self, messages, max_tokens, temperature, top_p, frequency_penalty,
-                    presence_penalty, response_format, seed, reasoning_effort="medium"):
+                    presence_penalty, response_format, reasoning_effort="medium"):
         wait_time = self.config.get("retry_wait_time", 10)
         wait_increment = self.config.get("retry_wait_increment", 5)
         attempt = 0
@@ -437,7 +435,6 @@ class LLMAgent:
                         "frequency_penalty": frequency_penalty,
                         "presence_penalty": presence_penalty,
                         "max_tokens": max_tokens,
-                        "seed": seed,
                         "stop": None
                     })
                     if response_format:
@@ -456,7 +453,7 @@ class LLMAgent:
 
 
     def _openai_query(self, messages, max_tokens, temperature, top_p, frequency_penalty,
-                     presence_penalty, response_format, seed, reasoning_effort="medium"):
+                     presence_penalty, response_format, reasoning_effort="medium"):
         wait_time = self.config.get("retry_wait_time", 10)
         wait_increment = self.config.get("retry_wait_increment", 5)
         attempt = 0
@@ -483,7 +480,6 @@ class LLMAgent:
                         "frequency_penalty": frequency_penalty,
                         "presence_penalty": presence_penalty,
                         "max_tokens": max_tokens,
-                        "seed": seed,
                         "stop": None
                     })
                     if response_format:
@@ -502,7 +498,7 @@ class LLMAgent:
 
 
     def _custom_openai_query(self, messages, max_tokens, temperature, top_p, frequency_penalty,
-                            presence_penalty, response_format, seed, reasoning_effort="medium"):
+                            presence_penalty, response_format, reasoning_effort="medium"):
         wait_time = self.config.get("retry_wait_time", 10)
         wait_increment = self.config.get("retry_wait_increment", 5)
         attempt = 0
@@ -529,7 +525,6 @@ class LLMAgent:
                         "frequency_penalty": frequency_penalty,
                         "presence_penalty": presence_penalty,
                         "max_tokens": max_tokens,
-                        "seed": seed,
                         "stop": None
                     })
                     if response_format:
@@ -548,7 +543,7 @@ class LLMAgent:
 
 
     def _ollama_query(self, messages, max_tokens, temperature, top_p, frequency_penalty,
-                     presence_penalty, response_format, seed, reasoning_effort="medium"):
+                     presence_penalty, response_format, reasoning_effort="medium"):
         wait_time = self.config.get("retry_wait_time", 10)
         wait_increment = self.config.get("retry_wait_increment", 5)
         attempt = 0
@@ -573,7 +568,6 @@ class LLMAgent:
         else:
             payload["options"] = {
                 "temperature": temperature,
-                "seed": seed,
                 "num_ctx": self.config.get("ollama_context_size", 65536)
             }
             if response_format:
