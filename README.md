@@ -53,15 +53,23 @@ package_name-version.whl
 
 ### Data Collection
 
-Benign packages are downloaded using scripts in `Scripts/DataCollect/`:
+Download packages using scripts in `Scripts/DataCollect/`:
 
 ```bash
-# Download benign PyPI packages
-python Scripts/DataCollect/benign_data.py
+# Download PyPI packages from packages.txt
+python Scripts/DataCollect/download_pypi_packages.py <packages.txt> [--workers 8] [--output <dir>]
 
-# Download specific packages
-python Scripts/DataCollect/pkg_download.py
+# Download NPM packages from packages.txt
+python Scripts/DataCollect/download_npm_packages.py <packages.txt> [--workers 8] [--output <dir>]
+
+# Example: Download PyPI benign packages
+python Scripts/DataCollect/download_pypi_packages.py Dataset/PyPI/Study/Benign/packages.txt --workers 8
+
+# Example: Download NPM benign packages
+python Scripts/DataCollect/download_npm_packages.py Dataset/NPM/Benign/packages.txt --workers 8
 ```
+
+Downloaded packages are saved in a two-level structure: `<package-version>/<package-version>.tar.gz`
 
 ## Experiment Results
 
