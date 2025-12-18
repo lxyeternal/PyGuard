@@ -21,7 +21,8 @@ def process_json_file_worker(
     api_categories_path: str,
     prompt_template_path: str,
     input_base_path: str,
-    output_base_path: str
+    output_base_path: str,
+    code_field: str = "context_snippet"
 ) -> bool:
     """Function to process single JSON file, used for multiprocessing"""
     json_file = task
@@ -59,10 +60,10 @@ def process_json_file_worker(
         global llm_agent
         
         for code_item in input_data:
-            if "context_snippet" not in code_item:
+            if code_field not in code_item:
                 continue
-                
-            code = code_item.get("context_snippet", "")
+
+            code = code_item.get(code_field, "")
             if not code:
                 continue
             
@@ -547,7 +548,8 @@ class PatternGenerator:
                 api_categories_path=self.api_categories_path,
                 prompt_template_path=self.prompt_template_path,
                 input_base_path=self.input_base_path,
-                output_base_path=self.output_base_path
+                output_base_path=self.output_base_path,
+                code_field=self.config["code_field"]
             )
             
             with multiprocessing.Pool(
