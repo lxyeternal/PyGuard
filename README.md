@@ -27,6 +27,59 @@ PyGuard/
 └── Output/                  # Detection output
 ```
 
+## Core Modules
+
+PyGuard's detection pipeline consists of several core modules:
+
+### 1. Tool Detector (`Core/CodeMarker/tool_detector.py`)
+
+Runs security tools (bandit4mal, guarddog, ossgadget, pypiwarehouse) on packages to mark detection positions.
+
+### 2. Context Extractors (`Core/ContextExtractor/`)
+
+Extract code context from security tool reports using LLM:
+- `bandit_fp_extractor.py`: Extract context from bandit false positives (benign code)
+- `guarddog_fp_extractor.py`: Extract context from guarddog false positives (benign code)
+- `guarddog_malware_extractor.py`: Extract malicious code context from guarddog detections
+
+### 3. Triple Analyzer (`Core/TaxonomyGenerator/triple_analyzer.py`)
+
+Extract behavioral triples (Action, Object, Intention) from code snippets using Card Sorting method with LLM. Builds and updates the API taxonomy.
+
+### 4. Action Sequence Generator (`Core/ActionSequence/generate_patterns.py`)
+
+Map code snippets to action sequences using predefined API taxonomy. Uses LLM to extract and categorize API patterns.
+
+### 5. Pattern Generator (`Core/PatternGenerator/prefixspan_pattern.py`)
+
+Mine frequent sequence patterns using PrefixSpan algorithm. Distinguishes benign-only, malware-only, and biased patterns with hierarchical support levels.
+
+### 6. RAG Knowledge Builder (`Core/RAG/rag_knowledge_builder.py`)
+
+Build RAG knowledge base from pattern data. Creates pattern/case embeddings and FAISS indices for similarity search.
+
+### 7. Package Analyzer (`Core/Detector/package_analyzer.py`) ⭐
+
+**PyGuard's core detection module** - can be used directly for end-to-end malware detection.
+
+```python
+from Core.Detector.package_analyzer import PackageAnalyzer
+
+# Initialize analyzer
+# detection_mode: "rag" (pure LLM) or "pattern_rag" (pattern first, more efficient)
+analyzer = PackageAnalyzer(detection_mode="pattern_rag")
+
+# Analyze a package
+result = analyzer.analyze_package(
+    package_path="/path/to/package",
+    package_manager="pypi",  # or "npm"
+    output_path="/path/to/result.json"
+)
+
+# Print summary
+analyzer.print_summary(result)
+```
+
 ## Dataset
 
 ### Data Format
@@ -39,17 +92,17 @@ package_name-version.whl
 
 ### PyPI Dataset
 
-| Type | Location | Count | Source |
-|------|----------|-------|--------|
-| Malware | `Dataset/PyPI/Study/Malware/` | 8,540 | [pypi_malregistry](https://github.com/lxyeternal/pypi_malregistry) |
-| Benign | `Dataset/PyPI/Study/Benign/` | 9,591 | PyPI Top Packages |
+| Type | Location | Source |
+|------|----------|--------|
+| Malware | `Dataset/PyPI/Study/Malware/` | [pypi_malregistry](https://github.com/lxyeternal/pypi_malregistry) |
+| Benign | `Dataset/PyPI/Study/Benign/` | PyPI Top Packages |
 
 ### NPM Dataset
 
-| Type | Location | Count | Source |
-|------|----------|-------|--------|
-| Malware | `Dataset/NPM/Malware/` | 815 | [Backstabbers-Knife-Collection](https://github.com/cybertier/Backstabbers-Knife-Collection) |
-| Benign | `Dataset/NPM/Benign/` | 999 | NPM Popular Packages |
+| Type | Location | Source |
+|------|----------|--------|
+| Malware | `Dataset/NPM/Malware/` | [Backstabbers-Knife-Collection](https://github.com/cybertier/Backstabbers-Knife-Collection) |
+| Benign | `Dataset/NPM/Benign/` | NPM Popular Packages |
 
 ### Data Collection
 
@@ -151,17 +204,20 @@ Experiment/Results/NPM/
 
 ## Usage
 
-### Package Analysis
+### Quick Start: Package Analysis
 
 ```python
 from Core.Detector.package_analyzer import PackageAnalyzer
 
-analyzer = PackageAnalyzer()
+# Use pattern_rag mode for efficient detection
+analyzer = PackageAnalyzer(detection_mode="pattern_rag")
+
 result = analyzer.analyze_package(
     package_path="/path/to/extracted/package",
     package_manager="pypi",  # or "npm"
     output_path="/path/to/output.json"
 )
+
 analyzer.print_summary(result)
 ```
 
@@ -169,15 +225,37 @@ analyzer.print_summary(result)
 
 ```python
 from Core.RAG.rag_knowledge_builder import RAGKnowledgeBuilder
-from Core.RAG.rag_query_engine import RAGQueryEngine
 
 # Build knowledge base
 builder = RAGKnowledgeBuilder()
-builder.build()
+builder.build_knowledge_base("patterns_with_cases.json")
+builder.save_knowledge_base("rag_knowledge_base/")
+```
 
-# Query for detection
-engine = RAGQueryEngine()
-result = engine.detect_malware(action_sequence, code_context)
+### Full Pipeline
+
+```bash
+# 1. Run security tools on packages
+python Core/CodeMarker/tool_detector.py
+
+# 2. Extract code context from tool reports
+python Core/ContextExtractor/bandit_fp_extractor.py
+python Core/ContextExtractor/guarddog_fp_extractor.py
+
+# 3. Generate action taxonomy (Card Sorting)
+python Core/TaxonomyGenerator/triple_analyzer.py --dataset all
+
+# 4. Generate action sequences
+python Core/ActionSequence/generate_patterns.py --dataset all
+
+# 5. Mine patterns using PrefixSpan
+python Core/PatternGenerator/prefixspan_pattern.py
+
+# 6. Build RAG knowledge base
+python Core/RAG/rag_knowledge_builder.py
+
+# 7. Analyze packages
+python Core/Detector/package_analyzer.py
 ```
 
 ## Configuration

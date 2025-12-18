@@ -242,7 +242,8 @@ def _multiprocess_file_runner(task: Dict[str, Any]) -> FileAnalysisResult:
     """Entry point for multiprocessing pool."""
     slicer = CodeSlicer()
     extractor = APISequenceExtractor()
-    detector = MaliceDetector()
+    detection_mode = task.get("detection_mode", "rag")
+    detector = MaliceDetector(mode=detection_mode)
     return _analyze_file_core(
         file_path=Path(task["file_path"]),
         priority=task["priority"],
@@ -285,7 +286,8 @@ class PackageAnalyzer:
         self,
         slicer: Optional[CodeSlicer] = None,
         extractor: Optional[APISequenceExtractor] = None,
-        detector: Optional[MaliceDetector] = None
+        detector: Optional[MaliceDetector] = None,
+        detection_mode: str = "rag"
     ):
         """
         Initialize package analyzer
@@ -294,16 +296,20 @@ class PackageAnalyzer:
             slicer: Custom code slicer (optional)
             extractor: Custom API extractor (optional)
             detector: Custom malice detector (optional)
+            detection_mode: Detection mode - "rag" (pure RAG) or "pattern_rag"
+                           (pattern matching first, then RAG if needed)
         """
         self.max_files = PyGuardConfig.MAX_ANALYSIS_FILES
         self.file_analysis_workers = PyGuardConfig.get_file_analysis_workers()
+        self.detection_mode = detection_mode
         self.slicer = slicer or CodeSlicer()
         self.extractor = extractor or APISequenceExtractor()
-        self.detector = detector or MaliceDetector()
+        self.detector = detector or MaliceDetector(mode=detection_mode)
         logger.info(
-            "PackageAnalyzer initialized with max_files=%s, file_analysis_workers=%s",
+            "PackageAnalyzer initialized with max_files=%s, file_analysis_workers=%s, detection_mode=%s",
             self.max_files,
-            self.file_analysis_workers
+            self.file_analysis_workers,
+            self.detection_mode
         )
     
     def _discover_files(
@@ -471,7 +477,8 @@ class PackageAnalyzer:
                 total_analysis_time=0.0,
                 configuration={
                     "max_files": self.max_files,
-                    "package_manager": package_manager
+                    "package_manager": package_manager,
+                    "detection_mode": self.detection_mode
                 }
             )
 
@@ -487,14 +494,16 @@ class PackageAnalyzer:
             file_tasks.append({
                 "file_path": str(file_path),
                 "priority": "high",
-                "package_name": package_path.name
+                "package_name": package_path.name,
+                "detection_mode": self.detection_mode
             })
 
         for file_path in normal_files:
             file_tasks.append({
                 "file_path": str(file_path),
                 "priority": "normal",
-                "package_name": package_path.name
+                "package_name": package_path.name,
+                "detection_mode": self.detection_mode
             })
         
         file_results = self._execute_file_tasks(file_tasks)
@@ -525,7 +534,8 @@ class PackageAnalyzer:
             total_analysis_time=total_analysis_time,
             configuration={
                 "max_files": self.max_files,
-                "package_manager": package_manager
+                "package_manager": package_manager,
+                "detection_mode": self.detection_mode
             }
         )
         
@@ -587,15 +597,18 @@ class PackageAnalyzer:
 # def main():
 #     """Example usage"""
 #     # Example: Analyze a PyPI package
-#     analyzer = PackageAnalyzer()
-    
+#     # detection_mode options:
+#     #   - "rag": Pure RAG mode, always uses LLM for detection
+#     #   - "pattern_rag": Pattern matching first, then RAG if no pattern matches
+#     analyzer = PackageAnalyzer(detection_mode="pattern_rag")
+
 #     result = analyzer.analyze_package(
-#         package_path="/home2/wenbo/Documents/PyPIAgent/Dataset/2025/unzip_malware/ctftestsowwy#0.0.7",
+#         package_path="Dataset/study/unzip_malware/11Cent-999.0.0",
 #         package_manager="pypi",
-#         version="1.8.0",
-#         output_path="/home2/wenbo/Documents/PyPIAgent/PyGuard/Core/Detector/analysis_result.json"
+#         version="999.0.0",
+#         output_path="PyGuard/Output/analysis_result.json"
 #     )
-    
+
 #     analyzer.print_summary(result)
 
 
