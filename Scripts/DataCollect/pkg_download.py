@@ -2,7 +2,6 @@
 """
 # @File     : pkg_download.py
 # @Project  : pythonProject
-# Time      : 18/7/24 9:08 pm
 # version   : python 3.8
 # Description：
 """
